@@ -2,47 +2,76 @@
 
 import { useState } from 'react';
 import LayoutWrapper from '@/components/LayoutWrapper';
-
-interface Corte {
-  id: number;
-  fecha: string;
-  fechaInicio: string;
-  fechaFin: string;
-  totalVentas: number;
-  totalPedidos: number;
-  usuario: string;
-  estado: 'ACTIVO' | 'CERRADO';
-}
+import { useCortes } from '@/lib/hooks/useCortes';
+import type { Corte } from '@/lib/types';
 
 export default function CortesPage() {
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
-  
-  const [cortes, setCortes] = useState<Corte[]>([
-    { id: 1, fecha: '2024-11-19', fechaInicio: '2024-11-01', fechaFin: '2024-11-15', totalVentas: 15750, totalPedidos: 23, usuario: 'Admin', estado: 'CERRADO' },
-    { id: 2, fecha: '2024-11-18', fechaInicio: '2024-10-16', fechaFin: '2024-10-31', totalVentas: 12300, totalPedidos: 18, usuario: 'Admin', estado: 'CERRADO' },
-  ]);
+  const [corteSeleccionado, setCorteSeleccionado] = useState<string | null>(null);
+  const [detalleCorte, setDetalleCorte] = useState<any[] | null>(null);
+  const { cortes, loading, error, crearCorte, getDetalleCorte, cerrarCorte } = useCortes();
 
   const [formData, setFormData] = useState({
     fechaInicio: '',
     fechaFin: '',
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const nuevoCorte: Corte = {
-      id: Date.now(),
-      fecha: new Date().toISOString().split('T')[0],
-      fechaInicio: formData.fechaInicio,
-      fechaFin: formData.fechaFin,
-      totalVentas: 0,
-      totalPedidos: 0,
-      usuario: 'Admin',
-      estado: 'ACTIVO',
-    };
-    setCortes([nuevoCorte, ...cortes]);
+    
+    if (new Date(formData.fechaInicio) > new Date(formData.fechaFin)) {
+      alert('La fecha de inicio debe ser anterior a la fecha fin');
+      return;
+    }
+
+    const { error } = await crearCorte(formData.fechaInicio, formData.fechaFin);
+    
+    if (error) {
+      alert(`Error al crear el corte: ${error}`);
+      return;
+    }
+
+    alert('Corte de caja creado exitosamente');
     setFormData({ fechaInicio: '', fechaFin: '' });
     setMostrarFormulario(false);
   };
+
+  const handleVerDetalle = async (corteId: string) => {
+    setCorteSeleccionado(corteId);
+    const { data, error } = await getDetalleCorte(corteId);
+    
+    if (error) {
+      alert(`Error al cargar el detalle: ${error}`);
+      return;
+    }
+    
+    setDetalleCorte(data || []);
+  };
+
+  const handleCerrarCorte = async (corteId: string) => {
+    if (confirm('¿Estás seguro de cerrar este corte? No se podrán agregar más pedidos.')) {
+      const { error } = await cerrarCorte(corteId);
+      
+      if (error) {
+        alert(`Error al cerrar el corte: ${error}`);
+        return;
+      }
+      
+      alert('Corte cerrado exitosamente');
+    }
+  };
+
+  if (loading) {
+    return (
+      <LayoutWrapper>
+        <div className="main-container">
+          <div className="loading">
+            <div className="spinner"></div>
+          </div>
+        </div>
+      </LayoutWrapper>
+    );
+  }
 
   return (
     <LayoutWrapper>
@@ -56,9 +85,18 @@ export default function CortesPage() {
           </button>
         </div>
 
+        {error && (
+          <div className="alert alert-error">
+            Error al cargar los cortes: {error}
+          </div>
+        )}
+
         {mostrarFormulario && (
           <div className="form-container">
             <h2 className="form-title">Generar Nuevo Corte de Caja</h2>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', textAlign: 'center' }}>
+              El corte incluirá todos los pedidos <strong>LIQUIDADOS</strong> entre las fechas seleccionadas
+            </p>
             
             <form onSubmit={handleSubmit}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
@@ -101,6 +139,58 @@ export default function CortesPage() {
           </div>
         )}
 
+        {corteSeleccionado && detalleCorte && (
+          <div className="form-container" style={{ marginBottom: '2rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h3 style={{ fontSize: '1.5rem', fontWeight: '600' }}>Detalle del Corte</h3>
+              <button
+                className="btn btn-secondary"
+                onClick={() => {
+                  setCorteSeleccionado(null);
+                  setDetalleCorte(null);
+                }}
+              >
+                ✕ Cerrar
+              </button>
+            </div>
+
+            {detalleCorte.length === 0 ? (
+              <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '2rem' }}>
+                No hay pedidos en este corte
+              </p>
+            ) : (
+              <div className="table-container" style={{ marginTop: 0 }}>
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Pedido ID</th>
+                      <th>Cliente</th>
+                      <th>Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {detalleCorte.map((detalle: any) => (
+                      <tr key={detalle.id}>
+                        <td style={{ fontFamily: 'monospace' }}>#{detalle.pedido_id.substring(0, 8)}...</td>
+                        <td>
+                          {detalle.pedido?.alumno?.alumno_nombre_completo 
+                            ? `🎓 ${detalle.pedido.alumno.alumno_nombre_completo} (${detalle.pedido.alumno.alumno_ref})`
+                            : detalle.pedido?.externo?.nombre 
+                            ? `👤 ${detalle.pedido.externo.nombre}`
+                            : 'Sin cliente'}
+                        </td>
+                        <td style={{ fontWeight: '600', color: '#10b981' }}>
+                          ${parseFloat(detalle.pedido?.total?.toString() || '0').toFixed(2)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="table-container">
           <table className="table">
             <thead>
@@ -110,39 +200,58 @@ export default function CortesPage() {
                 <th>Período</th>
                 <th>Total Pedidos</th>
                 <th>Total Ventas</th>
-                <th>Usuario</th>
                 <th>Estado</th>
                 <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
-              {cortes.map((corte) => (
-                <tr key={corte.id}>
-                  <td style={{ fontFamily: 'monospace' }}>#{corte.id}</td>
-                  <td>{corte.fecha}</td>
-                  <td>
-                    <div style={{ fontSize: '0.9rem' }}>
-                      <div>Del: {corte.fechaInicio}</div>
-                      <div>Al: {corte.fechaFin}</div>
-                    </div>
-                  </td>
-                  <td style={{ fontWeight: '600' }}>{corte.totalPedidos}</td>
-                  <td style={{ fontWeight: '700', color: '#10b981', fontSize: '1.1rem' }}>
-                    ${corte.totalVentas.toFixed(2)}
-                  </td>
-                  <td>{corte.usuario}</td>
-                  <td>
-                    <span className={`badge ${corte.estado === 'ACTIVO' ? 'badge-success' : 'badge-info'}`}>
-                      {corte.estado}
-                    </span>
-                  </td>
-                  <td>
-                    <button className="btn btn-secondary" style={{ padding: '0.5rem 1rem' }}>
-                      📄 Ver Detalle
-                    </button>
+              {cortes.length === 0 ? (
+                <tr>
+                  <td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                    No hay cortes registrados. Crea tu primer corte.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                cortes.map((corte: Corte) => (
+                  <tr key={corte.id}>
+                    <td style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>{corte.id.substring(0, 8)}...</td>
+                    <td>{new Date(corte.fecha).toLocaleDateString('es-MX')}</td>
+                    <td>
+                      <div style={{ fontSize: '0.9rem' }}>
+                        <div>Del: {new Date(corte.fecha_inicio).toLocaleDateString('es-MX')}</div>
+                        <div>Al: {new Date(corte.fecha_fin).toLocaleDateString('es-MX')}</div>
+                      </div>
+                    </td>
+                    <td style={{ fontWeight: '600' }}>{corte.total_pedidos}</td>
+                    <td style={{ fontWeight: '700', color: '#10b981', fontSize: '1.1rem' }}>
+                      ${corte.total_ventas.toFixed(2)}
+                    </td>
+                    <td>
+                      <span className={`badge ${corte.activo ? 'badge-success' : 'badge-info'}`}>
+                        {corte.activo ? '✓ Activo' : '🔒 Cerrado'}
+                      </span>
+                    </td>
+                    <td>
+                      <button
+                        className="btn btn-secondary"
+                        style={{ marginRight: '0.5rem', padding: '0.5rem 1rem' }}
+                        onClick={() => handleVerDetalle(corte.id)}
+                      >
+                        📄 Ver Detalle
+                      </button>
+                      {corte.activo && (
+                        <button
+                          className="btn btn-danger"
+                          style={{ padding: '0.5rem 1rem' }}
+                          onClick={() => handleCerrarCorte(corte.id)}
+                        >
+                          🔒 Cerrar
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -150,4 +259,3 @@ export default function CortesPage() {
     </LayoutWrapper>
   );
 }
-
