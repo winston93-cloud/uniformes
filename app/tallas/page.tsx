@@ -1,0 +1,204 @@
+'use client';
+
+import { useState } from 'react';
+import LayoutWrapper from '@/components/LayoutWrapper';
+import Link from 'next/link';
+
+interface Talla {
+  id: number;
+  nombre: string;
+  orden: number;
+  activo: boolean;
+}
+
+export default function TallasPage() {
+  const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const [tallaEditando, setTallaEditando] = useState<Talla | null>(null);
+  
+  // Datos de ejemplo
+  const [tallas, setTallas] = useState<Talla[]>([
+    { id: 1, nombre: 'XS', orden: 1, activo: true },
+    { id: 2, nombre: 'S', orden: 2, activo: true },
+    { id: 3, nombre: 'M', orden: 3, activo: true },
+    { id: 4, nombre: 'L', orden: 4, activo: true },
+    { id: 5, nombre: 'XL', orden: 5, activo: true },
+  ]);
+
+  const [formData, setFormData] = useState({
+    nombre: '',
+    orden: '',
+    activo: true,
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (tallaEditando) {
+      // Editar talla existente
+      setTallas(tallas.map(t => 
+        t.id === tallaEditando.id 
+          ? { ...t, nombre: formData.nombre, orden: parseInt(formData.orden), activo: formData.activo }
+          : t
+      ));
+    } else {
+      // Crear nueva talla
+      const nuevaTalla: Talla = {
+        id: Date.now(),
+        nombre: formData.nombre,
+        orden: parseInt(formData.orden),
+        activo: formData.activo,
+      };
+      setTallas([...tallas, nuevaTalla]);
+    }
+    
+    // Resetear formulario
+    setFormData({ nombre: '', orden: '', activo: true });
+    setMostrarFormulario(false);
+    setTallaEditando(null);
+  };
+
+  const handleEditar = (talla: Talla) => {
+    setTallaEditando(talla);
+    setFormData({
+      nombre: talla.nombre,
+      orden: talla.orden.toString(),
+      activo: talla.activo,
+    });
+    setMostrarFormulario(true);
+  };
+
+  const handleEliminar = (id: number) => {
+    if (confirm('¿Estás seguro de eliminar esta talla?')) {
+      setTallas(tallas.filter(t => t.id !== id));
+    }
+  };
+
+  const handleNuevo = () => {
+    setTallaEditando(null);
+    setFormData({ nombre: '', orden: '', activo: true });
+    setMostrarFormulario(true);
+  };
+
+  return (
+    <LayoutWrapper>
+      <div className="main-container">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+          <h1 style={{ fontSize: '2.5rem', fontWeight: '700', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.2)' }}>
+            📏 Gestión de Tallas
+          </h1>
+          <button className="btn btn-primary" onClick={handleNuevo}>
+            ➕ Nueva Talla
+          </button>
+        </div>
+
+        {/* Formulario */}
+        {mostrarFormulario && (
+          <div className="form-container">
+            <h2 className="form-title">
+              {tallaEditando ? 'Editar Talla' : 'Nueva Talla'}
+            </h2>
+            
+            <form onSubmit={handleSubmit}>
+              <div className="form-group">
+                <label className="form-label">Nombre de la Talla *</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={formData.nombre}
+                  onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                  placeholder="Ej: XS, S, M, L, XL, 6, 8, 10, etc."
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Orden de Visualización *</label>
+                <input
+                  type="number"
+                  className="form-input"
+                  value={formData.orden}
+                  onChange={(e) => setFormData({ ...formData, orden: e.target.value })}
+                  placeholder="Ej: 1, 2, 3, etc."
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={formData.activo}
+                    onChange={(e) => setFormData({ ...formData, activo: e.target.checked })}
+                    style={{ width: '20px', height: '20px' }}
+                  />
+                  <span className="form-label" style={{ marginBottom: 0 }}>Talla Activa</span>
+                </label>
+              </div>
+
+              <div className="btn-group">
+                <button type="submit" className="btn btn-primary">
+                  {tallaEditando ? '💾 Guardar Cambios' : '➕ Crear Talla'}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setMostrarFormulario(false);
+                    setTallaEditando(null);
+                    setFormData({ nombre: '', orden: '', activo: true });
+                  }}
+                >
+                  ❌ Cancelar
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* Tabla de Tallas */}
+        <div className="table-container">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Orden</th>
+                <th>Nombre</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tallas.sort((a, b) => a.orden - b.orden).map((talla) => (
+                <tr key={talla.id}>
+                  <td>{talla.orden}</td>
+                  <td style={{ fontWeight: '600' }}>{talla.nombre}</td>
+                  <td>
+                    <span className={`badge ${talla.activo ? 'badge-success' : 'badge-danger'}`}>
+                      {talla.activo ? '✓ Activa' : '✗ Inactiva'}
+                    </span>
+                  </td>
+                  <td>
+                    <button
+                      className="btn btn-secondary"
+                      style={{ marginRight: '0.5rem', padding: '0.5rem 1rem' }}
+                      onClick={() => handleEditar(talla)}
+                    >
+                      ✏️ Editar
+                    </button>
+                    <button
+                      className="btn btn-danger"
+                      style={{ padding: '0.5rem 1rem' }}
+                      onClick={() => handleEliminar(talla.id)}
+                    >
+                      🗑️ Eliminar
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </LayoutWrapper>
+  );
+}
+
