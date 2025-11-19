@@ -488,11 +488,14 @@ body {
 /* Responsive */
 @media (max-width: 768px) {
   .page-title {
-    font-size: 2rem;
+    font-size: 1.8rem;
+    flex-direction: column;
+    gap: 0.5rem;
   }
   
   .cards-grid {
     grid-template-columns: 1fr;
+    gap: 1.5rem;
   }
   
   .main-container {
@@ -500,12 +503,58 @@ body {
   }
   
   .header {
-    padding: 1rem;
+    padding: 0.8rem 1rem;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+  }
+
+  .header-left span:last-child {
+    display: none; /* Ocultar "Winston Churchill" en móvil */
   }
   
   .welcome-badge {
-    font-size: 0.85rem;
-    padding: 0.4rem 1rem;
+    display: none; /* Ocultar badge en móvil para ahorrar espacio */
+  }
+
+  .btn {
+    padding: 0.6rem 1rem;
+    font-size: 0.9rem;
+  }
+
+  .logout-button {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+  }
+
+  .form-container {
+    padding: 1.5rem;
+  }
+
+  .table-container {
+    overflow-x: auto;
+  }
+
+  .table {
+    font-size: 0.9rem;
+  }
+
+  .table th,
+  .table td {
+    padding: 0.8rem 0.5rem;
+  }
+
+  .card {
+    padding: 1.5rem;
+  }
+
+  .card-icon {
+    width: 70px;
+    height: 70px;
+    font-size: 1.8rem;
+  }
+
+  .card-title {
+    font-size: 1.3rem;
   }
 }
 
