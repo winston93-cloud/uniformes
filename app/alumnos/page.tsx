@@ -2,185 +2,121 @@
 
 import { useState } from 'react';
 import LayoutWrapper from '@/components/LayoutWrapper';
-
-interface Alumno {
-  id: number;
-  nombre: string;
-  referencia: string;
-  grado: string;
-  grupo: string;
-  telefono: string;
-  email: string;
-}
+import { useAlumnos } from '@/lib/hooks/useAlumnos';
 
 export default function AlumnosPage() {
-  const [mostrarFormulario, setMostrarFormulario] = useState(false);
-  
-  const [alumnos, setAlumnos] = useState<Alumno[]>([
-    { id: 1, nombre: 'Juan Pérez García', referencia: '45678', grado: '6°', grupo: 'A', telefono: '555-1234', email: 'juan@ejemplo.com' },
-    { id: 2, nombre: 'María González López', referencia: '45679', grado: '5°', grupo: 'B', telefono: '555-5678', email: 'maria@ejemplo.com' },
-  ]);
+  const { alumnos, loading, error, searchAlumnos } = useAlumnos();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState(alumnos);
 
-  const [formData, setFormData] = useState({
-    nombre: '',
-    grado: '',
-    grupo: '',
-    telefono: '',
-    email: '',
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const nuevoAlumno: Alumno = {
-      id: Date.now(),
-      nombre: formData.nombre,
-      referencia: Math.floor(Math.random() * 90000 + 10000).toString(),
-      grado: formData.grado,
-      grupo: formData.grupo,
-      telefono: formData.telefono,
-      email: formData.email,
-    };
-    setAlumnos([...alumnos, nuevoAlumno]);
-    setFormData({ nombre: '', grado: '', grupo: '', telefono: '', email: '' });
-    setMostrarFormulario(false);
+  const handleSearch = async (query: string) => {
+    setSearchQuery(query);
+    if (query.trim() === '') {
+      setSearchResults(alumnos);
+      return;
+    }
+    
+    const results = await searchAlumnos(query);
+    setSearchResults(results);
   };
+
+  if (loading) {
+    return (
+      <LayoutWrapper>
+        <div className="main-container">
+          <div className="loading">
+            <div className="spinner"></div>
+          </div>
+        </div>
+      </LayoutWrapper>
+    );
+  }
+
+  const alumnosToShow = searchQuery ? searchResults : alumnos;
 
   return (
     <LayoutWrapper>
       <div className="main-container">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
           <h1 style={{ fontSize: '2.5rem', fontWeight: '700', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.2)' }}>
             👨‍🎓 Gestión de Alumnos
           </h1>
-          <button className="btn btn-primary" onClick={() => setMostrarFormulario(!mostrarFormulario)}>
-            ➕ Nuevo Alumno
-          </button>
         </div>
 
-        {mostrarFormulario && (
-          <div className="form-container">
-            <h2 className="form-title">Registrar Nuevo Alumno</h2>
-            
-            <form onSubmit={handleSubmit}>
-              <div className="form-group">
-                <label className="form-label">Nombre Completo *</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={formData.nombre}
-                  onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                  placeholder="Nombre(s) y Apellidos"
-                  required
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div className="form-group">
-                  <label className="form-label">Grado *</label>
-                  <select
-                    className="form-select"
-                    value={formData.grado}
-                    onChange={(e) => setFormData({ ...formData, grado: e.target.value })}
-                    required
-                  >
-                    <option value="">Seleccionar</option>
-                    <option value="1°">1°</option>
-                    <option value="2°">2°</option>
-                    <option value="3°">3°</option>
-                    <option value="4°">4°</option>
-                    <option value="5°">5°</option>
-                    <option value="6°">6°</option>
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Grupo *</label>
-                  <select
-                    className="form-select"
-                    value={formData.grupo}
-                    onChange={(e) => setFormData({ ...formData, grupo: e.target.value })}
-                    required
-                  >
-                    <option value="">Seleccionar</option>
-                    <option value="A">A</option>
-                    <option value="B">B</option>
-                    <option value="C">C</option>
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Teléfono</label>
-                  <input
-                    type="tel"
-                    className="form-input"
-                    value={formData.telefono}
-                    onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
-                    placeholder="555-1234"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Email</label>
-                  <input
-                    type="email"
-                    className="form-input"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    placeholder="alumno@ejemplo.com"
-                  />
-                </div>
-              </div>
-
-              <div className="btn-group">
-                <button type="submit" className="btn btn-primary">
-                  💾 Registrar Alumno
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => setMostrarFormulario(false)}
-                >
-                  ❌ Cancelar
-                </button>
-              </div>
-            </form>
+        {error && (
+          <div className="alert alert-error">
+            Error al cargar los alumnos: {error}
           </div>
         )}
+
+        {/* Búsqueda */}
+        <div style={{ background: 'var(--card-bg)', padding: '1.5rem', borderRadius: '20px', boxShadow: '0 10px 30px var(--card-shadow)', marginBottom: '2rem' }}>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label">Buscar Alumno</label>
+            <input
+              type="text"
+              className="form-input"
+              value={searchQuery}
+              onChange={(e) => handleSearch(e.target.value)}
+              placeholder="Buscar por referencia, nombre, apellido..."
+            />
+          </div>
+          {searchQuery && (
+            <p style={{ marginTop: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+              {searchResults.length} resultado(s) encontrado(s)
+            </p>
+          )}
+        </div>
 
         <div className="table-container">
           <table className="table">
             <thead>
               <tr>
                 <th>Referencia</th>
-                <th>Nombre</th>
+                <th>Nombre Completo</th>
                 <th>Grado</th>
                 <th>Grupo</th>
-                <th>Teléfono</th>
-                <th>Email</th>
+                <th>Estado</th>
                 <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
-              {alumnos.map((alumno) => (
-                <tr key={alumno.id}>
-                  <td style={{ fontFamily: 'monospace', fontWeight: '700' }}>{alumno.referencia}</td>
-                  <td style={{ fontWeight: '600' }}>{alumno.nombre}</td>
-                  <td><span className="badge badge-info">{alumno.grado}</span></td>
-                  <td><span className="badge badge-info">{alumno.grupo}</span></td>
-                  <td>{alumno.telefono}</td>
-                  <td>{alumno.email}</td>
-                  <td>
-                    <button className="btn btn-secondary" style={{ padding: '0.5rem 1rem' }}>
-                      ✏️ Editar
-                    </button>
+              {alumnosToShow.length === 0 ? (
+                <tr>
+                  <td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                    {searchQuery ? 'No se encontraron alumnos con esa búsqueda' : 'No hay alumnos registrados'}
                   </td>
                 </tr>
-              ))}
+              ) : (
+                alumnosToShow.map((alumno) => (
+                  <tr key={alumno.id}>
+                    <td style={{ fontFamily: 'monospace', fontWeight: '700' }}>{alumno.referencia}</td>
+                    <td style={{ fontWeight: '600' }}>{alumno.nombre}</td>
+                    <td><span className="badge badge-info">{alumno.grado || '-'}</span></td>
+                    <td><span className="badge badge-info">{alumno.grupo || '-'}</span></td>
+                    <td>
+                      <span className={`badge ${alumno.activo ? 'badge-success' : 'badge-danger'}`}>
+                        {alumno.activo ? '✓ Activo' : '✗ Inactivo'}
+                      </span>
+                    </td>
+                    <td>
+                      <button className="btn btn-secondary" style={{ padding: '0.5rem 1rem' }}>
+                        👁️ Ver Detalle
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
+          
+          {!searchQuery && alumnos.length > 0 && (
+            <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+              Mostrando {alumnos.length} de {alumnos.length} alumnos (máximo 1000)
+            </div>
+          )}
         </div>
       </div>
     </LayoutWrapper>
   );
 }
-
