@@ -146,11 +146,14 @@ export function useReportes() {
           prenda:prendas(nombre),
           talla:tallas(nombre)
         `)
-        .eq('activo', true)
-        .lte('stock', supabase.raw('stock_minimo'));
+        .eq('activo', true);
 
       if (error) throw error;
-      return { data, error: null };
+
+      // Filtrar en JavaScript donde stock <= stock_minimo
+      const stockBajo = (data || []).filter((costo: any) => costo.stock <= costo.stock_minimo);
+
+      return { data: stockBajo, error: null };
     } catch (err: any) {
       return { data: null, error: err.message };
     } finally {
