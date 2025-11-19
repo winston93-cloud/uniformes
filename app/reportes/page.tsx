@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import { useReportes } from '@/lib/hooks/useReportes';
 
+export const dynamic = 'force-dynamic';
+
 export default function ReportesPage() {
   const {
     loading,

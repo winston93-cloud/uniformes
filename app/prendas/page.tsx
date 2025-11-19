@@ -5,6 +5,8 @@ import LayoutWrapper from '@/components/LayoutWrapper';
 import { usePrendas } from '@/lib/hooks/usePrendas';
 import type { Prenda } from '@/lib/types';
 
+export const dynamic = 'force-dynamic';
+
 export default function PrendasPage() {
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [prendaEditando, setPrendaEditando] = useState<Prenda | null>(null);

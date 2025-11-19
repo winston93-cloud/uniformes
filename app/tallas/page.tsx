@@ -5,6 +5,8 @@ import LayoutWrapper from '@/components/LayoutWrapper';
 import { useTallas } from '@/lib/hooks/useTallas';
 import type { Talla } from '@/lib/types';
 
+export const dynamic = 'force-dynamic';
+
 export default function TallasPage() {
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [tallaEditando, setTallaEditando] = useState<Talla | null>(null);

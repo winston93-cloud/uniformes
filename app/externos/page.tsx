@@ -5,6 +5,8 @@ import LayoutWrapper from '@/components/LayoutWrapper';
 import { useExternos } from '@/lib/hooks/useExternos';
 import type { Externo } from '@/lib/types';
 
+export const dynamic = 'force-dynamic';
+
 export default function ExternosPage() {
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [externoEditando, setExternoEditando] = useState<Externo | null>(null);

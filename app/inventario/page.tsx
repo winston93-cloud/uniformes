@@ -15,6 +15,8 @@ interface Movimiento {
   observaciones: string;
 }
 
+export const dynamic = 'force-dynamic';
+
 export default function InventarioPage() {
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const { costos } = useCostos();

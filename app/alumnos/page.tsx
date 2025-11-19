@@ -4,6 +4,8 @@ import { useState } from 'react';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import { useAlumnos } from '@/lib/hooks/useAlumnos';
 
+export const dynamic = 'force-dynamic';
+
 export default function AlumnosPage() {
   const { alumnos, loading, error, searchAlumnos } = useAlumnos();
   const [searchQuery, setSearchQuery] = useState('');

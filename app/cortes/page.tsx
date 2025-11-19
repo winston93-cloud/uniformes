@@ -5,6 +5,8 @@ import LayoutWrapper from '@/components/LayoutWrapper';
 import { useCortes } from '@/lib/hooks/useCortes';
 import type { Corte } from '@/lib/types';
 
+export const dynamic = 'force-dynamic';
+
 export default function CortesPage() {
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [corteSeleccionado, setCorteSeleccionado] = useState<string | null>(null);

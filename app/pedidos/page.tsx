@@ -21,6 +21,8 @@ interface DetallePedido {
   costoId?: string;
 }
 
+export const dynamic = 'force-dynamic';
+
 export default function PedidosPage() {
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const { costos } = useCostos();

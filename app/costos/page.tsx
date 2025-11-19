@@ -7,6 +7,8 @@ import { usePrendas } from '@/lib/hooks/usePrendas';
 import { useTallas } from '@/lib/hooks/useTallas';
 import type { Costo } from '@/lib/types';
 
+export const dynamic = 'force-dynamic';
+
 export default function CostosPage() {
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const { costos, loading: costosLoading, error, createCosto } = useCostos();
