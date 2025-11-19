@@ -2,9 +2,10 @@
 
 import { useState } from 'react';
 import LayoutWrapper from '@/components/LayoutWrapper';
+import { useCostos } from '@/lib/hooks/useCostos';
 
 interface Movimiento {
-  id: number;
+  id: string | number;
   fecha: string;
   tipo: 'ENTRADA' | 'SALIDA' | 'AJUSTE';
   prenda: string;
@@ -16,6 +17,7 @@ interface Movimiento {
 
 export default function InventarioPage() {
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const { costos } = useCostos();
   
   const [movimientos, setMovimientos] = useState<Movimiento[]>([
     { id: 1, fecha: '2024-11-19', tipo: 'ENTRADA', prenda: 'Camisa Blanca', talla: 'M', cantidad: 50, usuario: 'Admin', observaciones: 'Compra proveedor ABC' },
@@ -25,27 +27,33 @@ export default function InventarioPage() {
 
   const [formData, setFormData] = useState({
     tipo: 'ENTRADA' as 'ENTRADA' | 'SALIDA' | 'AJUSTE',
-    prenda: '',
-    talla: '',
+    costo_id: '',
     cantidad: '',
     observaciones: '',
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const costo = costos.find(c => c.id === formData.costo_id);
+    if (!costo) {
+      alert('Selecciona un costo válido');
+      return;
+    }
+    
     const nuevoMovimiento: Movimiento = {
-      id: Date.now(),
+      id: Date.now().toString(),
       fecha: new Date().toISOString().split('T')[0],
       tipo: formData.tipo,
-      prenda: formData.prenda,
-      talla: formData.talla,
-      cantidad: parseInt(formData.cantidad),
+      prenda: (costo as any).prenda?.nombre || '',
+      talla: (costo as any).talla?.nombre || '',
+      cantidad: formData.tipo === 'SALIDA' ? -parseInt(formData.cantidad) : parseInt(formData.cantidad),
       usuario: 'Admin',
       observaciones: formData.observaciones,
     };
     setMovimientos([nuevoMovimiento, ...movimientos]);
-    setFormData({ tipo: 'ENTRADA', prenda: '', talla: '', cantidad: '', observaciones: '' });
+    setFormData({ tipo: 'ENTRADA', costo_id: '', cantidad: '', observaciones: '' });
     setMostrarFormulario(false);
+    alert('Movimiento registrado exitosamente');
   };
 
   return (
@@ -79,34 +87,21 @@ export default function InventarioPage() {
                 </select>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '1rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
                 <div className="form-group">
-                  <label className="form-label">Prenda *</label>
+                  <label className="form-label">Prenda + Talla *</label>
                   <select
                     className="form-select"
-                    value={formData.prenda}
-                    onChange={(e) => setFormData({ ...formData, prenda: e.target.value })}
+                    value={formData.costo_id}
+                    onChange={(e) => setFormData({ ...formData, costo_id: e.target.value })}
                     required
                   >
-                    <option value="">Seleccionar prenda</option>
-                    <option value="Camisa Blanca">Camisa Blanca</option>
-                    <option value="Pantalón Azul">Pantalón Azul</option>
-                    <option value="Suéter Gris">Suéter Gris</option>
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Talla *</label>
-                  <select
-                    className="form-select"
-                    value={formData.talla}
-                    onChange={(e) => setFormData({ ...formData, talla: e.target.value })}
-                    required
-                  >
-                    <option value="">Seleccionar</option>
-                    <option value="S">S</option>
-                    <option value="M">M</option>
-                    <option value="L">L</option>
+                    <option value="">Seleccionar prenda y talla</option>
+                    {costos.filter(c => c.activo).map(costo => (
+                      <option key={costo.id} value={costo.id}>
+                        {(costo as any).prenda?.nombre || '-'} - {(costo as any).talla?.nombre || '-'} (Stock: {costo.stock})
+                      </option>
+                    ))}
                   </select>
                 </div>
 

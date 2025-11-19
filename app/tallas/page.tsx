@@ -2,27 +2,13 @@
 
 import { useState } from 'react';
 import LayoutWrapper from '@/components/LayoutWrapper';
-import Link from 'next/link';
-
-interface Talla {
-  id: number;
-  nombre: string;
-  orden: number;
-  activo: boolean;
-}
+import { useTallas } from '@/lib/hooks/useTallas';
+import type { Talla } from '@/lib/types';
 
 export default function TallasPage() {
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [tallaEditando, setTallaEditando] = useState<Talla | null>(null);
-  
-  // Datos de ejemplo
-  const [tallas, setTallas] = useState<Talla[]>([
-    { id: 1, nombre: 'XS', orden: 1, activo: true },
-    { id: 2, nombre: 'S', orden: 2, activo: true },
-    { id: 3, nombre: 'M', orden: 3, activo: true },
-    { id: 4, nombre: 'L', orden: 4, activo: true },
-    { id: 5, nombre: 'XL', orden: 5, activo: true },
-  ]);
+  const { tallas, loading, error, createTalla, updateTalla, deleteTalla } = useTallas();
 
   const [formData, setFormData] = useState({
     nombre: '',
@@ -30,28 +16,31 @@ export default function TallasPage() {
     activo: true,
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    const tallaData = {
+      nombre: formData.nombre,
+      orden: parseInt(formData.orden),
+      activo: formData.activo,
+    };
+
     if (tallaEditando) {
-      // Editar talla existente
-      setTallas(tallas.map(t => 
-        t.id === tallaEditando.id 
-          ? { ...t, nombre: formData.nombre, orden: parseInt(formData.orden), activo: formData.activo }
-          : t
-      ));
+      const { error } = await updateTalla(tallaEditando.id, tallaData);
+      if (error) {
+        alert(`Error al actualizar: ${error}`);
+        return;
+      }
+      alert('Talla actualizada exitosamente');
     } else {
-      // Crear nueva talla
-      const nuevaTalla: Talla = {
-        id: Date.now(),
-        nombre: formData.nombre,
-        orden: parseInt(formData.orden),
-        activo: formData.activo,
-      };
-      setTallas([...tallas, nuevaTalla]);
+      const { error } = await createTalla(tallaData);
+      if (error) {
+        alert(`Error al crear: ${error}`);
+        return;
+      }
+      alert('Talla creada exitosamente');
     }
     
-    // Resetear formulario
     setFormData({ nombre: '', orden: '', activo: true });
     setMostrarFormulario(false);
     setTallaEditando(null);
@@ -67,9 +56,14 @@ export default function TallasPage() {
     setMostrarFormulario(true);
   };
 
-  const handleEliminar = (id: number) => {
+  const handleEliminar = async (id: string) => {
     if (confirm('¿Estás seguro de eliminar esta talla?')) {
-      setTallas(tallas.filter(t => t.id !== id));
+      const { error } = await deleteTalla(id);
+      if (error) {
+        alert(`Error al eliminar: ${error}`);
+      } else {
+        alert('Talla eliminada exitosamente');
+      }
     }
   };
 
@@ -78,6 +72,18 @@ export default function TallasPage() {
     setFormData({ nombre: '', orden: '', activo: true });
     setMostrarFormulario(true);
   };
+
+  if (loading) {
+    return (
+      <LayoutWrapper>
+        <div className="main-container">
+          <div className="loading">
+            <div className="spinner"></div>
+          </div>
+        </div>
+      </LayoutWrapper>
+    );
+  }
 
   return (
     <LayoutWrapper>
@@ -90,6 +96,12 @@ export default function TallasPage() {
             ➕ Nueva Talla
           </button>
         </div>
+
+        {error && (
+          <div className="alert alert-error">
+            Error al cargar las tallas: {error}
+          </div>
+        )}
 
         {/* Formulario */}
         {mostrarFormulario && (
@@ -167,33 +179,41 @@ export default function TallasPage() {
               </tr>
             </thead>
             <tbody>
-              {tallas.sort((a, b) => a.orden - b.orden).map((talla) => (
-                <tr key={talla.id}>
-                  <td>{talla.orden}</td>
-                  <td style={{ fontWeight: '600' }}>{talla.nombre}</td>
-                  <td>
-                    <span className={`badge ${talla.activo ? 'badge-success' : 'badge-danger'}`}>
-                      {talla.activo ? '✓ Activa' : '✗ Inactiva'}
-                    </span>
-                  </td>
-                  <td>
-                    <button
-                      className="btn btn-secondary"
-                      style={{ marginRight: '0.5rem', padding: '0.5rem 1rem' }}
-                      onClick={() => handleEditar(talla)}
-                    >
-                      ✏️ Editar
-                    </button>
-                    <button
-                      className="btn btn-danger"
-                      style={{ padding: '0.5rem 1rem' }}
-                      onClick={() => handleEliminar(talla.id)}
-                    >
-                      🗑️ Eliminar
-                    </button>
+              {tallas.length === 0 ? (
+                <tr>
+                  <td colSpan={4} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                    No hay tallas registradas. Crea tu primera talla.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                tallas.map((talla) => (
+                  <tr key={talla.id}>
+                    <td>{talla.orden}</td>
+                    <td style={{ fontWeight: '600' }}>{talla.nombre}</td>
+                    <td>
+                      <span className={`badge ${talla.activo ? 'badge-success' : 'badge-danger'}`}>
+                        {talla.activo ? '✓ Activa' : '✗ Inactiva'}
+                      </span>
+                    </td>
+                    <td>
+                      <button
+                        className="btn btn-secondary"
+                        style={{ marginRight: '0.5rem', padding: '0.5rem 1rem' }}
+                        onClick={() => handleEditar(talla)}
+                      >
+                        ✏️ Editar
+                      </button>
+                      <button
+                        className="btn btn-danger"
+                        style={{ padding: '0.5rem 1rem' }}
+                        onClick={() => handleEliminar(talla.id)}
+                      >
+                        🗑️ Eliminar
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -201,4 +221,3 @@ export default function TallasPage() {
     </LayoutWrapper>
   );
 }
-

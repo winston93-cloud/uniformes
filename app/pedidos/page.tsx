@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import LayoutWrapper from '@/components/LayoutWrapper';
+import { useCostos } from '@/lib/hooks/useCostos';
 
 interface Pedido {
   id: number;
@@ -17,10 +18,12 @@ interface DetallePedido {
   talla: string;
   cantidad: number;
   precio: number;
+  costoId?: string;
 }
 
 export default function PedidosPage() {
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const { costos } = useCostos();
   
   const [pedidos, setPedidos] = useState<Pedido[]>([
     { id: 1, fecha: '2024-11-19', cliente: 'Juan Pérez', tipoCliente: 'alumno', total: 750, estado: 'PEDIDO' },
@@ -42,16 +45,21 @@ export default function PedidosPage() {
   });
 
   const agregarDetalle = () => {
-    if (detalleActual.prenda && detalleActual.talla && detalleActual.cantidad && detalleActual.precio) {
+    if (detalleActual.prenda && detalleActual.cantidad && detalleActual.precio) {
+      const costo = costos.find(c => c.id === detalleActual.prenda);
+      if (!costo || costo.stock < parseInt(detalleActual.cantidad)) {
+        alert('Stock insuficiente');
+        return;
+      }
       const nuevoDetalle: DetallePedido = {
-        prenda: detalleActual.prenda,
-        talla: detalleActual.talla,
+        prenda: (costo as any).prenda?.nombre || '',
+        talla: (costo as any).talla?.nombre || '',
         cantidad: parseInt(detalleActual.cantidad),
         precio: parseFloat(detalleActual.precio),
       };
       setFormData({ 
         ...formData, 
-        detalles: [...formData.detalles, nuevoDetalle] 
+        detalles: [...formData.detalles, { ...nuevoDetalle, costoId: detalleActual.prenda }] 
       });
       setDetalleActual({ prenda: '', talla: '', cantidad: '1', precio: '' });
     }
@@ -140,30 +148,29 @@ export default function PedidosPage() {
                 
                 <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr auto', gap: '0.5rem', alignItems: 'end' }}>
                   <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label">Prenda</label>
+                    <label className="form-label">Prenda + Talla</label>
                     <select
                       className="form-select"
                       value={detalleActual.prenda}
-                      onChange={(e) => setDetalleActual({ ...detalleActual, prenda: e.target.value })}
+                      onChange={(e) => {
+                        const costoId = e.target.value;
+                        const costo = costos.find(c => c.id === costoId);
+                        if (costo) {
+                          setDetalleActual({ 
+                            prenda: costoId, 
+                            talla: '', 
+                            cantidad: '1', 
+                            precio: costo.precio_venta.toString() 
+                          });
+                        }
+                      }}
                     >
                       <option value="">Seleccionar</option>
-                      <option value="Camisa Blanca">Camisa Blanca</option>
-                      <option value="Pantalón Azul">Pantalón Azul</option>
-                      <option value="Suéter Gris">Suéter Gris</option>
-                    </select>
-                  </div>
-
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label">Talla</label>
-                    <select
-                      className="form-select"
-                      value={detalleActual.talla}
-                      onChange={(e) => setDetalleActual({ ...detalleActual, talla: e.target.value })}
-                    >
-                      <option value="">Talla</option>
-                      <option value="S">S</option>
-                      <option value="M">M</option>
-                      <option value="L">L</option>
+                      {costos.filter(c => c.activo && c.stock > 0).map(costo => (
+                        <option key={costo.id} value={costo.id}>
+                          {(costo as any).prenda?.nombre || '-'} - {(costo as any).talla?.nombre || '-'} (${costo.precio_venta.toFixed(2)})
+                        </option>
+                      ))}
                     </select>
                   </div>
 
@@ -225,7 +232,8 @@ export default function PedidosPage() {
                               <button
                                 type="button"
                                 onClick={() => eliminarDetalle(index)}
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem' }}
+                                className="btn btn-danger"
+                                style={{ padding: '0.3rem 0.6rem' }}
                               >
                                 🗑️
                               </button>

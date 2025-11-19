@@ -2,50 +2,62 @@
 
 import { useState } from 'react';
 import LayoutWrapper from '@/components/LayoutWrapper';
-
-interface Costo {
-  id: number;
-  prenda: string;
-  talla: string;
-  precioCompra: number;
-  precioVenta: number;
-  stock: number;
-  stockMinimo: number;
-}
+import { useCostos } from '@/lib/hooks/useCostos';
+import { usePrendas } from '@/lib/hooks/usePrendas';
+import { useTallas } from '@/lib/hooks/useTallas';
+import type { Costo } from '@/lib/types';
 
 export default function CostosPage() {
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const { costos, loading: costosLoading, error, createCosto } = useCostos();
+  const { prendas } = usePrendas();
+  const { tallas } = useTallas();
   
-  const [costos, setCostos] = useState<Costo[]>([
-    { id: 1, prenda: 'Camisa Blanca', talla: 'M', precioCompra: 150, precioVenta: 250, stock: 50, stockMinimo: 10 },
-    { id: 2, prenda: 'Pantalón Azul', talla: 'L', precioCompra: 200, precioVenta: 350, stock: 30, stockMinimo: 8 },
-    { id: 3, prenda: 'Suéter Gris', talla: 'S', precioCompra: 180, precioVenta: 300, stock: 5, stockMinimo: 10 },
-  ]);
-
   const [formData, setFormData] = useState({
-    prenda: '',
-    talla: '',
+    prenda_id: '',
+    talla_id: '',
     precioCompra: '',
     precioVenta: '',
     stock: '',
     stockMinimo: '',
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const nuevoCosto: Costo = {
-      id: Date.now(),
-      prenda: formData.prenda,
-      talla: formData.talla,
-      precioCompra: parseFloat(formData.precioCompra),
-      precioVenta: parseFloat(formData.precioVenta),
+    
+    const costoData = {
+      prenda_id: formData.prenda_id,
+      talla_id: formData.talla_id,
+      precio_compra: parseFloat(formData.precioCompra),
+      precio_venta: parseFloat(formData.precioVenta),
+      stock_inicial: parseInt(formData.stock),
       stock: parseInt(formData.stock),
-      stockMinimo: parseInt(formData.stockMinimo),
+      stock_minimo: parseInt(formData.stockMinimo),
+      activo: true,
     };
-    setCostos([...costos, nuevoCosto]);
-    setFormData({ prenda: '', talla: '', precioCompra: '', precioVenta: '', stock: '', stockMinimo: '' });
+
+    const { error } = await createCosto(costoData);
+    if (error) {
+      alert(`Error al crear: ${error}`);
+      return;
+    }
+    
+    alert('Costo creado exitosamente');
+    setFormData({ prenda_id: '', talla_id: '', precioCompra: '', precioVenta: '', stock: '', stockMinimo: '' });
     setMostrarFormulario(false);
   };
+
+  if (costosLoading) {
+    return (
+      <LayoutWrapper>
+        <div className="main-container">
+          <div className="loading">
+            <div className="spinner"></div>
+          </div>
+        </div>
+      </LayoutWrapper>
+    );
+  }
 
   return (
     <LayoutWrapper>
@@ -59,6 +71,12 @@ export default function CostosPage() {
           </button>
         </div>
 
+        {error && (
+          <div className="alert alert-error">
+            Error al cargar los costos: {error}
+          </div>
+        )}
+
         {mostrarFormulario && (
           <div className="form-container">
             <h2 className="form-title">Nuevo Costo de Prenda</h2>
@@ -69,14 +87,14 @@ export default function CostosPage() {
                   <label className="form-label">Prenda *</label>
                   <select
                     className="form-select"
-                    value={formData.prenda}
-                    onChange={(e) => setFormData({ ...formData, prenda: e.target.value })}
+                    value={formData.prenda_id}
+                    onChange={(e) => setFormData({ ...formData, prenda_id: e.target.value })}
                     required
                   >
                     <option value="">Seleccionar prenda</option>
-                    <option value="Camisa Blanca">Camisa Blanca</option>
-                    <option value="Pantalón Azul">Pantalón Azul</option>
-                    <option value="Suéter Gris">Suéter Gris</option>
+                    {prendas.filter(p => p.activo).map(prenda => (
+                      <option key={prenda.id} value={prenda.id}>{prenda.nombre}</option>
+                    ))}
                   </select>
                 </div>
 
@@ -84,16 +102,14 @@ export default function CostosPage() {
                   <label className="form-label">Talla *</label>
                   <select
                     className="form-select"
-                    value={formData.talla}
-                    onChange={(e) => setFormData({ ...formData, talla: e.target.value })}
+                    value={formData.talla_id}
+                    onChange={(e) => setFormData({ ...formData, talla_id: e.target.value })}
                     required
                   >
                     <option value="">Seleccionar talla</option>
-                    <option value="XS">XS</option>
-                    <option value="S">S</option>
-                    <option value="M">M</option>
-                    <option value="L">L</option>
-                    <option value="XL">XL</option>
+                    {tallas.filter(t => t.activo).sort((a, b) => a.orden - b.orden).map(talla => (
+                      <option key={talla.id} value={talla.id}>{talla.nombre}</option>
+                    ))}
                   </select>
                 </div>
 
@@ -179,28 +195,36 @@ export default function CostosPage() {
               </tr>
             </thead>
             <tbody>
-              {costos.map((costo) => (
-                <tr key={costo.id}>
-                  <td style={{ fontWeight: '600' }}>{costo.prenda}</td>
-                  <td><span className="badge badge-info">{costo.talla}</span></td>
-                  <td>${costo.precioCompra.toFixed(2)}</td>
-                  <td style={{ fontWeight: '600', color: '#10b981' }}>${costo.precioVenta.toFixed(2)}</td>
-                  <td style={{ fontWeight: '600' }}>{costo.stock}</td>
-                  <td>{costo.stockMinimo}</td>
-                  <td>
-                    {costo.stock <= costo.stockMinimo ? (
-                      <span className="badge badge-danger">⚠️ Stock Bajo</span>
-                    ) : (
-                      <span className="badge badge-success">✓ Stock OK</span>
-                    )}
-                  </td>
-                  <td>
-                    <button className="btn btn-secondary" style={{ padding: '0.5rem 1rem' }}>
-                      ✏️ Editar
-                    </button>
+              {costos.length === 0 ? (
+                <tr>
+                  <td colSpan={8} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                    No hay costos registrados. Crea tu primer costo.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                costos.map((costo: any) => (
+                  <tr key={costo.id}>
+                    <td style={{ fontWeight: '600' }}>{costo.prenda?.nombre || '-'}</td>
+                    <td><span className="badge badge-info">{costo.talla?.nombre || '-'}</span></td>
+                    <td>${costo.precio_compra.toFixed(2)}</td>
+                    <td style={{ fontWeight: '600', color: '#10b981' }}>${costo.precio_venta.toFixed(2)}</td>
+                    <td style={{ fontWeight: '600' }}>{costo.stock}</td>
+                    <td>{costo.stock_minimo}</td>
+                    <td>
+                      {costo.stock <= costo.stock_minimo ? (
+                        <span className="badge badge-danger">⚠️ Stock Bajo</span>
+                      ) : (
+                        <span className="badge badge-success">✓ Stock OK</span>
+                      )}
+                    </td>
+                    <td>
+                      <button className="btn btn-secondary" style={{ padding: '0.5rem 1rem' }}>
+                        ✏️ Editar
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -208,4 +232,3 @@ export default function CostosPage() {
     </LayoutWrapper>
   );
 }
-

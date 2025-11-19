@@ -2,25 +2,13 @@
 
 import { useState } from 'react';
 import LayoutWrapper from '@/components/LayoutWrapper';
-
-interface Prenda {
-  id: number;
-  nombre: string;
-  codigo: string;
-  descripcion: string;
-  categoria: string;
-  activo: boolean;
-}
+import { usePrendas } from '@/lib/hooks/usePrendas';
+import type { Prenda } from '@/lib/types';
 
 export default function PrendasPage() {
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [prendaEditando, setPrendaEditando] = useState<Prenda | null>(null);
-  
-  const [prendas, setPrendas] = useState<Prenda[]>([
-    { id: 1, nombre: 'Camisa Blanca', codigo: 'CAM-001', descripcion: 'Camisa blanca manga corta', categoria: 'Camisas', activo: true },
-    { id: 2, nombre: 'Pantalón Azul', codigo: 'PAN-001', descripcion: 'Pantalón de vestir azul marino', categoria: 'Pantalones', activo: true },
-    { id: 3, nombre: 'Suéter Gris', codigo: 'SUE-001', descripcion: 'Suéter institucional gris', categoria: 'Suéteres', activo: true },
-  ]);
+  const { prendas, loading, error, createPrenda, updatePrenda, deletePrenda } = usePrendas();
 
   const [formData, setFormData] = useState({
     nombre: '',
@@ -32,19 +20,31 @@ export default function PrendasPage() {
 
   const categorias = ['Camisas', 'Pantalones', 'Suéteres', 'Faldas', 'Deportivo', 'Accesorios'];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    const prendaData = {
+      nombre: formData.nombre,
+      codigo: formData.codigo || null,
+      descripcion: formData.descripcion || null,
+      categoria: formData.categoria || null,
+      activo: formData.activo,
+    };
+
     if (prendaEditando) {
-      setPrendas(prendas.map(p => 
-        p.id === prendaEditando.id ? { ...p, ...formData } : p
-      ));
+      const { error } = await updatePrenda(prendaEditando.id, prendaData);
+      if (error) {
+        alert(`Error al actualizar: ${error}`);
+        return;
+      }
+      alert('Prenda actualizada exitosamente');
     } else {
-      const nuevaPrenda: Prenda = {
-        id: Date.now(),
-        ...formData,
-      };
-      setPrendas([...prendas, nuevaPrenda]);
+      const { error } = await createPrenda(prendaData);
+      if (error) {
+        alert(`Error al crear: ${error}`);
+        return;
+      }
+      alert('Prenda creada exitosamente');
     }
     
     setFormData({ nombre: '', codigo: '', descripcion: '', categoria: '', activo: true });
@@ -56,19 +56,36 @@ export default function PrendasPage() {
     setPrendaEditando(prenda);
     setFormData({
       nombre: prenda.nombre,
-      codigo: prenda.codigo,
-      descripcion: prenda.descripcion,
-      categoria: prenda.categoria,
+      codigo: prenda.codigo || '',
+      descripcion: prenda.descripcion || '',
+      categoria: prenda.categoria || '',
       activo: prenda.activo,
     });
     setMostrarFormulario(true);
   };
 
-  const handleEliminar = (id: number) => {
+  const handleEliminar = async (id: string) => {
     if (confirm('¿Estás seguro de eliminar esta prenda?')) {
-      setPrendas(prendas.filter(p => p.id !== id));
+      const { error } = await deletePrenda(id);
+      if (error) {
+        alert(`Error al eliminar: ${error}`);
+      } else {
+        alert('Prenda eliminada exitosamente');
+      }
     }
   };
+
+  if (loading) {
+    return (
+      <LayoutWrapper>
+        <div className="main-container">
+          <div className="loading">
+            <div className="spinner"></div>
+          </div>
+        </div>
+      </LayoutWrapper>
+    );
+  }
 
   return (
     <LayoutWrapper>
@@ -81,6 +98,12 @@ export default function PrendasPage() {
             ➕ Nueva Prenda
           </button>
         </div>
+
+        {error && (
+          <div className="alert alert-error">
+            Error al cargar las prendas: {error}
+          </div>
+        )}
 
         {mostrarFormulario && (
           <div className="form-container">
@@ -102,14 +125,13 @@ export default function PrendasPage() {
               </div>
 
               <div className="form-group">
-                <label className="form-label">Código de Producto *</label>
+                <label className="form-label">Código de Producto</label>
                 <input
                   type="text"
                   className="form-input"
                   value={formData.codigo}
                   onChange={(e) => setFormData({ ...formData, codigo: e.target.value })}
                   placeholder="Ej: CAM-001, PAN-001, etc."
-                  required
                 />
               </div>
 
@@ -183,35 +205,43 @@ export default function PrendasPage() {
               </tr>
             </thead>
             <tbody>
-              {prendas.map((prenda) => (
-                <tr key={prenda.id}>
-                  <td style={{ fontFamily: 'monospace', fontWeight: '600' }}>{prenda.codigo}</td>
-                  <td style={{ fontWeight: '600' }}>{prenda.nombre}</td>
-                  <td><span className="badge badge-info">{prenda.categoria}</span></td>
-                  <td>{prenda.descripcion}</td>
-                  <td>
-                    <span className={`badge ${prenda.activo ? 'badge-success' : 'badge-danger'}`}>
-                      {prenda.activo ? '✓ Activa' : '✗ Inactiva'}
-                    </span>
-                  </td>
-                  <td>
-                    <button
-                      className="btn btn-secondary"
-                      style={{ marginRight: '0.5rem', padding: '0.5rem 1rem' }}
-                      onClick={() => handleEditar(prenda)}
-                    >
-                      ✏️ Editar
-                    </button>
-                    <button
-                      className="btn btn-danger"
-                      style={{ padding: '0.5rem 1rem' }}
-                      onClick={() => handleEliminar(prenda.id)}
-                    >
-                      🗑️ Eliminar
-                    </button>
+              {prendas.length === 0 ? (
+                <tr>
+                  <td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                    No hay prendas registradas. Crea tu primera prenda.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                prendas.map((prenda) => (
+                  <tr key={prenda.id}>
+                    <td style={{ fontFamily: 'monospace', fontWeight: '600' }}>{prenda.codigo || '-'}</td>
+                    <td style={{ fontWeight: '600' }}>{prenda.nombre}</td>
+                    <td><span className="badge badge-info">{prenda.categoria || '-'}</span></td>
+                    <td>{prenda.descripcion || '-'}</td>
+                    <td>
+                      <span className={`badge ${prenda.activo ? 'badge-success' : 'badge-danger'}`}>
+                        {prenda.activo ? '✓ Activa' : '✗ Inactiva'}
+                      </span>
+                    </td>
+                    <td>
+                      <button
+                        className="btn btn-secondary"
+                        style={{ marginRight: '0.5rem', padding: '0.5rem 1rem' }}
+                        onClick={() => handleEditar(prenda)}
+                      >
+                        ✏️ Editar
+                      </button>
+                      <button
+                        className="btn btn-danger"
+                        style={{ padding: '0.5rem 1rem' }}
+                        onClick={() => handleEliminar(prenda.id)}
+                      >
+                        🗑️ Eliminar
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -219,4 +249,3 @@ export default function PrendasPage() {
     </LayoutWrapper>
   );
 }
-
