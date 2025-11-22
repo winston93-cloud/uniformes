@@ -73,7 +73,9 @@ export default function TallasPage() {
 
   const handleNuevo = () => {
     setTallaEditando(null);
-    setFormData({ nombre: '', orden: '', activo: true });
+    // Calcular el siguiente número de orden automáticamente
+    const maxOrden = tallas.length > 0 ? Math.max(...tallas.map(t => t.orden)) : 0;
+    setFormData({ nombre: '', orden: (maxOrden + 1).toString(), activo: true });
     setMostrarFormulario(true);
   };
 
@@ -174,9 +176,14 @@ export default function TallasPage() {
                   type="number"
                   className="form-input"
                   value={formData.orden}
-                  onChange={(e) => setFormData({ ...formData, orden: e.target.value })}
-                  placeholder="Ej: 1, 2, 3, etc."
+                  placeholder="Asignado automáticamente"
+                  readOnly
                   required
+                  style={{
+                    backgroundColor: '#f0f0f0',
+                    cursor: 'not-allowed',
+                    color: '#666'
+                  }}
                 />
               </div>
 
