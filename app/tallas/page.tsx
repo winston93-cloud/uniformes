@@ -48,6 +48,11 @@ export default function TallasPage() {
     setFormData({ nombre: '', orden: '', activo: true });
     setMostrarFormulario(false);
     setTallaEditando(null);
+    
+    // Volver a poner focus en el input de búsqueda
+    setTimeout(() => {
+      inputBusquedaRef.current?.focus();
+    }, 100);
   };
 
   const handleEditar = (talla: Talla) => {
@@ -67,6 +72,10 @@ export default function TallasPage() {
         alert(`Error al eliminar: ${error}`);
       } else {
         alert('Talla eliminada exitosamente');
+        // Volver a poner focus en el input de búsqueda
+        setTimeout(() => {
+          inputBusquedaRef.current?.focus();
+        }, 100);
       }
     }
   };
@@ -81,10 +90,14 @@ export default function TallasPage() {
 
   // Auto-focus en el input de búsqueda al cargar la página
   useEffect(() => {
-    if (inputBusquedaRef.current) {
-      inputBusquedaRef.current.focus();
+    if (!loading && inputBusquedaRef.current) {
+      // Pequeño delay para asegurar que el DOM esté completamente renderizado
+      const timer = setTimeout(() => {
+        inputBusquedaRef.current?.focus();
+      }, 100);
+      return () => clearTimeout(timer);
     }
-  }, []);
+  }, [loading]);
 
   // Filtrar tallas según la búsqueda
   const tallasFiltradas = tallas.filter(talla =>
@@ -210,6 +223,10 @@ export default function TallasPage() {
                     setMostrarFormulario(false);
                     setTallaEditando(null);
                     setFormData({ nombre: '', orden: '', activo: true });
+                    // Volver a poner focus en el input de búsqueda
+                    setTimeout(() => {
+                      inputBusquedaRef.current?.focus();
+                    }, 100);
                   }}
                 >
                   ❌ Cancelar
