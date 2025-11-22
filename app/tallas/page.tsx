@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import { useTallas } from '@/lib/hooks/useTallas';
 import type { Talla } from '@/lib/types';
@@ -10,6 +10,8 @@ export const dynamic = 'force-dynamic';
 export default function TallasPage() {
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [tallaEditando, setTallaEditando] = useState<Talla | null>(null);
+  const [busqueda, setBusqueda] = useState('');
+  const inputBusquedaRef = useRef<HTMLInputElement>(null);
   const { tallas, loading, error, createTalla, updateTalla, deleteTalla } = useTallas();
 
   const [formData, setFormData] = useState({
@@ -75,6 +77,18 @@ export default function TallasPage() {
     setMostrarFormulario(true);
   };
 
+  // Auto-focus en el input de búsqueda al cargar la página
+  useEffect(() => {
+    if (inputBusquedaRef.current) {
+      inputBusquedaRef.current.focus();
+    }
+  }, []);
+
+  // Filtrar tallas según la búsqueda
+  const tallasFiltradas = tallas.filter(talla =>
+    talla.nombre.toLowerCase().includes(busqueda.toLowerCase())
+  );
+
   if (loading) {
     return (
       <LayoutWrapper>
@@ -97,6 +111,35 @@ export default function TallasPage() {
           <button className="btn btn-primary" onClick={handleNuevo}>
             ➕ Nueva Talla
           </button>
+        </div>
+
+        {/* Input de búsqueda */}
+        <div style={{ marginBottom: '1.5rem' }}>
+          <input
+            ref={inputBusquedaRef}
+            type="text"
+            className="form-input"
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            placeholder="🔍 Buscar talla por nombre..."
+            style={{
+              width: '100%',
+              maxWidth: '500px',
+              fontSize: '1rem',
+              padding: '0.75rem 1rem',
+            }}
+          />
+          {busqueda && (
+            <div style={{ marginTop: '0.5rem', color: 'white', fontSize: '0.9rem' }}>
+              {tallasFiltradas.length === 0 ? (
+                <span style={{ color: '#ff6b6b' }}>❌ No se encontraron tallas</span>
+              ) : (
+                <span style={{ color: '#51cf66' }}>
+                  ✓ {tallasFiltradas.length} talla{tallasFiltradas.length !== 1 ? 's' : ''} encontrada{tallasFiltradas.length !== 1 ? 's' : ''}
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         {error && (
@@ -181,14 +224,14 @@ export default function TallasPage() {
               </tr>
             </thead>
             <tbody>
-              {tallas.length === 0 ? (
+              {tallasFiltradas.length === 0 ? (
                 <tr>
                   <td colSpan={4} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
-                    No hay tallas registradas. Crea tu primera talla.
+                    {busqueda ? 'No se encontraron tallas con ese nombre.' : 'No hay tallas registradas. Crea tu primera talla.'}
                   </td>
                 </tr>
               ) : (
-                tallas.map((talla) => (
+                tallasFiltradas.map((talla) => (
                   <tr key={talla.id}>
                     <td>{talla.orden}</td>
                     <td style={{ fontWeight: '600' }}>{talla.nombre}</td>
