@@ -15,7 +15,7 @@ export function useTallas() {
       const { data, error } = await supabase
         .from('tallas')
         .select('*')
-        .order('orden', { ascending: true });
+        .order('nombre', { ascending: true });
 
       if (error) throw error;
       setTallas(data || []);
