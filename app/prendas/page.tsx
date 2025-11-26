@@ -202,13 +202,22 @@ export default function PrendasPage() {
           <h1 style={{ fontSize: '2.5rem', fontWeight: '700', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.2)' }}>
             👕 Gestión de Prendas
           </h1>
-          <button className="btn btn-primary" onClick={() => {
-            setPrendaEditando(null);
-            setFormData({ nombre: '', codigo: '', descripcion: '', categoria_id: '', activo: true });
-            setMostrarFormulario(true);
-          }}>
-            ➕ Nueva Prenda
-          </button>
+          <div style={{ display: 'flex', gap: '1rem' }}>
+            <button 
+              className="btn btn-secondary" 
+              onClick={() => window.location.href = '/categorias-prendas'}
+              style={{ backgroundColor: '#6c757d', borderColor: '#6c757d' }}
+            >
+              🏷️ Gestionar Categorías
+            </button>
+            <button className="btn btn-primary" onClick={() => {
+              setPrendaEditando(null);
+              setFormData({ nombre: '', codigo: '', descripcion: '', categoria_id: '', activo: true });
+              setMostrarFormulario(true);
+            }}>
+              ➕ Nueva Prenda
+            </button>
+          </div>
         </div>
 
         {/* Input de búsqueda */}
