@@ -9,15 +9,24 @@ export interface Talla {
   updated_at?: string;
 }
 
+export interface CategoriaPrenda {
+  id: string;
+  nombre: string;
+  activo: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface Prenda {
   id: string;
   nombre: string;
   codigo: string | null;
   descripcion: string | null;
-  categoria: string | null;
+  categoria_id: string | null;
   activo: boolean;
   created_at?: string;
   updated_at?: string;
+  categoria?: CategoriaPrenda;
 }
 
 export interface Costo {

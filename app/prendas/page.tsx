@@ -1,26 +1,81 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import { usePrendas } from '@/lib/hooks/usePrendas';
+import { useCategorias } from '@/lib/hooks/useCategorias';
 import type { Prenda } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
+// Función para generar código automático basado en el nombre
+const generarCodigo = (nombre: string): string => {
+  if (!nombre || nombre.trim() === '') return '';
+  
+  // Remover acentos y caracteres especiales
+  const sinAcentos = nombre
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase();
+  
+  // Extraer palabras clave comunes
+  const palabras = sinAcentos.split(/\s+/);
+  let codigo = '';
+  
+  // Buscar palabras clave conocidas
+  const palabrasClave: { [key: string]: string } = {
+    'CAMISA': 'CAM',
+    'PANTALON': 'PAN',
+    'PANTALÓN': 'PAN',
+    'PANTS': 'PAN',
+    'SUETER': 'SUE',
+    'SUÉTER': 'SUE',
+    'FALDA': 'FAL',
+    'DEPORTIVO': 'DEP',
+    'DEPORTIVA': 'DEP',
+    'ACCESORIO': 'ACC',
+    'BLUSA': 'BLU',
+    'PLAYERA': 'PLA',
+    'POLO': 'POL',
+    'CHALECO': 'CHA',
+    'SACO': 'SAC',
+    'ABRIGO': 'ABR',
+  };
+  
+  // Buscar palabra clave
+  for (const palabra of palabras) {
+    const clave = Object.keys(palabrasClave).find(k => palabra.includes(k));
+    if (clave) {
+      codigo = palabrasClave[clave];
+      break;
+    }
+  }
+  
+  // Si no se encontró palabra clave, usar primeras 3 letras
+  if (!codigo) {
+    codigo = palabras[0].substring(0, 3).toUpperCase();
+  }
+  
+  // Agregar número secuencial (por ahora solo el código base)
+  // En producción, podrías buscar el último número usado
+  return codigo;
+};
+
 export default function PrendasPage() {
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [prendaEditando, setPrendaEditando] = useState<Prenda | null>(null);
+  const [busqueda, setBusqueda] = useState('');
+  const inputBusquedaRef = useRef<HTMLInputElement>(null);
   const { prendas, loading, error, createPrenda, updatePrenda, deletePrenda } = usePrendas();
+  const { categorias, loading: loadingCategorias } = useCategorias();
 
   const [formData, setFormData] = useState({
     nombre: '',
     codigo: '',
     descripcion: '',
-    categoria: '',
+    categoria_id: '',
     activo: true,
   });
-
-  const categorias = ['Camisas', 'Pantalones', 'Suéteres', 'Faldas', 'Deportivo', 'Accesorios'];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,7 +84,7 @@ export default function PrendasPage() {
       nombre: formData.nombre,
       codigo: formData.codigo || null,
       descripcion: formData.descripcion || null,
-      categoria: formData.categoria || null,
+      categoria_id: formData.categoria_id || null,
       activo: formData.activo,
     };
 
@@ -49,9 +104,14 @@ export default function PrendasPage() {
       alert('Prenda creada exitosamente');
     }
     
-    setFormData({ nombre: '', codigo: '', descripcion: '', categoria: '', activo: true });
+    setFormData({ nombre: '', codigo: '', descripcion: '', categoria_id: '', activo: true });
     setMostrarFormulario(false);
     setPrendaEditando(null);
+    
+    // Volver a poner focus en el input de búsqueda
+    setTimeout(() => {
+      inputBusquedaRef.current?.focus();
+    }, 100);
   };
 
   const handleEditar = (prenda: Prenda) => {
@@ -60,7 +120,7 @@ export default function PrendasPage() {
       nombre: prenda.nombre,
       codigo: prenda.codigo || '',
       descripcion: prenda.descripcion || '',
-      categoria: prenda.categoria || '',
+      categoria_id: prenda.categoria_id || '',
       activo: prenda.activo,
     });
     setMostrarFormulario(true);
@@ -73,9 +133,55 @@ export default function PrendasPage() {
         alert(`Error al eliminar: ${error}`);
       } else {
         alert('Prenda eliminada exitosamente');
+        // Volver a poner focus en el input de búsqueda
+        setTimeout(() => {
+          inputBusquedaRef.current?.focus();
+        }, 100);
       }
     }
   };
+
+  // Auto-focus en el input de búsqueda al cargar la página
+  useEffect(() => {
+    if (!loading && inputBusquedaRef.current) {
+      const timer = setTimeout(() => {
+        inputBusquedaRef.current?.focus();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [loading]);
+
+  // Manejar cambio en el nombre para generar código automático
+  const handleNombreChange = (nombre: string) => {
+    if (!prendaEditando && nombre) {
+      const codigoGenerado = generarCodigo(nombre);
+      if (codigoGenerado) {
+        // Buscar el siguiente número secuencial
+        const codigosSimilares = prendas
+          .filter(p => p.codigo && p.codigo.startsWith(codigoGenerado))
+          .map(p => {
+            const match = p.codigo?.match(/\d+$/);
+            return match ? parseInt(match[0]) : 0;
+          });
+        const siguienteNumero = codigosSimilares.length > 0 
+          ? Math.max(...codigosSimilares) + 1 
+          : 1;
+        const codigoFinal = `${codigoGenerado}-${String(siguienteNumero).padStart(3, '0')}`;
+        setFormData({ ...formData, nombre, codigo: codigoFinal });
+      } else {
+        setFormData({ ...formData, nombre });
+      }
+    } else {
+      setFormData({ ...formData, nombre });
+    }
+  };
+
+  // Filtrar prendas según la búsqueda
+  const prendasFiltradas = prendas.filter(prenda =>
+    prenda.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
+    (prenda.codigo && prenda.codigo.toLowerCase().includes(busqueda.toLowerCase())) ||
+    (prenda.categoria?.nombre && prenda.categoria.nombre.toLowerCase().includes(busqueda.toLowerCase()))
+  );
 
   if (loading) {
     return (
@@ -96,9 +202,42 @@ export default function PrendasPage() {
           <h1 style={{ fontSize: '2.5rem', fontWeight: '700', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.2)' }}>
             👕 Gestión de Prendas
           </h1>
-          <button className="btn btn-primary" onClick={() => setMostrarFormulario(!mostrarFormulario)}>
+          <button className="btn btn-primary" onClick={() => {
+            setPrendaEditando(null);
+            setFormData({ nombre: '', codigo: '', descripcion: '', categoria_id: '', activo: true });
+            setMostrarFormulario(true);
+          }}>
             ➕ Nueva Prenda
           </button>
+        </div>
+
+        {/* Input de búsqueda */}
+        <div style={{ marginBottom: '1.5rem' }}>
+          <input
+            ref={inputBusquedaRef}
+            type="text"
+            className="form-input"
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            placeholder="🔍 Buscar prenda por nombre, código o categoría..."
+            style={{
+              width: '100%',
+              maxWidth: '500px',
+              fontSize: '1rem',
+              padding: '0.75rem 1rem',
+            }}
+          />
+          {busqueda && (
+            <div style={{ marginTop: '0.5rem', color: 'white', fontSize: '0.9rem' }}>
+              {prendasFiltradas.length === 0 ? (
+                <span style={{ color: '#ff6b6b' }}>❌ No se encontraron prendas</span>
+              ) : (
+                <span style={{ color: '#51cf66' }}>
+                  ✓ {prendasFiltradas.length} prenda{prendasFiltradas.length !== 1 ? 's' : ''} encontrada{prendasFiltradas.length !== 1 ? 's' : ''}
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         {error && (
@@ -120,7 +259,7 @@ export default function PrendasPage() {
                   type="text"
                   className="form-input"
                   value={formData.nombre}
-                  onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                  onChange={(e) => handleNombreChange(e.target.value)}
                   placeholder="Ej: Camisa Blanca, Pantalón Azul, etc."
                   required
                 />
@@ -133,21 +272,33 @@ export default function PrendasPage() {
                   className="form-input"
                   value={formData.codigo}
                   onChange={(e) => setFormData({ ...formData, codigo: e.target.value })}
-                  placeholder="Ej: CAM-001, PAN-001, etc."
+                  placeholder="Se genera automáticamente basado en el nombre"
+                  style={{
+                    backgroundColor: prendaEditando ? 'white' : '#f0f0f0',
+                    cursor: prendaEditando ? 'text' : 'not-allowed',
+                    color: prendaEditando ? 'inherit' : '#666'
+                  }}
+                  readOnly={!prendaEditando}
                 />
+                {!prendaEditando && (
+                  <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
+                    El código se genera automáticamente al escribir el nombre
+                  </small>
+                )}
               </div>
 
               <div className="form-group">
                 <label className="form-label">Categoría *</label>
                 <select
                   className="form-select"
-                  value={formData.categoria}
-                  onChange={(e) => setFormData({ ...formData, categoria: e.target.value })}
+                  value={formData.categoria_id}
+                  onChange={(e) => setFormData({ ...formData, categoria_id: e.target.value })}
                   required
+                  disabled={loadingCategorias}
                 >
                   <option value="">Seleccionar categoría</option>
                   {categorias.map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
+                    <option key={cat.id} value={cat.id}>{cat.nombre}</option>
                   ))}
                 </select>
               </div>
@@ -184,7 +335,11 @@ export default function PrendasPage() {
                   onClick={() => {
                     setMostrarFormulario(false);
                     setPrendaEditando(null);
-                    setFormData({ nombre: '', codigo: '', descripcion: '', categoria: '', activo: true });
+                    setFormData({ nombre: '', codigo: '', descripcion: '', categoria_id: '', activo: true });
+                    // Volver a poner focus en el input de búsqueda
+                    setTimeout(() => {
+                      inputBusquedaRef.current?.focus();
+                    }, 100);
                   }}
                 >
                   ❌ Cancelar
@@ -207,18 +362,18 @@ export default function PrendasPage() {
               </tr>
             </thead>
             <tbody>
-              {prendas.length === 0 ? (
+              {prendasFiltradas.length === 0 ? (
                 <tr>
                   <td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
-                    No hay prendas registradas. Crea tu primera prenda.
+                    {busqueda ? 'No se encontraron prendas con ese criterio.' : 'No hay prendas registradas. Crea tu primera prenda.'}
                   </td>
                 </tr>
               ) : (
-                prendas.map((prenda) => (
+                prendasFiltradas.map((prenda) => (
                   <tr key={prenda.id}>
                     <td style={{ fontFamily: 'monospace', fontWeight: '600' }}>{prenda.codigo || '-'}</td>
                     <td style={{ fontWeight: '600' }}>{prenda.nombre}</td>
-                    <td><span className="badge badge-info">{prenda.categoria || '-'}</span></td>
+                    <td><span className="badge badge-info">{prenda.categoria?.nombre || '-'}</span></td>
                     <td>{prenda.descripcion || '-'}</td>
                     <td>
                       <span className={`badge ${prenda.activo ? 'badge-success' : 'badge-danger'}`}>

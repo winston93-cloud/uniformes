@@ -2,80 +2,85 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
-import type { Prenda } from '../types';
 
-export function usePrendas() {
-  const [prendas, setPrendas] = useState<Prenda[]>([]);
+export interface CategoriaPrenda {
+  id: string;
+  nombre: string;
+  activo: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export function useCategorias() {
+  const [categorias, setCategorias] = useState<CategoriaPrenda[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchPrendas = async () => {
+  const fetchCategorias = async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('prendas')
-        .select(`
-          *,
-          categoria:categorias_prendas(*)
-        `)
+        .from('categorias_prendas')
+        .select('*')
+        .eq('activo', true)
         .order('nombre', { ascending: true });
 
       if (error) throw error;
-      setPrendas(data || []);
+      setCategorias(data || []);
     } catch (err: any) {
       setError(err.message);
-      console.error('Error fetching prendas:', err);
+      console.error('Error fetching categorias:', err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchPrendas();
+    fetchCategorias();
   }, []);
 
-  const createPrenda = async (prenda: Omit<Prenda, 'id' | 'created_at' | 'updated_at'>) => {
+  const createCategoria = async (categoria: Omit<CategoriaPrenda, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       const { data, error } = await supabase
-        .from('prendas')
-        .insert([prenda])
+        .from('categorias_prendas')
+        .insert([categoria])
         .select()
         .single();
 
       if (error) throw error;
-      await fetchPrendas();
+      await fetchCategorias();
       return { data, error: null };
     } catch (err: any) {
       return { data: null, error: err.message };
     }
   };
 
-  const updatePrenda = async (id: string, updates: Partial<Prenda>) => {
+  const updateCategoria = async (id: string, updates: Partial<CategoriaPrenda>) => {
     try {
       const { data, error } = await supabase
-        .from('prendas')
+        .from('categorias_prendas')
         .update(updates)
         .eq('id', id)
         .select()
         .single();
 
       if (error) throw error;
-      await fetchPrendas();
+      await fetchCategorias();
       return { data, error: null };
     } catch (err: any) {
       return { data: null, error: err.message };
     }
   };
 
-  const deletePrenda = async (id: string) => {
+  const deleteCategoria = async (id: string) => {
     try {
       const { error } = await supabase
-        .from('prendas')
+        .from('categorias_prendas')
         .delete()
         .eq('id', id);
 
       if (error) throw error;
-      await fetchPrendas();
+      await fetchCategorias();
       return { error: null };
     } catch (err: any) {
       return { error: err.message };
@@ -83,13 +88,13 @@ export function usePrendas() {
   };
 
   return {
-    prendas,
+    categorias,
     loading,
     error,
-    createPrenda,
-    updatePrenda,
-    deletePrenda,
-    refetch: fetchPrendas,
+    createCategoria,
+    updateCategoria,
+    deleteCategoria,
+    refetch: fetchCategorias,
   };
 }
 

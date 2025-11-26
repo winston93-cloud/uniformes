@@ -26,13 +26,22 @@ CREATE TABLE IF NOT EXISTS tallas (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- 3. Tabla de Categorías de Prendas
+CREATE TABLE IF NOT EXISTS categorias_prendas (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  nombre VARCHAR(100) UNIQUE NOT NULL,
+  activo BOOLEAN DEFAULT true,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- 3. Tabla de Prendas
 CREATE TABLE IF NOT EXISTS prendas (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   nombre VARCHAR(255) NOT NULL,
   codigo VARCHAR(100) UNIQUE,
   descripcion TEXT,
-  categoria VARCHAR(100),
+  categoria_id UUID REFERENCES categorias_prendas(id) ON DELETE SET NULL,
   activo BOOLEAN DEFAULT true,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -142,6 +151,7 @@ CREATE TABLE IF NOT EXISTS detalle_cortes (
 );
 
 -- Índices para mejorar performance
+CREATE INDEX IF NOT EXISTS idx_prendas_categoria ON prendas(categoria_id);
 CREATE INDEX IF NOT EXISTS idx_costos_talla ON costos(talla_id);
 CREATE INDEX IF NOT EXISTS idx_costos_prenda ON costos(prenda_id);
 CREATE INDEX IF NOT EXISTS idx_pedidos_alumno ON pedidos(alumno_id);
@@ -165,6 +175,9 @@ CREATE TRIGGER update_usuarios_updated_at BEFORE UPDATE ON usuarios
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_tallas_updated_at BEFORE UPDATE ON tallas
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_categorias_prendas_updated_at BEFORE UPDATE ON categorias_prendas
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_prendas_updated_at BEFORE UPDATE ON prendas
@@ -205,6 +218,7 @@ CREATE TRIGGER generar_referencia_alumno_trigger
 -- Row Level Security (RLS) - Habilitar para todas las tablas
 ALTER TABLE usuarios ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tallas ENABLE ROW LEVEL SECURITY;
+ALTER TABLE categorias_prendas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE prendas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE costos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE alumnos ENABLE ROW LEVEL SECURITY;
@@ -217,6 +231,9 @@ ALTER TABLE detalle_cortes ENABLE ROW LEVEL SECURITY;
 
 -- Políticas RLS básicas (permitir todo por ahora, ajustar según necesidades)
 CREATE POLICY "Allow all operations on tallas" ON tallas
+  FOR ALL USING (true) WITH CHECK (true);
+
+CREATE POLICY "Allow all operations on categorias_prendas" ON categorias_prendas
   FOR ALL USING (true) WITH CHECK (true);
 
 CREATE POLICY "Allow all operations on prendas" ON prendas
@@ -254,6 +271,52 @@ INSERT INTO tallas (nombre, orden, activo) VALUES
   ('L', 4, true),
   ('XL', 5, true)
 ON CONFLICT (nombre) DO NOTHING;
+
+-- Datos iniciales de categorías de prendas
+INSERT INTO categorias_prendas (nombre, activo) VALUES
+  ('Camisas', true),
+  ('Pantalones', true),
+  ('Suéteres', true),
+  ('Faldas', true),
+  ('Deportivo', true),
+  ('Accesorios', true)
+ON CONFLICT (nombre) DO NOTHING;
+
+-- Migración: Actualizar tabla prendas si ya existe con campo categoria VARCHAR
+DO $$
+BEGIN
+  -- Si existe la columna categoria (VARCHAR) y no existe categoria_id, hacer migración
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'prendas' AND column_name = 'categoria' 
+    AND data_type = 'character varying'
+  ) AND NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'prendas' AND column_name = 'categoria_id'
+  ) THEN
+    -- Agregar columna categoria_id
+    ALTER TABLE prendas ADD COLUMN categoria_id UUID REFERENCES categorias_prendas(id) ON DELETE SET NULL;
+    
+    -- Migrar datos existentes (crear categorías si no existen y asociarlas)
+    INSERT INTO categorias_prendas (nombre, activo)
+    SELECT DISTINCT categoria, true
+    FROM prendas
+    WHERE categoria IS NOT NULL AND categoria != ''
+    ON CONFLICT (nombre) DO NOTHING;
+    
+    -- Actualizar prendas con categoria_id basado en nombre
+    UPDATE prendas p
+    SET categoria_id = cp.id
+    FROM categorias_prendas cp
+    WHERE p.categoria = cp.nombre AND p.categoria IS NOT NULL;
+    
+    -- Eliminar columna antigua categoria
+    ALTER TABLE prendas DROP COLUMN categoria;
+    
+    -- Crear índice si no existe
+    CREATE INDEX IF NOT EXISTS idx_prendas_categoria ON prendas(categoria_id);
+  END IF;
+END $$;
 
 -- Mensaje de éxito
 DO $$
