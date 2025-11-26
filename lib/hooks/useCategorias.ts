@@ -16,14 +16,18 @@ export function useCategorias() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchCategorias = async () => {
+  const fetchCategorias = async (soloActivas: boolean = true) => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      let query = supabase
         .from('categorias_prendas')
-        .select('*')
-        .eq('activo', true)
-        .order('nombre', { ascending: true });
+        .select('*');
+      
+      if (soloActivas) {
+        query = query.eq('activo', true);
+      }
+      
+      const { data, error } = await query.order('nombre', { ascending: true });
 
       if (error) throw error;
       setCategorias(data || []);

@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import { usePrendas } from '@/lib/hooks/usePrendas';
 import { useCategorias } from '@/lib/hooks/useCategorias';
+import { supabase } from '@/lib/supabase';
 import type { Prenda } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -69,6 +70,23 @@ export default function PrendasPage() {
   const inputBusquedaRef = useRef<HTMLInputElement>(null);
   const { prendas, loading, error, createPrenda, updatePrenda, deletePrenda } = usePrendas();
   const { categorias, loading: loadingCategorias, refetch: refetchCategorias } = useCategorias();
+  
+  // Cargar todas las categorías (activas e inactivas) para el select
+  const [todasLasCategorias, setTodasLasCategorias] = useState<typeof categorias>([]);
+  
+  useEffect(() => {
+    const cargarTodasCategorias = async () => {
+      const { data } = await supabase
+        .from('categorias_prendas')
+        .select('*')
+        .order('nombre', { ascending: true });
+      if (data) setTodasLasCategorias(data);
+    };
+    if (mostrarFormulario) {
+      cargarTodasCategorias();
+      refetchCategorias();
+    }
+  }, [mostrarFormulario]);
 
   const [formData, setFormData] = useState({
     nombre: '',
@@ -187,12 +205,6 @@ export default function PrendasPage() {
     }
   };
 
-  // Recargar categorías cuando se abre el formulario
-  useEffect(() => {
-    if (mostrarFormulario) {
-      refetchCategorias();
-    }
-  }, [mostrarFormulario]);
 
   // Filtrar prendas según la búsqueda
   const prendasFiltradas = prendas.filter(prenda =>
@@ -323,8 +335,10 @@ export default function PrendasPage() {
                   disabled={loadingCategorias}
                 >
                   <option value="">Seleccionar categoría</option>
-                  {categorias.map(cat => (
-                    <option key={cat.id} value={cat.id}>{cat.nombre}</option>
+                  {todasLasCategorias.map(cat => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.nombre} {!cat.activo ? '(Inactiva)' : ''}
+                    </option>
                   ))}
                 </select>
               </div>
