@@ -11,6 +11,7 @@ export default function TallasPage() {
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [tallaEditando, setTallaEditando] = useState<Talla | null>(null);
   const [busqueda, setBusqueda] = useState('');
+  const [botonEstado, setBotonEstado] = useState<'normal' | 'exito' | 'error'>('normal');
   const inputBusquedaRef = useRef<HTMLInputElement>(null);
   const { tallas, loading, error, createTalla, updateTalla, deleteTalla } = useTallas();
 
@@ -22,6 +23,7 @@ export default function TallasPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setBotonEstado('normal');
     
     const tallaData = {
       nombre: formData.nombre,
@@ -32,27 +34,36 @@ export default function TallasPage() {
     if (tallaEditando) {
       const { error } = await updateTalla(tallaEditando.id, tallaData);
       if (error) {
-        alert(`Error al actualizar: ${error}`);
+        setBotonEstado('error');
         return;
       }
-      alert('Talla actualizada exitosamente');
+      setBotonEstado('exito');
+      setTimeout(() => {
+        setFormData({ nombre: '', orden: '', activo: true });
+        setMostrarFormulario(false);
+        setTallaEditando(null);
+        setBotonEstado('normal');
+        setTimeout(() => {
+          inputBusquedaRef.current?.focus();
+        }, 100);
+      }, 1500);
     } else {
       const { error } = await createTalla(tallaData);
       if (error) {
-        alert(`Error al crear: ${error}`);
+        setBotonEstado('error');
         return;
       }
-      alert('Talla creada exitosamente');
+      setBotonEstado('exito');
+      setTimeout(() => {
+        setFormData({ nombre: '', orden: '', activo: true });
+        setMostrarFormulario(false);
+        setTallaEditando(null);
+        setBotonEstado('normal');
+        setTimeout(() => {
+          inputBusquedaRef.current?.focus();
+        }, 100);
+      }, 1500);
     }
-    
-    setFormData({ nombre: '', orden: '', activo: true });
-    setMostrarFormulario(false);
-    setTallaEditando(null);
-    
-    // Volver a poner focus en el input de búsqueda
-    setTimeout(() => {
-      inputBusquedaRef.current?.focus();
-    }, 100);
   };
 
   const handleEditar = (talla: Talla) => {
@@ -68,10 +79,7 @@ export default function TallasPage() {
   const handleEliminar = async (id: string) => {
     if (confirm('¿Estás seguro de eliminar esta talla?')) {
       const { error } = await deleteTalla(id);
-      if (error) {
-        alert(`Error al eliminar: ${error}`);
-      } else {
-        alert('Talla eliminada exitosamente');
+      if (!error) {
         // Volver a poner focus en el input de búsqueda
         setTimeout(() => {
           inputBusquedaRef.current?.focus();
@@ -129,7 +137,7 @@ export default function TallasPage() {
         </div>
 
         {/* Input de búsqueda */}
-        <div style={{ marginBottom: '1.5rem' }}>
+        <div style={{ marginBottom: '1.5rem', maxWidth: '800px', margin: '0 auto 1.5rem auto' }}>
           <input
             ref={inputBusquedaRef}
             type="text"
@@ -139,7 +147,6 @@ export default function TallasPage() {
             placeholder="🔍 Buscar talla por nombre..."
             style={{
               width: '100%',
-              maxWidth: '500px',
               fontSize: '1rem',
               padding: '0.75rem 1rem',
             }}
@@ -213,8 +220,22 @@ export default function TallasPage() {
               </div>
 
               <div className="btn-group">
-                <button type="submit" className="btn btn-primary">
-                  {tallaEditando ? '💾 Guardar Cambios' : '➕ Crear Talla'}
+                <button 
+                  type="submit" 
+                  className="btn btn-primary"
+                  style={{
+                    backgroundColor: botonEstado === 'exito' ? '#28a745' : botonEstado === 'error' ? '#dc3545' : undefined,
+                    color: botonEstado === 'exito' || botonEstado === 'error' ? 'white' : undefined,
+                    borderColor: botonEstado === 'exito' ? '#28a745' : botonEstado === 'error' ? '#dc3545' : undefined,
+                  }}
+                >
+                  {botonEstado === 'exito' 
+                    ? '✓ Guardado' 
+                    : botonEstado === 'error' 
+                    ? '✗ Error' 
+                    : tallaEditando 
+                    ? '💾 Guardar Cambios' 
+                    : '➕ Crear Talla'}
                 </button>
                 <button
                   type="button"

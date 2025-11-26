@@ -65,9 +65,10 @@ export default function PrendasPage() {
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [prendaEditando, setPrendaEditando] = useState<Prenda | null>(null);
   const [busqueda, setBusqueda] = useState('');
+  const [botonEstado, setBotonEstado] = useState<'normal' | 'exito' | 'error'>('normal');
   const inputBusquedaRef = useRef<HTMLInputElement>(null);
   const { prendas, loading, error, createPrenda, updatePrenda, deletePrenda } = usePrendas();
-  const { categorias, loading: loadingCategorias } = useCategorias();
+  const { categorias, loading: loadingCategorias, refetch: refetchCategorias } = useCategorias();
 
   const [formData, setFormData] = useState({
     nombre: '',
@@ -79,6 +80,7 @@ export default function PrendasPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setBotonEstado('normal');
     
     const prendaData = {
       nombre: formData.nombre,
@@ -91,27 +93,37 @@ export default function PrendasPage() {
     if (prendaEditando) {
       const { error } = await updatePrenda(prendaEditando.id, prendaData);
       if (error) {
-        alert(`Error al actualizar: ${error}`);
+        setBotonEstado('error');
         return;
       }
-      alert('Prenda actualizada exitosamente');
+      setBotonEstado('exito');
+      setTimeout(() => {
+        setFormData({ nombre: '', codigo: '', descripcion: '', categoria_id: '', activo: true });
+        setMostrarFormulario(false);
+        setPrendaEditando(null);
+        setBotonEstado('normal');
+        setTimeout(() => {
+          inputBusquedaRef.current?.focus();
+        }, 100);
+      }, 1500);
     } else {
       const { error } = await createPrenda(prendaData);
       if (error) {
-        alert(`Error al crear: ${error}`);
+        setBotonEstado('error');
         return;
       }
-      alert('Prenda creada exitosamente');
+      setBotonEstado('exito');
+      await refetchCategorias(); // Recargar categorías
+      setTimeout(() => {
+        setFormData({ nombre: '', codigo: '', descripcion: '', categoria_id: '', activo: true });
+        setMostrarFormulario(false);
+        setPrendaEditando(null);
+        setBotonEstado('normal');
+        setTimeout(() => {
+          inputBusquedaRef.current?.focus();
+        }, 100);
+      }, 1500);
     }
-    
-    setFormData({ nombre: '', codigo: '', descripcion: '', categoria_id: '', activo: true });
-    setMostrarFormulario(false);
-    setPrendaEditando(null);
-    
-    // Volver a poner focus en el input de búsqueda
-    setTimeout(() => {
-      inputBusquedaRef.current?.focus();
-    }, 100);
   };
 
   const handleEditar = (prenda: Prenda) => {
@@ -130,9 +142,8 @@ export default function PrendasPage() {
     if (confirm('¿Estás seguro de eliminar esta prenda?')) {
       const { error } = await deletePrenda(id);
       if (error) {
-        alert(`Error al eliminar: ${error}`);
+        // Error silencioso, solo se elimina de la lista
       } else {
-        alert('Prenda eliminada exitosamente');
         // Volver a poner focus en el input de búsqueda
         setTimeout(() => {
           inputBusquedaRef.current?.focus();
@@ -175,6 +186,13 @@ export default function PrendasPage() {
       setFormData({ ...formData, nombre });
     }
   };
+
+  // Recargar categorías cuando se abre el formulario
+  useEffect(() => {
+    if (mostrarFormulario) {
+      refetchCategorias();
+    }
+  }, [mostrarFormulario]);
 
   // Filtrar prendas según la búsqueda
   const prendasFiltradas = prendas.filter(prenda =>
@@ -221,7 +239,7 @@ export default function PrendasPage() {
         </div>
 
         {/* Input de búsqueda */}
-        <div style={{ marginBottom: '1.5rem' }}>
+        <div style={{ marginBottom: '1.5rem', maxWidth: '800px', margin: '0 auto 1.5rem auto' }}>
           <input
             ref={inputBusquedaRef}
             type="text"
@@ -231,7 +249,6 @@ export default function PrendasPage() {
             placeholder="🔍 Buscar prenda por nombre, código o categoría..."
             style={{
               width: '100%',
-              maxWidth: '500px',
               fontSize: '1rem',
               padding: '0.75rem 1rem',
             }}
@@ -335,8 +352,22 @@ export default function PrendasPage() {
               </div>
 
               <div className="btn-group">
-                <button type="submit" className="btn btn-primary">
-                  {prendaEditando ? '💾 Guardar Cambios' : '➕ Crear Prenda'}
+                <button 
+                  type="submit" 
+                  className="btn btn-primary"
+                  style={{
+                    backgroundColor: botonEstado === 'exito' ? '#28a745' : botonEstado === 'error' ? '#dc3545' : undefined,
+                    color: botonEstado === 'exito' || botonEstado === 'error' ? 'white' : undefined,
+                    borderColor: botonEstado === 'exito' ? '#28a745' : botonEstado === 'error' ? '#dc3545' : undefined,
+                  }}
+                >
+                  {botonEstado === 'exito' 
+                    ? '✓ Guardado' 
+                    : botonEstado === 'error' 
+                    ? '✗ Error' 
+                    : prendaEditando 
+                    ? '💾 Guardar Cambios' 
+                    : '➕ Crear Prenda'}
                 </button>
                 <button
                   type="button"

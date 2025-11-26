@@ -11,6 +11,7 @@ export default function CategoriasPrendasPage() {
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [categoriaEditando, setCategoriaEditando] = useState<CategoriaPrenda | null>(null);
   const [busqueda, setBusqueda] = useState('');
+  const [botonEstado, setBotonEstado] = useState<'normal' | 'exito' | 'error'>('normal');
   const inputBusquedaRef = useRef<HTMLInputElement>(null);
   const { categorias, loading, error, createCategoria, updateCategoria, deleteCategoria } = useCategorias();
 
@@ -21,6 +22,7 @@ export default function CategoriasPrendasPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setBotonEstado('normal');
     
     const categoriaData = {
       nombre: formData.nombre,
@@ -30,27 +32,36 @@ export default function CategoriasPrendasPage() {
     if (categoriaEditando) {
       const { error } = await updateCategoria(categoriaEditando.id, categoriaData);
       if (error) {
-        alert(`Error al actualizar: ${error}`);
+        setBotonEstado('error');
         return;
       }
-      alert('Categoría actualizada exitosamente');
+      setBotonEstado('exito');
+      setTimeout(() => {
+        setFormData({ nombre: '', activo: true });
+        setMostrarFormulario(false);
+        setCategoriaEditando(null);
+        setBotonEstado('normal');
+        setTimeout(() => {
+          inputBusquedaRef.current?.focus();
+        }, 100);
+      }, 1500);
     } else {
       const { error } = await createCategoria(categoriaData);
       if (error) {
-        alert(`Error al crear: ${error}`);
+        setBotonEstado('error');
         return;
       }
-      alert('Categoría creada exitosamente');
+      setBotonEstado('exito');
+      setTimeout(() => {
+        setFormData({ nombre: '', activo: true });
+        setMostrarFormulario(false);
+        setCategoriaEditando(null);
+        setBotonEstado('normal');
+        setTimeout(() => {
+          inputBusquedaRef.current?.focus();
+        }, 100);
+      }, 1500);
     }
-    
-    setFormData({ nombre: '', activo: true });
-    setMostrarFormulario(false);
-    setCategoriaEditando(null);
-    
-    // Volver a poner focus en el input de búsqueda
-    setTimeout(() => {
-      inputBusquedaRef.current?.focus();
-    }, 100);
   };
 
   const handleEditar = (categoria: CategoriaPrenda) => {
@@ -65,10 +76,7 @@ export default function CategoriasPrendasPage() {
   const handleEliminar = async (id: string) => {
     if (confirm('¿Estás seguro de eliminar esta categoría? Las prendas asociadas no se eliminarán, pero perderán su categoría.')) {
       const { error } = await deleteCategoria(id);
-      if (error) {
-        alert(`Error al eliminar: ${error}`);
-      } else {
-        alert('Categoría eliminada exitosamente');
+      if (!error) {
         // Volver a poner focus en el input de búsqueda
         setTimeout(() => {
           inputBusquedaRef.current?.focus();
@@ -123,7 +131,7 @@ export default function CategoriasPrendasPage() {
         </div>
 
         {/* Input de búsqueda */}
-        <div style={{ marginBottom: '1.5rem' }}>
+        <div style={{ marginBottom: '1.5rem', maxWidth: '800px', margin: '0 auto 1.5rem auto' }}>
           <input
             ref={inputBusquedaRef}
             type="text"
@@ -133,7 +141,6 @@ export default function CategoriasPrendasPage() {
             placeholder="🔍 Buscar categoría por nombre..."
             style={{
               width: '100%',
-              maxWidth: '500px',
               fontSize: '1rem',
               padding: '0.75rem 1rem',
             }}
@@ -190,8 +197,22 @@ export default function CategoriasPrendasPage() {
               </div>
 
               <div className="btn-group">
-                <button type="submit" className="btn btn-primary">
-                  {categoriaEditando ? '💾 Guardar Cambios' : '➕ Crear Categoría'}
+                <button 
+                  type="submit" 
+                  className="btn btn-primary"
+                  style={{
+                    backgroundColor: botonEstado === 'exito' ? '#28a745' : botonEstado === 'error' ? '#dc3545' : undefined,
+                    color: botonEstado === 'exito' || botonEstado === 'error' ? 'white' : undefined,
+                    borderColor: botonEstado === 'exito' ? '#28a745' : botonEstado === 'error' ? '#dc3545' : undefined,
+                  }}
+                >
+                  {botonEstado === 'exito' 
+                    ? '✓ Guardado' 
+                    : botonEstado === 'error' 
+                    ? '✗ Error' 
+                    : categoriaEditando 
+                    ? '💾 Guardar Cambios' 
+                    : '➕ Crear Categoría'}
                 </button>
                 <button
                   type="button"
