@@ -79,6 +79,8 @@ export default function PrendasPage() {
   const [todasLasCategorias, setTodasLasCategorias] = useState<typeof categorias>([]);
   const [tallasSeleccionadas, setTallasSeleccionadas] = useState<string[]>([]);
   const [tallasAsociadas, setTallasAsociadas] = useState<string[]>([]);
+  const [filtroTipo, setFiltroTipo] = useState<'todos' | 'letras' | 'numeros'>('todos');
+  const [filtroNumeros, setFiltroNumeros] = useState<'todos' | 'pares' | 'nones' | 'combinados'>('todos');
   
   useEffect(() => {
     const cargarTodasCategorias = async () => {
@@ -448,6 +450,51 @@ export default function PrendasPage() {
               <div className="form-group">
                 <label className="form-label">Tallas Disponibles *</label>
                 
+                {/* Filtros de tallas */}
+                <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', alignItems: 'center' }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: '500' }}>
+                      Tipo de Talla
+                    </label>
+                    <select
+                      className="form-select"
+                      value={filtroTipo}
+                      onChange={(e) => {
+                        setFiltroTipo(e.target.value as 'todos' | 'letras' | 'numeros');
+                        if (e.target.value !== 'numeros') {
+                          setFiltroNumeros('todos');
+                        }
+                      }}
+                      style={{ width: '100%' }}
+                    >
+                      <option value="todos">Todas</option>
+                      <option value="numeros">Números</option>
+                      <option value="letras">Letras</option>
+                    </select>
+                  </div>
+                  
+                  {filtroTipo === 'numeros' && (
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: '500' }}>
+                        Filtro de Números
+                      </label>
+                      <select
+                        className="form-select"
+                        value={filtroNumeros}
+                        onChange={(e) => {
+                          setFiltroNumeros(e.target.value as 'todos' | 'pares' | 'nones' | 'combinados');
+                        }}
+                        style={{ width: '100%' }}
+                      >
+                        <option value="todos">Todos</option>
+                        <option value="pares">Pares</option>
+                        <option value="nones">Nones</option>
+                        <option value="combinados">Combinados</option>
+                      </select>
+                    </div>
+                  )}
+                </div>
+                
                 {/* Tabla de todas las tallas en 4 columnas */}
                 <div style={{ 
                   border: '1px solid #ddd', 
@@ -459,25 +506,60 @@ export default function PrendasPage() {
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <tbody>
                       {(() => {
+                        // Filtrar tallas según los filtros
+                        let tallasFiltradas = tallas.filter(t => t.activo);
+                        
+                        // Filtrar por tipo (letras o números)
+                        if (filtroTipo === 'letras') {
+                          tallasFiltradas = tallasFiltradas.filter(t => isNaN(Number(t.nombre)));
+                        } else if (filtroTipo === 'numeros') {
+                          tallasFiltradas = tallasFiltradas.filter(t => !isNaN(Number(t.nombre)));
+                          
+                          // Filtrar por pares/nones/combinados
+                          if (filtroNumeros === 'pares') {
+                            tallasFiltradas = tallasFiltradas.filter(t => {
+                              const num = Number(t.nombre);
+                              return num % 2 === 0;
+                            });
+                          } else if (filtroNumeros === 'nones') {
+                            tallasFiltradas = tallasFiltradas.filter(t => {
+                              const num = Number(t.nombre);
+                              return num % 2 !== 0;
+                            });
+                          } else if (filtroNumeros === 'combinados') {
+                            // Combinados: números que no son pares ni nones puros (ej: 6-8, 10-12)
+                            // Por ahora, mostrar todos los números si es combinados
+                            // O puedes definir tu propia lógica aquí
+                          }
+                        }
+                        
                         // Ordenar tallas: primero números, luego letras, ascendente
-                        const tallasOrdenadas = tallas
-                          .filter(t => t.activo)
-                          .sort((a, b) => {
-                            const aEsNumero = !isNaN(Number(a.nombre));
-                            const bEsNumero = !isNaN(Number(b.nombre));
-                            
-                            if (aEsNumero && !bEsNumero) return -1;
-                            if (!aEsNumero && bEsNumero) return 1;
-                            if (aEsNumero && bEsNumero) {
-                              return Number(a.nombre) - Number(b.nombre);
-                            }
-                            return a.nombre.localeCompare(b.nombre);
-                          });
+                        const tallasOrdenadas = tallasFiltradas.sort((a, b) => {
+                          const aEsNumero = !isNaN(Number(a.nombre));
+                          const bEsNumero = !isNaN(Number(b.nombre));
+                          
+                          if (aEsNumero && !bEsNumero) return -1;
+                          if (!aEsNumero && bEsNumero) return 1;
+                          if (aEsNumero && bEsNumero) {
+                            return Number(a.nombre) - Number(b.nombre);
+                          }
+                          return a.nombre.localeCompare(b.nombre);
+                        });
                         
                         // Dividir en filas de 4 columnas
                         const filas = [];
                         for (let i = 0; i < tallasOrdenadas.length; i += 4) {
                           filas.push(tallasOrdenadas.slice(i, i + 4));
+                        }
+                        
+                        if (filas.length === 0) {
+                          return (
+                            <tr>
+                              <td colSpan={4} style={{ padding: '2rem', textAlign: 'center', color: '#999' }}>
+                                No hay tallas que coincidan con los filtros seleccionados
+                              </td>
+                            </tr>
+                          );
                         }
                         
                         return filas.map((fila, filaIndex) => (
