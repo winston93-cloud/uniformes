@@ -29,6 +29,11 @@ export default function CostosPage() {
   const [mostrarResultadosPrenda, setMostrarResultadosPrenda] = useState(false);
   const [tallasDisponibles, setTallasDisponibles] = useState<string[]>([]);
   const inputPrendaRef = useRef<HTMLInputElement>(null);
+  
+  // Búsqueda para filtrar la tabla de costos
+  const [busquedaTabla, setBusquedaTabla] = useState('');
+  const [mostrarResultadosTabla, setMostrarResultadosTabla] = useState(false);
+  const inputBusquedaTablaRef = useRef<HTMLInputElement>(null);
 
   // Cargar tallas disponibles cuando se selecciona una prenda
   useEffect(() => {
@@ -50,7 +55,7 @@ export default function CostosPage() {
     cargarTallasDisponibles();
   }, [formData.prenda_id]);
 
-  // Filtrar prendas para búsqueda
+  // Filtrar prendas para búsqueda del formulario
   const prendasFiltradas = prendas
     .filter(p => p.activo)
     .filter(p => {
@@ -59,6 +64,46 @@ export default function CostosPage() {
              (p.codigo && p.codigo.toLowerCase().includes(busquedaPrenda.toLowerCase()));
     })
     .sort((a, b) => a.nombre.localeCompare(b.nombre));
+
+  // Filtrar prendas para búsqueda de la tabla
+  const prendasFiltradasTabla = prendas
+    .filter(p => p.activo)
+    .filter(p => {
+      if (!busquedaTabla) return true;
+      return p.nombre.toLowerCase().includes(busquedaTabla.toLowerCase()) ||
+             (p.codigo && p.codigo.toLowerCase().includes(busquedaTabla.toLowerCase()));
+    })
+    .sort((a, b) => a.nombre.localeCompare(b.nombre));
+
+  // Filtrar y ordenar costos
+  const costosFiltrados = costos
+    .filter(costo => {
+      if (!busquedaTabla) return true;
+      const prendaNombre = costo.prenda?.nombre?.toLowerCase() || '';
+      const prendaCodigo = costo.prenda?.codigo?.toLowerCase() || '';
+      const busqueda = busquedaTabla.toLowerCase();
+      return prendaNombre.includes(busqueda) || prendaCodigo.includes(busqueda);
+    })
+    .sort((a, b) => {
+      // Ordenar por nombre de prenda ascendente
+      const nombreA = a.prenda?.nombre || '';
+      const nombreB = b.prenda?.nombre || '';
+      if (nombreA !== nombreB) {
+        return nombreA.localeCompare(nombreB);
+      }
+      // Si es la misma prenda, ordenar por talla
+      const tallaA = a.talla?.nombre || '';
+      const tallaB = b.talla?.nombre || '';
+      const aEsNumero = !isNaN(Number(tallaA));
+      const bEsNumero = !isNaN(Number(tallaB));
+      
+      if (aEsNumero && !bEsNumero) return -1;
+      if (!aEsNumero && bEsNumero) return 1;
+      if (aEsNumero && bEsNumero) {
+        return Number(tallaA) - Number(tallaB);
+      }
+      return tallaA.localeCompare(tallaB);
+    });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -116,6 +161,96 @@ export default function CostosPage() {
             Error al cargar los costos: {error}
           </div>
         )}
+
+        {/* Búsqueda de prenda para filtrar la tabla */}
+        <div style={{ marginBottom: '1.5rem', maxWidth: '800px', margin: '0 auto 1.5rem auto' }}>
+          <input
+            ref={inputBusquedaTablaRef}
+            type="text"
+            className="form-input"
+            value={busquedaTabla}
+            onChange={(e) => {
+              setBusquedaTabla(e.target.value);
+              setMostrarResultadosTabla(e.target.value.length > 0);
+            }}
+            onFocus={() => {
+              if (busquedaTabla.length > 0) {
+                setMostrarResultadosTabla(true);
+              }
+            }}
+            onBlur={() => {
+              setTimeout(() => setMostrarResultadosTabla(false), 200);
+            }}
+            placeholder="🔍 Buscar costo por prenda..."
+            style={{
+              width: '100%',
+              fontSize: '1rem',
+              padding: '0.75rem 1rem',
+            }}
+          />
+          
+          {/* Dropdown de resultados para la tabla */}
+          {mostrarResultadosTabla && (
+            <div style={{
+              position: 'absolute',
+              top: '100%',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              width: '800px',
+              maxWidth: '100%',
+              backgroundColor: 'white',
+              border: '1px solid #ddd',
+              borderRadius: '8px',
+              boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+              zIndex: 1000,
+              maxHeight: '200px',
+              overflowY: 'auto',
+              marginTop: '4px'
+            }}>
+              {prendasFiltradasTabla.length === 0 ? (
+                <div style={{ padding: '1rem', textAlign: 'center', color: '#999' }}>
+                  No se encontraron prendas
+                </div>
+              ) : (
+                prendasFiltradasTabla.map(prenda => (
+                  <div
+                    key={prenda.id}
+                    onClick={() => {
+                      setBusquedaTabla(prenda.nombre);
+                      setMostrarResultadosTabla(false);
+                    }}
+                    style={{
+                      padding: '0.75rem 1rem',
+                      cursor: 'pointer',
+                      borderBottom: '1px solid #f0f0f0',
+                      transition: 'background-color 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#f8f9fa';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'white';
+                    }}
+                  >
+                    {prenda.nombre} {prenda.codigo && `(${prenda.codigo})`}
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+          
+          {busquedaTabla && (
+            <div style={{ marginTop: '0.5rem', color: 'white', fontSize: '0.9rem' }}>
+              {costosFiltrados.length === 0 ? (
+                <span style={{ color: '#ff6b6b' }}>❌ No se encontraron costos</span>
+              ) : (
+                <span style={{ color: '#51cf66' }}>
+                  ✓ {costosFiltrados.length} costo{costosFiltrados.length !== 1 ? 's' : ''} encontrado{costosFiltrados.length !== 1 ? 's' : ''}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
 
         {mostrarFormulario && (
           <div className="form-container">
@@ -398,14 +533,14 @@ export default function CostosPage() {
               </tr>
             </thead>
             <tbody>
-              {costos.length === 0 ? (
+              {costosFiltrados.length === 0 ? (
                 <tr>
                   <td colSpan={8} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
-                    No hay costos registrados. Crea tu primer costo.
+                    {busquedaTabla ? 'No se encontraron costos con ese criterio.' : 'No hay costos registrados. Crea tu primer costo.'}
                   </td>
                 </tr>
               ) : (
-                costos.map((costo: any) => (
+                costosFiltrados.map((costo: any) => (
                   <tr key={costo.id}>
                     <td style={{ fontWeight: '600' }}>{costo.prenda?.nombre || '-'}</td>
                     <td><span className="badge badge-info">{costo.talla?.nombre || '-'}</span></td>
