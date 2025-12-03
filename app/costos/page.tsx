@@ -18,7 +18,7 @@ export default function CostosPage() {
   
   const [formData, setFormData] = useState({
     prenda_id: '',
-    talla_id: '',
+    tallas_seleccionadas: [] as string[],
     precioCompra: '',
     precioVenta: '',
     stock: '',
@@ -48,7 +48,7 @@ export default function CostosPage() {
         }
       } else {
         setTallasDisponibles([]);
-        setFormData(prev => ({ ...prev, talla_id: '' }));
+        setFormData(prev => ({ ...prev, tallas_seleccionadas: [] }));
       }
     };
     
@@ -108,25 +108,41 @@ export default function CostosPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const costoData = {
+    // Validar que se haya seleccionado al menos una talla
+    if (formData.tallas_seleccionadas.length === 0) {
+      alert('Por favor selecciona al menos una talla');
+      return;
+    }
+    
+    // Crear un costo para cada talla seleccionada
+    const costosData = formData.tallas_seleccionadas.map(talla_id => ({
       prenda_id: formData.prenda_id,
-      talla_id: formData.talla_id,
+      talla_id: talla_id,
       precio_compra: parseFloat(formData.precioCompra),
       precio_venta: parseFloat(formData.precioVenta),
       stock_inicial: parseInt(formData.stock),
       stock: parseInt(formData.stock),
       stock_minimo: parseInt(formData.stockMinimo),
       activo: true,
-    };
+    }));
 
-    const { error } = await createCosto(costoData);
-    if (error) {
-      alert(`Error al crear: ${error}`);
+    // Crear todos los costos
+    let errores = 0;
+    for (const costoData of costosData) {
+      const { error } = await createCosto(costoData);
+      if (error) {
+        errores++;
+        console.error('Error al crear costo:', error);
+      }
+    }
+    
+    if (errores > 0) {
+      alert(`Error al crear algunos costos. ${errores} de ${costosData.length} fallaron.`);
       return;
     }
     
-    alert('Costo creado exitosamente');
-    setFormData({ prenda_id: '', talla_id: '', precioCompra: '', precioVenta: '', stock: '', stockMinimo: '' });
+    alert(`${costosData.length} costo(s) creado(s) exitosamente`);
+    setFormData({ prenda_id: '', tallas_seleccionadas: [], precioCompra: '', precioVenta: '', stock: '', stockMinimo: '' });
     setBusquedaPrenda('');
     setTallasDisponibles([]);
     setMostrarFormulario(false);
@@ -304,7 +320,7 @@ export default function CostosPage() {
                             <div
                               key={prenda.id}
                               onClick={() => {
-                                setFormData({ ...formData, prenda_id: prenda.id, talla_id: '' });
+                                setFormData({ ...formData, prenda_id: prenda.id, tallas_seleccionadas: [] });
                                 setBusquedaPrenda(prenda.nombre);
                                 setMostrarResultadosPrenda(false);
                               }}
@@ -420,11 +436,20 @@ export default function CostosPage() {
                                       userSelect: 'none'
                                     }}>
                                       <input
-                                        type="radio"
-                                        name="talla_seleccionada"
-                                        checked={formData.talla_id === talla.id}
-                                        onChange={() => {
-                                          setFormData({ ...formData, talla_id: talla.id });
+                                        type="checkbox"
+                                        checked={formData.tallas_seleccionadas.includes(talla.id)}
+                                        onChange={(e) => {
+                                          if (e.target.checked) {
+                                            setFormData({ 
+                                              ...formData, 
+                                              tallas_seleccionadas: [...formData.tallas_seleccionadas, talla.id] 
+                                            });
+                                          } else {
+                                            setFormData({ 
+                                              ...formData, 
+                                              tallas_seleccionadas: formData.tallas_seleccionadas.filter(id => id !== talla.id) 
+                                            });
+                                          }
                                         }}
                                         style={{ 
                                           width: '18px', 
@@ -433,8 +458,8 @@ export default function CostosPage() {
                                         }}
                                       />
                                       <span style={{ 
-                                        fontWeight: formData.talla_id === talla.id ? '600' : '400',
-                                        color: formData.talla_id === talla.id ? '#007bff' : 'inherit'
+                                        fontWeight: formData.tallas_seleccionadas.includes(talla.id) ? '600' : '400',
+                                        color: formData.tallas_seleccionadas.includes(talla.id) ? '#007bff' : 'inherit'
                                       }}>
                                         {talla.nombre}
                                       </span>
