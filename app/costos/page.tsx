@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
 
 export default function CostosPage() {
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
-  const { costos, loading: costosLoading, error, createCosto, getCostosByPrenda } = useCostos();
+  const { costos, loading: costosLoading, error, createCosto, createMultipleCostos, getCostosByPrenda } = useCostos();
   const { prendas } = usePrendas();
   const { tallas } = useTallas();
   
@@ -118,30 +118,49 @@ export default function CostosPage() {
     const costosData = formData.tallas_seleccionadas.map(talla_id => ({
       prenda_id: formData.prenda_id,
       talla_id: talla_id,
-      precio_compra: parseFloat(formData.precioCompra),
-      precio_venta: parseFloat(formData.precioVenta),
-      stock_inicial: parseInt(formData.stock),
-      stock: parseInt(formData.stock),
-      stock_minimo: parseInt(formData.stockMinimo),
+      precio_compra: parseFloat(formData.precioCompra) || 0,
+      precio_venta: parseFloat(formData.precioVenta) || 0,
+      stock_inicial: parseInt(formData.stock) || 0,
+      stock: parseInt(formData.stock) || 0,
+      stock_minimo: parseInt(formData.stockMinimo) || 0,
       activo: true,
     }));
 
-    // Crear todos los costos
-    let errores = 0;
-    for (const costoData of costosData) {
-      const { error } = await createCosto(costoData);
-      if (error) {
-        errores++;
-        console.error('Error al crear costo:', error);
+    // Crear todos los costos de una vez usando createMultipleCostos
+    const { data, error: errorCrear } = await createMultipleCostos(costosData);
+    
+    if (errorCrear) {
+      // Si hay un error, podría ser porque algunos costos ya existen (UNIQUE constraint)
+      // Intentar crear uno por uno para identificar cuáles fallan
+      let exitosos = 0;
+      let fallidos = 0;
+      const erroresDetalle: string[] = [];
+      
+      for (const costoData of costosData) {
+        const { error: errorIndividual } = await createCosto(costoData);
+        if (errorIndividual) {
+          fallidos++;
+          // Si el error es de constraint único, significa que ya existe
+          if (errorIndividual.includes('duplicate') || errorIndividual.includes('unique')) {
+            erroresDetalle.push(`La combinación prenda-talla ya existe`);
+          } else {
+            erroresDetalle.push(errorIndividual);
+          }
+        } else {
+          exitosos++;
+        }
       }
+      
+      if (exitosos > 0) {
+        alert(`${exitosos} costo(s) creado(s) exitosamente. ${fallidos > 0 ? `${fallidos} fallaron (posiblemente ya existen).` : ''}`);
+      } else {
+        alert(`Error al crear costos: ${erroresDetalle[0] || errorCrear}`);
+        return;
+      }
+    } else {
+      alert(`${costosData.length} costo(s) creado(s) exitosamente`);
     }
     
-    if (errores > 0) {
-      alert(`Error al crear algunos costos. ${errores} de ${costosData.length} fallaron.`);
-      return;
-    }
-    
-    alert(`${costosData.length} costo(s) creado(s) exitosamente`);
     setFormData({ prenda_id: '', tallas_seleccionadas: [], precioCompra: '', precioVenta: '', stock: '', stockMinimo: '' });
     setBusquedaPrenda('');
     setTallasDisponibles([]);
