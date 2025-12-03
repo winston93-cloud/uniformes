@@ -354,7 +354,7 @@ export default function CostosPage() {
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Talla *</label>
+                  <label className="form-label">Tallas *</label>
                   {!formData.prenda_id ? (
                     <div style={{ 
                       padding: '0.75rem', 
@@ -476,6 +476,12 @@ export default function CostosPage() {
                         </tbody>
                       </table>
                     </div>
+                  )}
+                  
+                  {formData.tallas_seleccionadas.length > 0 && (
+                    <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.5rem', display: 'block' }}>
+                      {formData.tallas_seleccionadas.length} talla{formData.tallas_seleccionadas.length !== 1 ? 's' : ''} seleccionada{formData.tallas_seleccionadas.length !== 1 ? 's' : ''}. Se crearán {formData.tallas_seleccionadas.length} costo{formData.tallas_seleccionadas.length !== 1 ? 's' : ''} con el mismo precio y stock.
+                    </small>
                   )}
                 </div>
 
