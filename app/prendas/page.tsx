@@ -4,6 +4,8 @@ import { useState, useRef, useEffect } from 'react';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import { usePrendas } from '@/lib/hooks/usePrendas';
 import { useCategorias } from '@/lib/hooks/useCategorias';
+import { useTallas } from '@/lib/hooks/useTallas';
+import { useCostos } from '@/lib/hooks/useCostos';
 import { supabase } from '@/lib/supabase';
 import type { Prenda } from '@/lib/types';
 
@@ -70,9 +72,13 @@ export default function PrendasPage() {
   const inputBusquedaRef = useRef<HTMLInputElement>(null);
   const { prendas, loading, error, createPrenda, updatePrenda, deletePrenda } = usePrendas();
   const { categorias, loading: loadingCategorias, refetch: refetchCategorias } = useCategorias();
+  const { tallas } = useTallas();
+  const { createMultipleCostos, getCostosByPrenda, deleteCosto } = useCostos();
   
   // Cargar todas las categorías (activas e inactivas) para el select
   const [todasLasCategorias, setTodasLasCategorias] = useState<typeof categorias>([]);
+  const [tallasSeleccionadas, setTallasSeleccionadas] = useState<string[]>([]);
+  const [tallasAsociadas, setTallasAsociadas] = useState<string[]>([]);
   
   useEffect(() => {
     const cargarTodasCategorias = async () => {
@@ -88,6 +94,26 @@ export default function PrendasPage() {
     }
   }, [mostrarFormulario]);
 
+  // Cargar tallas asociadas cuando se edita una prenda
+  useEffect(() => {
+    const cargarTallasAsociadas = async () => {
+      if (prendaEditando) {
+        const { data } = await getCostosByPrenda(prendaEditando.id);
+        if (data) {
+          const tallasIds = data.map(c => c.talla_id);
+          setTallasAsociadas(tallasIds);
+          setTallasSeleccionadas(tallasIds);
+        }
+      } else {
+        setTallasAsociadas([]);
+        setTallasSeleccionadas([]);
+      }
+    };
+    if (mostrarFormulario && prendaEditando) {
+      cargarTallasAsociadas();
+    }
+  }, [prendaEditando, mostrarFormulario]);
+
   const [formData, setFormData] = useState({
     nombre: '',
     codigo: '',
@@ -99,6 +125,13 @@ export default function PrendasPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setBotonEstado('normal');
+    
+    // Validar que se haya seleccionado al menos una talla
+    if (tallasSeleccionadas.length === 0) {
+      alert('Por favor selecciona al menos una talla para la prenda');
+      setBotonEstado('error');
+      return;
+    }
     
     const prendaData = {
       nombre: formData.nombre,
@@ -114,9 +147,46 @@ export default function PrendasPage() {
         setBotonEstado('error');
         return;
       }
+      
+      // Gestionar tallas: eliminar las que se quitaron y agregar las nuevas
+      const tallasAEliminar = tallasAsociadas.filter(t => !tallasSeleccionadas.includes(t));
+      const tallasAAgregar = tallasSeleccionadas.filter(t => !tallasAsociadas.includes(t));
+      
+      // Eliminar costos de tallas que se quitaron
+      if (tallasAEliminar.length > 0) {
+        const { data: costosExistentes } = await getCostosByPrenda(prendaEditando.id);
+        if (costosExistentes) {
+          const costosAEliminar = costosExistentes
+            .filter(c => tallasAEliminar.includes(c.talla_id))
+            .map(c => c.id);
+          
+          for (const costoId of costosAEliminar) {
+            await deleteCosto(costoId);
+          }
+        }
+      }
+      
+      // Agregar costos para nuevas tallas
+      if (tallasAAgregar.length > 0) {
+        const costosData = tallasAAgregar.map(talla_id => ({
+          prenda_id: prendaEditando.id,
+          talla_id: talla_id,
+          precio_venta: 0,
+          precio_compra: 0,
+          stock_inicial: 0,
+          stock: 0,
+          stock_minimo: 0,
+          activo: true,
+        }));
+        
+        await createMultipleCostos(costosData);
+      }
+      
       setBotonEstado('exito');
       setTimeout(() => {
         setFormData({ nombre: '', codigo: '', descripcion: '', categoria_id: '', activo: true });
+        setTallasSeleccionadas([]);
+        setTallasAsociadas([]);
         setMostrarFormulario(false);
         setPrendaEditando(null);
         setBotonEstado('normal');
@@ -125,15 +195,33 @@ export default function PrendasPage() {
         }, 100);
       }, 1500);
     } else {
-      const { error } = await createPrenda(prendaData);
+      const { data: nuevaPrenda, error } = await createPrenda(prendaData);
       if (error) {
         setBotonEstado('error');
         return;
       }
+      
+      // Crear costos para cada talla seleccionada
+      if (nuevaPrenda && tallasSeleccionadas.length > 0) {
+        const costosData = tallasSeleccionadas.map(talla_id => ({
+          prenda_id: nuevaPrenda.id,
+          talla_id: talla_id,
+          precio_venta: 0,
+          precio_compra: 0,
+          stock_inicial: 0,
+          stock: 0,
+          stock_minimo: 0,
+          activo: true,
+        }));
+        
+        await createMultipleCostos(costosData);
+      }
+      
       setBotonEstado('exito');
       await refetchCategorias(); // Recargar categorías
       setTimeout(() => {
         setFormData({ nombre: '', codigo: '', descripcion: '', categoria_id: '', activo: true });
+        setTallasSeleccionadas([]);
         setMostrarFormulario(false);
         setPrendaEditando(null);
         setBotonEstado('normal');
@@ -144,7 +232,7 @@ export default function PrendasPage() {
     }
   };
 
-  const handleEditar = (prenda: Prenda) => {
+  const handleEditar = async (prenda: Prenda) => {
     setPrendaEditando(prenda);
     setFormData({
       nombre: prenda.nombre,
@@ -153,6 +241,18 @@ export default function PrendasPage() {
       categoria_id: prenda.categoria_id || '',
       activo: prenda.activo,
     });
+    
+    // Cargar tallas asociadas
+    const { data: costos } = await getCostosByPrenda(prenda.id);
+    if (costos) {
+      const tallasIds = costos.map(c => c.talla_id);
+      setTallasAsociadas(tallasIds);
+      setTallasSeleccionadas(tallasIds);
+    } else {
+      setTallasAsociadas([]);
+      setTallasSeleccionadas([]);
+    }
+    
     setMostrarFormulario(true);
   };
 
@@ -243,6 +343,8 @@ export default function PrendasPage() {
             <button className="btn btn-primary" onClick={() => {
               setPrendaEditando(null);
               setFormData({ nombre: '', codigo: '', descripcion: '', categoria_id: '', activo: true });
+              setTallasSeleccionadas([]);
+              setTallasAsociadas([]);
               setMostrarFormulario(true);
             }}>
               ➕ Nueva Prenda
@@ -344,6 +446,52 @@ export default function PrendasPage() {
               </div>
 
               <div className="form-group">
+                <label className="form-label">Tallas Disponibles *</label>
+                <div style={{ 
+                  border: '1px solid #ddd', 
+                  borderRadius: '8px', 
+                  padding: '1rem', 
+                  maxHeight: '200px', 
+                  overflowY: 'auto',
+                  backgroundColor: 'white'
+                }}>
+                  {tallas.filter(t => t.activo).sort((a, b) => a.orden - b.orden).map(talla => (
+                    <label 
+                      key={talla.id} 
+                      style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '0.5rem', 
+                        padding: '0.5rem',
+                        cursor: 'pointer',
+                        borderRadius: '4px',
+                        backgroundColor: tallasSeleccionadas.includes(talla.id) ? '#e7f3ff' : 'transparent'
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={tallasSeleccionadas.includes(talla.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setTallasSeleccionadas([...tallasSeleccionadas, talla.id]);
+                          } else {
+                            setTallasSeleccionadas(tallasSeleccionadas.filter(id => id !== talla.id));
+                          }
+                        }}
+                        style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                      />
+                      <span style={{ fontWeight: tallasSeleccionadas.includes(talla.id) ? '600' : '400' }}>
+                        {talla.nombre}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
+                  Selecciona las tallas disponibles para esta prenda. Se crearán registros automáticamente.
+                </small>
+              </div>
+
+              <div className="form-group">
                 <label className="form-label">Descripción</label>
                 <textarea
                   className="form-textarea"
@@ -390,6 +538,8 @@ export default function PrendasPage() {
                     setMostrarFormulario(false);
                     setPrendaEditando(null);
                     setFormData({ nombre: '', codigo: '', descripcion: '', categoria_id: '', activo: true });
+                    setTallasSeleccionadas([]);
+                    setTallasAsociadas([]);
                     // Volver a poner focus en el input de búsqueda
                     setTimeout(() => {
                       inputBusquedaRef.current?.focus();

@@ -55,6 +55,58 @@ export function useCostos() {
     }
   };
 
+  const createMultipleCostos = async (costos: Omit<Costo, 'id' | 'created_at' | 'updated_at' | 'talla' | 'prenda'>[]) => {
+    try {
+      const { data, error } = await supabase
+        .from('costos')
+        .insert(costos)
+        .select(`
+          *,
+          talla:tallas(*),
+          prenda:prendas(*)
+        `);
+
+      if (error) throw error;
+      await fetchCostos();
+      return { data, error: null };
+    } catch (err: any) {
+      return { data: null, error: err.message };
+    }
+  };
+
+  const deleteCosto = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('costos')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      await fetchCostos();
+      return { error: null };
+    } catch (err: any) {
+      return { error: err.message };
+    }
+  };
+
+  const getCostosByPrenda = async (prenda_id: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('costos')
+        .select(`
+          *,
+          talla:tallas(*),
+          prenda:prendas(*)
+        `)
+        .eq('prenda_id', prenda_id);
+
+      if (error) throw error;
+      return { data: data || [], error: null };
+    } catch (err: any) {
+      return { data: [], error: err.message };
+    }
+  };
+
   const updateCosto = async (id: string, updates: Partial<Costo>) => {
     try {
       const { data, error } = await supabase
@@ -81,7 +133,10 @@ export function useCostos() {
     loading,
     error,
     createCosto,
+    createMultipleCostos,
     updateCosto,
+    deleteCosto,
+    getCostosByPrenda,
     refetch: fetchCostos,
   };
 }
