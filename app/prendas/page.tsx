@@ -79,8 +79,6 @@ export default function PrendasPage() {
   const [todasLasCategorias, setTodasLasCategorias] = useState<typeof categorias>([]);
   const [tallasSeleccionadas, setTallasSeleccionadas] = useState<string[]>([]);
   const [tallasAsociadas, setTallasAsociadas] = useState<string[]>([]);
-  const [busquedaTalla, setBusquedaTalla] = useState('');
-  const [mostrarResultadosTalla, setMostrarResultadosTalla] = useState(false);
   
   useEffect(() => {
     const cargarTodasCategorias = async () => {
@@ -450,208 +448,94 @@ export default function PrendasPage() {
               <div className="form-group">
                 <label className="form-label">Tallas Disponibles *</label>
                 
-                {/* Input de búsqueda autocompletada */}
-                <div style={{ position: 'relative', marginBottom: '0.5rem' }}>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={busquedaTalla}
-                    onChange={(e) => {
-                      setBusquedaTalla(e.target.value);
-                      setMostrarResultadosTalla(e.target.value.length > 0);
-                    }}
-                    onFocus={() => {
-                      if (busquedaTalla.length > 0) {
-                        setMostrarResultadosTalla(true);
-                      }
-                    }}
-                    onBlur={() => {
-                      // Delay para permitir el click en los resultados
-                      setTimeout(() => setMostrarResultadosTalla(false), 200);
-                    }}
-                    placeholder="🔍 Buscar talla para agregar..."
-                    style={{ width: '100%' }}
-                  />
-                  
-                  {/* Dropdown de resultados */}
-                  {mostrarResultadosTalla && (
-                    <div style={{
-                      position: 'absolute',
-                      top: '100%',
-                      left: 0,
-                      right: 0,
-                      backgroundColor: 'white',
-                      border: '1px solid #ddd',
-                      borderRadius: '8px',
-                      boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-                      zIndex: 1000,
-                      maxHeight: '200px',
-                      overflowY: 'auto',
-                      marginTop: '4px'
-                    }}>
-                      {tallas
-                        .filter(t => {
-                          if (!t.activo) return false;
-                          if (tallasSeleccionadas.includes(t.id)) return false;
-                          const busqueda = busquedaTalla.toLowerCase();
-                          return t.nombre.toLowerCase().includes(busqueda);
-                        })
-                        .sort((a, b) => {
-                          // Ordenar: primero números, luego letras, ascendente
-                          const aEsNumero = !isNaN(Number(a.nombre));
-                          const bEsNumero = !isNaN(Number(b.nombre));
-                          
-                          if (aEsNumero && !bEsNumero) return -1;
-                          if (!aEsNumero && bEsNumero) return 1;
-                          if (aEsNumero && bEsNumero) {
-                            return Number(a.nombre) - Number(b.nombre);
-                          }
-                          // Ambos son letras, ordenar alfabéticamente
-                          return a.nombre.localeCompare(b.nombre);
-                        })
-                        .slice(0, 5) // Máximo 5 resultados
-                        .map(talla => (
-                          <div
-                            key={talla.id}
-                            onClick={() => {
-                              if (!tallasSeleccionadas.includes(talla.id)) {
-                                setTallasSeleccionadas([...tallasSeleccionadas, talla.id]);
-                              }
-                              setBusquedaTalla('');
-                              setMostrarResultadosTalla(false);
-                            }}
-                            style={{
-                              padding: '0.75rem 1rem',
-                              cursor: 'pointer',
-                              borderBottom: '1px solid #f0f0f0',
-                              transition: 'background-color 0.2s'
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.backgroundColor = '#f8f9fa';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.backgroundColor = 'white';
-                            }}
-                          >
-                            {talla.nombre}
-                          </div>
-                        ))}
-                      {tallas
-                        .filter(t => {
-                          if (!t.activo) return false;
-                          if (tallasSeleccionadas.includes(t.id)) return false;
-                          const busqueda = busquedaTalla.toLowerCase();
-                          return t.nombre.toLowerCase().includes(busqueda);
-                        })
-                        .length === 0 && (
-                        <div style={{ padding: '1rem', textAlign: 'center', color: '#999' }}>
-                          No se encontraron tallas
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-                
-                {/* Tabla de tallas seleccionadas */}
-                {tallasSeleccionadas.length > 0 && (
-                  <div style={{ 
-                    border: '1px solid #ddd', 
-                    borderRadius: '8px', 
-                    overflow: 'hidden',
-                    marginTop: '0.5rem'
-                  }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                      <thead>
-                        <tr style={{ backgroundColor: '#f8f9fa' }}>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #ddd', width: '50px' }}>
-                            <input
-                              type="checkbox"
-                              checked={true}
-                              readOnly
-                              style={{ width: '18px', height: '18px', cursor: 'default' }}
-                            />
-                          </th>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #ddd' }}>
-                            Talla
-                          </th>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #ddd', width: '100px' }}>
-                            Acción
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {tallasSeleccionadas
-                          .map(tallaId => tallas.find(t => t.id === tallaId))
-                          .filter(t => t !== undefined)
+                {/* Tabla de todas las tallas en 4 columnas */}
+                <div style={{ 
+                  border: '1px solid #ddd', 
+                  borderRadius: '8px', 
+                  overflow: 'hidden',
+                  maxHeight: '400px',
+                  overflowY: 'auto'
+                }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <tbody>
+                      {(() => {
+                        // Ordenar tallas: primero números, luego letras, ascendente
+                        const tallasOrdenadas = tallas
+                          .filter(t => t.activo)
                           .sort((a, b) => {
-                            // Ordenar igual que en la búsqueda
-                            const aEsNumero = !isNaN(Number(a!.nombre));
-                            const bEsNumero = !isNaN(Number(b!.nombre));
+                            const aEsNumero = !isNaN(Number(a.nombre));
+                            const bEsNumero = !isNaN(Number(b.nombre));
                             
                             if (aEsNumero && !bEsNumero) return -1;
                             if (!aEsNumero && bEsNumero) return 1;
                             if (aEsNumero && bEsNumero) {
-                              return Number(a!.nombre) - Number(b!.nombre);
+                              return Number(a.nombre) - Number(b.nombre);
                             }
-                            return a!.nombre.localeCompare(b!.nombre);
-                          })
-                          .map(talla => (
-                            <tr key={talla!.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
-                              <td style={{ padding: '0.75rem' }}>
-                                <input
-                                  type="checkbox"
-                                  checked={true}
-                                  onChange={() => {
-                                    setTallasSeleccionadas(tallasSeleccionadas.filter(id => id !== talla!.id));
-                                  }}
-                                  style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                                />
+                            return a.nombre.localeCompare(b.nombre);
+                          });
+                        
+                        // Dividir en filas de 4 columnas
+                        const filas = [];
+                        for (let i = 0; i < tallasOrdenadas.length; i += 4) {
+                          filas.push(tallasOrdenadas.slice(i, i + 4));
+                        }
+                        
+                        return filas.map((fila, filaIndex) => (
+                          <tr key={filaIndex} style={{ borderBottom: filaIndex < filas.length - 1 ? '1px solid #f0f0f0' : 'none' }}>
+                            {fila.map(talla => (
+                              <td 
+                                key={talla.id} 
+                                style={{ 
+                                  padding: '0.75rem',
+                                  width: '25%',
+                                  borderRight: fila.indexOf(talla) < fila.length - 1 ? '1px solid #f0f0f0' : 'none'
+                                }}
+                              >
+                                <label style={{ 
+                                  display: 'flex', 
+                                  alignItems: 'center', 
+                                  gap: '0.5rem',
+                                  cursor: 'pointer',
+                                  userSelect: 'none'
+                                }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={tallasSeleccionadas.includes(talla.id)}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setTallasSeleccionadas([...tallasSeleccionadas, talla.id]);
+                                      } else {
+                                        setTallasSeleccionadas(tallasSeleccionadas.filter(id => id !== talla.id));
+                                      }
+                                    }}
+                                    style={{ 
+                                      width: '18px', 
+                                      height: '18px', 
+                                      cursor: 'pointer' 
+                                    }}
+                                  />
+                                  <span style={{ 
+                                    fontWeight: tallasSeleccionadas.includes(talla.id) ? '600' : '400',
+                                    color: tallasSeleccionadas.includes(talla.id) ? '#007bff' : 'inherit'
+                                  }}>
+                                    {talla.nombre}
+                                  </span>
+                                </label>
                               </td>
-                              <td style={{ padding: '0.75rem', fontWeight: '500' }}>
-                                {talla!.nombre}
-                              </td>
-                              <td style={{ padding: '0.75rem' }}>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setTallasSeleccionadas(tallasSeleccionadas.filter(id => id !== talla!.id));
-                                  }}
-                                  style={{
-                                    background: '#dc3545',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: '4px',
-                                    padding: '0.25rem 0.75rem',
-                                    cursor: 'pointer',
-                                    fontSize: '0.85rem'
-                                  }}
-                                >
-                                  Quitar
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-                
-                {tallasSeleccionadas.length === 0 && (
-                  <div style={{ 
-                    border: '1px dashed #ddd', 
-                    borderRadius: '8px', 
-                    padding: '1rem', 
-                    textAlign: 'center',
-                    color: '#999',
-                    backgroundColor: '#f8f9fa',
-                    marginTop: '0.5rem'
-                  }}>
-                    No hay tallas seleccionadas. Busca y selecciona tallas para agregarlas.
-                  </div>
-                )}
+                            ))}
+                            {/* Rellenar celdas vacías si la última fila no tiene 4 elementos */}
+                            {Array.from({ length: 4 - fila.length }).map((_, index) => (
+                              <td key={`empty-${index}`} style={{ padding: '0.75rem', width: '25%' }}></td>
+                            ))}
+                          </tr>
+                        ));
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
                 
                 <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.5rem', display: 'block' }}>
-                  Busca y selecciona las tallas disponibles para esta prenda. Se crearán registros automáticamente.
+                  Marca las tallas disponibles para esta prenda. Se crearán registros automáticamente.
                 </small>
               </div>
 
