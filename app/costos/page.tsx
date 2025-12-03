@@ -163,7 +163,7 @@ export default function CostosPage() {
         )}
 
         {/* Búsqueda de prenda para filtrar la tabla */}
-        <div style={{ marginBottom: '1.5rem', maxWidth: '800px', margin: '0 auto 1.5rem auto' }}>
+        <div style={{ marginBottom: '1.5rem', maxWidth: '800px', margin: '0 auto 1.5rem auto', position: 'relative' }}>
           <input
             ref={inputBusquedaTablaRef}
             type="text"
@@ -194,10 +194,8 @@ export default function CostosPage() {
             <div style={{
               position: 'absolute',
               top: '100%',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              width: '800px',
-              maxWidth: '100%',
+              left: 0,
+              right: 0,
               backgroundColor: 'white',
               border: '1px solid #ddd',
               borderRadius: '8px',
