@@ -266,12 +266,10 @@ export default function CostosPage() {
                       value={busquedaPrenda}
                       onChange={(e) => {
                         setBusquedaPrenda(e.target.value);
-                        setMostrarResultadosPrenda(e.target.value.length > 0);
+                        setMostrarResultadosPrenda(true);
                       }}
                       onFocus={() => {
-                        if (busquedaPrenda.length > 0) {
-                          setMostrarResultadosPrenda(true);
-                        }
+                        setMostrarResultadosPrenda(true);
                       }}
                       onBlur={() => {
                         setTimeout(() => setMostrarResultadosPrenda(false), 200);
@@ -293,7 +291,7 @@ export default function CostosPage() {
                         borderRadius: '8px',
                         boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
                         zIndex: 1000,
-                        maxHeight: '200px',
+                        maxHeight: '300px',
                         overflowY: 'auto',
                         marginTop: '4px'
                       }}>
@@ -314,13 +312,20 @@ export default function CostosPage() {
                                 padding: '0.75rem 1rem',
                                 cursor: 'pointer',
                                 borderBottom: '1px solid #f0f0f0',
-                                transition: 'background-color 0.2s'
+                                transition: 'background-color 0.2s',
+                                backgroundColor: formData.prenda_id === prenda.id ? '#e7f3ff' : 'white'
                               }}
                               onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = '#f8f9fa';
+                                if (formData.prenda_id !== prenda.id) {
+                                  e.currentTarget.style.backgroundColor = '#f8f9fa';
+                                }
                               }}
                               onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor = 'white';
+                                if (formData.prenda_id !== prenda.id) {
+                                  e.currentTarget.style.backgroundColor = 'white';
+                                } else {
+                                  e.currentTarget.style.backgroundColor = '#e7f3ff';
+                                }
                               }}
                             >
                               {prenda.nombre} {prenda.codigo && `(${prenda.codigo})`}
