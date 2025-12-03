@@ -114,8 +114,42 @@ export default function CostosPage() {
       return;
     }
     
-    // Crear un costo para cada talla seleccionada
-    const costosData = formData.tallas_seleccionadas.map(talla_id => ({
+    // Verificar qué costos ya existen para esta prenda
+    const { data: costosExistentes } = await getCostosByPrenda(formData.prenda_id);
+    const tallasConCosto = new Set(
+      (costosExistentes || []).map(c => c.talla_id)
+    );
+    
+    // Filtrar solo las tallas que NO tienen costo
+    const tallasSinCosto = formData.tallas_seleccionadas.filter(
+      talla_id => !tallasConCosto.has(talla_id)
+    );
+    
+    // Si todas las tallas ya tienen costo, mostrar mensaje y salir
+    if (tallasSinCosto.length === 0) {
+      const tallasExistentes = formData.tallas_seleccionadas
+        .map(id => tallas.find(t => t.id === id)?.nombre)
+        .filter(Boolean)
+        .join(', ');
+      alert(`Todas las tallas seleccionadas (${tallasExistentes}) ya tienen costo registrado para esta prenda.`);
+      return;
+    }
+    
+    // Si algunas tallas ya tienen costo, informar al usuario
+    if (tallasSinCosto.length < formData.tallas_seleccionadas.length) {
+      const tallasYaExistentes = formData.tallas_seleccionadas
+        .filter(id => tallasConCosto.has(id))
+        .map(id => tallas.find(t => t.id === id)?.nombre)
+        .filter(Boolean)
+        .join(', ');
+      const mensaje = `Las siguientes tallas ya tienen costo: ${tallasYaExistentes}. Se crearán costos solo para las tallas restantes.`;
+      if (!confirm(mensaje)) {
+        return;
+      }
+    }
+    
+    // Crear un costo solo para las tallas que no tienen costo
+    const costosData = tallasSinCosto.map(talla_id => ({
       prenda_id: formData.prenda_id,
       talla_id: talla_id,
       precio_compra: parseFloat(formData.precioCompra) || 0,
@@ -130,36 +164,16 @@ export default function CostosPage() {
     const { data, error: errorCrear } = await createMultipleCostos(costosData);
     
     if (errorCrear) {
-      // Si hay un error, podría ser porque algunos costos ya existen (UNIQUE constraint)
-      // Intentar crear uno por uno para identificar cuáles fallan
-      let exitosos = 0;
-      let fallidos = 0;
-      const erroresDetalle: string[] = [];
-      
-      for (const costoData of costosData) {
-        const { error: errorIndividual } = await createCosto(costoData);
-        if (errorIndividual) {
-          fallidos++;
-          // Si el error es de constraint único, significa que ya existe
-          if (errorIndividual.includes('duplicate') || errorIndividual.includes('unique')) {
-            erroresDetalle.push(`La combinación prenda-talla ya existe`);
-          } else {
-            erroresDetalle.push(errorIndividual);
-          }
-        } else {
-          exitosos++;
-        }
-      }
-      
-      if (exitosos > 0) {
-        alert(`${exitosos} costo(s) creado(s) exitosamente. ${fallidos > 0 ? `${fallidos} fallaron (posiblemente ya existen).` : ''}`);
-      } else {
-        alert(`Error al crear costos: ${erroresDetalle[0] || errorCrear}`);
-        return;
-      }
-    } else {
-      alert(`${costosData.length} costo(s) creado(s) exitosamente`);
+      alert(`Error al crear costos: ${errorCrear}`);
+      return;
     }
+    
+    const tallasCreadas = tallasSinCosto
+      .map(id => tallas.find(t => t.id === id)?.nombre)
+      .filter(Boolean)
+      .join(', ');
+    
+    alert(`${costosData.length} costo(s) creado(s) exitosamente para las tallas: ${tallasCreadas}`);
     
     setFormData({ prenda_id: '', tallas_seleccionadas: [], precioCompra: '', precioVenta: '', stock: '', stockMinimo: '' });
     setBusquedaPrenda('');
