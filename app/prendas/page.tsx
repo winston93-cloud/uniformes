@@ -447,46 +447,103 @@ export default function PrendasPage() {
 
               <div className="form-group">
                 <label className="form-label">Tallas Disponibles *</label>
-                <div style={{ 
-                  border: '1px solid #ddd', 
-                  borderRadius: '8px', 
-                  padding: '1rem', 
-                  maxHeight: '200px', 
-                  overflowY: 'auto',
-                  backgroundColor: 'white'
-                }}>
-                  {tallas.filter(t => t.activo).sort((a, b) => a.orden - b.orden).map(talla => (
-                    <label 
-                      key={talla.id} 
-                      style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: '0.5rem', 
-                        padding: '0.5rem',
-                        cursor: 'pointer',
-                        borderRadius: '4px',
-                        backgroundColor: tallasSeleccionadas.includes(talla.id) ? '#e7f3ff' : 'transparent'
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={tallasSeleccionadas.includes(talla.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setTallasSeleccionadas([...tallasSeleccionadas, talla.id]);
-                          } else {
-                            setTallasSeleccionadas(tallasSeleccionadas.filter(id => id !== talla.id));
-                          }
-                        }}
-                        style={{ width: '20px', height: '20px', cursor: 'pointer' }}
-                      />
-                      <span style={{ fontWeight: tallasSeleccionadas.includes(talla.id) ? '600' : '400' }}>
-                        {talla.nombre}
-                      </span>
-                    </label>
-                  ))}
+                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                  <select
+                    className="form-select"
+                    value=""
+                    onChange={(e) => {
+                      if (e.target.value && !tallasSeleccionadas.includes(e.target.value)) {
+                        setTallasSeleccionadas([...tallasSeleccionadas, e.target.value]);
+                        e.target.value = '';
+                      }
+                    }}
+                    style={{ flex: 1 }}
+                  >
+                    <option value="">Seleccionar talla para agregar...</option>
+                    {tallas
+                      .filter(t => t.activo && !tallasSeleccionadas.includes(t.id))
+                      .sort((a, b) => a.orden - b.orden)
+                      .map(talla => (
+                        <option key={talla.id} value={talla.id}>
+                          {talla.nombre}
+                        </option>
+                      ))}
+                  </select>
                 </div>
-                <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
+                
+                {tallasSeleccionadas.length > 0 && (
+                  <div style={{ 
+                    border: '1px solid #ddd', 
+                    borderRadius: '8px', 
+                    padding: '0.75rem', 
+                    backgroundColor: '#f8f9fa',
+                    minHeight: '50px'
+                  }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      {tallasSeleccionadas.map(tallaId => {
+                        const talla = tallas.find(t => t.id === tallaId);
+                        if (!talla) return null;
+                        return (
+                          <span
+                            key={tallaId}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.5rem',
+                              padding: '0.5rem 0.75rem',
+                              backgroundColor: '#007bff',
+                              color: 'white',
+                              borderRadius: '20px',
+                              fontSize: '0.9rem',
+                              fontWeight: '500'
+                            }}
+                          >
+                            {talla.nombre}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setTallasSeleccionadas(tallasSeleccionadas.filter(id => id !== tallaId));
+                              }}
+                              style={{
+                                background: 'rgba(255, 255, 255, 0.3)',
+                                border: 'none',
+                                borderRadius: '50%',
+                                width: '20px',
+                                height: '20px',
+                                color: 'white',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '14px',
+                                fontWeight: 'bold',
+                                padding: 0
+                              }}
+                              title="Eliminar talla"
+                            >
+                              ×
+                            </button>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                
+                {tallasSeleccionadas.length === 0 && (
+                  <div style={{ 
+                    border: '1px dashed #ddd', 
+                    borderRadius: '8px', 
+                    padding: '1rem', 
+                    textAlign: 'center',
+                    color: '#999',
+                    backgroundColor: '#f8f9fa'
+                  }}>
+                    No hay tallas seleccionadas. Selecciona una talla del menú desplegable para agregarla.
+                  </div>
+                )}
+                
+                <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.5rem', display: 'block' }}>
                   Selecciona las tallas disponibles para esta prenda. Se crearán registros automáticamente.
                 </small>
               </div>
