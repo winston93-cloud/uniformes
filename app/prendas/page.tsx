@@ -79,6 +79,8 @@ export default function PrendasPage() {
   const [todasLasCategorias, setTodasLasCategorias] = useState<typeof categorias>([]);
   const [tallasSeleccionadas, setTallasSeleccionadas] = useState<string[]>([]);
   const [tallasAsociadas, setTallasAsociadas] = useState<string[]>([]);
+  const [busquedaTalla, setBusquedaTalla] = useState('');
+  const [mostrarResultadosTalla, setMostrarResultadosTalla] = useState(false);
   
   useEffect(() => {
     const cargarTodasCategorias = async () => {
@@ -447,86 +449,190 @@ export default function PrendasPage() {
 
               <div className="form-group">
                 <label className="form-label">Tallas Disponibles *</label>
-                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                  <select
-                    className="form-select"
-                    value=""
+                
+                {/* Input de búsqueda autocompletada */}
+                <div style={{ position: 'relative', marginBottom: '0.5rem' }}>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={busquedaTalla}
                     onChange={(e) => {
-                      if (e.target.value && !tallasSeleccionadas.includes(e.target.value)) {
-                        setTallasSeleccionadas([...tallasSeleccionadas, e.target.value]);
-                        e.target.value = '';
+                      setBusquedaTalla(e.target.value);
+                      setMostrarResultadosTalla(e.target.value.length > 0);
+                    }}
+                    onFocus={() => {
+                      if (busquedaTalla.length > 0) {
+                        setMostrarResultadosTalla(true);
                       }
                     }}
-                    style={{ flex: 1 }}
-                  >
-                    <option value="">Seleccionar talla para agregar...</option>
-                    {tallas
-                      .filter(t => t.activo && !tallasSeleccionadas.includes(t.id))
-                      .sort((a, b) => a.orden - b.orden)
-                      .map(talla => (
-                        <option key={talla.id} value={talla.id}>
-                          {talla.nombre}
-                        </option>
-                      ))}
-                  </select>
+                    onBlur={() => {
+                      // Delay para permitir el click en los resultados
+                      setTimeout(() => setMostrarResultadosTalla(false), 200);
+                    }}
+                    placeholder="🔍 Buscar talla para agregar..."
+                    style={{ width: '100%' }}
+                  />
+                  
+                  {/* Dropdown de resultados */}
+                  {mostrarResultadosTalla && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: 0,
+                      right: 0,
+                      backgroundColor: 'white',
+                      border: '1px solid #ddd',
+                      borderRadius: '8px',
+                      boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                      zIndex: 1000,
+                      maxHeight: '200px',
+                      overflowY: 'auto',
+                      marginTop: '4px'
+                    }}>
+                      {tallas
+                        .filter(t => {
+                          if (!t.activo) return false;
+                          if (tallasSeleccionadas.includes(t.id)) return false;
+                          const busqueda = busquedaTalla.toLowerCase();
+                          return t.nombre.toLowerCase().includes(busqueda);
+                        })
+                        .sort((a, b) => {
+                          // Ordenar: primero números, luego letras, ascendente
+                          const aEsNumero = !isNaN(Number(a.nombre));
+                          const bEsNumero = !isNaN(Number(b.nombre));
+                          
+                          if (aEsNumero && !bEsNumero) return -1;
+                          if (!aEsNumero && bEsNumero) return 1;
+                          if (aEsNumero && bEsNumero) {
+                            return Number(a.nombre) - Number(b.nombre);
+                          }
+                          // Ambos son letras, ordenar alfabéticamente
+                          return a.nombre.localeCompare(b.nombre);
+                        })
+                        .slice(0, 5) // Máximo 5 resultados
+                        .map(talla => (
+                          <div
+                            key={talla.id}
+                            onClick={() => {
+                              if (!tallasSeleccionadas.includes(talla.id)) {
+                                setTallasSeleccionadas([...tallasSeleccionadas, talla.id]);
+                              }
+                              setBusquedaTalla('');
+                              setMostrarResultadosTalla(false);
+                            }}
+                            style={{
+                              padding: '0.75rem 1rem',
+                              cursor: 'pointer',
+                              borderBottom: '1px solid #f0f0f0',
+                              transition: 'background-color 0.2s'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = '#f8f9fa';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = 'white';
+                            }}
+                          >
+                            {talla.nombre}
+                          </div>
+                        ))}
+                      {tallas
+                        .filter(t => {
+                          if (!t.activo) return false;
+                          if (tallasSeleccionadas.includes(t.id)) return false;
+                          const busqueda = busquedaTalla.toLowerCase();
+                          return t.nombre.toLowerCase().includes(busqueda);
+                        })
+                        .length === 0 && (
+                        <div style={{ padding: '1rem', textAlign: 'center', color: '#999' }}>
+                          No se encontraron tallas
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
                 
+                {/* Tabla de tallas seleccionadas */}
                 {tallasSeleccionadas.length > 0 && (
                   <div style={{ 
                     border: '1px solid #ddd', 
                     borderRadius: '8px', 
-                    padding: '0.75rem', 
-                    backgroundColor: '#f8f9fa',
-                    minHeight: '50px'
+                    overflow: 'hidden',
+                    marginTop: '0.5rem'
                   }}>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                      {tallasSeleccionadas.map(tallaId => {
-                        const talla = tallas.find(t => t.id === tallaId);
-                        if (!talla) return null;
-                        return (
-                          <span
-                            key={tallaId}
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '0.5rem',
-                              padding: '0.5rem 0.75rem',
-                              backgroundColor: '#007bff',
-                              color: 'white',
-                              borderRadius: '20px',
-                              fontSize: '0.9rem',
-                              fontWeight: '500'
-                            }}
-                          >
-                            {talla.nombre}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setTallasSeleccionadas(tallasSeleccionadas.filter(id => id !== tallaId));
-                              }}
-                              style={{
-                                background: 'rgba(255, 255, 255, 0.3)',
-                                border: 'none',
-                                borderRadius: '50%',
-                                width: '20px',
-                                height: '20px',
-                                color: 'white',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontSize: '14px',
-                                fontWeight: 'bold',
-                                padding: 0
-                              }}
-                              title="Eliminar talla"
-                            >
-                              ×
-                            </button>
-                          </span>
-                        );
-                      })}
-                    </div>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ backgroundColor: '#f8f9fa' }}>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #ddd', width: '50px' }}>
+                            <input
+                              type="checkbox"
+                              checked={true}
+                              readOnly
+                              style={{ width: '18px', height: '18px', cursor: 'default' }}
+                            />
+                          </th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #ddd' }}>
+                            Talla
+                          </th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #ddd', width: '100px' }}>
+                            Acción
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {tallasSeleccionadas
+                          .map(tallaId => tallas.find(t => t.id === tallaId))
+                          .filter(t => t !== undefined)
+                          .sort((a, b) => {
+                            // Ordenar igual que en la búsqueda
+                            const aEsNumero = !isNaN(Number(a!.nombre));
+                            const bEsNumero = !isNaN(Number(b!.nombre));
+                            
+                            if (aEsNumero && !bEsNumero) return -1;
+                            if (!aEsNumero && bEsNumero) return 1;
+                            if (aEsNumero && bEsNumero) {
+                              return Number(a!.nombre) - Number(b!.nombre);
+                            }
+                            return a!.nombre.localeCompare(b!.nombre);
+                          })
+                          .map(talla => (
+                            <tr key={talla!.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                              <td style={{ padding: '0.75rem' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={true}
+                                  onChange={() => {
+                                    setTallasSeleccionadas(tallasSeleccionadas.filter(id => id !== talla!.id));
+                                  }}
+                                  style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                                />
+                              </td>
+                              <td style={{ padding: '0.75rem', fontWeight: '500' }}>
+                                {talla!.nombre}
+                              </td>
+                              <td style={{ padding: '0.75rem' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setTallasSeleccionadas(tallasSeleccionadas.filter(id => id !== talla!.id));
+                                  }}
+                                  style={{
+                                    background: '#dc3545',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    padding: '0.25rem 0.75rem',
+                                    cursor: 'pointer',
+                                    fontSize: '0.85rem'
+                                  }}
+                                >
+                                  Quitar
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
                   </div>
                 )}
                 
@@ -537,14 +643,15 @@ export default function PrendasPage() {
                     padding: '1rem', 
                     textAlign: 'center',
                     color: '#999',
-                    backgroundColor: '#f8f9fa'
+                    backgroundColor: '#f8f9fa',
+                    marginTop: '0.5rem'
                   }}>
-                    No hay tallas seleccionadas. Selecciona una talla del menú desplegable para agregarla.
+                    No hay tallas seleccionadas. Busca y selecciona tallas para agregarlas.
                   </div>
                 )}
                 
                 <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.5rem', display: 'block' }}>
-                  Selecciona las tallas disponibles para esta prenda. Se crearán registros automáticamente.
+                  Busca y selecciona las tallas disponibles para esta prenda. Se crearán registros automáticamente.
                 </small>
               </div>
 
