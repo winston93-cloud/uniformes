@@ -548,23 +548,38 @@ export default function CostosPage() {
                   
                   {formData.tallas_seleccionadas.length > 0 && (
                     <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.5rem', display: 'block' }}>
-                      {formData.tallas_seleccionadas.length} talla{formData.tallas_seleccionadas.length !== 1 ? 's' : ''} seleccionada{formData.tallas_seleccionadas.length !== 1 ? 's' : ''}. Se crearán {formData.tallas_seleccionadas.length} costo{formData.tallas_seleccionadas.length !== 1 ? 's' : ''} con el mismo precio.
+                      {formData.tallas_seleccionadas.length} talla{formData.tallas_seleccionadas.length !== 1 ? 's' : ''} seleccionada{formData.tallas_seleccionadas.length !== 1 ? 's' : ''}. El precio de venta que ingreses se aplicará a todas las tallas seleccionadas.
                     </small>
                   )}
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label">Precio de Venta *</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    className="form-input"
-                    value={formData.precioVenta}
-                    onChange={(e) => setFormData({ ...formData, precioVenta: e.target.value })}
-                    placeholder="$0.00"
-                    required
-                  />
-                </div>
+                {formData.tallas_seleccionadas.length > 0 && (
+                  <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                    <label className="form-label">
+                      Precio de Venta * 
+                      {formData.tallas_seleccionadas.length > 1 && (
+                        <span style={{ fontSize: '0.85rem', fontWeight: 'normal', color: '#666', marginLeft: '0.5rem' }}>
+                          (Se aplicará a las {formData.tallas_seleccionadas.length} tallas seleccionadas)
+                        </span>
+                      )}
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="form-input"
+                      value={formData.precioVenta}
+                      onChange={(e) => setFormData({ ...formData, precioVenta: e.target.value })}
+                      placeholder="$0.00"
+                      required
+                      style={{ maxWidth: '300px' }}
+                    />
+                    {formData.tallas_seleccionadas.length > 1 && (
+                      <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.5rem', display: 'block' }}>
+                        💡 Se crearán {formData.tallas_seleccionadas.length} costos con el precio de ${formData.precioVenta || '0.00'} para cada talla seleccionada.
+                      </small>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="btn-group">
