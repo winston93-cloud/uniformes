@@ -34,7 +34,6 @@ export interface Costo {
   talla_id: string;
   prenda_id: string;
   precio_venta: number;
-  precio_compra: number;
   stock_inicial: number;
   stock: number;
   activo: boolean;

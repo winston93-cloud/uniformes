@@ -53,7 +53,6 @@ CREATE TABLE IF NOT EXISTS costos (
   talla_id UUID REFERENCES tallas(id) ON DELETE CASCADE,
   prenda_id UUID REFERENCES prendas(id) ON DELETE CASCADE,
   precio_venta DECIMAL(10, 2) NOT NULL DEFAULT 0,
-  precio_compra DECIMAL(10, 2) DEFAULT 0,
   stock_inicial INTEGER DEFAULT 0,
   stock INTEGER DEFAULT 0 CHECK (stock >= 0), -- No permitir stock negativo
   activo BOOLEAN DEFAULT true,

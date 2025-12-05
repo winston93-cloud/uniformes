@@ -78,17 +78,17 @@ BEGIN
   
   -- Insertar costos para Playera
   IF playera_id IS NOT NULL THEN
-    INSERT INTO costos (prenda_id, talla_id, stock_inicial, stock, precio_venta, precio_compra, activo) VALUES
-      (playera_id, talla_6_id, 6, 6, 0, 0, true),
-      (playera_id, talla_8_id, 24, 24, 0, 0, true),
-      (playera_id, talla_10_id, 6, 6, 0, 0, true),
-      (playera_id, talla_12_id, 14, 14, 0, 0, true),
-      (playera_id, talla_14_id, 18, 18, 0, 0, true),
-      (playera_id, talla_16_id, 9, 9, 0, 0, true),
-      (playera_id, talla_ch_id, 6, 6, 0, 0, true),
-      (playera_id, talla_m_id, 12, 12, 0, 0, true),
-      (playera_id, talla_g_id, 15, 15, 0, 0, true),
-      (playera_id, talla_xg_id, 5, 5, 0, 0, true)
+    INSERT INTO costos (prenda_id, talla_id, stock_inicial, stock, precio_venta, activo) VALUES
+      (playera_id, talla_6_id, 6, 6, 0, true),
+      (playera_id, talla_8_id, 24, 24, 0, true),
+      (playera_id, talla_10_id, 6, 6, 0, true),
+      (playera_id, talla_12_id, 14, 14, 0, true),
+      (playera_id, talla_14_id, 18, 18, 0, true),
+      (playera_id, talla_16_id, 9, 9, 0, true),
+      (playera_id, talla_ch_id, 6, 6, 0, true),
+      (playera_id, talla_m_id, 12, 12, 0, true),
+      (playera_id, talla_g_id, 15, 15, 0, true),
+      (playera_id, talla_xg_id, 5, 5, 0, true)
     ON CONFLICT (prenda_id, talla_id) DO UPDATE SET
       stock = EXCLUDED.stock,
       stock_inicial = EXCLUDED.stock_inicial;
@@ -96,17 +96,17 @@ BEGIN
   
   -- Insertar costos para Short Deportivo
   IF short_id IS NOT NULL THEN
-    INSERT INTO costos (prenda_id, talla_id, stock_inicial, stock, precio_venta, precio_compra, activo) VALUES
-      (short_id, talla_6_id, 28, 28, 0, 0, true),
-      (short_id, talla_8_id, 5, 5, 0, 0, true),
-      (short_id, talla_10_id, 11, 11, 0, 0, true),
-      (short_id, talla_12_id, 13, 13, 0, 0, true),
-      (short_id, talla_14_id, 6, 6, 0, 0, true),
-      (short_id, talla_16_id, 12, 12, 0, 0, true),
-      (short_id, talla_ch_id, 4, 4, 0, 0, true),
-      (short_id, talla_m_id, 7, 7, 0, 0, true),
-      (short_id, talla_g_id, 4, 4, 0, 0, true),
-      (short_id, talla_xg_id, 0, 0, 0, 0, true)
+    INSERT INTO costos (prenda_id, talla_id, stock_inicial, stock, precio_venta, activo) VALUES
+      (short_id, talla_6_id, 28, 28, 0, true),
+      (short_id, talla_8_id, 5, 5, 0, true),
+      (short_id, talla_10_id, 11, 11, 0, true),
+      (short_id, talla_12_id, 13, 13, 0, true),
+      (short_id, talla_14_id, 6, 6, 0, true),
+      (short_id, talla_16_id, 12, 12, 0, true),
+      (short_id, talla_ch_id, 4, 4, 0, true),
+      (short_id, talla_m_id, 7, 7, 0, true),
+      (short_id, talla_g_id, 4, 4, 0, true),
+      (short_id, talla_xg_id, 0, 0, 0, true)
     ON CONFLICT (prenda_id, talla_id) DO UPDATE SET
       stock = EXCLUDED.stock,
       stock_inicial = EXCLUDED.stock_inicial;

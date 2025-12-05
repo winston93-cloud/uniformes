@@ -20,7 +20,6 @@ export default function CostosPage() {
   const [costoEditando, setCostoEditando] = useState<Costo | null>(null);
   const [mostrarModalEdicion, setMostrarModalEdicion] = useState(false);
   const [formDataEdicion, setFormDataEdicion] = useState({
-    precioCompra: '',
     precioVenta: '',
     stock: '',
   });
@@ -29,7 +28,6 @@ export default function CostosPage() {
   const [formData, setFormData] = useState({
     prenda_id: '',
     tallas_seleccionadas: [] as string[],
-    precioCompra: '',
     precioVenta: '',
     stock: '',
     stocksPorTalla: {} as Record<string, string>, // Stock inicial por talla
@@ -167,7 +165,6 @@ export default function CostosPage() {
       return {
         prenda_id: formData.prenda_id,
         talla_id: talla_id,
-        precio_compra: parseFloat(formData.precioCompra) || 0,
         precio_venta: parseFloat(formData.precioVenta) || 0,
         stock_inicial: stockValue,
         stock: stockValue,
@@ -190,7 +187,7 @@ export default function CostosPage() {
     
     alert(`${costosData.length} costo(s) creado(s) exitosamente para las tallas: ${tallasCreadas}`);
     
-    setFormData({ prenda_id: '', tallas_seleccionadas: [], precioCompra: '', precioVenta: '', stock: '', stocksPorTalla: {} });
+    setFormData({ prenda_id: '', tallas_seleccionadas: [], precioVenta: '', stock: '', stocksPorTalla: {} });
     setBusquedaPrenda('');
     setTallasDisponibles([]);
     setMostrarFormulario(false);
@@ -199,7 +196,6 @@ export default function CostosPage() {
   const handleEditarCosto = (costo: Costo) => {
     setCostoEditando(costo);
     setFormDataEdicion({
-      precioCompra: costo.precio_compra.toString(),
       precioVenta: costo.precio_venta.toString(),
       stock: costo.stock.toString(),
     });
@@ -213,7 +209,6 @@ export default function CostosPage() {
     setBotonEstado('normal');
     
     const { error } = await updateCosto(costoEditando.id, {
-      precio_compra: parseFloat(formDataEdicion.precioCompra) || 0,
       precio_venta: parseFloat(formDataEdicion.precioVenta) || 0,
       stock: parseInt(formDataEdicion.stock) || 0,
     });
@@ -354,9 +349,9 @@ export default function CostosPage() {
           <div className="form-container">
             <h2 className="form-title">Nuevo Costo de Prenda</h2>
             
-            <form onSubmit={handleSubmit}>
+              <form onSubmit={handleSubmit}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div className="form-group">
+                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                   <label className="form-label">Prenda *</label>
                   <div style={{ position: 'relative' }}>
                     <input
@@ -577,19 +572,6 @@ export default function CostosPage() {
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Precio de Compra *</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    className="form-input"
-                    value={formData.precioCompra}
-                    onChange={(e) => setFormData({ ...formData, precioCompra: e.target.value })}
-                    placeholder="$0.00"
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
                   <label className="form-label">Precio de Venta *</label>
                   <input
                     type="number"
@@ -711,7 +693,6 @@ export default function CostosPage() {
               <tr>
                 <th>Prenda</th>
                 <th>Talla</th>
-                <th>Precio Compra</th>
                 <th>Precio Venta</th>
                 <th>Stock</th>
                 <th>Acciones</th>
@@ -720,7 +701,7 @@ export default function CostosPage() {
             <tbody>
               {costosFiltrados.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                  <td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
                     {busquedaTabla ? 'No se encontraron costos con ese criterio.' : 'No hay costos registrados. Crea tu primer costo.'}
                   </td>
                 </tr>
@@ -729,7 +710,6 @@ export default function CostosPage() {
                   <tr key={costo.id}>
                     <td style={{ fontWeight: '600' }}>{costo.prenda?.nombre || '-'}</td>
                     <td><span className="badge badge-info">{costo.talla?.nombre || '-'}</span></td>
-                    <td>${costo.precio_compra.toFixed(2)}</td>
                     <td style={{ fontWeight: '600', color: '#10b981' }}>${costo.precio_venta.toFixed(2)}</td>
                     <td style={{ fontWeight: '600' }}>{costo.stock}</td>
                     <td>
@@ -775,19 +755,6 @@ export default function CostosPage() {
               
               <form onSubmit={handleGuardarEdicion}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div className="form-group">
-                    <label className="form-label">Precio de Compra *</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      className="form-input"
-                      value={formDataEdicion.precioCompra}
-                      onChange={(e) => setFormDataEdicion({ ...formDataEdicion, precioCompra: e.target.value })}
-                      placeholder="$0.00"
-                      required
-                    />
-                  </div>
-
                   <div className="form-group">
                     <label className="form-label">Precio de Venta *</label>
                     <input
