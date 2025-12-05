@@ -56,7 +56,6 @@ CREATE TABLE IF NOT EXISTS costos (
   precio_compra DECIMAL(10, 2) DEFAULT 0,
   stock_inicial INTEGER DEFAULT 0,
   stock INTEGER DEFAULT 0 CHECK (stock >= 0), -- No permitir stock negativo
-  stock_minimo INTEGER DEFAULT 0,
   activo BOOLEAN DEFAULT true,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

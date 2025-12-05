@@ -150,8 +150,8 @@ export function useReportes() {
 
       if (error) throw error;
 
-      // Filtrar en JavaScript donde stock <= stock_minimo
-      const stockBajo = (data || []).filter((costo: any) => costo.stock <= costo.stock_minimo);
+      // Filtrar en JavaScript donde stock <= 0 (sin stock)
+      const stockBajo = (data || []).filter((costo: any) => costo.stock <= 0);
 
       return { data: stockBajo, error: null };
     } catch (err: any) {

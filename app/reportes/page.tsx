@@ -323,7 +323,6 @@ export default function ReportesPage() {
                     <th>Prenda</th>
                     <th>Talla</th>
                     <th>Stock Actual</th>
-                    <th>Stock Mínimo</th>
                     <th>Estado</th>
                   </tr>
                 </thead>
@@ -333,7 +332,6 @@ export default function ReportesPage() {
                       <td style={{ fontWeight: '600' }}>{item.prenda?.nombre || '-'}</td>
                       <td><span className="badge badge-info">{item.talla?.nombre || '-'}</span></td>
                       <td style={{ fontWeight: '600' }}>{item.stock}</td>
-                      <td>{item.stock_minimo}</td>
                       <td>
                         <span className="badge badge-danger">⚠️ Stock Bajo</span>
                       </td>

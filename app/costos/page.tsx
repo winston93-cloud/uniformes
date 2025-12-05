@@ -12,9 +12,19 @@ export const dynamic = 'force-dynamic';
 
 export default function CostosPage() {
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
-  const { costos, loading: costosLoading, error, createCosto, createMultipleCostos, getCostosByPrenda } = useCostos();
+  const { costos, loading: costosLoading, error, createCosto, createMultipleCostos, getCostosByPrenda, updateCosto } = useCostos();
   const { prendas } = usePrendas();
   const { tallas } = useTallas();
+  
+  // Estado para edición de costo
+  const [costoEditando, setCostoEditando] = useState<Costo | null>(null);
+  const [mostrarModalEdicion, setMostrarModalEdicion] = useState(false);
+  const [formDataEdicion, setFormDataEdicion] = useState({
+    precioCompra: '',
+    precioVenta: '',
+    stock: '',
+  });
+  const [botonEstado, setBotonEstado] = useState<'normal' | 'exito' | 'error'>('normal');
   
   const [formData, setFormData] = useState({
     prenda_id: '',
@@ -22,7 +32,7 @@ export default function CostosPage() {
     precioCompra: '',
     precioVenta: '',
     stock: '',
-    stockMinimo: '',
+    stocksPorTalla: {} as Record<string, string>, // Stock inicial por talla
   });
   
   const [busquedaPrenda, setBusquedaPrenda] = useState('');
@@ -149,16 +159,21 @@ export default function CostosPage() {
     }
     
     // Crear un costo solo para las tallas que no tienen costo
-    const costosData = tallasSinCosto.map(talla_id => ({
-      prenda_id: formData.prenda_id,
-      talla_id: talla_id,
-      precio_compra: parseFloat(formData.precioCompra) || 0,
-      precio_venta: parseFloat(formData.precioVenta) || 0,
-      stock_inicial: parseInt(formData.stock) || 0,
-      stock: parseInt(formData.stock) || 0,
-      stock_minimo: parseInt(formData.stockMinimo) || 0,
-      activo: true,
-    }));
+    const costosData = tallasSinCosto.map(talla_id => {
+      // Usar stock específico de la talla si existe, sino usar el stock general
+      const stockTalla = formData.stocksPorTalla[talla_id] || formData.stock;
+      const stockValue = parseInt(stockTalla) || 0;
+      
+      return {
+        prenda_id: formData.prenda_id,
+        talla_id: talla_id,
+        precio_compra: parseFloat(formData.precioCompra) || 0,
+        precio_venta: parseFloat(formData.precioVenta) || 0,
+        stock_inicial: stockValue,
+        stock: stockValue,
+        activo: true,
+      };
+    });
 
     // Crear todos los costos de una vez usando createMultipleCostos
     const { data, error: errorCrear } = await createMultipleCostos(costosData);
@@ -175,10 +190,46 @@ export default function CostosPage() {
     
     alert(`${costosData.length} costo(s) creado(s) exitosamente para las tallas: ${tallasCreadas}`);
     
-    setFormData({ prenda_id: '', tallas_seleccionadas: [], precioCompra: '', precioVenta: '', stock: '', stockMinimo: '' });
+    setFormData({ prenda_id: '', tallas_seleccionadas: [], precioCompra: '', precioVenta: '', stock: '', stocksPorTalla: {} });
     setBusquedaPrenda('');
     setTallasDisponibles([]);
     setMostrarFormulario(false);
+  };
+
+  const handleEditarCosto = (costo: Costo) => {
+    setCostoEditando(costo);
+    setFormDataEdicion({
+      precioCompra: costo.precio_compra.toString(),
+      precioVenta: costo.precio_venta.toString(),
+      stock: costo.stock.toString(),
+    });
+    setMostrarModalEdicion(true);
+  };
+
+  const handleGuardarEdicion = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!costoEditando) return;
+
+    setBotonEstado('normal');
+    
+    const { error } = await updateCosto(costoEditando.id, {
+      precio_compra: parseFloat(formDataEdicion.precioCompra) || 0,
+      precio_venta: parseFloat(formDataEdicion.precioVenta) || 0,
+      stock: parseInt(formDataEdicion.stock) || 0,
+    });
+
+    if (error) {
+      setBotonEstado('error');
+      setTimeout(() => setBotonEstado('normal'), 2000);
+      return;
+    }
+
+    setBotonEstado('exito');
+    setTimeout(() => {
+      setMostrarModalEdicion(false);
+      setCostoEditando(null);
+      setBotonEstado('normal');
+    }, 1500);
   };
 
   if (costosLoading) {
@@ -353,7 +404,7 @@ export default function CostosPage() {
                             <div
                               key={prenda.id}
                               onClick={() => {
-                                setFormData({ ...formData, prenda_id: prenda.id, tallas_seleccionadas: [] });
+                                setFormData({ ...formData, prenda_id: prenda.id, tallas_seleccionadas: [], stocksPorTalla: {} });
                                 setBusquedaPrenda(prenda.nombre);
                                 setMostrarResultadosPrenda(false);
                               }}
@@ -475,12 +526,19 @@ export default function CostosPage() {
                                           if (e.target.checked) {
                                             setFormData({ 
                                               ...formData, 
-                                              tallas_seleccionadas: [...formData.tallas_seleccionadas, talla.id] 
+                                              tallas_seleccionadas: [...formData.tallas_seleccionadas, talla.id],
+                                              stocksPorTalla: {
+                                                ...formData.stocksPorTalla,
+                                                [talla.id]: formData.stock || '0'
+                                              }
                                             });
                                           } else {
+                                            const newStocksPorTalla = { ...formData.stocksPorTalla };
+                                            delete newStocksPorTalla[talla.id];
                                             setFormData({ 
                                               ...formData, 
-                                              tallas_seleccionadas: formData.tallas_seleccionadas.filter(id => id !== talla.id) 
+                                              tallas_seleccionadas: formData.tallas_seleccionadas.filter(id => id !== talla.id),
+                                              stocksPorTalla: newStocksPorTalla
                                             });
                                           }
                                         }}
@@ -513,7 +571,7 @@ export default function CostosPage() {
                   
                   {formData.tallas_seleccionadas.length > 0 && (
                     <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.5rem', display: 'block' }}>
-                      {formData.tallas_seleccionadas.length} talla{formData.tallas_seleccionadas.length !== 1 ? 's' : ''} seleccionada{formData.tallas_seleccionadas.length !== 1 ? 's' : ''}. Se crearán {formData.tallas_seleccionadas.length} costo{formData.tallas_seleccionadas.length !== 1 ? 's' : ''} con el mismo precio y stock.
+                      {formData.tallas_seleccionadas.length} talla{formData.tallas_seleccionadas.length !== 1 ? 's' : ''} seleccionada{formData.tallas_seleccionadas.length !== 1 ? 's' : ''}. Se crearán {formData.tallas_seleccionadas.length} costo{formData.tallas_seleccionadas.length !== 1 ? 's' : ''} con el mismo precio{formData.tallas_seleccionadas.length > 1 ? ' (puedes especificar stock individual por talla)' : ''}.
                     </small>
                   )}
                 </div>
@@ -544,29 +602,91 @@ export default function CostosPage() {
                   />
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label">Stock Inicial *</label>
-                  <input
-                    type="number"
-                    className="form-input"
-                    value={formData.stock}
-                    onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-                    placeholder="0"
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Stock Mínimo *</label>
-                  <input
-                    type="number"
-                    className="form-input"
-                    value={formData.stockMinimo}
-                    onChange={(e) => setFormData({ ...formData, stockMinimo: e.target.value })}
-                    placeholder="0"
-                    required
-                  />
-                </div>
+                {formData.tallas_seleccionadas.length === 0 ? (
+                  <div className="form-group">
+                    <label className="form-label">Stock Inicial *</label>
+                    <input
+                      type="number"
+                      className="form-input"
+                      value={formData.stock}
+                      onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+                      placeholder="0"
+                      required
+                    />
+                  </div>
+                ) : formData.tallas_seleccionadas.length === 1 ? (
+                  <div className="form-group">
+                    <label className="form-label">Stock Inicial *</label>
+                    <input
+                      type="number"
+                      className="form-input"
+                      value={formData.stocksPorTalla[formData.tallas_seleccionadas[0]] || formData.stock}
+                      onChange={(e) => {
+                        const tallaId = formData.tallas_seleccionadas[0];
+                        setFormData({ 
+                          ...formData, 
+                          stock: e.target.value,
+                          stocksPorTalla: {
+                            ...formData.stocksPorTalla,
+                            [tallaId]: e.target.value
+                          }
+                        });
+                      }}
+                      placeholder="0"
+                      required
+                    />
+                  </div>
+                ) : (
+                  <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                    <label className="form-label">Stock Inicial por Talla *</label>
+                    <div style={{ 
+                      border: '1px solid #ddd', 
+                      borderRadius: '8px', 
+                      overflow: 'hidden',
+                      backgroundColor: 'white'
+                    }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                          <tr style={{ backgroundColor: '#f8f9fa', borderBottom: '2px solid #ddd' }}>
+                            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>Talla</th>
+                            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>Stock Inicial</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {formData.tallas_seleccionadas.map(talla_id => {
+                            const talla = tallas.find(t => t.id === talla_id);
+                            return (
+                              <tr key={talla_id} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                                <td style={{ padding: '0.75rem', fontWeight: '600' }}>
+                                  {talla?.nombre || '-'}
+                                </td>
+                                <td style={{ padding: '0.75rem' }}>
+                                  <input
+                                    type="number"
+                                    className="form-input"
+                                    value={formData.stocksPorTalla[talla_id] || formData.stock || '0'}
+                                    onChange={(e) => {
+                                      setFormData({
+                                        ...formData,
+                                        stocksPorTalla: {
+                                          ...formData.stocksPorTalla,
+                                          [talla_id]: e.target.value
+                                        }
+                                      });
+                                    }}
+                                    placeholder="0"
+                                    required
+                                    style={{ width: '100%', maxWidth: '200px' }}
+                                  />
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="btn-group">
@@ -594,15 +714,13 @@ export default function CostosPage() {
                 <th>Precio Compra</th>
                 <th>Precio Venta</th>
                 <th>Stock</th>
-                <th>Stock Mínimo</th>
-                <th>Estado</th>
                 <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
               {costosFiltrados.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                  <td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
                     {busquedaTabla ? 'No se encontraron costos con ese criterio.' : 'No hay costos registrados. Crea tu primer costo.'}
                   </td>
                 </tr>
@@ -614,16 +732,12 @@ export default function CostosPage() {
                     <td>${costo.precio_compra.toFixed(2)}</td>
                     <td style={{ fontWeight: '600', color: '#10b981' }}>${costo.precio_venta.toFixed(2)}</td>
                     <td style={{ fontWeight: '600' }}>{costo.stock}</td>
-                    <td>{costo.stock_minimo}</td>
                     <td>
-                      {costo.stock <= costo.stock_minimo ? (
-                        <span className="badge badge-danger">⚠️ Stock Bajo</span>
-                      ) : (
-                        <span className="badge badge-success">✓ Stock OK</span>
-                      )}
-                    </td>
-                    <td>
-                      <button className="btn btn-secondary" style={{ padding: '0.5rem 1rem' }}>
+                      <button 
+                        className="btn btn-secondary" 
+                        style={{ padding: '0.5rem 1rem' }}
+                        onClick={() => handleEditarCosto(costo)}
+                      >
                         ✏️ Editar
                       </button>
                     </td>
@@ -633,6 +747,100 @@ export default function CostosPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Modal de Edición de Costo */}
+        {mostrarModalEdicion && costoEditando && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 2000
+          }}>
+            <div className="form-container" style={{
+              maxWidth: '600px',
+              width: '90%',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              position: 'relative'
+            }}>
+              <h2 className="form-title">
+                Editar Costo - {costoEditando.prenda?.nombre} ({costoEditando.talla?.nombre})
+              </h2>
+              
+              <form onSubmit={handleGuardarEdicion}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div className="form-group">
+                    <label className="form-label">Precio de Compra *</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="form-input"
+                      value={formDataEdicion.precioCompra}
+                      onChange={(e) => setFormDataEdicion({ ...formDataEdicion, precioCompra: e.target.value })}
+                      placeholder="$0.00"
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Precio de Venta *</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="form-input"
+                      value={formDataEdicion.precioVenta}
+                      onChange={(e) => setFormDataEdicion({ ...formDataEdicion, precioVenta: e.target.value })}
+                      placeholder="$0.00"
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Stock *</label>
+                    <input
+                      type="number"
+                      className="form-input"
+                      value={formDataEdicion.stock}
+                      onChange={(e) => setFormDataEdicion({ ...formDataEdicion, stock: e.target.value })}
+                      placeholder="0"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="btn-group">
+                  <button 
+                    type="submit" 
+                    className="btn btn-primary"
+                    style={{
+                      backgroundColor: botonEstado === 'exito' ? '#10b981' : botonEstado === 'error' ? '#ef4444' : undefined,
+                      color: (botonEstado === 'exito' || botonEstado === 'error') ? 'white' : undefined
+                    }}
+                  >
+                    {botonEstado === 'exito' ? '✓ Guardado' : botonEstado === 'error' ? '✕ Error' : '💾 Guardar Cambios'}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => {
+                      setMostrarModalEdicion(false);
+                      setCostoEditando(null);
+                      setBotonEstado('normal');
+                    }}
+                  >
+                    ❌ Cancelar
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </LayoutWrapper>
   );
