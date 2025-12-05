@@ -10,26 +10,15 @@ import type { Costo } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
-export default function CostosPage() {
+export default function StockPage() {
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
-  const { costos, loading: costosLoading, error, createCosto, createMultipleCostos, getCostosByPrenda, updateCosto } = useCostos();
+  const { costos, loading: costosLoading, error, getCostosByPrenda, updateCosto } = useCostos();
   const { prendas } = usePrendas();
   const { tallas } = useTallas();
-  
-  // Estado para edición de costo
-  const [costoEditando, setCostoEditando] = useState<Costo | null>(null);
-  const [mostrarModalEdicion, setMostrarModalEdicion] = useState(false);
-  const [formDataEdicion, setFormDataEdicion] = useState({
-    precioVenta: '',
-    stock: '',
-  });
-  const [botonEstado, setBotonEstado] = useState<'normal' | 'exito' | 'error'>('normal');
   
   const [formData, setFormData] = useState({
     prenda_id: '',
     tallas_seleccionadas: [] as string[],
-    precioVenta: '',
-    stock: '',
     stocksPorTalla: {} as Record<string, string>, // Stock inicial por talla
   });
   
@@ -38,10 +27,11 @@ export default function CostosPage() {
   const [tallasDisponibles, setTallasDisponibles] = useState<string[]>([]);
   const inputPrendaRef = useRef<HTMLInputElement>(null);
   
-  // Búsqueda para filtrar la tabla de costos
+  // Búsqueda para filtrar la tabla de stock
   const [busquedaTabla, setBusquedaTabla] = useState('');
   const [mostrarResultadosTabla, setMostrarResultadosTabla] = useState(false);
   const inputBusquedaTablaRef = useRef<HTMLInputElement>(null);
+  const [botonEstado, setBotonEstado] = useState<'normal' | 'exito' | 'error'>('normal');
 
   // Cargar tallas disponibles cuando se selecciona una prenda
   useEffect(() => {
@@ -56,12 +46,19 @@ export default function CostosPage() {
         }
       } else {
         setTallasDisponibles([]);
-        setFormData(prev => ({ ...prev, tallas_seleccionadas: [] }));
+        setFormData(prev => ({ ...prev, tallas_seleccionadas: [], stocksPorTalla: {} }));
       }
     };
     
     cargarTallasDisponibles();
   }, [formData.prenda_id]);
+
+  // Auto-focus en el input de búsqueda al cargar
+  useEffect(() => {
+    if (inputBusquedaTablaRef.current) {
+      inputBusquedaTablaRef.current.focus();
+    }
+  }, []);
 
   // Filtrar prendas para búsqueda del formulario
   const prendasFiltradas = prendas
@@ -83,7 +80,7 @@ export default function CostosPage() {
     })
     .sort((a, b) => a.nombre.localeCompare(b.nombre));
 
-  // Filtrar y ordenar costos
+  // Filtrar y ordenar costos para mostrar stock
   const costosFiltrados = costos
     .filter(costo => {
       if (!busquedaTabla) return true;
@@ -122,109 +119,68 @@ export default function CostosPage() {
       return;
     }
     
+    setBotonEstado('normal');
+    
     // Verificar qué costos ya existen para esta prenda
     const { data: costosExistentes } = await getCostosByPrenda(formData.prenda_id);
-    const tallasConCosto = new Set(
-      (costosExistentes || []).map(c => c.talla_id)
+    const costosPorTalla = new Map(
+      (costosExistentes || []).map(c => [c.talla_id, c])
     );
     
-    // Filtrar solo las tallas que NO tienen costo
-    const tallasSinCosto = formData.tallas_seleccionadas.filter(
-      talla_id => !tallasConCosto.has(talla_id)
-    );
+    let exitosos = 0;
+    let fallidos = 0;
     
-    // Si todas las tallas ya tienen costo, mostrar mensaje y salir
-    if (tallasSinCosto.length === 0) {
-      const tallasExistentes = formData.tallas_seleccionadas
-        .map(id => tallas.find(t => t.id === id)?.nombre)
-        .filter(Boolean)
-        .join(', ');
-      alert(`Todas las tallas seleccionadas (${tallasExistentes}) ya tienen costo registrado para esta prenda.`);
-      return;
-    }
-    
-    // Si algunas tallas ya tienen costo, informar al usuario
-    if (tallasSinCosto.length < formData.tallas_seleccionadas.length) {
-      const tallasYaExistentes = formData.tallas_seleccionadas
-        .filter(id => tallasConCosto.has(id))
-        .map(id => tallas.find(t => t.id === id)?.nombre)
-        .filter(Boolean)
-        .join(', ');
-      const mensaje = `Las siguientes tallas ya tienen costo: ${tallasYaExistentes}. Se crearán costos solo para las tallas restantes.`;
-      if (!confirm(mensaje)) {
-        return;
+    // Actualizar o crear stock para cada talla seleccionada
+    for (const talla_id of formData.tallas_seleccionadas) {
+      const stockValue = parseInt(formData.stocksPorTalla[talla_id] || '0') || 0;
+      
+      if (costosPorTalla.has(talla_id)) {
+        // Actualizar stock existente
+        const costoExistente = costosPorTalla.get(talla_id)!;
+        const { error } = await updateCosto(costoExistente.id, {
+          stock: stockValue,
+          stock_inicial: stockValue,
+        });
+        
+        if (error) {
+          fallidos++;
+        } else {
+          exitosos++;
+        }
+      } else {
+        // Crear nuevo costo con stock inicial
+        const { error } = await supabase
+          .from('costos')
+          .insert([{
+            prenda_id: formData.prenda_id,
+            talla_id: talla_id,
+            precio_venta: 0,
+            stock_inicial: stockValue,
+            stock: stockValue,
+            activo: true,
+          }]);
+        
+        if (error) {
+          fallidos++;
+        } else {
+          exitosos++;
+        }
       }
     }
     
-    // Crear un costo solo para las tallas que no tienen costo
-    const costosData = tallasSinCosto.map(talla_id => {
-      // Usar stock específico de la talla si existe, sino usar el stock general
-      const stockTalla = formData.stocksPorTalla[talla_id] || formData.stock;
-      const stockValue = parseInt(stockTalla) || 0;
-      
-      return {
-        prenda_id: formData.prenda_id,
-        talla_id: talla_id,
-        precio_venta: parseFloat(formData.precioVenta) || 0,
-        stock_inicial: stockValue,
-        stock: stockValue,
-        activo: true,
-      };
-    });
-
-    // Crear todos los costos de una vez usando createMultipleCostos
-    const { data, error: errorCrear } = await createMultipleCostos(costosData);
-    
-    if (errorCrear) {
-      alert(`Error al crear costos: ${errorCrear}`);
-      return;
-    }
-    
-    const tallasCreadas = tallasSinCosto
-      .map(id => tallas.find(t => t.id === id)?.nombre)
-      .filter(Boolean)
-      .join(', ');
-    
-    alert(`${costosData.length} costo(s) creado(s) exitosamente para las tallas: ${tallasCreadas}`);
-    
-    setFormData({ prenda_id: '', tallas_seleccionadas: [], precioVenta: '', stock: '', stocksPorTalla: {} });
-    setBusquedaPrenda('');
-    setTallasDisponibles([]);
-    setMostrarFormulario(false);
-  };
-
-  const handleEditarCosto = (costo: Costo) => {
-    setCostoEditando(costo);
-    setFormDataEdicion({
-      precioVenta: costo.precio_venta.toString(),
-      stock: costo.stock.toString(),
-    });
-    setMostrarModalEdicion(true);
-  };
-
-  const handleGuardarEdicion = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!costoEditando) return;
-
-    setBotonEstado('normal');
-    
-    const { error } = await updateCosto(costoEditando.id, {
-      precio_venta: parseFloat(formDataEdicion.precioVenta) || 0,
-      stock: parseInt(formDataEdicion.stock) || 0,
-    });
-
-    if (error) {
+    if (exitosos > 0) {
+      setBotonEstado('exito');
+      setTimeout(() => {
+        setFormData({ prenda_id: '', tallas_seleccionadas: [], stocksPorTalla: {} });
+        setBusquedaPrenda('');
+        setTallasDisponibles([]);
+        setMostrarFormulario(false);
+        setBotonEstado('normal');
+      }, 1500);
+    } else {
       setBotonEstado('error');
       setTimeout(() => setBotonEstado('normal'), 2000);
-      return;
     }
-
-    setBotonEstado('exito');
-    setTimeout(() => {
-      setMostrarModalEdicion(false);
-      setCostoEditando(null);
-      setBotonEstado('normal');
-    }, 1500);
   };
 
   if (costosLoading) {
@@ -244,16 +200,16 @@ export default function CostosPage() {
       <div className="main-container">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
           <h1 style={{ fontSize: '2.5rem', fontWeight: '700', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.2)' }}>
-            💰 Costos
+            📦 Stock
           </h1>
           <button className="btn btn-primary" onClick={() => setMostrarFormulario(!mostrarFormulario)}>
-            ➕ Nuevo Costo
+            ➕ Asignar Stock
           </button>
         </div>
 
         {error && (
           <div className="alert alert-error">
-            Error al cargar los costos: {error}
+            Error al cargar el stock: {error}
           </div>
         )}
 
@@ -276,7 +232,7 @@ export default function CostosPage() {
             onBlur={() => {
               setTimeout(() => setMostrarResultadosTabla(false), 200);
             }}
-            placeholder="🔍 Buscar costo por prenda..."
+            placeholder="🔍 Buscar stock por prenda..."
             style={{
               width: '100%',
               fontSize: '1rem',
@@ -335,10 +291,10 @@ export default function CostosPage() {
           {busquedaTabla && (
             <div style={{ marginTop: '0.5rem', color: 'white', fontSize: '0.9rem' }}>
               {costosFiltrados.length === 0 ? (
-                <span style={{ color: '#ff6b6b' }}>❌ No se encontraron costos</span>
+                <span style={{ color: '#ff6b6b' }}>❌ No se encontró stock</span>
               ) : (
                 <span style={{ color: '#51cf66' }}>
-                  ✓ {costosFiltrados.length} costo{costosFiltrados.length !== 1 ? 's' : ''} encontrado{costosFiltrados.length !== 1 ? 's' : ''}
+                  ✓ {costosFiltrados.length} registro{costosFiltrados.length !== 1 ? 's' : ''} encontrado{costosFiltrados.length !== 1 ? 's' : ''}
                 </span>
               )}
             </div>
@@ -347,9 +303,9 @@ export default function CostosPage() {
 
         {mostrarFormulario && (
           <div className="form-container">
-            <h2 className="form-title">Nuevo Costo de Prenda</h2>
+            <h2 className="form-title">Asignar Stock Inicial</h2>
             
-              <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                   <label className="form-label">Prenda *</label>
@@ -432,7 +388,7 @@ export default function CostosPage() {
                   </div>
                 </div>
 
-                <div className="form-group">
+                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                   <label className="form-label">Tallas *</label>
                   {!formData.prenda_id ? (
                     <div style={{ 
@@ -452,7 +408,7 @@ export default function CostosPage() {
                       color: '#856404',
                       textAlign: 'center'
                     }}>
-                      Esta prenda no tiene tallas asociadas
+                      Esta prenda no tiene tallas asociadas. Primero crea un costo para esta prenda.
                     </div>
                   ) : (
                     <div style={{ 
@@ -524,7 +480,7 @@ export default function CostosPage() {
                                               tallas_seleccionadas: [...formData.tallas_seleccionadas, talla.id],
                                               stocksPorTalla: {
                                                 ...formData.stocksPorTalla,
-                                                [talla.id]: formData.stock || '0'
+                                                [talla.id]: '0'
                                               }
                                             });
                                           } else {
@@ -566,59 +522,12 @@ export default function CostosPage() {
                   
                   {formData.tallas_seleccionadas.length > 0 && (
                     <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.5rem', display: 'block' }}>
-                      {formData.tallas_seleccionadas.length} talla{formData.tallas_seleccionadas.length !== 1 ? 's' : ''} seleccionada{formData.tallas_seleccionadas.length !== 1 ? 's' : ''}. Se crearán {formData.tallas_seleccionadas.length} costo{formData.tallas_seleccionadas.length !== 1 ? 's' : ''} con el mismo precio{formData.tallas_seleccionadas.length > 1 ? ' (puedes especificar stock individual por talla)' : ''}.
+                      {formData.tallas_seleccionadas.length} talla{formData.tallas_seleccionadas.length !== 1 ? 's' : ''} seleccionada{formData.tallas_seleccionadas.length !== 1 ? 's' : ''}. Especifica el stock inicial para cada talla.
                     </small>
                   )}
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label">Precio de Venta *</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    className="form-input"
-                    value={formData.precioVenta}
-                    onChange={(e) => setFormData({ ...formData, precioVenta: e.target.value })}
-                    placeholder="$0.00"
-                    required
-                  />
-                </div>
-
-                {formData.tallas_seleccionadas.length === 0 ? (
-                  <div className="form-group">
-                    <label className="form-label">Stock Inicial *</label>
-                    <input
-                      type="number"
-                      className="form-input"
-                      value={formData.stock}
-                      onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-                      placeholder="0"
-                      required
-                    />
-                  </div>
-                ) : formData.tallas_seleccionadas.length === 1 ? (
-                  <div className="form-group">
-                    <label className="form-label">Stock Inicial *</label>
-                    <input
-                      type="number"
-                      className="form-input"
-                      value={formData.stocksPorTalla[formData.tallas_seleccionadas[0]] || formData.stock}
-                      onChange={(e) => {
-                        const tallaId = formData.tallas_seleccionadas[0];
-                        setFormData({ 
-                          ...formData, 
-                          stock: e.target.value,
-                          stocksPorTalla: {
-                            ...formData.stocksPorTalla,
-                            [tallaId]: e.target.value
-                          }
-                        });
-                      }}
-                      placeholder="0"
-                      required
-                    />
-                  </div>
-                ) : (
+                {formData.tallas_seleccionadas.length > 0 && (
                   <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                     <label className="form-label">Stock Inicial por Talla *</label>
                     <div style={{ 
@@ -646,7 +555,7 @@ export default function CostosPage() {
                                   <input
                                     type="number"
                                     className="form-input"
-                                    value={formData.stocksPorTalla[talla_id] || formData.stock || '0'}
+                                    value={formData.stocksPorTalla[talla_id] || '0'}
                                     onChange={(e) => {
                                       setFormData({
                                         ...formData,
@@ -658,6 +567,7 @@ export default function CostosPage() {
                                     }}
                                     placeholder="0"
                                     required
+                                    min="0"
                                     style={{ width: '100%', maxWidth: '200px' }}
                                   />
                                 </td>
@@ -672,8 +582,15 @@ export default function CostosPage() {
               </div>
 
               <div className="btn-group">
-                <button type="submit" className="btn btn-primary">
-                  💾 Guardar Costo
+                <button 
+                  type="submit" 
+                  className="btn btn-primary"
+                  style={{
+                    backgroundColor: botonEstado === 'exito' ? '#10b981' : botonEstado === 'error' ? '#ef4444' : undefined,
+                    color: (botonEstado === 'exito' || botonEstado === 'error') ? 'white' : undefined
+                  }}
+                >
+                  {botonEstado === 'exito' ? '✓ Stock Asignado' : botonEstado === 'error' ? '✕ Error' : '💾 Asignar Stock'}
                 </button>
                 <button
                   type="button"
@@ -693,16 +610,15 @@ export default function CostosPage() {
               <tr>
                 <th>Prenda</th>
                 <th>Talla</th>
-                <th>Precio Venta</th>
-                <th>Stock</th>
-                <th>Acciones</th>
+                <th>Stock Inicial</th>
+                <th>Stock Actual</th>
               </tr>
             </thead>
             <tbody>
               {costosFiltrados.length === 0 ? (
                 <tr>
-                  <td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
-                    {busquedaTabla ? 'No se encontraron costos con ese criterio.' : 'No hay costos registrados. Crea tu primer costo.'}
+                  <td colSpan={4} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                    {busquedaTabla ? 'No se encontró stock con ese criterio.' : 'No hay stock registrado. Asigna stock inicial a las prendas.'}
                   </td>
                 </tr>
               ) : (
@@ -710,16 +626,9 @@ export default function CostosPage() {
                   <tr key={costo.id}>
                     <td style={{ fontWeight: '600' }}>{costo.prenda?.nombre || '-'}</td>
                     <td><span className="badge badge-info">{costo.talla?.nombre || '-'}</span></td>
-                    <td style={{ fontWeight: '600', color: '#10b981' }}>${costo.precio_venta.toFixed(2)}</td>
-                    <td style={{ fontWeight: '600' }}>{costo.stock}</td>
-                    <td>
-                      <button 
-                        className="btn btn-secondary" 
-                        style={{ padding: '0.5rem 1rem' }}
-                        onClick={() => handleEditarCosto(costo)}
-                      >
-                        ✏️ Editar
-                      </button>
+                    <td>{costo.stock_inicial}</td>
+                    <td style={{ fontWeight: '600', color: costo.stock > 0 ? '#10b981' : '#ef4444' }}>
+                      {costo.stock}
                     </td>
                   </tr>
                 ))
@@ -727,88 +636,8 @@ export default function CostosPage() {
             </tbody>
           </table>
         </div>
-
-        {/* Modal de Edición de Costo */}
-        {mostrarModalEdicion && costoEditando && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 2000
-          }}>
-            <div className="form-container" style={{
-              maxWidth: '600px',
-              width: '90%',
-              maxHeight: '90vh',
-              overflowY: 'auto',
-              position: 'relative'
-            }}>
-              <h2 className="form-title">
-                Editar Costo - {costoEditando.prenda?.nombre} ({costoEditando.talla?.nombre})
-              </h2>
-              
-              <form onSubmit={handleGuardarEdicion}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div className="form-group">
-                    <label className="form-label">Precio de Venta *</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      className="form-input"
-                      value={formDataEdicion.precioVenta}
-                      onChange={(e) => setFormDataEdicion({ ...formDataEdicion, precioVenta: e.target.value })}
-                      placeholder="$0.00"
-                      required
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Stock *</label>
-                    <input
-                      type="number"
-                      className="form-input"
-                      value={formDataEdicion.stock}
-                      onChange={(e) => setFormDataEdicion({ ...formDataEdicion, stock: e.target.value })}
-                      placeholder="0"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="btn-group">
-                  <button 
-                    type="submit" 
-                    className="btn btn-primary"
-                    style={{
-                      backgroundColor: botonEstado === 'exito' ? '#10b981' : botonEstado === 'error' ? '#ef4444' : undefined,
-                      color: (botonEstado === 'exito' || botonEstado === 'error') ? 'white' : undefined
-                    }}
-                  >
-                    {botonEstado === 'exito' ? '✓ Guardado' : botonEstado === 'error' ? '✕ Error' : '💾 Guardar Cambios'}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={() => {
-                      setMostrarModalEdicion(false);
-                      setCostoEditando(null);
-                      setBotonEstado('normal');
-                    }}
-                  >
-                    ❌ Cancelar
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
       </div>
     </LayoutWrapper>
   );
 }
+

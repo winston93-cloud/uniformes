@@ -38,9 +38,20 @@ export default function Dashboard() {
             <div className="card-icon green">
               💰
             </div>
-            <h3 className="card-title">Costos y Precios</h3>
+            <h3 className="card-title">Costos</h3>
             <p className="card-description">
               Administración de precios y costos por talla y prenda
+            </p>
+          </Link>
+
+          {/* Stock */}
+          <Link href="/stock" className="card">
+            <div className="card-icon yellow">
+              📦
+            </div>
+            <h3 className="card-title">Stock</h3>
+            <p className="card-description">
+              Asignación y gestión de stock inicial por prenda y talla
             </p>
           </Link>
 
