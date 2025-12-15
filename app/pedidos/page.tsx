@@ -585,10 +585,18 @@ export default function PedidosPage() {
                               className="form-input"
                               value={busquedaPrenda}
                               onChange={(e) => {
-                                setBusquedaPrenda(e.target.value);
-                                if (e.target.value === '') {
+                                const valor = e.target.value;
+                                setBusquedaPrenda(valor);
+                                if (valor === '') {
                                   setDetalleActual({ ...detalleActual, prenda_id: '', prenda_nombre: '' });
                                   setTallasDisponibles([]);
+                                  setMostrarResultadosPrenda(false);
+                                } else if (valor.trim().length >= 2) {
+                                  // La búsqueda se ejecutará automáticamente por el useEffect
+                                  // pero forzamos a mostrar resultados si ya hay
+                                  if (resultadosPrenda.length > 0) {
+                                    setMostrarResultadosPrenda(true);
+                                  }
                                 }
                               }}
                               onFocus={() => {
