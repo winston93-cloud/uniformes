@@ -176,6 +176,7 @@ export default function PrendasPage() {
           precio_venta: 0,
           stock_inicial: 0,
           stock: 0,
+          stock_minimo: 0,
           activo: true,
         }));
         
@@ -209,6 +210,7 @@ export default function PrendasPage() {
           precio_venta: 0,
           stock_inicial: 0,
           stock: 0,
+          stock_minimo: 0,
           activo: true,
         }));
         
