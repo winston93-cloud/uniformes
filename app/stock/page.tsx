@@ -610,8 +610,8 @@ export default function StockPage() {
               <tr>
                 <th>Prenda</th>
                 <th>Talla</th>
-                <th>Stock Inicial</th>
-                <th>Stock Actual</th>
+                <th>Stock</th>
+                <th>Stock de Reabastecimiento</th>
               </tr>
             </thead>
             <tbody>
