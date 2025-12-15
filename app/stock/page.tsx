@@ -33,6 +33,15 @@ export default function StockPage() {
   const [mostrarResultadosTabla, setMostrarResultadosTabla] = useState(false);
   const inputBusquedaTablaRef = useRef<HTMLInputElement>(null);
   const [botonEstado, setBotonEstado] = useState<'normal' | 'exito' | 'error'>('normal');
+  
+  // Estado para edición de stock
+  const [costoEditando, setCostoEditando] = useState<Costo | null>(null);
+  const [mostrarModalEdicion, setMostrarModalEdicion] = useState(false);
+  const [formDataEdicion, setFormDataEdicion] = useState({
+    stock: '',
+    stock_inicial: '',
+    stock_minimo: '',
+  });
 
   // Cargar tallas disponibles cuando se selecciona una prenda
   useEffect(() => {
@@ -185,6 +194,43 @@ export default function StockPage() {
       setBotonEstado('error');
       setTimeout(() => setBotonEstado('normal'), 2000);
     }
+  };
+
+  const handleEditarStock = (costo: Costo) => {
+    setCostoEditando(costo);
+    setFormDataEdicion({
+      stock: costo.stock.toString(),
+      stock_inicial: (costo as any).stock_inicial?.toString() || '0',
+      stock_minimo: (costo as any).stock_minimo?.toString() || '0',
+    });
+    setMostrarModalEdicion(true);
+  };
+
+  const handleGuardarEdicion = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!costoEditando) return;
+    
+    setBotonEstado('normal');
+    
+    const { error } = await updateCosto(costoEditando.id, {
+      stock: parseInt(formDataEdicion.stock) || 0,
+      stock_inicial: parseInt(formDataEdicion.stock_inicial) || 0,
+      stock_minimo: parseInt(formDataEdicion.stock_minimo) || 0,
+    });
+
+    if (error) {
+      setBotonEstado('error');
+      setTimeout(() => setBotonEstado('normal'), 2000);
+      return;
+    }
+
+    setBotonEstado('exito');
+    setTimeout(() => {
+      setMostrarModalEdicion(false);
+      setCostoEditando(null);
+      setBotonEstado('normal');
+    }, 1500);
   };
 
   if (costosLoading) {
@@ -644,12 +690,13 @@ export default function StockPage() {
                 <th>Stock</th>
                 <th>Stock de Reabastecimiento</th>
                 <th>Stock Mínimo</th>
+                <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
               {costosFiltrados.length === 0 ? (
                 <tr>
-                  <td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                  <td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
                     {busquedaTabla ? 'No se encontró stock con ese criterio.' : 'No hay stock registrado. Asigna stock inicial a las prendas.'}
                   </td>
                 </tr>
@@ -665,12 +712,116 @@ export default function StockPage() {
                     <td style={{ fontWeight: '600', color: costo.stock_minimo ? '#f59e0b' : '#999' }}>
                       {costo.stock_minimo || 0}
                     </td>
+                    <td>
+                      <button
+                        className="btn btn-secondary"
+                        style={{ padding: '0.5rem 1rem' }}
+                        onClick={() => handleEditarStock(costo)}
+                      >
+                        ✏️ Editar
+                      </button>
+                    </td>
                   </tr>
                 ))
               )}
             </tbody>
           </table>
         </div>
+
+        {/* Modal de Edición de Stock */}
+        {mostrarModalEdicion && costoEditando && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 2000
+          }}>
+            <div className="form-container" style={{
+              maxWidth: '600px',
+              width: '90%',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              position: 'relative'
+            }}>
+              <h2 className="form-title">
+                Editar Stock - {costoEditando.prenda?.nombre} ({costoEditando.talla?.nombre})
+              </h2>
+              
+              <form onSubmit={handleGuardarEdicion}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem' }}>
+                  <div className="form-group">
+                    <label className="form-label">Stock Inicial *</label>
+                    <input
+                      type="number"
+                      className="form-input"
+                      value={formDataEdicion.stock_inicial}
+                      onChange={(e) => setFormDataEdicion({ ...formDataEdicion, stock_inicial: e.target.value })}
+                      placeholder="0"
+                      required
+                      min="0"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Stock de Reabastecimiento *</label>
+                    <input
+                      type="number"
+                      className="form-input"
+                      value={formDataEdicion.stock}
+                      onChange={(e) => setFormDataEdicion({ ...formDataEdicion, stock: e.target.value })}
+                      placeholder="0"
+                      required
+                      min="0"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Stock Mínimo *</label>
+                    <input
+                      type="number"
+                      className="form-input"
+                      value={formDataEdicion.stock_minimo}
+                      onChange={(e) => setFormDataEdicion({ ...formDataEdicion, stock_minimo: e.target.value })}
+                      placeholder="0"
+                      required
+                      min="0"
+                    />
+                  </div>
+                </div>
+
+                <div className="btn-group">
+                  <button 
+                    type="submit" 
+                    className="btn btn-primary"
+                    style={{
+                      backgroundColor: botonEstado === 'exito' ? '#10b981' : botonEstado === 'error' ? '#ef4444' : undefined,
+                      color: (botonEstado === 'exito' || botonEstado === 'error') ? 'white' : undefined
+                    }}
+                  >
+                    {botonEstado === 'exito' ? '✓ Guardado' : botonEstado === 'error' ? '✕ Error' : '💾 Guardar Cambios'}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => {
+                      setMostrarModalEdicion(false);
+                      setCostoEditando(null);
+                      setBotonEstado('normal');
+                    }}
+                  >
+                    ❌ Cancelar
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </LayoutWrapper>
   );
