@@ -75,12 +75,13 @@ export default function PedidosPage() {
     precio: '0',
   });
 
-  // Estados para búsqueda de prendas
-  const [busquedaPrenda, setBusquedaPrenda] = useState('');
-  const [resultadosPrenda, setResultadosPrenda] = useState<any[]>([]);
-  const [mostrarResultadosPrenda, setMostrarResultadosPrenda] = useState(false);
+  // Estados NUEVOS para búsqueda de prendas (implementación desde cero)
+  const [textoPrendaBusqueda, setTextoPrendaBusqueda] = useState('');
+  const [prendasEncontradas, setPrendasEncontradas] = useState<any[]>([]);
+  const [mostrarListaPrendas, setMostrarListaPrendas] = useState(false);
   const [tallasDisponibles, setTallasDisponibles] = useState<any[]>([]);
   const inputPrendaRef = useRef<HTMLInputElement>(null);
+  const contenedorPrendaRef = useRef<HTMLDivElement>(null);
 
   // Función para buscar clientes (alumnos y externos)
   useEffect(() => {
@@ -171,54 +172,81 @@ export default function PedidosPage() {
     setMostrarResultados(false);
   };
 
-  // Función auxiliar para buscar prendas (reutilizable)
-  const buscarPrendas = (query: string) => {
-    console.log('🔍 Buscando prendas con query:', query);
-    console.log('📦 Total prendas disponibles:', prendas?.length || 0);
+  // NUEVA IMPLEMENTACIÓN: Búsqueda simple y directa de prendas
+  const ejecutarBusquedaPrenda = (texto: string) => {
+    console.log('🆕 Búsqueda nueva - texto:', texto);
     
-    if (!prendas || prendas.length === 0) {
-      console.log('❌ No hay prendas cargadas');
-      setResultadosPrenda([]);
-      setMostrarResultadosPrenda(false);
+    if (!texto || texto.trim().length < 2) {
+      setPrendasEncontradas([]);
+      setMostrarListaPrendas(false);
       return;
     }
 
-    const queryLower = query.trim().toLowerCase();
-    if (queryLower.length < 2) {
-      console.log('❌ Query muy corta');
-      setResultadosPrenda([]);
-      setMostrarResultadosPrenda(false);
-      return;
-    }
-
-    const prendasActivas = prendas.filter(p => p && p.activo);
-    console.log('✅ Prendas activas:', prendasActivas.length);
-    
-    const prendasFiltradas = prendasActivas
-      .filter(p => 
-        (p.nombre && p.nombre.toLowerCase().includes(queryLower)) ||
-        (p.codigo && p.codigo.toLowerCase().includes(queryLower))
+    const textoMinuscula = texto.trim().toLowerCase();
+    const resultados = prendas
+      .filter(prenda => 
+        prenda.activo && 
+        (prenda.nombre.toLowerCase().includes(textoMinuscula) || 
+         (prenda.codigo && prenda.codigo.toLowerCase().includes(textoMinuscula)))
       )
       .slice(0, 10);
 
-    console.log('🎯 Resultados encontrados:', prendasFiltradas.length);
-    console.log('📋 Prendas filtradas:', prendasFiltradas.map(p => p.nombre));
-
-    setResultadosPrenda(prendasFiltradas);
-    const mostrar = prendasFiltradas.length > 0;
-    console.log('👁️ Mostrar dropdown:', mostrar);
-    setMostrarResultadosPrenda(mostrar);
+    console.log('✨ Resultados encontrados:', resultados.length, resultados.map(p => p.nombre));
+    setPrendasEncontradas(resultados);
+    setMostrarListaPrendas(resultados.length > 0);
   };
 
-  // Debounce para búsqueda de prendas
-  const debouncePrendaRef = useRef<NodeJS.Timeout | null>(null);
-  // Timeout para el onBlur
-  const blurTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // NUEVA: Manejar cambio en el input de búsqueda
+  const handleCambioBusquedaPrenda = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const nuevoTexto = e.target.value;
+    setTextoPrendaBusqueda(nuevoTexto);
+    ejecutarBusquedaPrenda(nuevoTexto);
+  };
 
-  // Debug: monitorear cambios en el estado del dropdown
+  // NUEVA: Seleccionar una prenda del dropdown
+  const seleccionarPrendaDelDropdown = async (prenda: any) => {
+    console.log('🎯 Prenda seleccionada:', prenda.nombre);
+    
+    setTextoPrendaBusqueda(prenda.nombre);
+    setDetalleActual({
+      ...detalleActual,
+      prenda_id: prenda.id,
+      prenda_nombre: prenda.nombre,
+      talla_id: '',
+      talla_nombre: '',
+      precio: '0',
+    });
+    setMostrarListaPrendas(false);
+    
+    // Cargar tallas asociadas a esta prenda
+    const { data } = await getCostosByPrenda(prenda.id);
+    if (data) {
+      const tallasIds = data.map(c => c.talla_id);
+      const tallasFiltradas = tallas
+        .filter(t => t.activo && tallasIds.includes(t.id))
+        .sort((a, b) => {
+          const aEsNumero = !isNaN(Number(a.nombre));
+          const bEsNumero = !isNaN(Number(b.nombre));
+          if (aEsNumero && !bEsNumero) return -1;
+          if (!aEsNumero && bEsNumero) return 1;
+          if (aEsNumero && bEsNumero) return Number(a.nombre) - Number(b.nombre);
+          return a.nombre.localeCompare(b.nombre);
+        });
+      setTallasDisponibles(tallasFiltradas);
+    }
+  };
+
+  // NUEVA: Detectar clics fuera del contenedor para ocultar dropdown
   useEffect(() => {
-    console.log('🖼️ Estado dropdown - mostrarResultadosPrenda:', mostrarResultadosPrenda, 'resultadosPrenda.length:', resultadosPrenda.length);
-  }, [mostrarResultadosPrenda, resultadosPrenda]);
+    const handleClickFuera = (event: MouseEvent) => {
+      if (contenedorPrendaRef.current && !contenedorPrendaRef.current.contains(event.target as Node)) {
+        setMostrarListaPrendas(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickFuera);
+    return () => document.removeEventListener('mousedown', handleClickFuera);
+  }, []);
 
   // Cargar tallas cuando se selecciona una prenda
   useEffect(() => {
@@ -574,108 +602,63 @@ export default function PedidosPage() {
                       {/* Fila para agregar nuevo detalle */}
                       <tr style={{ borderBottom: '1px solid #e0e0e0' }}>
                         <td style={{ padding: '0.75rem' }}>
-                          <div style={{ position: 'relative' }}>
+                          <div ref={contenedorPrendaRef} style={{ position: 'relative' }}>
                             <input
                               ref={inputPrendaRef}
                               type="text"
                               className="form-input"
-                              value={busquedaPrenda}
-                              onChange={(e) => {
-                                const valor = e.target.value;
-                                setBusquedaPrenda(valor);
-                                
-                                if (valor === '') {
-                                  setDetalleActual({ ...detalleActual, prenda_id: '', prenda_nombre: '' });
-                                  setTallasDisponibles([]);
-                                  setResultadosPrenda([]);
-                                  setMostrarResultadosPrenda(false);
-                                  if (debouncePrendaRef.current) {
-                                    clearTimeout(debouncePrendaRef.current);
-                                    debouncePrendaRef.current = null;
-                                  }
-                                } else {
-                                  // Limpiar timeout anterior
-                                  if (debouncePrendaRef.current) {
-                                    clearTimeout(debouncePrendaRef.current);
-                                  }
-                                  // Búsqueda con debounce muy corto (50ms) para respuesta casi inmediata
-                                  debouncePrendaRef.current = setTimeout(() => {
-                                    buscarPrendas(valor);
-                                  }, 50);
-                                }
-                              }}
+                              value={textoPrendaBusqueda}
+                              onChange={handleCambioBusquedaPrenda}
                               onFocus={() => {
-                                console.log('📍 onFocus disparado');
-                                // Cancelar el timeout del onBlur si existe
-                                if (blurTimeoutRef.current) {
-                                  console.log('❌ Cancelando timeout del onBlur');
-                                  clearTimeout(blurTimeoutRef.current);
-                                  blurTimeoutRef.current = null;
+                                if (textoPrendaBusqueda.trim().length >= 2 && prendasEncontradas.length > 0) {
+                                  setMostrarListaPrendas(true);
                                 }
-                                if (busquedaPrenda.trim().length >= 2) {
-                                  if (resultadosPrenda.length > 0) {
-                                    setMostrarResultadosPrenda(true);
-                                  } else {
-                                    buscarPrendas(busquedaPrenda);
-                                  }
-                                }
-                              }}
-                              onBlur={(e) => {
-                                console.log('👋 onBlur disparado');
-                                // Guardar el timeout para poder cancelarlo si es necesario
-                                blurTimeoutRef.current = setTimeout(() => {
-                                  console.log('⏰ Timeout onBlur ejecutado - ocultando dropdown');
-                                  setMostrarResultadosPrenda(false);
-                                  blurTimeoutRef.current = null;
-                                }, 300);
                               }}
                               placeholder="SELECCIONAR PRENDA..."
-                              style={{ width: '100%', fontSize: '0.9rem', backgroundColor: '#001f3f', color: 'white' }}
+                              style={{ width: '100%', fontSize: '0.9rem' }}
                             />
-                            {mostrarResultadosPrenda && resultadosPrenda.length > 0 && (
+                            
+                            {mostrarListaPrendas && prendasEncontradas.length > 0 && (
                               <div style={{
                                 position: 'absolute',
                                 top: '100%',
                                 left: 0,
                                 right: 0,
                                 backgroundColor: 'white',
-                                border: '1px solid #ddd',
+                                border: '2px solid #3b82f6',
                                 borderRadius: '8px',
-                                boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-                                zIndex: 1000,
-                                maxHeight: '200px',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                                zIndex: 9999,
+                                maxHeight: '250px',
                                 overflowY: 'auto',
                                 marginTop: '4px'
                               }}>
-                                {resultadosPrenda.map((prenda, index) => (
+                                {prendasEncontradas.map((prenda, idx) => (
                                   <div
                                     key={prenda.id}
-                                    onMouseDown={(e) => {
-                                      e.preventDefault(); // Prevenir que se dispare onBlur
-                                      console.log('🖱️ Clic en prenda:', prenda.nombre);
-                                      seleccionarPrenda(prenda);
-                                    }}
+                                    onClick={() => seleccionarPrendaDelDropdown(prenda)}
                                     style={{
                                       padding: '0.75rem 1rem',
                                       cursor: 'pointer',
-                                      borderBottom: index < resultadosPrenda.length - 1 ? '1px solid #f0f0f0' : 'none',
-                                      transition: 'background-color 0.2s',
-                                      backgroundColor: detalleActual.prenda_id === prenda.id ? '#e7f3ff' : 'white'
+                                      borderBottom: idx < prendasEncontradas.length - 1 ? '1px solid #e5e7eb' : 'none',
+                                      backgroundColor: detalleActual.prenda_id === prenda.id ? '#dbeafe' : 'white'
                                     }}
                                     onMouseEnter={(e) => {
-                                      if (detalleActual.prenda_id !== prenda.id) {
-                                        e.currentTarget.style.backgroundColor = '#f8f9fa';
-                                      }
+                                      e.currentTarget.style.backgroundColor = '#f3f4f6';
                                     }}
                                     onMouseLeave={(e) => {
-                                      if (detalleActual.prenda_id !== prenda.id) {
-                                        e.currentTarget.style.backgroundColor = 'white';
-                                      } else {
-                                        e.currentTarget.style.backgroundColor = '#e7f3ff';
-                                      }
+                                      e.currentTarget.style.backgroundColor = 
+                                        detalleActual.prenda_id === prenda.id ? '#dbeafe' : 'white';
                                     }}
                                   >
-                                    {prenda.nombre} {prenda.codigo && `(${prenda.codigo})`}
+                                    <div style={{ fontWeight: '600', color: '#1f2937' }}>
+                                      {prenda.nombre}
+                                    </div>
+                                    {prenda.codigo && (
+                                      <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '2px' }}>
+                                        Código: {prenda.codigo}
+                                      </div>
+                                    )}
                                   </div>
                                 ))}
                               </div>
