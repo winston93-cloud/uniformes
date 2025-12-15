@@ -361,7 +361,7 @@ export default function PedidosPage() {
       cantidad: '0', 
       precio: '0' 
     });
-    setBusquedaPrenda('');
+    setTextoPrendaBusqueda('');
     setTallasDisponibles([]);
   };
 
@@ -740,7 +740,7 @@ export default function PedidosPage() {
                                 cantidad: '0', 
                                 precio: '0' 
                               });
-                              setBusquedaPrenda('');
+                              setTextoPrendaBusqueda('');
                               setTallasDisponibles([]);
                             }}
                             className="btn btn-danger"
