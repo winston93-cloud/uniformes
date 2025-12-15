@@ -1,12 +1,19 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 interface HeaderProps {
   onMenuClick: () => void;
 }
 
 export default function Header({ onMenuClick }: HeaderProps) {
+  const router = useRouter();
+
+  const handleIrAlPanel = () => {
+    router.push('/dashboard');
+  };
+
   return (
     <header className="header">
       <div className="header-left">
@@ -27,9 +34,9 @@ export default function Header({ onMenuClick }: HeaderProps) {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-        <Link href="/dashboard" className="btn btn-primary" style={{ textDecoration: 'none', padding: '0.6rem 1.5rem' }}>
+        <button onClick={handleIrAlPanel} className="btn btn-primary" style={{ padding: '0.6rem 1.5rem', cursor: 'pointer' }}>
           🏠 Ir al Panel
-        </Link>
+        </button>
 
         <div className="welcome-badge">
           ⭐ Bienvenido, Administrador del Sistema ⭐

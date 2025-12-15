@@ -173,23 +173,41 @@ export default function PedidosPage() {
 
   // Búsqueda de prendas
   useEffect(() => {
-    if (busquedaPrenda.trim().length < 2) {
-      setResultadosPrenda([]);
-      setMostrarResultadosPrenda(false);
-      return;
-    }
+    let isMounted = true;
 
-    const query = busquedaPrenda.trim().toLowerCase();
-    const prendasFiltradas = prendas
-      .filter(p => p.activo && (
-        p.nombre.toLowerCase().includes(query) ||
-        (p.codigo && p.codigo.toLowerCase().includes(query))
-      ))
-      .slice(0, 10);
+    const buscarPrendas = () => {
+      if (busquedaPrenda.trim().length < 2) {
+        if (isMounted) {
+          setResultadosPrenda([]);
+          setMostrarResultadosPrenda(false);
+        }
+        return;
+      }
 
-    setResultadosPrenda(prendasFiltradas);
-    setMostrarResultadosPrenda(prendasFiltradas.length > 0);
-  }, [busquedaPrenda, prendas]);
+      const query = busquedaPrenda.trim().toLowerCase();
+      const prendasFiltradas = prendas
+        .filter(p => p.activo && (
+          p.nombre.toLowerCase().includes(query) ||
+          (p.codigo && p.codigo.toLowerCase().includes(query))
+        ))
+        .slice(0, 10);
+
+      if (isMounted) {
+        setResultadosPrenda(prendasFiltradas);
+        setMostrarResultadosPrenda(prendasFiltradas.length > 0);
+      }
+    };
+
+    const timeoutId = setTimeout(() => {
+      buscarPrendas();
+    }, 300); // Debounce de 300ms
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timeoutId);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busquedaPrenda]);
 
   // Cargar tallas cuando se selecciona una prenda
   useEffect(() => {
