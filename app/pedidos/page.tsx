@@ -173,7 +173,11 @@ export default function PedidosPage() {
 
   // Función auxiliar para buscar prendas (reutilizable)
   const buscarPrendas = (query: string) => {
+    console.log('🔍 Buscando prendas con query:', query);
+    console.log('📦 Total prendas disponibles:', prendas?.length || 0);
+    
     if (!prendas || prendas.length === 0) {
+      console.log('❌ No hay prendas cargadas');
       setResultadosPrenda([]);
       setMostrarResultadosPrenda(false);
       return;
@@ -181,18 +185,24 @@ export default function PedidosPage() {
 
     const queryLower = query.trim().toLowerCase();
     if (queryLower.length < 2) {
+      console.log('❌ Query muy corta');
       setResultadosPrenda([]);
       setMostrarResultadosPrenda(false);
       return;
     }
 
     const prendasActivas = prendas.filter(p => p && p.activo);
+    console.log('✅ Prendas activas:', prendasActivas.length);
+    
     const prendasFiltradas = prendasActivas
       .filter(p => 
         (p.nombre && p.nombre.toLowerCase().includes(queryLower)) ||
         (p.codigo && p.codigo.toLowerCase().includes(queryLower))
       )
       .slice(0, 10);
+
+    console.log('🎯 Resultados encontrados:', prendasFiltradas.length);
+    console.log('📋 Prendas filtradas:', prendasFiltradas.map(p => p.nombre));
 
     setResultadosPrenda(prendasFiltradas);
     setMostrarResultadosPrenda(prendasFiltradas.length > 0);
