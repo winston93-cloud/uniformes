@@ -642,7 +642,11 @@ export default function PedidosPage() {
                                 {resultadosPrenda.map((prenda, index) => (
                                   <div
                                     key={prenda.id}
-                                    onClick={() => seleccionarPrenda(prenda)}
+                                    onMouseDown={(e) => {
+                                      e.preventDefault(); // Prevenir que se dispare onBlur
+                                      console.log('🖱️ Clic en prenda:', prenda.nombre);
+                                      seleccionarPrenda(prenda);
+                                    }}
                                     style={{
                                       padding: '0.75rem 1rem',
                                       cursor: 'pointer',
