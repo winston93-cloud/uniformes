@@ -248,49 +248,7 @@ export default function PedidosPage() {
     return () => document.removeEventListener('mousedown', handleClickFuera);
   }, []);
 
-  // Cargar tallas cuando se selecciona una prenda
-  useEffect(() => {
-    const cargarTallas = async () => {
-      if (detalleActual.prenda_id) {
-        const { data } = await getCostosByPrenda(detalleActual.prenda_id);
-        if (data) {
-          const tallasIds = data.map(c => c.talla_id);
-          const tallasFiltradas = tallas
-            .filter(t => t.activo && tallasIds.includes(t.id))
-            .sort((a, b) => {
-              const aEsNumero = !isNaN(Number(a.nombre));
-              const bEsNumero = !isNaN(Number(b.nombre));
-              if (aEsNumero && !bEsNumero) return -1;
-              if (!aEsNumero && bEsNumero) return 1;
-              if (aEsNumero && bEsNumero) {
-                return Number(a.nombre) - Number(b.nombre);
-              }
-              return a.nombre.localeCompare(b.nombre);
-            });
-          setTallasDisponibles(tallasFiltradas);
-        } else {
-          setTallasDisponibles([]);
-        }
-      } else {
-        setTallasDisponibles([]);
-      }
-    };
-
-    cargarTallas();
-  }, [detalleActual.prenda_id, getCostosByPrenda, tallas]);
-
-  const seleccionarPrenda = (prenda: any) => {
-    setDetalleActual({
-      ...detalleActual,
-      prenda_id: prenda.id,
-      prenda_nombre: prenda.nombre,
-      talla_id: '',
-      talla_nombre: '',
-      precio: '0',
-    });
-    setBusquedaPrenda(prenda.nombre);
-    setMostrarResultadosPrenda(false);
-  };
+  // ELIMINADO: useEffect y seleccionarPrenda viejos - ahora se usa seleccionarPrendaDelDropdown
 
   const seleccionarTalla = (tallaId: string) => {
     const talla = tallasDisponibles.find(t => t.id === tallaId);
