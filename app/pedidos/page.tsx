@@ -213,6 +213,11 @@ export default function PedidosPage() {
   // Debounce para búsqueda de prendas
   const debouncePrendaRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Debug: monitorear cambios en el estado del dropdown
+  useEffect(() => {
+    console.log('🖼️ Estado dropdown - mostrarResultadosPrenda:', mostrarResultadosPrenda, 'resultadosPrenda.length:', resultadosPrenda.length);
+  }, [mostrarResultadosPrenda, resultadosPrenda]);
+
   // Cargar tallas cuando se selecciona una prenda
   useEffect(() => {
     const cargarTallas = async () => {
@@ -612,7 +617,6 @@ export default function PedidosPage() {
                               placeholder="SELECCIONAR PRENDA..."
                               style={{ width: '100%', fontSize: '0.9rem' }}
                             />
-                            {console.log('🖼️ Renderizando - mostrarResultadosPrenda:', mostrarResultadosPrenda, 'resultadosPrenda.length:', resultadosPrenda.length)}
                             {mostrarResultadosPrenda && resultadosPrenda.length > 0 && (
                               <div style={{
                                 position: 'absolute',
