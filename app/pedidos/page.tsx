@@ -212,6 +212,8 @@ export default function PedidosPage() {
 
   // Debounce para búsqueda de prendas
   const debouncePrendaRef = useRef<NodeJS.Timeout | null>(null);
+  // Timeout para el onBlur
+  const blurTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Debug: monitorear cambios en el estado del dropdown
   useEffect(() => {
@@ -604,6 +606,12 @@ export default function PedidosPage() {
                               }}
                               onFocus={() => {
                                 console.log('📍 onFocus disparado');
+                                // Cancelar el timeout del onBlur si existe
+                                if (blurTimeoutRef.current) {
+                                  console.log('❌ Cancelando timeout del onBlur');
+                                  clearTimeout(blurTimeoutRef.current);
+                                  blurTimeoutRef.current = null;
+                                }
                                 if (busquedaPrenda.trim().length >= 2) {
                                   if (resultadosPrenda.length > 0) {
                                     setMostrarResultadosPrenda(true);
@@ -614,11 +622,11 @@ export default function PedidosPage() {
                               }}
                               onBlur={(e) => {
                                 console.log('👋 onBlur disparado');
-                                // No ocultar el dropdown si el usuario está interactuando con él
-                                // Dar más tiempo para que el onClick del dropdown se ejecute
-                                setTimeout(() => {
+                                // Guardar el timeout para poder cancelarlo si es necesario
+                                blurTimeoutRef.current = setTimeout(() => {
                                   console.log('⏰ Timeout onBlur ejecutado - ocultando dropdown');
                                   setMostrarResultadosPrenda(false);
+                                  blurTimeoutRef.current = null;
                                 }, 300);
                               }}
                               placeholder="SELECCIONAR PRENDA..."
