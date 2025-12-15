@@ -630,7 +630,7 @@ export default function PedidosPage() {
                                 }, 300);
                               }}
                               placeholder="SELECCIONAR PRENDA..."
-                              style={{ width: '100%', fontSize: '0.9rem' }}
+                              style={{ width: '100%', fontSize: '0.9rem', backgroundColor: '#001f3f', color: 'white' }}
                             />
                             {mostrarResultadosPrenda && resultadosPrenda.length > 0 && (
                               <div style={{
