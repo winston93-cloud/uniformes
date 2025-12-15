@@ -171,7 +171,7 @@ export default function PedidosPage() {
     setMostrarResultados(false);
   };
 
-  // Búsqueda de prendas (igual que búsqueda de clientes)
+  // Búsqueda de prendas (optimizada para ser más rápida)
   useEffect(() => {
     let isMounted = true;
     
@@ -194,11 +194,14 @@ export default function PedidosPage() {
       }
 
       const query = busquedaPrenda.trim().toLowerCase();
-      const prendasFiltradas = prendas
-        .filter(p => p && p.activo && (
+      // Optimizar: filtrar solo prendas activas primero
+      const prendasActivas = prendas.filter(p => p && p.activo);
+      
+      const prendasFiltradas = prendasActivas
+        .filter(p => 
           (p.nombre && p.nombre.toLowerCase().includes(query)) ||
           (p.codigo && p.codigo.toLowerCase().includes(query))
-        ))
+        )
         .slice(0, 10);
 
       if (isMounted) {
@@ -207,9 +210,10 @@ export default function PedidosPage() {
       }
     };
 
+    // Reducir debounce a 100ms para respuesta más rápida
     const timeoutId = setTimeout(() => {
       buscarPrendas();
-    }, 300); // Debounce de 300ms
+    }, 100);
 
     return () => {
       isMounted = false;
@@ -579,15 +583,45 @@ export default function PedidosPage() {
                               className="form-input"
                               value={busquedaPrenda}
                               onChange={(e) => {
-                                setBusquedaPrenda(e.target.value);
-                                if (e.target.value === '') {
+                                const valor = e.target.value;
+                                setBusquedaPrenda(valor);
+                                if (valor === '') {
                                   setDetalleActual({ ...detalleActual, prenda_id: '', prenda_nombre: '' });
                                   setTallasDisponibles([]);
+                                  setResultadosPrenda([]);
+                                  setMostrarResultadosPrenda(false);
+                                } else if (valor.trim().length >= 2 && prendas && prendas.length > 0) {
+                                  // Búsqueda inmediata si hay al menos 2 caracteres y prendas cargadas
+                                  const query = valor.trim().toLowerCase();
+                                  const prendasActivas = prendas.filter(p => p && p.activo);
+                                  const prendasFiltradas = prendasActivas
+                                    .filter(p => 
+                                      (p.nombre && p.nombre.toLowerCase().includes(query)) ||
+                                      (p.codigo && p.codigo.toLowerCase().includes(query))
+                                    )
+                                    .slice(0, 10);
+                                  setResultadosPrenda(prendasFiltradas);
+                                  setMostrarResultadosPrenda(prendasFiltradas.length > 0);
                                 }
                               }}
                               onFocus={() => {
-                                if (busquedaPrenda.trim().length >= 2 && resultadosPrenda.length > 0) {
-                                  setMostrarResultadosPrenda(true);
+                                if (busquedaPrenda.trim().length >= 2) {
+                                  // Si ya hay resultados, mostrarlos inmediatamente
+                                  if (resultadosPrenda.length > 0) {
+                                    setMostrarResultadosPrenda(true);
+                                  } else if (prendas && prendas.length > 0) {
+                                    // Si no hay resultados pero hay texto, buscar inmediatamente
+                                    const query = busquedaPrenda.trim().toLowerCase();
+                                    const prendasActivas = prendas.filter(p => p && p.activo);
+                                    const prendasFiltradas = prendasActivas
+                                      .filter(p => 
+                                        (p.nombre && p.nombre.toLowerCase().includes(query)) ||
+                                        (p.codigo && p.codigo.toLowerCase().includes(query))
+                                      )
+                                      .slice(0, 10);
+                                    setResultadosPrenda(prendasFiltradas);
+                                    setMostrarResultadosPrenda(prendasFiltradas.length > 0);
+                                  }
                                 }
                               }}
                               onBlur={() => {
