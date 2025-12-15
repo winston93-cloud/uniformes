@@ -13,7 +13,8 @@ export default function Header({ onMenuClick }: HeaderProps) {
   const handleIrAlPanel = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    router.push('/dashboard');
+    // Usar window.location para asegurar que funcione siempre
+    window.location.href = '/dashboard';
   };
 
   return (

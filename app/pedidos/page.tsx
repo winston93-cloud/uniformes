@@ -171,10 +171,10 @@ export default function PedidosPage() {
     setMostrarResultados(false);
   };
 
-  // Búsqueda de prendas
+  // Búsqueda de prendas (igual que búsqueda de clientes)
   useEffect(() => {
     let isMounted = true;
-
+    
     const buscarPrendas = () => {
       if (busquedaPrenda.trim().length < 2) {
         if (isMounted) {
@@ -215,14 +215,8 @@ export default function PedidosPage() {
       isMounted = false;
       clearTimeout(timeoutId);
     };
-  }, [busquedaPrenda, prendas]);
-
-  // Mostrar resultados cuando cambien
-  useEffect(() => {
-    if (resultadosPrenda.length > 0 && busquedaPrenda.trim().length >= 2) {
-      setMostrarResultadosPrenda(true);
-    }
-  }, [resultadosPrenda, busquedaPrenda]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busquedaPrenda]);
 
   // Cargar tallas cuando se selecciona una prenda
   useEffect(() => {
@@ -585,18 +579,10 @@ export default function PedidosPage() {
                               className="form-input"
                               value={busquedaPrenda}
                               onChange={(e) => {
-                                const valor = e.target.value;
-                                setBusquedaPrenda(valor);
-                                if (valor === '') {
+                                setBusquedaPrenda(e.target.value);
+                                if (e.target.value === '') {
                                   setDetalleActual({ ...detalleActual, prenda_id: '', prenda_nombre: '' });
                                   setTallasDisponibles([]);
-                                  setMostrarResultadosPrenda(false);
-                                } else if (valor.trim().length >= 2) {
-                                  // La búsqueda se ejecutará automáticamente por el useEffect
-                                  // pero forzamos a mostrar resultados si ya hay
-                                  if (resultadosPrenda.length > 0) {
-                                    setMostrarResultadosPrenda(true);
-                                  }
                                 }
                               }}
                               onFocus={() => {
@@ -605,7 +591,7 @@ export default function PedidosPage() {
                                 }
                               }}
                               onBlur={() => {
-                                setTimeout(() => setMostrarResultadosPrenda(false), 300);
+                                setTimeout(() => setMostrarResultadosPrenda(false), 200);
                               }}
                               placeholder="SELECCIONAR PRENDA..."
                               style={{ width: '100%', fontSize: '0.9rem' }}
@@ -628,10 +614,7 @@ export default function PedidosPage() {
                                 {resultadosPrenda.map((prenda, index) => (
                                   <div
                                     key={prenda.id}
-                                    onMouseDown={(e) => {
-                                      e.preventDefault();
-                                      seleccionarPrenda(prenda);
-                                    }}
+                                    onClick={() => seleccionarPrenda(prenda)}
                                     style={{
                                       padding: '0.75rem 1rem',
                                       cursor: 'pointer',
