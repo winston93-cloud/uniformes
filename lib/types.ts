@@ -36,6 +36,7 @@ export interface Costo {
   precio_venta: number;
   stock_inicial: number;
   stock: number;
+  stock_minimo: number;
   activo: boolean;
   created_at?: string;
   updated_at?: string;

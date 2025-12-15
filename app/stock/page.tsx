@@ -20,6 +20,7 @@ export default function StockPage() {
     prenda_id: '',
     tallas_seleccionadas: [] as string[],
     stocksPorTalla: {} as Record<string, string>, // Stock inicial por talla
+    stocksMinimosPorTalla: {} as Record<string, string>, // Stock mínimo por talla
   });
   
   const [busquedaPrenda, setBusquedaPrenda] = useState('');
@@ -46,7 +47,7 @@ export default function StockPage() {
         }
       } else {
         setTallasDisponibles([]);
-        setFormData(prev => ({ ...prev, tallas_seleccionadas: [], stocksPorTalla: {} }));
+        setFormData(prev => ({ ...prev, tallas_seleccionadas: [], stocksPorTalla: {}, stocksMinimosPorTalla: {} }));
       }
     };
     
@@ -133,6 +134,7 @@ export default function StockPage() {
     // Actualizar o crear stock para cada talla seleccionada
     for (const talla_id of formData.tallas_seleccionadas) {
       const stockValue = parseInt(formData.stocksPorTalla[talla_id] || '0') || 0;
+      const stockMinimoValue = parseInt(formData.stocksMinimosPorTalla[talla_id] || '0') || 0;
       
       if (costosPorTalla.has(talla_id)) {
         // Actualizar stock existente
@@ -140,6 +142,7 @@ export default function StockPage() {
         const { error } = await updateCosto(costoExistente.id, {
           stock: stockValue,
           stock_inicial: stockValue,
+          stock_minimo: stockMinimoValue,
         });
         
         if (error) {
@@ -157,6 +160,7 @@ export default function StockPage() {
             precio_venta: 0,
             stock_inicial: stockValue,
             stock: stockValue,
+            stock_minimo: stockMinimoValue,
             activo: true,
           }]);
         
@@ -171,7 +175,7 @@ export default function StockPage() {
     if (exitosos > 0) {
       setBotonEstado('exito');
       setTimeout(() => {
-        setFormData({ prenda_id: '', tallas_seleccionadas: [], stocksPorTalla: {} });
+        setFormData({ prenda_id: '', tallas_seleccionadas: [], stocksPorTalla: {}, stocksMinimosPorTalla: {} });
         setBusquedaPrenda('');
         setTallasDisponibles([]);
         setMostrarFormulario(false);
@@ -481,15 +485,22 @@ export default function StockPage() {
                                               stocksPorTalla: {
                                                 ...formData.stocksPorTalla,
                                                 [talla.id]: '0'
+                                              },
+                                              stocksMinimosPorTalla: {
+                                                ...formData.stocksMinimosPorTalla,
+                                                [talla.id]: '0'
                                               }
                                             });
                                           } else {
                                             const newStocksPorTalla = { ...formData.stocksPorTalla };
+                                            const newStocksMinimosPorTalla = { ...formData.stocksMinimosPorTalla };
                                             delete newStocksPorTalla[talla.id];
+                                            delete newStocksMinimosPorTalla[talla.id];
                                             setFormData({ 
                                               ...formData, 
                                               tallas_seleccionadas: formData.tallas_seleccionadas.filter(id => id !== talla.id),
-                                              stocksPorTalla: newStocksPorTalla
+                                              stocksPorTalla: newStocksPorTalla,
+                                              stocksMinimosPorTalla: newStocksMinimosPorTalla
                                             });
                                           }
                                         }}
@@ -541,6 +552,7 @@ export default function StockPage() {
                           <tr style={{ backgroundColor: '#f8f9fa', borderBottom: '2px solid #ddd' }}>
                             <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>Talla</th>
                             <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>Stock Inicial</th>
+                            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>Stock Mínimo</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -567,6 +579,25 @@ export default function StockPage() {
                                     }}
                                     placeholder="0"
                                     required
+                                    min="0"
+                                    style={{ width: '100%', maxWidth: '200px' }}
+                                  />
+                                </td>
+                                <td style={{ padding: '0.75rem' }}>
+                                  <input
+                                    type="number"
+                                    className="form-input"
+                                    value={formData.stocksMinimosPorTalla[talla_id] || '0'}
+                                    onChange={(e) => {
+                                      setFormData({
+                                        ...formData,
+                                        stocksMinimosPorTalla: {
+                                          ...formData.stocksMinimosPorTalla,
+                                          [talla_id]: e.target.value
+                                        }
+                                      });
+                                    }}
+                                    placeholder="0"
                                     min="0"
                                     style={{ width: '100%', maxWidth: '200px' }}
                                   />
@@ -612,12 +643,13 @@ export default function StockPage() {
                 <th>Talla</th>
                 <th>Stock</th>
                 <th>Stock de Reabastecimiento</th>
+                <th>Stock Mínimo</th>
               </tr>
             </thead>
             <tbody>
               {costosFiltrados.length === 0 ? (
                 <tr>
-                  <td colSpan={4} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                  <td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
                     {busquedaTabla ? 'No se encontró stock con ese criterio.' : 'No hay stock registrado. Asigna stock inicial a las prendas.'}
                   </td>
                 </tr>
@@ -629,6 +661,9 @@ export default function StockPage() {
                     <td>{costo.stock_inicial}</td>
                     <td style={{ fontWeight: '600', color: costo.stock > 0 ? '#10b981' : '#ef4444' }}>
                       {costo.stock}
+                    </td>
+                    <td style={{ fontWeight: '600', color: costo.stock_minimo ? '#f59e0b' : '#999' }}>
+                      {costo.stock_minimo || 0}
                     </td>
                   </tr>
                 ))
