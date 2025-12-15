@@ -576,21 +576,22 @@ export default function PedidosPage() {
                               style={{ width: '100%', fontSize: '0.9rem' }}
                             />
                             
-                            {mostrarListaPrendas && prendasEncontradas.length > 0 && (
-                              <div style={{
-                                position: 'absolute',
-                                top: '100%',
-                                left: 0,
-                                right: 0,
-                                backgroundColor: 'white',
-                                border: '2px solid #3b82f6',
-                                borderRadius: '8px',
-                                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                                zIndex: 9999,
-                                maxHeight: '250px',
-                                overflowY: 'auto',
-                                marginTop: '4px'
-                              }}>
+                            {mostrarListaPrendas && prendasEncontradas.length > 0 && (() => {
+                              const rect = inputPrendaRef.current?.getBoundingClientRect();
+                              return (
+                                <div style={{
+                                  position: 'fixed',
+                                  top: rect ? `${rect.bottom + 4}px` : 'auto',
+                                  left: rect ? `${rect.left}px` : 'auto',
+                                  width: rect ? `${rect.width}px` : 'auto',
+                                  backgroundColor: 'white',
+                                  border: '2px solid #3b82f6',
+                                  borderRadius: '8px',
+                                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                                  zIndex: 9999,
+                                  maxHeight: '300px',
+                                  overflowY: 'auto'
+                                }}>
                                 {prendasEncontradas.map((prenda, idx) => (
                                   <div
                                     key={prenda.id}
@@ -619,8 +620,9 @@ export default function PedidosPage() {
                                     )}
                                   </div>
                                 ))}
-                              </div>
-                            )}
+                                </div>
+                              );
+                            })()}
                           </div>
                         </td>
                         <td style={{ padding: '0.75rem' }}>
