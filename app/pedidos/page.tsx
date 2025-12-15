@@ -1,8 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import { useCostos } from '@/lib/hooks/useCostos';
+import { useAlumnos } from '@/lib/hooks/useAlumnos';
+import { useExternos } from '@/lib/hooks/useExternos';
 
 interface Pedido {
   id: number;
@@ -26,6 +28,8 @@ export const dynamic = 'force-dynamic';
 export default function PedidosPage() {
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const { costos } = useCostos();
+  const { alumnos, searchAlumnos } = useAlumnos();
+  const { externos } = useExternos();
   
   const [pedidos, setPedidos] = useState<Pedido[]>([
     { id: 1, fecha: '2024-11-19', cliente: 'Juan Pérez', tipoCliente: 'alumno', total: 750, estado: 'PEDIDO' },
@@ -34,10 +38,23 @@ export default function PedidosPage() {
   ]);
 
   const [formData, setFormData] = useState({
-    tipoCliente: 'alumno' as 'alumno' | 'externo',
-    cliente: '',
+    cliente_id: '',
+    cliente_tipo: '' as 'alumno' | 'externo' | '',
+    cliente_nombre: '',
     detalles: [] as DetallePedido[],
   });
+
+  // Estados para búsqueda de cliente
+  const [busquedaCliente, setBusquedaCliente] = useState('');
+  const [resultadosBusqueda, setResultadosBusqueda] = useState<Array<{
+    id: string;
+    nombre: string;
+    tipo: 'alumno' | 'externo';
+    datos: any;
+  }>>([]);
+  const [mostrarResultados, setMostrarResultados] = useState(false);
+  const [clienteSeleccionado, setClienteSeleccionado] = useState<any>(null);
+  const inputClienteRef = useRef<HTMLInputElement>(null);
 
   const [detalleActual, setDetalleActual] = useState({
     prenda: '',
@@ -45,6 +62,71 @@ export default function PedidosPage() {
     cantidad: '1',
     precio: '',
   });
+
+  // Función para buscar clientes (alumnos y externos)
+  useEffect(() => {
+    const buscarClientes = async () => {
+      if (busquedaCliente.trim().length < 2) {
+        setResultadosBusqueda([]);
+        setMostrarResultados(false);
+        return;
+      }
+
+      const query = busquedaCliente.trim().toLowerCase();
+      const resultados: Array<{
+        id: string;
+        nombre: string;
+        tipo: 'alumno' | 'externo';
+        datos: any;
+      }> = [];
+
+      // Buscar en alumnos
+      const alumnosEncontrados = await searchAlumnos(query);
+      alumnosEncontrados.slice(0, 10).forEach(alumno => {
+        resultados.push({
+          id: alumno.id,
+          nombre: alumno.nombre,
+          tipo: 'alumno',
+          datos: alumno,
+        });
+      });
+
+      // Buscar en externos
+      const externosFiltrados = externos
+        .filter(e => e.activo && (
+          e.nombre.toLowerCase().includes(query) ||
+          (e.email && e.email.toLowerCase().includes(query)) ||
+          (e.telefono && e.telefono.includes(query))
+        ))
+        .slice(0, 10 - resultados.length);
+
+      externosFiltrados.forEach(externo => {
+        resultados.push({
+          id: externo.id,
+          nombre: externo.nombre,
+          tipo: 'externo',
+          datos: externo,
+        });
+      });
+
+      setResultadosBusqueda(resultados.slice(0, 10));
+      setMostrarResultados(resultados.length > 0);
+    };
+
+    buscarClientes();
+  }, [busquedaCliente, searchAlumnos, externos]);
+
+  const seleccionarCliente = (cliente: typeof resultadosBusqueda[0]) => {
+    setFormData({
+      ...formData,
+      cliente_id: cliente.id,
+      cliente_tipo: cliente.tipo,
+      cliente_nombre: cliente.nombre,
+    });
+    setClienteSeleccionado(cliente.datos);
+    setBusquedaCliente(cliente.nombre);
+    setMostrarResultados(false);
+  };
 
   const agregarDetalle = () => {
     if (detalleActual.prenda && detalleActual.cantidad && detalleActual.precio) {
@@ -82,16 +164,22 @@ export default function PedidosPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.cliente_id || !formData.cliente_tipo) {
+      alert('Por favor selecciona un cliente');
+      return;
+    }
     const nuevoPedido: Pedido = {
       id: Date.now(),
       fecha: new Date().toISOString().split('T')[0],
-      cliente: formData.cliente,
-      tipoCliente: formData.tipoCliente,
+      cliente: formData.cliente_nombre,
+      tipoCliente: formData.cliente_tipo,
       total: calcularTotal(),
       estado: 'PEDIDO',
     };
     setPedidos([nuevoPedido, ...pedidos]);
-    setFormData({ tipoCliente: 'alumno', cliente: '', detalles: [] });
+    setFormData({ cliente_id: '', cliente_tipo: '', cliente_nombre: '', detalles: [] });
+    setBusquedaCliente('');
+    setClienteSeleccionado(null);
     setMostrarFormulario(false);
   };
 
@@ -118,31 +206,151 @@ export default function PedidosPage() {
             <h2 className="form-title">Nuevo Pedido</h2>
             
             <form onSubmit={handleSubmit}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div className="form-group">
-                  <label className="form-label">Tipo de Cliente *</label>
-                  <select
-                    className="form-select"
-                    value={formData.tipoCliente}
-                    onChange={(e) => setFormData({ ...formData, tipoCliente: e.target.value as 'alumno' | 'externo' })}
-                    required
-                  >
-                    <option value="alumno">Alumno</option>
-                    <option value="externo">Cliente Externo</option>
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Cliente *</label>
+              <div className="form-group">
+                <label className="form-label">Cliente *</label>
+                <div style={{ position: 'relative' }}>
                   <input
+                    ref={inputClienteRef}
                     type="text"
                     className="form-input"
-                    value={formData.cliente}
-                    onChange={(e) => setFormData({ ...formData, cliente: e.target.value })}
-                    placeholder="Nombre del cliente"
+                    value={busquedaCliente}
+                    onChange={(e) => {
+                      setBusquedaCliente(e.target.value);
+                      if (e.target.value === '') {
+                        setFormData({ ...formData, cliente_id: '', cliente_tipo: '', cliente_nombre: '' });
+                        setClienteSeleccionado(null);
+                      }
+                    }}
+                    onFocus={() => {
+                      if (resultadosBusqueda.length > 0) {
+                        setMostrarResultados(true);
+                      }
+                    }}
+                    onBlur={() => {
+                      setTimeout(() => setMostrarResultados(false), 200);
+                    }}
+                    placeholder="🔍 Buscar cliente (alumno o externo)..."
                     required
+                    style={{ width: '100%' }}
                   />
+
+                  {/* Dropdown de resultados */}
+                  {mostrarResultados && resultadosBusqueda.length > 0 && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: 0,
+                      right: 0,
+                      backgroundColor: 'white',
+                      border: '1px solid #ddd',
+                      borderRadius: '8px',
+                      boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                      zIndex: 1000,
+                      maxHeight: '300px',
+                      overflowY: 'auto',
+                      marginTop: '4px'
+                    }}>
+                      {resultadosBusqueda.map((cliente, index) => (
+                        <div
+                          key={`${cliente.tipo}-${cliente.id}`}
+                          onClick={() => seleccionarCliente(cliente)}
+                          style={{
+                            padding: '0.75rem 1rem',
+                            cursor: 'pointer',
+                            borderBottom: index < resultadosBusqueda.length - 1 ? '1px solid #f0f0f0' : 'none',
+                            transition: 'background-color 0.2s',
+                            backgroundColor: formData.cliente_id === cliente.id ? '#e7f3ff' : 'white'
+                          }}
+                          onMouseEnter={(e) => {
+                            if (formData.cliente_id !== cliente.id) {
+                              e.currentTarget.style.backgroundColor = '#f8f9fa';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (formData.cliente_id !== cliente.id) {
+                              e.currentTarget.style.backgroundColor = 'white';
+                            } else {
+                              e.currentTarget.style.backgroundColor = '#e7f3ff';
+                            }
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span>{cliente.tipo === 'alumno' ? '🎓' : '👤'}</span>
+                            <span style={{ fontWeight: '600' }}>{cliente.nombre}</span>
+                            <span style={{ 
+                              fontSize: '0.75rem', 
+                              color: '#666',
+                              marginLeft: 'auto',
+                              padding: '0.25rem 0.5rem',
+                              backgroundColor: cliente.tipo === 'alumno' ? '#dbeafe' : '#fef3c7',
+                              borderRadius: '4px'
+                            }}>
+                              {cliente.tipo === 'alumno' ? 'Alumno' : 'Externo'}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
+
+                {/* Mostrar datos del cliente seleccionado */}
+                {clienteSeleccionado && (
+                  <div style={{
+                    marginTop: '1rem',
+                    padding: '1rem',
+                    backgroundColor: '#f8f9fa',
+                    borderRadius: '8px',
+                    border: '1px solid #e0e0e0'
+                  }}>
+                    <h4 style={{ marginBottom: '0.5rem', fontSize: '1rem', fontWeight: '600' }}>
+                      {formData.cliente_tipo === 'alumno' ? '🎓 Datos del Alumno' : '👤 Datos del Cliente'}
+                    </h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.5rem', fontSize: '0.9rem' }}>
+                      <div>
+                        <strong>Nombre:</strong> {clienteSeleccionado.nombre}
+                      </div>
+                      {formData.cliente_tipo === 'alumno' && (
+                        <>
+                          {clienteSeleccionado.referencia && (
+                            <div>
+                              <strong>Referencia:</strong> {clienteSeleccionado.referencia}
+                            </div>
+                          )}
+                          {clienteSeleccionado.grado && (
+                            <div>
+                              <strong>Grado:</strong> {clienteSeleccionado.grado}
+                            </div>
+                          )}
+                          {clienteSeleccionado.grupo && (
+                            <div>
+                              <strong>Grupo:</strong> {clienteSeleccionado.grupo}
+                            </div>
+                          )}
+                        </>
+                      )}
+                      {formData.cliente_tipo === 'externo' && (
+                        <>
+                          {clienteSeleccionado.telefono && (
+                            <div>
+                              <strong>Teléfono:</strong> {clienteSeleccionado.telefono}
+                            </div>
+                          )}
+                          {clienteSeleccionado.email && (
+                            <div>
+                              <strong>Email:</strong> {clienteSeleccionado.email}
+                            </div>
+                          )}
+                          {clienteSeleccionado.direccion && (
+                            <div style={{ gridColumn: '1 / -1' }}>
+                              <strong>Dirección:</strong> {clienteSeleccionado.direccion}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div style={{ background: '#f3f4f6', padding: '1.5rem', borderRadius: '10px', marginBottom: '1rem' }}>
@@ -263,7 +471,9 @@ export default function PedidosPage() {
                   className="btn btn-secondary"
                   onClick={() => {
                     setMostrarFormulario(false);
-                    setFormData({ tipoCliente: 'alumno', cliente: '', detalles: [] });
+                    setFormData({ cliente_id: '', cliente_tipo: '', cliente_nombre: '', detalles: [] });
+                    setBusquedaCliente('');
+                    setClienteSeleccionado(null);
                   }}
                 >
                   ❌ Cancelar
