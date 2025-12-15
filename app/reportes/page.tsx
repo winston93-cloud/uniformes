@@ -322,6 +322,7 @@ export default function ReportesPage() {
                   <tr>
                     <th>Prenda</th>
                     <th>Talla</th>
+                    <th>Stock Inicial</th>
                     <th>Stock Actual</th>
                     <th>Estado</th>
                   </tr>
@@ -331,6 +332,7 @@ export default function ReportesPage() {
                     <tr key={item.id}>
                       <td style={{ fontWeight: '600' }}>{item.prenda?.nombre || '-'}</td>
                       <td><span className="badge badge-info">{item.talla?.nombre || '-'}</span></td>
+                      <td style={{ fontWeight: '600' }}>{item.stock_inicial || 0}</td>
                       <td style={{ fontWeight: '600' }}>{item.stock}</td>
                       <td>
                         <span className="badge badge-danger">⚠️ Stock Bajo</span>

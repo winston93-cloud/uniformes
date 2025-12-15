@@ -101,7 +101,7 @@ export default function InventarioPage() {
                     <option value="">Seleccionar prenda y talla</option>
                     {costos.filter(c => c.activo).map(costo => (
                       <option key={costo.id} value={costo.id}>
-                        {(costo as any).prenda?.nombre || '-'} - {(costo as any).talla?.nombre || '-'} (Stock: {costo.stock})
+                        {(costo as any).prenda?.nombre || '-'} - {(costo as any).talla?.nombre || '-'} (Stock: {costo.stock}, Stock Inicial: {(costo as any).stock_inicial || 0})
                       </option>
                     ))}
                   </select>
