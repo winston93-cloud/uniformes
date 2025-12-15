@@ -160,6 +160,7 @@ export default function CostosPage() {
       precio_venta: parseFloat(formData.precioVenta) || 0,
       stock_inicial: 0,
       stock: 0,
+      stock_minimo: 0,
       activo: true,
     }));
 
