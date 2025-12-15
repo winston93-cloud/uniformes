@@ -184,10 +184,19 @@ export default function PedidosPage() {
         return;
       }
 
+      // Verificar que prendas esté cargado y tenga datos
+      if (!prendas || prendas.length === 0) {
+        if (isMounted) {
+          setResultadosPrenda([]);
+          setMostrarResultadosPrenda(false);
+        }
+        return;
+      }
+
       const query = busquedaPrenda.trim().toLowerCase();
       const prendasFiltradas = prendas
-        .filter(p => p.activo && (
-          p.nombre.toLowerCase().includes(query) ||
+        .filter(p => p && p.activo && (
+          (p.nombre && p.nombre.toLowerCase().includes(query)) ||
           (p.codigo && p.codigo.toLowerCase().includes(query))
         ))
         .slice(0, 10);
@@ -206,8 +215,14 @@ export default function PedidosPage() {
       isMounted = false;
       clearTimeout(timeoutId);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [busquedaPrenda]);
+  }, [busquedaPrenda, prendas]);
+
+  // Mostrar resultados cuando cambien
+  useEffect(() => {
+    if (resultadosPrenda.length > 0 && busquedaPrenda.trim().length >= 2) {
+      setMostrarResultadosPrenda(true);
+    }
+  }, [resultadosPrenda, busquedaPrenda]);
 
   // Cargar tallas cuando se selecciona una prenda
   useEffect(() => {
@@ -577,12 +592,12 @@ export default function PedidosPage() {
                                 }
                               }}
                               onFocus={() => {
-                                if (resultadosPrenda.length > 0) {
+                                if (busquedaPrenda.trim().length >= 2 && resultadosPrenda.length > 0) {
                                   setMostrarResultadosPrenda(true);
                                 }
                               }}
                               onBlur={() => {
-                                setTimeout(() => setMostrarResultadosPrenda(false), 200);
+                                setTimeout(() => setMostrarResultadosPrenda(false), 300);
                               }}
                               placeholder="SELECCIONAR PRENDA..."
                               style={{ width: '100%', fontSize: '0.9rem' }}
@@ -605,7 +620,10 @@ export default function PedidosPage() {
                                 {resultadosPrenda.map((prenda, index) => (
                                   <div
                                     key={prenda.id}
-                                    onClick={() => seleccionarPrenda(prenda)}
+                                    onMouseDown={(e) => {
+                                      e.preventDefault();
+                                      seleccionarPrenda(prenda);
+                                    }}
                                     style={{
                                       padding: '0.75rem 1rem',
                                       cursor: 'pointer',

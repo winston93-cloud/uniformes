@@ -10,7 +10,9 @@ interface HeaderProps {
 export default function Header({ onMenuClick }: HeaderProps) {
   const router = useRouter();
 
-  const handleIrAlPanel = () => {
+  const handleIrAlPanel = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
     router.push('/dashboard');
   };
 
