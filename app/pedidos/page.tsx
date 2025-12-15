@@ -603,6 +603,7 @@ export default function PedidosPage() {
                                 }
                               }}
                               onFocus={() => {
+                                console.log('📍 onFocus disparado');
                                 if (busquedaPrenda.trim().length >= 2) {
                                   if (resultadosPrenda.length > 0) {
                                     setMostrarResultadosPrenda(true);
@@ -611,8 +612,14 @@ export default function PedidosPage() {
                                   }
                                 }
                               }}
-                              onBlur={() => {
-                                setTimeout(() => setMostrarResultadosPrenda(false), 200);
+                              onBlur={(e) => {
+                                console.log('👋 onBlur disparado');
+                                // No ocultar el dropdown si el usuario está interactuando con él
+                                // Dar más tiempo para que el onClick del dropdown se ejecute
+                                setTimeout(() => {
+                                  console.log('⏰ Timeout onBlur ejecutado - ocultando dropdown');
+                                  setMostrarResultadosPrenda(false);
+                                }, 300);
                               }}
                               placeholder="SELECCIONAR PRENDA..."
                               style={{ width: '100%', fontSize: '0.9rem' }}
