@@ -84,10 +84,14 @@ export default function PedidosPage() {
 
   // Función para buscar clientes (alumnos y externos)
   useEffect(() => {
+    let isMounted = true;
+    
     const buscarClientes = async () => {
       if (busquedaCliente.trim().length < 2) {
-        setResultadosBusqueda([]);
-        setMostrarResultados(false);
+        if (isMounted) {
+          setResultadosBusqueda([]);
+          setMostrarResultados(false);
+        }
         return;
       }
 
@@ -99,41 +103,61 @@ export default function PedidosPage() {
         datos: any;
       }> = [];
 
-      // Buscar en alumnos
-      const alumnosEncontrados = await searchAlumnos(query);
-      alumnosEncontrados.slice(0, 10).forEach(alumno => {
-        resultados.push({
-          id: alumno.id,
-          nombre: alumno.nombre,
-          tipo: 'alumno',
-          datos: alumno,
+      try {
+        // Buscar en alumnos
+        const alumnosEncontrados = await searchAlumnos(query);
+        if (isMounted && alumnosEncontrados) {
+          alumnosEncontrados.slice(0, 10).forEach(alumno => {
+            resultados.push({
+              id: alumno.id,
+              nombre: alumno.nombre,
+              tipo: 'alumno',
+              datos: alumno,
+            });
+          });
+        }
+
+        // Buscar en externos
+        const externosFiltrados = externos
+          .filter(e => e.activo && (
+            e.nombre.toLowerCase().includes(query) ||
+            (e.email && e.email.toLowerCase().includes(query)) ||
+            (e.telefono && e.telefono.includes(query))
+          ))
+          .slice(0, 10 - resultados.length);
+
+        externosFiltrados.forEach(externo => {
+          resultados.push({
+            id: externo.id,
+            nombre: externo.nombre,
+            tipo: 'externo',
+            datos: externo,
+          });
         });
-      });
 
-      // Buscar en externos
-      const externosFiltrados = externos
-        .filter(e => e.activo && (
-          e.nombre.toLowerCase().includes(query) ||
-          (e.email && e.email.toLowerCase().includes(query)) ||
-          (e.telefono && e.telefono.includes(query))
-        ))
-        .slice(0, 10 - resultados.length);
-
-      externosFiltrados.forEach(externo => {
-        resultados.push({
-          id: externo.id,
-          nombre: externo.nombre,
-          tipo: 'externo',
-          datos: externo,
-        });
-      });
-
-      setResultadosBusqueda(resultados.slice(0, 10));
-      setMostrarResultados(resultados.length > 0);
+        if (isMounted) {
+          setResultadosBusqueda(resultados.slice(0, 10));
+          setMostrarResultados(resultados.length > 0);
+        }
+      } catch (error) {
+        console.error('Error buscando clientes:', error);
+        if (isMounted) {
+          setResultadosBusqueda([]);
+          setMostrarResultados(false);
+        }
+      }
     };
 
-    buscarClientes();
-  }, [busquedaCliente, searchAlumnos, externos]);
+    const timeoutId = setTimeout(() => {
+      buscarClientes();
+    }, 300); // Debounce de 300ms
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timeoutId);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busquedaCliente]);
 
   const seleccionarCliente = (cliente: typeof resultadosBusqueda[0]) => {
     setFormData({
