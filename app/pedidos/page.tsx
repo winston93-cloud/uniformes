@@ -205,7 +205,9 @@ export default function PedidosPage() {
     console.log('📋 Prendas filtradas:', prendasFiltradas.map(p => p.nombre));
 
     setResultadosPrenda(prendasFiltradas);
-    setMostrarResultadosPrenda(prendasFiltradas.length > 0);
+    const mostrar = prendasFiltradas.length > 0;
+    console.log('👁️ Mostrar dropdown:', mostrar);
+    setMostrarResultadosPrenda(mostrar);
   };
 
   // Debounce para búsqueda de prendas
@@ -610,6 +612,7 @@ export default function PedidosPage() {
                               placeholder="SELECCIONAR PRENDA..."
                               style={{ width: '100%', fontSize: '0.9rem' }}
                             />
+                            {console.log('🖼️ Renderizando - mostrarResultadosPrenda:', mostrarResultadosPrenda, 'resultadosPrenda.length:', resultadosPrenda.length)}
                             {mostrarResultadosPrenda && resultadosPrenda.length > 0 && (
                               <div style={{
                                 position: 'absolute',
