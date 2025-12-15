@@ -40,6 +40,7 @@ export default function StockPage() {
   const [formDataEdicion, setFormDataEdicion] = useState({
     stock: '',
     stock_inicial: '',
+    cantidad_venta: '',
     stock_minimo: '',
   });
 
@@ -169,6 +170,7 @@ export default function StockPage() {
             precio_venta: 0,
             stock_inicial: stockValue,
             stock: stockValue,
+            cantidad_venta: 0,
             stock_minimo: stockMinimoValue,
             activo: true,
           }]);
@@ -201,6 +203,7 @@ export default function StockPage() {
     setFormDataEdicion({
       stock: costo.stock.toString(),
       stock_inicial: (costo as any).stock_inicial?.toString() || '0',
+      cantidad_venta: (costo as any).cantidad_venta?.toString() || '0',
       stock_minimo: (costo as any).stock_minimo?.toString() || '0',
     });
     setMostrarModalEdicion(true);
@@ -216,6 +219,7 @@ export default function StockPage() {
     const { error } = await updateCosto(costoEditando.id, {
       stock: parseInt(formDataEdicion.stock) || 0,
       stock_inicial: parseInt(formDataEdicion.stock_inicial) || 0,
+      cantidad_venta: parseInt(formDataEdicion.cantidad_venta) || 0,
       stock_minimo: parseInt(formDataEdicion.stock_minimo) || 0,
     });
 
@@ -688,6 +692,7 @@ export default function StockPage() {
                 <th>Prenda</th>
                 <th>Talla</th>
                 <th>Stock</th>
+                <th>Venta</th>
                 <th>Stock de Reabastecimiento</th>
                 <th>Stock Mínimo</th>
                 <th>Acciones</th>
@@ -696,7 +701,7 @@ export default function StockPage() {
             <tbody>
               {costosFiltrados.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                  <td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
                     {busquedaTabla ? 'No se encontró stock con ese criterio.' : 'No hay stock registrado. Asigna stock inicial a las prendas.'}
                   </td>
                 </tr>
@@ -706,6 +711,9 @@ export default function StockPage() {
                     <td style={{ fontWeight: '600' }}>{costo.prenda?.nombre || '-'}</td>
                     <td><span className="badge badge-info">{costo.talla?.nombre || '-'}</span></td>
                     <td>{costo.stock_inicial}</td>
+                    <td style={{ fontWeight: '600', color: costo.cantidad_venta > 0 ? '#3b82f6' : '#999' }}>
+                      {costo.cantidad_venta || 0}
+                    </td>
                     <td style={{ fontWeight: '600', color: costo.stock > 0 ? '#10b981' : '#ef4444' }}>
                       {costo.stock}
                     </td>
@@ -762,6 +770,19 @@ export default function StockPage() {
                       className="form-input"
                       value={formDataEdicion.stock_inicial}
                       onChange={(e) => setFormDataEdicion({ ...formDataEdicion, stock_inicial: e.target.value })}
+                      placeholder="0"
+                      required
+                      min="0"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Venta *</label>
+                    <input
+                      type="number"
+                      className="form-input"
+                      value={formDataEdicion.cantidad_venta}
+                      onChange={(e) => setFormDataEdicion({ ...formDataEdicion, cantidad_venta: e.target.value })}
                       placeholder="0"
                       required
                       min="0"
