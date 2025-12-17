@@ -637,14 +637,14 @@ export default function PedidosPage() {
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr style={{ backgroundColor: '#f8f9fa', borderBottom: '2px solid #dee2e6' }}>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600', fontSize: '0.9rem' }}>👕 Prenda</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600', fontSize: '0.9rem' }}>📏 Talla</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600', fontSize: '0.9rem' }}>ℹ️ Especificaciones</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: '600', fontSize: '0.9rem' }}>🔢 Cantidad</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: '600', fontSize: '0.9rem' }}>⏰ Pendiente</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: '600', fontSize: '0.9rem' }}>$ Precio Unit.</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: '600', fontSize: '0.9rem' }}>Total</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: '600', fontSize: '0.9rem' }}>🗑️ Eliminar</th>
+                        <th style={{ padding: '0.4rem', textAlign: 'left', fontWeight: '600', fontSize: '0.8rem' }}>👕 Prenda</th>
+                        <th style={{ padding: '0.4rem', textAlign: 'left', fontWeight: '600', fontSize: '0.8rem' }}>📏 Talla</th>
+                        <th style={{ padding: '0.4rem', textAlign: 'left', fontWeight: '600', fontSize: '0.8rem' }}>ℹ️ Especif.</th>
+                        <th style={{ padding: '0.4rem', textAlign: 'center', fontWeight: '600', fontSize: '0.8rem' }}>🔢 Cant.</th>
+                        <th style={{ padding: '0.4rem', textAlign: 'center', fontWeight: '600', fontSize: '0.8rem' }}>⏰ Pend.</th>
+                        <th style={{ padding: '0.4rem', textAlign: 'right', fontWeight: '600', fontSize: '0.8rem' }}>$ Precio</th>
+                        <th style={{ padding: '0.4rem', textAlign: 'right', fontWeight: '600', fontSize: '0.8rem' }}>Total</th>
+                        <th style={{ padding: '0.4rem', textAlign: 'center', fontWeight: '600', fontSize: '0.8rem' }}>🗑️</th>
                       </tr>
                     </thead>
                     <tbody>
