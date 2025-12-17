@@ -53,35 +53,44 @@ export function usePedidos() {
 
   const crearPedido = async (pedido: Omit<Pedido, 'id' | 'created_at' | 'updated_at'>, detalles: Omit<DetallePedido, 'id' | 'pedido_id'>[]) => {
     try {
+      console.log('📦 Creando pedido...', pedido);
+      
       // Preparar datos del pedido
       const pedidoData: any = {
         tipo_cliente: pedido.cliente_tipo,
         estado: pedido.estado,
         subtotal: pedido.total,
         total: pedido.total,
-        notas: pedido.observaciones,
         cliente_nombre: pedido.cliente_nombre,
-        modalidad_pago: pedido.modalidad_pago,
-        efectivo_recibido: pedido.efectivo_recibido,
       };
+
+      // Agregar campos opcionales solo si existen en la tabla
+      if (pedido.observaciones) {
+        pedidoData.notas = pedido.observaciones;
+      }
 
       // Asignar alumno_id o externo_id según el tipo
       if (pedido.cliente_tipo === 'alumno') {
         pedidoData.alumno_id = pedido.cliente_id;
-        pedidoData.externo_id = null;
       } else {
         pedidoData.externo_id = pedido.cliente_id;
-        pedidoData.alumno_id = null;
       }
+
+      console.log('📝 Datos a insertar:', pedidoData);
 
       // Insertar el pedido
       const { data: pedidoInsertado, error: pedidoError } = await supabase
         .from('pedidos')
-        .insert([pedidoData])
+        .insert(pedidoData)
         .select()
         .single();
 
-      if (pedidoError) throw pedidoError;
+      if (pedidoError) {
+        console.error('❌ Error al insertar pedido:', pedidoError);
+        throw pedidoError;
+      }
+
+      console.log('✅ Pedido insertado:', pedidoInsertado);
 
       // Insertar los detalles
       const detallesConPedidoId = detalles.map(detalle => ({
