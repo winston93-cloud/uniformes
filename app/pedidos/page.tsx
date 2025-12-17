@@ -489,6 +489,8 @@ export default function PedidosPage() {
 
   const verDetallePedido = async (pedido: Pedido) => {
     try {
+      console.log('🔍 Buscando detalles del pedido:', pedido.id);
+      
       // Obtener los detalles del pedido
       const { data: detalles, error } = await supabase
         .from('detalle_pedidos')
@@ -496,10 +498,16 @@ export default function PedidosPage() {
         .eq('pedido_id', pedido.id);
 
       if (error) {
-        console.error('Error al obtener detalles:', error);
-        alert('Error al cargar los detalles del pedido');
+        console.error('❌ Error completo:', JSON.stringify(error, null, 2));
+        console.error('❌ Mensaje:', error.message);
+        console.error('❌ Detalles:', error.details);
+        console.error('❌ Hint:', error.hint);
+        console.error('❌ Code:', error.code);
+        alert(`Error al cargar los detalles del pedido: ${error.message || 'Error desconocido'}`);
         return;
       }
+      
+      console.log('✅ Detalles obtenidos:', detalles);
 
       // Enriquecer los detalles con nombres de prendas y tallas
       const detallesEnriquecidos = await Promise.all(
