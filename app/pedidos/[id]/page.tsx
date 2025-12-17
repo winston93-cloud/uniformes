@@ -451,20 +451,20 @@ export default function DetallePedidoPage() {
             borderBottom: '1px solid #e5e7eb'
           }}>
             <div className="print-info-item">
-              <p className="print-info-label" style={{ fontSize: '0.9rem', color: '#6b7280', marginBottom: '0.5rem' }}>NO. PEDIDO</p>
-              <p className="print-info-value" style={{ fontSize: '1.1rem', fontWeight: '700', margin: 0 }}>
+              <p className="print-info-label" style={{ fontSize: '0.65rem', color: '#6b7280', marginBottom: '0.25rem' }}>NO. PEDIDO</p>
+              <p className="print-info-value" style={{ fontSize: '0.8rem', fontWeight: '700', margin: 0 }}>
                 {pedido.id.substring(0, 8).toUpperCase()}
               </p>
             </div>
             <div className="print-info-item">
-              <p className="print-info-label" style={{ fontSize: '0.9rem', color: '#6b7280', marginBottom: '0.5rem' }}>CLIENTE</p>
-              <p className="print-info-value" style={{ fontSize: '1.1rem', fontWeight: '700', margin: 0 }}>
+              <p className="print-info-label" style={{ fontSize: '0.65rem', color: '#6b7280', marginBottom: '0.25rem' }}>CLIENTE</p>
+              <p className="print-info-value" style={{ fontSize: '0.8rem', fontWeight: '700', margin: 0 }}>
                 {pedido.cliente_nombre}
               </p>
             </div>
             <div className="print-info-item">
-              <p className="print-info-label" style={{ fontSize: '0.9rem', color: '#6b7280', marginBottom: '0.5rem' }}>FECHA</p>
-              <p className="print-info-value" style={{ fontSize: '1.1rem', fontWeight: '700', margin: 0 }}>
+              <p className="print-info-label" style={{ fontSize: '0.65rem', color: '#6b7280', marginBottom: '0.25rem' }}>FECHA</p>
+              <p className="print-info-value" style={{ fontSize: '0.8rem', fontWeight: '700', margin: 0 }}>
                 {pedido.fecha}
               </p>
             </div>
@@ -551,60 +551,60 @@ export default function DetallePedidoPage() {
               backgroundColor: '#fef3c7',
               border: '2px solid #fbbf24',
               borderRadius: '8px',
-              padding: '1.5rem'
+              padding: '1rem'
             }}>
               <h3 className="print-observations-title" style={{ 
-                fontSize: '1.1rem', 
+                fontSize: '0.75rem', 
                 fontWeight: '600',
-                marginBottom: '1rem',
+                marginBottom: '0.5rem',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.5rem'
               }}>
                 💬 Observaciones
               </h3>
-              <p className="print-observations-text" style={{ margin: 0, fontStyle: 'italic', color: '#92400e' }}>
+              <p className="print-observations-text" style={{ margin: 0, fontStyle: 'italic', color: '#92400e', fontSize: '0.7rem' }}>
                 {pedido.notas || 'Sin observaciones'}
               </p>
             </div>
 
             {/* Resumen de pagos */}
-            <div className="print-summary" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div className="print-summary" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               <div className="print-summary-row print-summary-total" style={{
                 backgroundColor: '#3b82f6',
                 color: 'white',
-                padding: '1.5rem',
-                borderRadius: '8px',
+                padding: '0.75rem 1rem',
+                borderRadius: '6px',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center'
               }}>
-                <span style={{ fontSize: '1.1rem', fontWeight: '600' }}>💵 TOTAL A PAGAR</span>
-                <span style={{ fontSize: '1.5rem', fontWeight: '700' }}>${pedido.total.toFixed(2)}</span>
+                <span style={{ fontSize: '0.8rem', fontWeight: '600' }}>💵 TOTAL A PAGAR</span>
+                <span style={{ fontSize: '1rem', fontWeight: '700' }}>${pedido.total.toFixed(2)}</span>
               </div>
 
               <div className="print-summary-row print-summary-anticipo" style={{
                 backgroundColor: '#f3f4f6',
-                padding: '1.5rem',
-                borderRadius: '8px',
+                padding: '0.75rem 1rem',
+                borderRadius: '6px',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center'
               }}>
-                <span style={{ fontSize: '1rem', fontWeight: '600' }}>📊 ANTICIPO</span>
-                <span style={{ fontSize: '1.2rem', fontWeight: '700' }}>${anticipo.toFixed(2)}</span>
+                <span style={{ fontSize: '0.75rem', fontWeight: '600' }}>📊 ANTICIPO</span>
+                <span style={{ fontSize: '0.9rem', fontWeight: '700' }}>${anticipo.toFixed(2)}</span>
               </div>
 
               <div className="print-summary-row print-summary-restante" style={{
                 backgroundColor: '#f3f4f6',
-                padding: '1.5rem',
-                borderRadius: '8px',
+                padding: '0.75rem 1rem',
+                borderRadius: '6px',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center'
               }}>
-                <span style={{ fontSize: '1rem', fontWeight: '600' }}>💰 RESTANTE</span>
-                <span style={{ fontSize: '1.2rem', fontWeight: '700', color: restante > 0 ? '#ef4444' : '#10b981' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: '600' }}>💰 RESTANTE</span>
+                <span style={{ fontSize: '0.9rem', fontWeight: '700', color: restante > 0 ? '#ef4444' : '#10b981' }}>
                   ${restante.toFixed(2)}
                 </span>
               </div>
