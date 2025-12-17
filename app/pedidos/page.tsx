@@ -875,12 +875,22 @@ export default function PedidosPage() {
                             value={detalleActual.cantidad}
                             onChange={(e) => {
                               const cantidad = e.target.value;
-                              const newDetalle = { ...detalleActual, cantidad };
-                              setDetalleActual(newDetalle);
-                              
-                              // Agregar automáticamente cuando todos los campos están completos
-                              if (newDetalle.prenda_id && newDetalle.talla_id && parseFloat(cantidad) > 0) {
-                                setTimeout(() => agregarDetalle(), 100);
+                              setDetalleActual({ ...detalleActual, cantidad });
+                            }}
+                            onBlur={(e) => {
+                              const cantidad = e.target.value;
+                              // Agregar automáticamente cuando todos los campos están completos al salir del input
+                              if (detalleActual.prenda_id && detalleActual.talla_id && parseFloat(cantidad) > 0) {
+                                agregarDetalle();
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                const cantidad = (e.target as HTMLInputElement).value;
+                                // Agregar automáticamente al presionar Enter
+                                if (detalleActual.prenda_id && detalleActual.talla_id && parseFloat(cantidad) > 0) {
+                                  agregarDetalle();
+                                }
                               }
                             }}
                             min="0"
