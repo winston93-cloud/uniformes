@@ -31,7 +31,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
         <Link href="/dashboard" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <span style={{ fontSize: '2rem' }}>👔</span>
           <span style={{ fontSize: '1.2rem', fontWeight: '700', color: 'var(--text-primary)' }}>
-            Winston Churchill
+            Sistema de Uniformes
           </span>
         </Link>
       </div>
