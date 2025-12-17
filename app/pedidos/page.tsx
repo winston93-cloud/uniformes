@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import { supabase } from '@/lib/supabase';
@@ -43,9 +43,21 @@ interface DetallePedido {
 
 export const dynamic = 'force-dynamic';
 
-export default function PedidosPage() {
-  const router = useRouter();
+// Componente para detectar parámetros de búsqueda
+function SearchParamsDetector({ setMostrarFormulario }: { setMostrarFormulario: (value: boolean) => void }) {
   const searchParams = useSearchParams();
+  
+  useEffect(() => {
+    if (searchParams.get('nuevo') === 'true') {
+      setMostrarFormulario(true);
+    }
+  }, [searchParams, setMostrarFormulario]);
+  
+  return null;
+}
+
+function PedidosPageContent() {
+  const router = useRouter();
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [mostrarModal, setMostrarModal] = useState(false);
   const [pedidoSeleccionado, setPedidoSeleccionado] = useState<any>(null);
@@ -55,13 +67,6 @@ export default function PedidosPage() {
   const { prendas } = usePrendas();
   const { tallas } = useTallas();
   const { pedidos: pedidosDB, loading: loadingPedidos, crearPedido, actualizarEstadoPedido } = usePedidos();
-  
-  // Detectar parámetro 'nuevo' para abrir formulario automáticamente
-  useEffect(() => {
-    if (searchParams.get('nuevo') === 'true') {
-      setMostrarFormulario(true);
-    }
-  }, [searchParams]);
 
   // Estados para filtro de mes/año
   const fechaActual = new Date();
@@ -597,6 +602,9 @@ export default function PedidosPage() {
 
   return (
     <LayoutWrapper>
+      <Suspense fallback={null}>
+        <SearchParamsDetector setMostrarFormulario={setMostrarFormulario} />
+      </Suspense>
       <div className="main-container" style={{ paddingTop: '1rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h1 style={{ fontSize: '1.8rem', fontWeight: '700', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.2)' }}>
@@ -1579,6 +1587,14 @@ export default function PedidosPage() {
         </div>
       )}
     </LayoutWrapper>
+  );
+}
+
+export default function PedidosPage() {
+  return (
+    <Suspense fallback={<div>Cargando...</div>}>
+      <PedidosPageContent />
+    </Suspense>
   );
 }
 
