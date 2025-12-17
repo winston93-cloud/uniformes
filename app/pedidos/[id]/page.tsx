@@ -35,6 +35,232 @@ export default function DetallePedidoPage() {
   const [pedido, setPedido] = useState<Pedido | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Estilos para impresión
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.innerHTML = `
+      @media print {
+        /* Ocultar elementos innecesarios */
+        nav, aside, .no-print, button, header {
+          display: none !important;
+        }
+
+        /* Reset de márgenes y padding */
+        body {
+          margin: 0;
+          padding: 20px;
+          background: white;
+        }
+
+        /* Contenedor principal */
+        .print-container {
+          max-width: 100%;
+          margin: 0;
+          padding: 0;
+        }
+
+        /* Encabezado del recibo */
+        .print-header {
+          text-align: center;
+          border-bottom: 3px solid #1f2937;
+          padding-bottom: 20px;
+          margin-bottom: 30px;
+        }
+
+        .print-header h1 {
+          font-size: 32px;
+          font-weight: 700;
+          color: #1f2937;
+          margin: 0 0 10px 0;
+          letter-spacing: 2px;
+        }
+
+        .print-header .subtitle {
+          font-size: 14px;
+          color: #6b7280;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+        }
+
+        /* Información del pedido */
+        .print-info {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 20px;
+          margin-bottom: 30px;
+          padding: 20px;
+          background: #f9fafb;
+          border-radius: 8px;
+          border: 2px solid #e5e7eb;
+        }
+
+        .print-info-item {
+          text-align: center;
+        }
+
+        .print-info-label {
+          font-size: 11px;
+          color: #6b7280;
+          font-weight: 600;
+          text-transform: uppercase;
+          margin-bottom: 5px;
+          letter-spacing: 0.5px;
+        }
+
+        .print-info-value {
+          font-size: 16px;
+          font-weight: 700;
+          color: #1f2937;
+        }
+
+        /* Tabla de productos */
+        .print-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-bottom: 30px;
+        }
+
+        .print-table thead {
+          background: #1f2937;
+          color: white;
+        }
+
+        .print-table th {
+          padding: 12px 8px;
+          text-align: left;
+          font-size: 11px;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        .print-table tbody tr {
+          border-bottom: 1px solid #e5e7eb;
+        }
+
+        .print-table tbody tr:last-child {
+          border-bottom: 2px solid #1f2937;
+        }
+
+        .print-table td {
+          padding: 12px 8px;
+          font-size: 13px;
+        }
+
+        .print-table .product-name {
+          font-weight: 600;
+          color: #1f2937;
+        }
+
+        .print-table .size-badge {
+          display: inline-block;
+          background: #3b82f6;
+          color: white;
+          padding: 4px 12px;
+          border-radius: 4px;
+          font-weight: 600;
+          font-size: 12px;
+        }
+
+        .print-table .price {
+          text-align: right;
+          font-weight: 600;
+        }
+
+        .print-table .total-cell {
+          font-weight: 700;
+          color: #10b981;
+          font-size: 14px;
+        }
+
+        /* Resumen y observaciones */
+        .print-footer {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 30px;
+          margin-top: 30px;
+        }
+
+        .print-observations {
+          background: #fef3c7;
+          border: 2px solid #fbbf24;
+          border-radius: 8px;
+          padding: 20px;
+        }
+
+        .print-observations-title {
+          font-size: 14px;
+          font-weight: 700;
+          color: #92400e;
+          margin-bottom: 10px;
+          text-transform: uppercase;
+        }
+
+        .print-observations-text {
+          font-size: 13px;
+          color: #92400e;
+          font-style: italic;
+          line-height: 1.6;
+        }
+
+        .print-summary {
+          display: flex;
+          flex-direction: column;
+          gap: 15px;
+        }
+
+        .print-summary-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 15px 20px;
+          border-radius: 8px;
+          font-size: 15px;
+        }
+
+        .print-summary-total {
+          background: #1f2937;
+          color: white;
+          font-weight: 700;
+          font-size: 18px;
+        }
+
+        .print-summary-anticipo,
+        .print-summary-restante {
+          background: #f3f4f6;
+          color: #1f2937;
+          font-weight: 600;
+        }
+
+        /* Footer del documento */
+        .print-document-footer {
+          margin-top: 50px;
+          padding-top: 20px;
+          border-top: 2px solid #e5e7eb;
+          text-align: center;
+          font-size: 11px;
+          color: #6b7280;
+        }
+
+        .print-logo {
+          font-size: 24px;
+          font-weight: 700;
+          color: #3b82f6;
+          margin-bottom: 5px;
+        }
+
+        /* Salto de página si es necesario */
+        .page-break {
+          page-break-after: always;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
+
   useEffect(() => {
     cargarPedido();
   }, [params.id]);
@@ -132,9 +358,17 @@ export default function DetallePedidoPage() {
 
   return (
     <LayoutWrapper>
-      <div style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto' }}>
+      <div className="print-container" style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto' }}>
+        
+        {/* Encabezado para impresión */}
+        <div className="print-header" style={{ display: 'none' }}>
+          <div className="print-logo">🎓 WINSTON CHURCHILL</div>
+          <h1>RECIBO DE PAGO</h1>
+          <div className="subtitle">Sistema de Gestión de Uniformes</div>
+        </div>
+
         {/* Mensaje de éxito */}
-        <div style={{
+        <div className="no-print" style={{
           backgroundColor: '#10b981',
           color: 'white',
           padding: '1rem 2rem',
@@ -158,7 +392,7 @@ export default function DetallePedidoPage() {
           overflow: 'hidden'
         }}>
           {/* Header con botones */}
-          <div style={{
+          <div className="no-print" style={{
             padding: '1.5rem 2rem',
             borderBottom: '2px solid #e5e7eb',
             display: 'flex',
@@ -194,28 +428,28 @@ export default function DetallePedidoPage() {
           </div>
 
           {/* Información del pedido */}
-          <div style={{
+          <div className="print-info" style={{
             padding: '2rem',
             display: 'grid',
             gridTemplateColumns: 'repeat(3, 1fr)',
             gap: '2rem',
             borderBottom: '1px solid #e5e7eb'
           }}>
-            <div>
-              <p style={{ fontSize: '0.9rem', color: '#6b7280', marginBottom: '0.5rem' }}>NO. PEDIDO</p>
-              <p style={{ fontSize: '1.1rem', fontWeight: '700', margin: 0 }}>
+            <div className="print-info-item">
+              <p className="print-info-label" style={{ fontSize: '0.9rem', color: '#6b7280', marginBottom: '0.5rem' }}>NO. PEDIDO</p>
+              <p className="print-info-value" style={{ fontSize: '1.1rem', fontWeight: '700', margin: 0 }}>
                 {pedido.id.substring(0, 8).toUpperCase()}
               </p>
             </div>
-            <div>
-              <p style={{ fontSize: '0.9rem', color: '#6b7280', marginBottom: '0.5rem' }}>CLIENTE</p>
-              <p style={{ fontSize: '1.1rem', fontWeight: '700', margin: 0 }}>
+            <div className="print-info-item">
+              <p className="print-info-label" style={{ fontSize: '0.9rem', color: '#6b7280', marginBottom: '0.5rem' }}>CLIENTE</p>
+              <p className="print-info-value" style={{ fontSize: '1.1rem', fontWeight: '700', margin: 0 }}>
                 {pedido.cliente_nombre}
               </p>
             </div>
-            <div>
-              <p style={{ fontSize: '0.9rem', color: '#6b7280', marginBottom: '0.5rem' }}>FECHA</p>
-              <p style={{ fontSize: '1.1rem', fontWeight: '700', margin: 0 }}>
+            <div className="print-info-item">
+              <p className="print-info-label" style={{ fontSize: '0.9rem', color: '#6b7280', marginBottom: '0.5rem' }}>FECHA</p>
+              <p className="print-info-value" style={{ fontSize: '1.1rem', fontWeight: '700', margin: 0 }}>
                 {pedido.fecha}
               </p>
             </div>
@@ -223,7 +457,7 @@ export default function DetallePedidoPage() {
 
           {/* Tabla de productos */}
           <div style={{ padding: '2rem' }}>
-            <table style={{ 
+            <table className="print-table" style={{ 
               width: '100%', 
               borderCollapse: 'collapse',
               backgroundColor: '#1f2937',
@@ -250,9 +484,9 @@ export default function DetallePedidoPage() {
                       borderBottom: '1px solid #e5e7eb'
                     }}
                   >
-                    <td style={{ padding: '1rem', fontWeight: '600' }}>{detalle.prenda}</td>
+                    <td className="product-name" style={{ padding: '1rem', fontWeight: '600' }}>{detalle.prenda}</td>
                     <td style={{ padding: '1rem', textAlign: 'center' }}>
-                      <span style={{
+                      <span className="size-badge" style={{
                         backgroundColor: '#3b82f6',
                         color: 'white',
                         padding: '0.25rem 0.75rem',
@@ -274,10 +508,10 @@ export default function DetallePedidoPage() {
                         backgroundColor: detalle.pendiente > 0 ? '#f59e0b' : '#10b981'
                       }}></span>
                     </td>
-                    <td style={{ padding: '1rem', textAlign: 'right' }}>
+                    <td className="price" style={{ padding: '1rem', textAlign: 'right' }}>
                       ${detalle.precio_unitario.toFixed(2)}
                     </td>
-                    <td style={{ padding: '1rem', textAlign: 'right', fontWeight: '700', color: '#10b981' }}>
+                    <td className="price total-cell" style={{ padding: '1rem', textAlign: 'right', fontWeight: '700', color: '#10b981' }}>
                       ${detalle.subtotal.toFixed(2)}
                     </td>
                     <td style={{ padding: '1rem', color: '#6b7280', fontStyle: 'italic' }}>
@@ -290,7 +524,7 @@ export default function DetallePedidoPage() {
           </div>
 
           {/* Observaciones y resumen */}
-          <div style={{
+          <div className="print-footer" style={{
             padding: '2rem',
             display: 'grid',
             gridTemplateColumns: '1fr 1fr',
@@ -298,13 +532,13 @@ export default function DetallePedidoPage() {
             borderTop: '1px solid #e5e7eb'
           }}>
             {/* Observaciones */}
-            <div style={{
+            <div className="print-observations" style={{
               backgroundColor: '#fef3c7',
               border: '2px solid #fbbf24',
               borderRadius: '8px',
               padding: '1.5rem'
             }}>
-              <h3 style={{ 
+              <h3 className="print-observations-title" style={{ 
                 fontSize: '1.1rem', 
                 fontWeight: '600',
                 marginBottom: '1rem',
@@ -314,14 +548,14 @@ export default function DetallePedidoPage() {
               }}>
                 💬 Observaciones
               </h3>
-              <p style={{ margin: 0, fontStyle: 'italic', color: '#92400e' }}>
+              <p className="print-observations-text" style={{ margin: 0, fontStyle: 'italic', color: '#92400e' }}>
                 {pedido.notas || 'Sin observaciones'}
               </p>
             </div>
 
             {/* Resumen de pagos */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div style={{
+            <div className="print-summary" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div className="print-summary-row print-summary-total" style={{
                 backgroundColor: '#3b82f6',
                 color: 'white',
                 padding: '1.5rem',
@@ -334,7 +568,7 @@ export default function DetallePedidoPage() {
                 <span style={{ fontSize: '1.5rem', fontWeight: '700' }}>${pedido.total.toFixed(2)}</span>
               </div>
 
-              <div style={{
+              <div className="print-summary-row print-summary-anticipo" style={{
                 backgroundColor: '#f3f4f6',
                 padding: '1.5rem',
                 borderRadius: '8px',
@@ -346,7 +580,7 @@ export default function DetallePedidoPage() {
                 <span style={{ fontSize: '1.2rem', fontWeight: '700' }}>${anticipo.toFixed(2)}</span>
               </div>
 
-              <div style={{
+              <div className="print-summary-row print-summary-restante" style={{
                 backgroundColor: '#f3f4f6',
                 padding: '1.5rem',
                 borderRadius: '8px',
@@ -363,7 +597,7 @@ export default function DetallePedidoPage() {
           </div>
 
           {/* Botón regresar */}
-          <div style={{ padding: '2rem', textAlign: 'center', borderTop: '1px solid #e5e7eb' }}>
+          <div className="no-print" style={{ padding: '2rem', textAlign: 'center', borderTop: '1px solid #e5e7eb' }}>
             <button
               onClick={() => router.push('/pedidos')}
               className="btn btn-danger"
@@ -372,6 +606,19 @@ export default function DetallePedidoPage() {
               ← Regresar
             </button>
           </div>
+        </div>
+
+        {/* Footer del documento para impresión */}
+        <div className="print-document-footer" style={{ display: 'none' }}>
+          <div className="print-logo">🎓 WINSTON CHURCHILL</div>
+          <p>Sistema de Gestión de Uniformes</p>
+          <p>Este documento fue generado automáticamente el {new Date().toLocaleDateString('es-MX', { 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          })}</p>
         </div>
       </div>
     </LayoutWrapper>
