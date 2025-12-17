@@ -518,21 +518,22 @@ export default function PedidosPage() {
     }
   };
 
-  const cambiarEstado = async (id: number, nuevoEstado: Pedido['estado']) => {
+  const cambiarEstado = async (id: string, nuevoEstado: Pedido['estado']) => {
     if (nuevoEstado === 'CANCELADO') {
       if (!confirm('¿Estás seguro de que deseas cancelar este pedido?')) {
         return;
       }
     }
     
-    // Buscar el UUID del pedido en la base de datos
-    const pedidoDB = pedidosDB.find((p: any) => parseInt(p.id.substring(0, 13), 16) === id);
-    if (pedidoDB) {
-      const resultado = await actualizarEstadoPedido(pedidoDB.id, nuevoEstado);
-      if (!resultado.success) {
-        alert('❌ Error al actualizar el estado del pedido');
-        console.error('Error:', resultado.error);
-      }
+    console.log('🔄 Cambiando estado del pedido:', id, 'a', nuevoEstado);
+    const resultado = await actualizarEstadoPedido(id, nuevoEstado);
+    
+    if (resultado.success) {
+      console.log('✅ Estado actualizado correctamente');
+      alert('✅ Pedido cancelado correctamente');
+    } else {
+      console.error('❌ Error al actualizar estado:', resultado.error);
+      alert('❌ Error al actualizar el estado del pedido');
     }
   };
 
