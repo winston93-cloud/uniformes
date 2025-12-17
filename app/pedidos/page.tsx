@@ -124,6 +124,9 @@ export default function PedidosPage() {
   const [tallasDisponibles, setTallasDisponibles] = useState<any[]>([]);
   const inputPrendaRef = useRef<HTMLInputElement>(null);
   const contenedorPrendaRef = useRef<HTMLDivElement>(null);
+  const selectTallaRef = useRef<HTMLSelectElement>(null);
+  const inputEspecificacionesRef = useRef<HTMLInputElement>(null);
+  const inputCantidadRef = useRef<HTMLInputElement>(null);
 
   // Función para buscar clientes (alumnos y externos)
   useEffect(() => {
@@ -275,6 +278,11 @@ export default function PedidosPage() {
           return a.nombre.localeCompare(b.nombre);
         });
       setTallasDisponibles(tallasFiltradas);
+      
+      // Mover foco al select de talla
+      setTimeout(() => {
+        selectTallaRef.current?.focus();
+      }, 100);
     }
   };
 
@@ -306,13 +314,17 @@ export default function PedidosPage() {
         talla_nombre: talla?.nombre || '',
         precio: costo.precio_venta.toString(),
       });
+      
+      // Mover foco a especificaciones
+      setTimeout(() => {
+        inputEspecificacionesRef.current?.focus();
+      }, 100);
     }
   };
 
   const agregarDetalle = () => {
     if (!detalleActual.prenda_id || !detalleActual.talla_id || !detalleActual.cantidad || parseFloat(detalleActual.cantidad) <= 0) {
-      alert('Por favor completa todos los campos requeridos');
-      return;
+      return; // Solo retorna sin alerta
     }
 
     const costo = costos.find(c => 
@@ -352,6 +364,20 @@ export default function PedidosPage() {
       detalles: [...formData.detalles, nuevoDetalle] 
     });
     
+    setDetalleActual({ 
+      prenda_id: '', 
+      prenda_nombre: '',
+      talla_id: '', 
+      talla_nombre: '',
+      especificaciones: '',
+      cantidad: '0', 
+      precio: '0' 
+    });
+    setTextoPrendaBusqueda('');
+    setTallasDisponibles([]);
+  };
+
+  const limpiarCamposParaNuevaPartida = () => {
     setDetalleActual({ 
       prenda_id: '', 
       prenda_nombre: '',
@@ -615,18 +641,18 @@ export default function PedidosPage() {
                 )}
               </div>
 
-              <div style={{ background: 'white', padding: '1.5rem', borderRadius: '10px', marginBottom: '1rem', border: '1px solid #e0e0e0' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                  <h3 style={{ margin: 0, fontWeight: '600', fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <div style={{ background: 'white', padding: '0.75rem', borderRadius: '8px', marginBottom: '0.75rem', border: '1px solid #e0e0e0' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                  <h3 style={{ margin: 0, fontWeight: '600', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                     📄 Detalles del Pedido
                   </h3>
                   <button
                     type="button"
                     className="btn btn-primary"
-                    onClick={agregarDetalle}
-                    style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}
+                    onClick={limpiarCamposParaNuevaPartida}
+                    style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
                   >
-                    + Agregar Prenda
+                    + Nueva Partida
                   </button>
                 </div>
 
@@ -634,20 +660,20 @@ export default function PedidosPage() {
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr style={{ backgroundColor: '#f8f9fa', borderBottom: '2px solid #dee2e6' }}>
-                        <th style={{ padding: '0.4rem', textAlign: 'left', fontWeight: '600', fontSize: '0.8rem' }}>👕 Prenda</th>
-                        <th style={{ padding: '0.4rem', textAlign: 'left', fontWeight: '600', fontSize: '0.8rem' }}>📏 Talla</th>
-                        <th style={{ padding: '0.4rem', textAlign: 'left', fontWeight: '600', fontSize: '0.8rem' }}>ℹ️ Especif.</th>
-                        <th style={{ padding: '0.4rem', textAlign: 'center', fontWeight: '600', fontSize: '0.8rem' }}>🔢 Cant.</th>
-                        <th style={{ padding: '0.4rem', textAlign: 'center', fontWeight: '600', fontSize: '0.8rem' }}>⏰ Pend.</th>
-                        <th style={{ padding: '0.4rem', textAlign: 'right', fontWeight: '600', fontSize: '0.8rem' }}>$ Precio</th>
-                        <th style={{ padding: '0.4rem', textAlign: 'right', fontWeight: '600', fontSize: '0.8rem' }}>Total</th>
-                        <th style={{ padding: '0.4rem', textAlign: 'center', fontWeight: '600', fontSize: '0.8rem' }}>🗑️</th>
+                        <th style={{ padding: '0.3rem', textAlign: 'left', fontWeight: '600', fontSize: '0.75rem' }}>👕 Prenda</th>
+                        <th style={{ padding: '0.3rem', textAlign: 'left', fontWeight: '600', fontSize: '0.75rem' }}>📏 Talla</th>
+                        <th style={{ padding: '0.3rem', textAlign: 'left', fontWeight: '600', fontSize: '0.75rem' }}>ℹ️ Especif.</th>
+                        <th style={{ padding: '0.3rem', textAlign: 'center', fontWeight: '600', fontSize: '0.75rem' }}>🔢 Cant.</th>
+                        <th style={{ padding: '0.3rem', textAlign: 'center', fontWeight: '600', fontSize: '0.75rem' }}>⏰ Pend.</th>
+                        <th style={{ padding: '0.3rem', textAlign: 'right', fontWeight: '600', fontSize: '0.75rem' }}>$ Precio</th>
+                        <th style={{ padding: '0.3rem', textAlign: 'right', fontWeight: '600', fontSize: '0.75rem' }}>Total</th>
+                        <th style={{ padding: '0.3rem', textAlign: 'center', fontWeight: '600', fontSize: '0.75rem' }}>🗑️</th>
                       </tr>
                     </thead>
                     <tbody>
                       {/* Fila para agregar nuevo detalle */}
                       <tr style={{ borderBottom: '1px solid #e0e0e0' }}>
-                        <td style={{ padding: '0.75rem' }}>
+                        <td style={{ padding: '0.5rem' }}>
                           <div ref={contenedorPrendaRef} style={{ position: 'relative' }}>
                             <input
                               ref={inputPrendaRef}
@@ -661,7 +687,7 @@ export default function PedidosPage() {
                                 }
                               }}
                               placeholder="SELECCIONAR PRENDA..."
-                              style={{ width: '100%', fontSize: '0.9rem', fontWeight: '600' }}
+                              style={{ width: '100%', fontSize: '0.85rem', fontWeight: '600', padding: '0.3rem' }}
                             />
                             
                             {mostrarListaPrendas && prendasEncontradas.length > 0 && (() => {
@@ -713,13 +739,14 @@ export default function PedidosPage() {
                             })()}
                           </div>
                         </td>
-                        <td style={{ padding: '0.75rem' }}>
+                        <td style={{ padding: '0.5rem' }}>
                           <select
+                            ref={selectTallaRef}
                             className="form-select"
                             value={detalleActual.talla_id}
                             onChange={(e) => seleccionarTalla(e.target.value)}
                             disabled={!detalleActual.prenda_id}
-                            style={{ width: '100%', fontSize: '0.9rem' }}
+                            style={{ width: '100%', fontSize: '0.85rem', padding: '0.3rem' }}
                           >
                             <option value="">Seleccionar</option>
                             {tallasDisponibles.map(talla => (
@@ -729,39 +756,53 @@ export default function PedidosPage() {
                             ))}
                           </select>
                         </td>
-                        <td style={{ padding: '0.75rem' }}>
+                        <td style={{ padding: '0.5rem' }}>
                           <input
+                            ref={inputEspecificacionesRef}
                             type="text"
                             className="form-input"
                             value={detalleActual.especificaciones}
                             onChange={(e) => setDetalleActual({ ...detalleActual, especificaciones: e.target.value })}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === 'Tab') {
+                                e.preventDefault();
+                                inputCantidadRef.current?.focus();
+                              }
+                            }}
                             placeholder="Color, bordado, notas..."
-                            style={{ width: '100%', fontSize: '0.9rem' }}
+                            style={{ width: '100%', fontSize: '0.85rem', padding: '0.3rem' }}
                           />
                         </td>
-                        <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                        <td style={{ padding: '0.5rem', textAlign: 'center' }}>
                           <input
+                            ref={inputCantidadRef}
                             type="number"
                             className="form-input"
                             value={detalleActual.cantidad}
                             onChange={(e) => {
                               const cantidad = e.target.value;
-                              setDetalleActual({ ...detalleActual, cantidad });
+                              const newDetalle = { ...detalleActual, cantidad };
+                              setDetalleActual(newDetalle);
+                              
+                              // Agregar automáticamente cuando todos los campos están completos
+                              if (newDetalle.prenda_id && newDetalle.talla_id && parseFloat(cantidad) > 0) {
+                                setTimeout(() => agregarDetalle(), 100);
+                              }
                             }}
                             min="0"
-                            style={{ width: '80px', textAlign: 'center', fontSize: '0.9rem' }}
+                            style={{ width: '80px', textAlign: 'center', fontSize: '0.85rem', padding: '0.3rem' }}
                           />
                         </td>
-                        <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                        <td style={{ padding: '0.5rem', textAlign: 'center' }}>
                           <span style={{
                             display: 'inline-block',
-                            width: '12px',
-                            height: '12px',
+                            width: '10px',
+                            height: '10px',
                             borderRadius: '50%',
                             backgroundColor: parseFloat(detalleActual.cantidad) > 0 ? '#f59e0b' : '#e0e0e0'
                           }}></span>
                         </td>
-                        <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                        <td style={{ padding: '0.5rem', textAlign: 'right' }}>
                           <input
                             type="number"
                             step="0.01"
@@ -769,13 +810,13 @@ export default function PedidosPage() {
                             value={detalleActual.precio}
                             onChange={(e) => setDetalleActual({ ...detalleActual, precio: e.target.value })}
                             readOnly
-                            style={{ width: '100px', textAlign: 'right', fontSize: '0.9rem', backgroundColor: '#f8f9fa' }}
+                            style={{ width: '100px', textAlign: 'right', fontSize: '0.85rem', padding: '0.3rem', backgroundColor: '#f8f9fa' }}
                           />
                         </td>
-                        <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: '600' }}>
+                        <td style={{ padding: '0.5rem', textAlign: 'right', fontWeight: '600', fontSize: '0.85rem' }}>
                           ${(parseFloat(detalleActual.cantidad) * parseFloat(detalleActual.precio)).toFixed(2)}
                         </td>
-                        <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                        <td style={{ padding: '0.5rem', textAlign: 'center' }}>
                           <button
                             type="button"
                             onClick={() => {
@@ -792,7 +833,7 @@ export default function PedidosPage() {
                               setTallasDisponibles([]);
                             }}
                             className="btn btn-danger"
-                            style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}
+                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
                           >
                             🗑️
                           </button>
