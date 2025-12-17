@@ -51,6 +51,9 @@ export default function PedidosPage() {
     cliente_tipo: '' as 'alumno' | 'externo' | '',
     cliente_nombre: '',
     detalles: [] as DetallePedido[],
+    observaciones: '',
+    modalidad_pago: 'TOTAL' as 'TOTAL' | 'ANTICIPO',
+    efectivo_recibido: 0,
   });
 
   // Estados para búsqueda de cliente
@@ -756,7 +759,139 @@ export default function PedidosPage() {
                 </div>
               </div>
 
-              <div className="btn-group">
+              {/* Sección de Observaciones y Resumen */}
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: '1fr 1fr', 
+                gap: '1rem', 
+                marginTop: '1rem' 
+              }}>
+                {/* Observaciones del Pedido */}
+                <div style={{ 
+                  border: '1px solid #e0e0e0', 
+                  borderRadius: '8px', 
+                  padding: '1rem',
+                  backgroundColor: '#fafafa'
+                }}>
+                  <h3 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    💬 Observaciones del Pedido
+                  </h3>
+                  <textarea
+                    className="form-input"
+                    value={formData.observaciones}
+                    onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })}
+                    placeholder="Agregar observaciones o notas especiales..."
+                    rows={5}
+                    style={{ width: '100%', resize: 'vertical' }}
+                  />
+                </div>
+
+                {/* Resumen del Pedido */}
+                <div style={{ 
+                  border: '1px solid #e0e0e0', 
+                  borderRadius: '8px', 
+                  padding: '1rem',
+                  backgroundColor: '#2c3e50',
+                  color: 'white'
+                }}>
+                  <h3 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    📊 Resumen del Pedido
+                  </h3>
+                  
+                  {/* Subtotal */}
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    marginBottom: '1rem',
+                    fontSize: '1.2rem',
+                    fontWeight: '600',
+                    padding: '0.5rem',
+                    backgroundColor: 'rgba(255,255,255,0.1)',
+                    borderRadius: '4px'
+                  }}>
+                    <span>💵 Subtotal:</span>
+                    <span style={{ color: '#10b981' }}>
+                      ${formData.detalles.reduce((sum, det) => sum + det.total, 0).toFixed(2)}
+                    </span>
+                  </div>
+
+                  {/* Modalidad de Pago */}
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>
+                      💳 Modalidad de Pago:
+                    </label>
+                    <div style={{ display: 'flex', gap: '1rem' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                        <input
+                          type="radio"
+                          name="modalidad_pago"
+                          value="TOTAL"
+                          checked={formData.modalidad_pago === 'TOTAL'}
+                          onChange={(e) => setFormData({ ...formData, modalidad_pago: 'TOTAL' })}
+                          style={{ cursor: 'pointer' }}
+                        />
+                        Pago Total
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                        <input
+                          type="radio"
+                          name="modalidad_pago"
+                          value="ANTICIPO"
+                          checked={formData.modalidad_pago === 'ANTICIPO'}
+                          onChange={(e) => setFormData({ ...formData, modalidad_pago: 'ANTICIPO' })}
+                          style={{ cursor: 'pointer' }}
+                        />
+                        Anticipo
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Efectivo Recibido */}
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>
+                      💰 Efectivo Recibido:
+                    </label>
+                    <input
+                      type="number"
+                      className="form-input"
+                      value={formData.efectivo_recibido}
+                      onChange={(e) => setFormData({ ...formData, efectivo_recibido: parseFloat(e.target.value) || 0 })}
+                      min="0"
+                      step="0.01"
+                      placeholder="0.00"
+                      style={{ 
+                        width: '100%', 
+                        padding: '0.5rem',
+                        fontSize: '1rem',
+                        backgroundColor: 'white',
+                        color: '#2c3e50'
+                      }}
+                    />
+                  </div>
+
+                  {/* Cambio a Entregar */}
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between',
+                    padding: '0.75rem',
+                    backgroundColor: 'rgba(255,255,255,0.1)',
+                    borderRadius: '4px',
+                    fontSize: '1.1rem',
+                    fontWeight: '600'
+                  }}>
+                    <span>🔄 Cambio a Entregar:</span>
+                    <span style={{ 
+                      color: formData.efectivo_recibido < formData.detalles.reduce((sum, det) => sum + det.total, 0) 
+                        ? '#ef4444' 
+                        : '#10b981' 
+                    }}>
+                      ${Math.max(0, formData.efectivo_recibido - formData.detalles.reduce((sum, det) => sum + det.total, 0)).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="btn-group" style={{ marginTop: '1rem' }}>
                 <button type="submit" className="btn btn-primary" disabled={formData.detalles.length === 0}>
                   💾 Crear Pedido
                 </button>
@@ -765,7 +900,15 @@ export default function PedidosPage() {
                   className="btn btn-secondary"
                   onClick={() => {
                     setMostrarFormulario(false);
-                    setFormData({ cliente_id: '', cliente_tipo: '', cliente_nombre: '', detalles: [] });
+                    setFormData({ 
+                      cliente_id: '', 
+                      cliente_tipo: '', 
+                      cliente_nombre: '', 
+                      detalles: [],
+                      observaciones: '',
+                      modalidad_pago: 'TOTAL',
+                      efectivo_recibido: 0
+                    });
                     setBusquedaCliente('');
                     setClienteSeleccionado(null);
                   }}
