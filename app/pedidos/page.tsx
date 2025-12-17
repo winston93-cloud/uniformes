@@ -60,23 +60,15 @@ export default function PedidosPage() {
   const [mesSeleccionado, setMesSeleccionado] = useState(fechaActual.getMonth() + 1); // 1-12
   const [añoSeleccionado, setAñoSeleccionado] = useState(fechaActual.getFullYear());
   
-  // Transformar pedidos de la base de datos al formato de la interfaz
-  const todosPedidos: Pedido[] = pedidosDB.map((p: any) => ({
-    id: parseInt(p.id.substring(0, 13), 16), // Convertir UUID a número para compatibilidad
-    fecha: new Date(p.created_at).toISOString().split('T')[0],
-    fechaCompleta: new Date(p.created_at),
-    cliente: p.cliente_nombre || 'Sin nombre',
-    tipoCliente: p.tipo_cliente,
-    total: p.total,
-    estado: p.estado,
-  }));
-
   // Filtrar pedidos por mes y año
-  const pedidos = todosPedidos.filter((pedido: any) => {
-    const fechaPedido = pedido.fechaCompleta;
+  const pedidos = pedidosDB.filter((pedido: any) => {
+    const fechaPedido = new Date(pedido.created_at || pedido.fecha);
     return fechaPedido.getMonth() + 1 === mesSeleccionado && 
            fechaPedido.getFullYear() === añoSeleccionado;
-  });
+  }).map((p: any) => ({
+    ...p,
+    fecha: p.fecha || new Date(p.created_at).toISOString().split('T')[0],
+  }));
 
   // Generar lista de años (últimos 5 años + año actual)
   const años = Array.from({ length: 6 }, (_, i) => fechaActual.getFullYear() - i);
