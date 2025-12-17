@@ -11,13 +11,21 @@ import { usePrendas } from '@/lib/hooks/usePrendas';
 import { useTallas } from '@/lib/hooks/useTallas';
 import { usePedidos } from '@/lib/hooks/usePedidos';
 
+// Interfaces de tipos
 interface Pedido {
-  id: number;
+  id: string;
   fecha: string;
-  cliente: string;
-  tipoCliente: 'alumno' | 'externo';
+  cliente_id: string;
+  cliente_tipo: 'alumno' | 'externo';
+  cliente_nombre: string;
   total: number;
   estado: 'PEDIDO' | 'ENTREGADO' | 'LIQUIDADO' | 'CANCELADO';
+  tipo_cliente?: string;
+  subtotal?: number;
+  observaciones?: string;
+  modalidad_pago?: 'TOTAL' | 'ANTICIPO';
+  efectivo_recibido?: number;
+  cliente?: string; // Para compatibilidad con código existente
 }
 
 interface DetallePedido {
@@ -1263,10 +1271,10 @@ export default function PedidosPage() {
                 <tr key={pedido.id}>
                   <td style={{ fontFamily: 'monospace' }}>#{pedido.id}</td>
                   <td>{pedido.fecha}</td>
-                  <td style={{ fontWeight: '600' }}>{pedido.cliente}</td>
+                  <td style={{ fontWeight: '600' }}>{pedido.cliente_nombre || pedido.cliente || 'N/A'}</td>
                   <td>
-                    <span className={`badge ${pedido.tipoCliente === 'alumno' ? 'badge-info' : 'badge-warning'}`}>
-                      {pedido.tipoCliente === 'alumno' ? '🎓 Alumno' : '👤 Externo'}
+                    <span className={`badge ${pedido.cliente_tipo === 'alumno' ? 'badge-info' : 'badge-warning'}`}>
+                      {pedido.cliente_tipo === 'alumno' ? '🎓 Alumno' : '👤 Externo'}
                     </span>
                   </td>
                   <td style={{ fontWeight: '700', color: '#10b981' }}>${pedido.total.toFixed(2)}</td>
