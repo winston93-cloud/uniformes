@@ -461,22 +461,8 @@ export default function PedidosPage() {
     const resultado = await crearPedido(pedidoParaDB, detallesParaDB);
 
     if (resultado.success) {
-      // Mostrar mensaje de éxito y cerrar formulario
-      alert('✅ Pedido creado exitosamente');
-      setMostrarFormulario(false);
-      
-      // Limpiar el formulario
-      setFormData({
-        cliente_id: '',
-        cliente_tipo: '',
-        cliente_nombre: '',
-        detalles: [],
-        observaciones: '',
-        modalidad_pago: 'TOTAL',
-        efectivo_recibido: 0
-      });
-      setBusquedaCliente('');
-      setClienteSeleccionado(null);
+      // Navegar a la página de detalles del pedido
+      router.push(`/pedidos/${resultado.data.id}`);
     } else {
       alert('❌ Error al crear el pedido. Por favor intenta de nuevo.');
       console.error('Error:', resultado.error);
