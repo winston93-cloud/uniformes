@@ -87,6 +87,9 @@ export function usePedidos() {
 
       if (pedidoError) {
         console.error('❌ Error al insertar pedido:', pedidoError);
+        console.error('❌ Mensaje:', pedidoError.message);
+        console.error('❌ Detalles:', pedidoError.details);
+        console.error('❌ Hint:', pedidoError.hint);
         throw pedidoError;
       }
 
