@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import { useCostos } from '@/lib/hooks/useCostos';
 import { useAlumnos } from '@/lib/hooks/useAlumnos';
@@ -34,6 +35,7 @@ interface DetallePedido {
 export const dynamic = 'force-dynamic';
 
 export default function PedidosPage() {
+  const router = useRouter();
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const { costos, getCostosByPrenda } = useCostos();
   const { alumnos, searchAlumnos } = useAlumnos();
@@ -391,19 +393,8 @@ export default function PedidosPage() {
     const resultado = await crearPedido(pedidoParaDB, detallesParaDB);
 
     if (resultado.success) {
-      alert('✅ Pedido creado exitosamente');
-      setFormData({ 
-        cliente_id: '', 
-        cliente_tipo: '', 
-        cliente_nombre: '', 
-        detalles: [],
-        observaciones: '',
-        modalidad_pago: 'TOTAL',
-        efectivo_recibido: 0
-      });
-      setBusquedaCliente('');
-      setClienteSeleccionado(null);
-      setMostrarFormulario(false);
+      // Redirigir a la página de detalles del pedido
+      router.push(`/pedidos/${resultado.data.id}`);
     } else {
       alert('❌ Error al crear el pedido. Por favor intenta de nuevo.');
       console.error('Error:', resultado.error);
