@@ -43,16 +43,47 @@ export default function PedidosPage() {
   const { prendas } = usePrendas();
   const { tallas } = useTallas();
   const { pedidos: pedidosDB, loading: loadingPedidos, crearPedido, actualizarEstadoPedido } = usePedidos();
+
+  // Estados para filtro de mes/año
+  const fechaActual = new Date();
+  const [mesSeleccionado, setMesSeleccionado] = useState(fechaActual.getMonth() + 1); // 1-12
+  const [añoSeleccionado, setAñoSeleccionado] = useState(fechaActual.getFullYear());
   
   // Transformar pedidos de la base de datos al formato de la interfaz
-  const pedidos: Pedido[] = pedidosDB.map((p: any) => ({
+  const todosPedidos: Pedido[] = pedidosDB.map((p: any) => ({
     id: parseInt(p.id.substring(0, 13), 16), // Convertir UUID a número para compatibilidad
     fecha: new Date(p.created_at).toISOString().split('T')[0],
+    fechaCompleta: new Date(p.created_at),
     cliente: p.cliente_nombre || 'Sin nombre',
     tipoCliente: p.tipo_cliente,
     total: p.total,
     estado: p.estado,
   }));
+
+  // Filtrar pedidos por mes y año
+  const pedidos = todosPedidos.filter((pedido: any) => {
+    const fechaPedido = pedido.fechaCompleta;
+    return fechaPedido.getMonth() + 1 === mesSeleccionado && 
+           fechaPedido.getFullYear() === añoSeleccionado;
+  });
+
+  // Generar lista de años (últimos 5 años + año actual)
+  const años = Array.from({ length: 6 }, (_, i) => fechaActual.getFullYear() - i);
+
+  const meses = [
+    { valor: 1, nombre: 'Enero' },
+    { valor: 2, nombre: 'Febrero' },
+    { valor: 3, nombre: 'Marzo' },
+    { valor: 4, nombre: 'Abril' },
+    { valor: 5, nombre: 'Mayo' },
+    { valor: 6, nombre: 'Junio' },
+    { valor: 7, nombre: 'Julio' },
+    { valor: 8, nombre: 'Agosto' },
+    { valor: 9, nombre: 'Septiembre' },
+    { valor: 10, nombre: 'Octubre' },
+    { valor: 11, nombre: 'Noviembre' },
+    { valor: 12, nombre: 'Diciembre' }
+  ];
 
   const [formData, setFormData] = useState({
     cliente_id: '',
@@ -988,6 +1019,63 @@ export default function PedidosPage() {
             </form>
           </div>
         )}
+
+        {/* Filtro de mes y año */}
+        <div style={{ 
+          display: 'flex', 
+          gap: '1rem', 
+          marginBottom: '1.5rem',
+          alignItems: 'center',
+          backgroundColor: 'white',
+          padding: '1rem',
+          borderRadius: '8px',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span style={{ fontWeight: '600', fontSize: '0.95rem' }}>📅 Filtrar por:</span>
+          </div>
+          
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <label style={{ fontSize: '0.9rem', fontWeight: '500' }}>Mes:</label>
+            <select
+              value={mesSeleccionado}
+              onChange={(e) => setMesSeleccionado(parseInt(e.target.value))}
+              className="form-select"
+              style={{ width: '140px' }}
+            >
+              {meses.map(mes => (
+                <option key={mes.valor} value={mes.valor}>
+                  {mes.nombre}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <label style={{ fontSize: '0.9rem', fontWeight: '500' }}>Año:</label>
+            <select
+              value={añoSeleccionado}
+              onChange={(e) => setAñoSeleccionado(parseInt(e.target.value))}
+              className="form-select"
+              style={{ width: '100px' }}
+            >
+              {años.map(año => (
+                <option key={año} value={año}>
+                  {año}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ 
+            marginLeft: 'auto',
+            fontSize: '0.9rem',
+            color: '#6b7280',
+            fontWeight: '500'
+          }}>
+            {pedidos.length} pedido{pedidos.length !== 1 ? 's' : ''} encontrado{pedidos.length !== 1 ? 's' : ''}
+          </div>
+        </div>
 
         <div className="table-container">
           <table className="table">
