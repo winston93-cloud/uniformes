@@ -123,6 +123,21 @@ export default function DetallePedidoPage() {
           font-size: inherit !important;
         }
 
+        /* Sobrescribir estilos inline específicos */
+        .print-info p {
+          font-size: 8px !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+
+        .print-info-label[style] {
+          font-size: 6px !important;
+        }
+
+        .print-info-value[style] {
+          font-size: 8px !important;
+        }
+
         /* Tabla de productos */
         .print-table {
           width: 100% !important;
