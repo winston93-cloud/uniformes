@@ -130,6 +130,7 @@ export default function PedidosPage() {
   const selectTallaRef = useRef<HTMLSelectElement>(null);
   const inputEspecificacionesRef = useRef<HTMLInputElement>(null);
   const inputCantidadRef = useRef<HTMLInputElement>(null);
+  const inputEfectivoRef = useRef<HTMLInputElement>(null);
 
   // Función para buscar clientes (alumnos y externos)
   useEffect(() => {
@@ -218,6 +219,11 @@ export default function PedidosPage() {
     setClienteSeleccionado(cliente.datos);
     setBusquedaCliente(cliente.nombre); // Dejar el nombre del cliente en el input
     setMostrarResultados(false);
+    
+    // Mover foco al input de prenda
+    setTimeout(() => {
+      inputPrendaRef.current?.focus();
+    }, 100);
   };
 
   // NUEVA IMPLEMENTACIÓN: Búsqueda simple y directa de prendas
@@ -407,6 +413,11 @@ export default function PedidosPage() {
     });
     setTextoPrendaBusqueda('');
     setTallasDisponibles([]);
+    
+    // Mover foco al input de prenda para agregar otra partida
+    setTimeout(() => {
+      inputPrendaRef.current?.focus();
+    }, 100);
   };
 
   const limpiarCamposParaNuevaPartida = () => {
@@ -886,10 +897,19 @@ export default function PedidosPage() {
                             }}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') {
+                                e.preventDefault();
                                 const cantidad = (e.target as HTMLInputElement).value;
                                 // Agregar automáticamente al presionar Enter
                                 if (detalleActual.prenda_id && detalleActual.talla_id && parseFloat(cantidad) > 0) {
                                   agregarDetalle();
+                                  
+                                  // Si ya hay partidas agregadas, ir al input de efectivo
+                                  // (el detalle recién agregado aún no está en formData.detalles, por eso >= 0)
+                                  if (formData.detalles.length >= 0) {
+                                    setTimeout(() => {
+                                      inputEfectivoRef.current?.focus();
+                                    }, 200);
+                                  }
                                 }
                               }
                             }}
@@ -1135,6 +1155,7 @@ export default function PedidosPage() {
                       💰 Efectivo Recibido:
                     </label>
                     <input
+                      ref={inputEfectivoRef}
                       type="number"
                       className="form-input"
                       value={formData.efectivo_recibido}
