@@ -614,7 +614,7 @@ export default function DetallePedidoPage() {
           {/* Botón regresar */}
           <div className="no-print" style={{ padding: '2rem', textAlign: 'center', borderTop: '1px solid #e5e7eb' }}>
             <button
-              onClick={() => router.push('/pedidos')}
+              onClick={() => router.push('/pedidos?nuevo=true')}
               className="btn btn-danger"
               style={{ padding: '1rem 3rem', fontSize: '1.1rem' }}
             >

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import { supabase } from '@/lib/supabase';
 import { useCostos } from '@/lib/hooks/useCostos';
@@ -45,6 +45,7 @@ export const dynamic = 'force-dynamic';
 
 export default function PedidosPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [mostrarModal, setMostrarModal] = useState(false);
   const [pedidoSeleccionado, setPedidoSeleccionado] = useState<any>(null);
@@ -54,6 +55,13 @@ export default function PedidosPage() {
   const { prendas } = usePrendas();
   const { tallas } = useTallas();
   const { pedidos: pedidosDB, loading: loadingPedidos, crearPedido, actualizarEstadoPedido } = usePedidos();
+  
+  // Detectar parámetro 'nuevo' para abrir formulario automáticamente
+  useEffect(() => {
+    if (searchParams.get('nuevo') === 'true') {
+      setMostrarFormulario(true);
+    }
+  }, [searchParams]);
 
   // Estados para filtro de mes/año
   const fechaActual = new Date();
