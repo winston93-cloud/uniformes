@@ -41,8 +41,13 @@ export default function DetallePedidoPage() {
     style.innerHTML = `
       @media print {
         /* Ocultar elementos innecesarios */
-        nav, aside, .no-print, button, header {
+        nav, aside, .no-print, button, header, footer {
           display: none !important;
+        }
+
+        /* Ocultar footer del navegador (URL y número de página) */
+        @page {
+          margin: 0;
         }
 
         /* Reset de márgenes y padding */
@@ -186,45 +191,45 @@ export default function DetallePedidoPage() {
         .print-observations {
           background: #fef3c7;
           border: 1px solid #fbbf24;
-          border-radius: 3px;
-          padding: 5px;
+          border-radius: 2px;
+          padding: 3px 5px;
         }
 
         .print-observations-title {
-          font-size: 8px;
+          font-size: 7px;
           font-weight: 700;
           color: #92400e;
-          margin-bottom: 2px;
+          margin-bottom: 1px;
           text-transform: uppercase;
         }
 
         .print-observations-text {
-          font-size: 8px;
+          font-size: 7px;
           color: #92400e;
           font-style: italic;
-          line-height: 1.2;
+          line-height: 1.1;
         }
 
         .print-summary {
           display: flex;
           flex-direction: column;
-          gap: 4px;
+          gap: 2px;
         }
 
         .print-summary-row {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 4px 8px;
-          border-radius: 3px;
-          font-size: 9px;
+          padding: 3px 6px;
+          border-radius: 2px;
+          font-size: 8px;
         }
 
         .print-summary-total {
           background: #1f2937;
           color: white;
           font-weight: 700;
-          font-size: 10px;
+          font-size: 9px;
         }
 
         .print-summary-anticipo,
@@ -232,7 +237,7 @@ export default function DetallePedidoPage() {
           background: #f3f4f6;
           color: #1f2937;
           font-weight: 600;
-          font-size: 9px;
+          font-size: 8px;
         }
 
         /* Footer del documento - OCULTO */
