@@ -62,18 +62,14 @@ export function usePedidos() {
         subtotal: pedido.total,
         total: pedido.total,
         cliente_nombre: pedido.cliente_nombre,
+        // NO asignar alumno_id ni externo_id por ahora, solo usar tipo_cliente y cliente_nombre
+        alumno_id: null,
+        externo_id: null,
       };
 
       // Agregar campos opcionales solo si existen en la tabla
       if (pedido.observaciones) {
         pedidoData.notas = pedido.observaciones;
-      }
-
-      // Asignar alumno_id o externo_id según el tipo
-      if (pedido.cliente_tipo === 'alumno') {
-        pedidoData.alumno_id = pedido.cliente_id;
-      } else {
-        pedidoData.externo_id = pedido.cliente_id;
       }
 
       console.log('📝 Datos a insertar:', pedidoData);
