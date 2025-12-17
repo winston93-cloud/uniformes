@@ -345,6 +345,18 @@ export default function PedidosPage() {
       alert('Por favor selecciona un cliente');
       return;
     }
+    
+    // Si hay un detalle actual sin agregar, avisar al usuario
+    if (detalleActual.prenda_id && detalleActual.talla_id && parseFloat(detalleActual.cantidad) > 0) {
+      alert('Tienes una prenda sin agregar. Por favor da clic en "Agregar Prenda" o limpia los campos.');
+      return;
+    }
+    
+    if (formData.detalles.length === 0) {
+      alert('Debes agregar al menos un producto al pedido');
+      return;
+    }
+    
     const nuevoPedido: Pedido = {
       id: Date.now(),
       fecha: new Date().toISOString().split('T')[0],
@@ -369,9 +381,18 @@ export default function PedidosPage() {
   };
 
   const cambiarEstado = (id: number, nuevoEstado: Pedido['estado']) => {
+    if (nuevoEstado === 'CANCELADO') {
+      if (!confirm('¿Estás seguro de que deseas cancelar este pedido?')) {
+        return;
+      }
+    }
     setPedidos(pedidos.map(p => 
       p.id === id ? { ...p, estado: nuevoEstado } : p
     ));
+  };
+
+  const verDetallePedido = (pedido: Pedido) => {
+    alert(`Detalles del Pedido #${pedido.id}\n\nCliente: ${pedido.cliente}\nFecha: ${pedido.fecha}\nTotal: $${pedido.total.toFixed(2)}\nEstado: ${pedido.estado}\n\nNota: Funcionalidad completa próximamente.`);
   };
 
   return (
@@ -976,13 +997,22 @@ export default function PedidosPage() {
                   </td>
                   <td>
                     {pedido.estado === 'PEDIDO' && (
-                      <button
-                        className="btn btn-success"
-                        style={{ padding: '0.5rem 1rem', marginRight: '0.5rem' }}
-                        onClick={() => cambiarEstado(pedido.id, 'ENTREGADO')}
-                      >
-                        ✓ Entregar
-                      </button>
+                      <>
+                        <button
+                          className="btn btn-success"
+                          style={{ padding: '0.5rem 1rem', marginRight: '0.5rem' }}
+                          onClick={() => cambiarEstado(pedido.id, 'ENTREGADO')}
+                        >
+                          ✓ Entregar
+                        </button>
+                        <button
+                          className="btn btn-danger"
+                          style={{ padding: '0.5rem 1rem', marginRight: '0.5rem' }}
+                          onClick={() => cambiarEstado(pedido.id, 'CANCELADO')}
+                        >
+                          ✕ Cancelar
+                        </button>
+                      </>
                     )}
                     {pedido.estado === 'ENTREGADO' && (
                       <button
@@ -993,7 +1023,11 @@ export default function PedidosPage() {
                         💵 Liquidar
                       </button>
                     )}
-                    <button className="btn btn-secondary" style={{ padding: '0.5rem 1rem' }}>
+                    <button 
+                      className="btn btn-secondary" 
+                      style={{ padding: '0.5rem 1rem' }}
+                      onClick={() => verDetallePedido(pedido)}
+                    >
                       👁️ Ver
                     </button>
                   </td>
