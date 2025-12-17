@@ -1021,25 +1021,36 @@ export default function PedidosPage() {
         {/* Filtro de mes y año */}
         <div style={{ 
           display: 'flex', 
-          gap: '1rem', 
+          gap: '1.5rem', 
           marginBottom: '1.5rem',
           alignItems: 'center',
-          backgroundColor: 'white',
-          padding: '1rem',
-          borderRadius: '8px',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          padding: '1.25rem 1.5rem',
+          borderRadius: '12px',
+          boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
+          border: '2px solid rgba(255, 255, 255, 0.2)'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{ fontWeight: '600', fontSize: '0.95rem' }}>📅 Filtrar por:</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <span style={{ 
+              fontWeight: '700', 
+              fontSize: '1.1rem',
+              color: 'white',
+              textShadow: '0 2px 4px rgba(0,0,0,0.2)'
+            }}>🎯 Filtrar por:</span>
           </div>
           
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-            <label style={{ fontSize: '0.9rem', fontWeight: '500' }}>Mes:</label>
+          <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
+            <label style={{ fontSize: '0.95rem', fontWeight: '600', color: 'white' }}>Mes:</label>
             <select
               value={mesSeleccionado}
               onChange={(e) => setMesSeleccionado(parseInt(e.target.value))}
               className="form-select"
-              style={{ width: '140px' }}
+              style={{ 
+                width: '140px',
+                fontWeight: '600',
+                border: '2px solid white',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.15)'
+              }}
             >
               {meses.map(mes => (
                 <option key={mes.valor} value={mes.valor}>
@@ -1049,13 +1060,18 @@ export default function PedidosPage() {
             </select>
           </div>
 
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-            <label style={{ fontSize: '0.9rem', fontWeight: '500' }}>Año:</label>
+          <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
+            <label style={{ fontSize: '0.95rem', fontWeight: '600', color: 'white' }}>Año:</label>
             <select
               value={añoSeleccionado}
               onChange={(e) => setAñoSeleccionado(parseInt(e.target.value))}
               className="form-select"
-              style={{ width: '100px' }}
+              style={{ 
+                width: '100px',
+                fontWeight: '600',
+                border: '2px solid white',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.15)'
+              }}
             >
               {años.map(año => (
                 <option key={año} value={año}>
@@ -1067,9 +1083,13 @@ export default function PedidosPage() {
 
           <div style={{ 
             marginLeft: 'auto',
-            fontSize: '0.9rem',
-            color: '#6b7280',
-            fontWeight: '500'
+            fontSize: '1rem',
+            color: 'white',
+            fontWeight: '700',
+            backgroundColor: 'rgba(255, 255, 255, 0.25)',
+            padding: '0.5rem 1rem',
+            borderRadius: '8px',
+            textShadow: '0 1px 2px rgba(0,0,0,0.2)'
           }}>
             {pedidos.length} pedido{pedidos.length !== 1 ? 's' : ''} encontrado{pedidos.length !== 1 ? 's' : ''}
           </div>
