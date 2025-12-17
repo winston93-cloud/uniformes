@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import LayoutWrapper from '@/components/LayoutWrapper';
+import { supabase } from '@/lib/supabase';
 import { useCostos } from '@/lib/hooks/useCostos';
 import { useAlumnos } from '@/lib/hooks/useAlumnos';
 import { useExternos } from '@/lib/hooks/useExternos';
@@ -37,6 +38,8 @@ export const dynamic = 'force-dynamic';
 export default function PedidosPage() {
   const router = useRouter();
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const [mostrarModal, setMostrarModal] = useState(false);
+  const [pedidoSeleccionado, setPedidoSeleccionado] = useState<any>(null);
   const { costos, getCostosByPrenda } = useCostos();
   const { alumnos, searchAlumnos } = useAlumnos();
   const { externos } = useExternos();
@@ -476,8 +479,34 @@ export default function PedidosPage() {
     }
   };
 
-  const verDetallePedido = (pedido: Pedido) => {
-    alert(`Detalles del Pedido #${pedido.id}\n\nCliente: ${pedido.cliente}\nFecha: ${pedido.fecha}\nTotal: $${pedido.total.toFixed(2)}\nEstado: ${pedido.estado}\n\nNota: Funcionalidad completa próximamente.`);
+  const verDetallePedido = async (pedido: Pedido) => {
+    try {
+      // Obtener los detalles del pedido con información de prendas y tallas
+      const { data: detalles, error } = await supabase
+        .from('detalle_pedidos')
+        .select(`
+          *,
+          prenda:prendas(nombre),
+          talla:tallas(nombre)
+        `)
+        .eq('pedido_id', pedido.id);
+
+      if (error) {
+        console.error('Error al obtener detalles:', error);
+        alert('Error al cargar los detalles del pedido');
+        return;
+      }
+
+      // Guardar el pedido con sus detalles
+      setPedidoSeleccionado({
+        ...pedido,
+        detalles: detalles || []
+      });
+      setMostrarModal(true);
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Error al cargar los detalles del pedido');
+    }
   };
 
   return (
@@ -1118,10 +1147,10 @@ export default function PedidosPage() {
           gap: '1.5rem', 
           marginBottom: '1.5rem',
           alignItems: 'center',
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          background: 'linear-gradient(135deg, #ec4899 0%, #f97316 100%)',
           padding: '1.25rem 1.5rem',
           borderRadius: '12px',
-          boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
+          boxShadow: '0 4px 12px rgba(236, 72, 153, 0.4)',
           border: '2px solid rgba(255, 255, 255, 0.2)'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
@@ -1265,6 +1294,178 @@ export default function PedidosPage() {
           </table>
         </div>
       </div>
+
+      {/* Modal de Detalles del Pedido */}
+      {mostrarModal && pedidoSeleccionado && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 9999,
+          padding: '2rem'
+        }}
+        onClick={() => setMostrarModal(false)}
+        >
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '16px',
+            maxWidth: '900px',
+            width: '100%',
+            maxHeight: '90vh',
+            overflow: 'auto',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
+          }}
+          onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header del Modal */}
+            <div style={{
+              background: 'linear-gradient(135deg, #ec4899 0%, #f97316 100%)',
+              padding: '1.5rem',
+              borderTopLeftRadius: '16px',
+              borderTopRightRadius: '16px',
+              color: 'white',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '700' }}>
+                📋 Pedido #{pedidoSeleccionado.id}
+              </h2>
+              <button
+                onClick={() => setMostrarModal(false)}
+                style={{
+                  background: 'rgba(255,255,255,0.2)',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '0.5rem 1rem',
+                  color: 'white',
+                  fontSize: '1.2rem',
+                  cursor: 'pointer',
+                  fontWeight: '700'
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Contenido del Modal */}
+            <div style={{ padding: '2rem' }}>
+              {/* Información del Pedido */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                gap: '1rem',
+                marginBottom: '2rem',
+                padding: '1.5rem',
+                backgroundColor: '#f8f9fa',
+                borderRadius: '12px'
+              }}>
+                <div>
+                  <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem' }}>📅 Fecha</div>
+                  <div style={{ fontWeight: '600', fontSize: '1rem' }}>{pedidoSeleccionado.fecha}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem' }}>👤 Cliente</div>
+                  <div style={{ fontWeight: '600', fontSize: '1rem' }}>{pedidoSeleccionado.cliente}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem' }}>📊 Estado</div>
+                  <div>
+                    <span style={{
+                      padding: '0.4rem 0.8rem',
+                      borderRadius: '6px',
+                      fontSize: '0.9rem',
+                      fontWeight: '600',
+                      backgroundColor: pedidoSeleccionado.estado === 'PEDIDO' ? '#fef3c7' :
+                                       pedidoSeleccionado.estado === 'ENTREGADO' ? '#d1fae5' :
+                                       pedidoSeleccionado.estado === 'LIQUIDADO' ? '#dbeafe' : '#fee2e2',
+                      color: pedidoSeleccionado.estado === 'PEDIDO' ? '#92400e' :
+                             pedidoSeleccionado.estado === 'ENTREGADO' ? '#065f46' :
+                             pedidoSeleccionado.estado === 'LIQUIDADO' ? '#1e40af' : '#991b1b'
+                    }}>
+                      {pedidoSeleccionado.estado}
+                    </span>
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem' }}>💰 Total</div>
+                  <div style={{ fontWeight: '700', fontSize: '1.2rem', color: '#10b981' }}>
+                    ${pedidoSeleccionado.total.toFixed(2)}
+                  </div>
+                </div>
+              </div>
+
+              {/* Tabla de Productos */}
+              <div style={{ marginBottom: '2rem' }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '1rem', color: '#374151' }}>
+                  🛍️ Productos
+                </h3>
+                <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: '8px' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ backgroundColor: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600', fontSize: '0.85rem' }}>Prenda</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: '600', fontSize: '0.85rem' }}>Talla</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600', fontSize: '0.85rem' }}>Especificaciones</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: '600', fontSize: '0.85rem' }}>Cantidad</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: '600', fontSize: '0.85rem' }}>Precio Unit.</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: '600', fontSize: '0.85rem' }}>Subtotal</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pedidoSeleccionado.detalles && pedidoSeleccionado.detalles.map((detalle: any, index: number) => (
+                        <tr key={index} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                          <td style={{ padding: '0.75rem', fontWeight: '600' }}>{detalle.prenda?.nombre || 'N/A'}</td>
+                          <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                            <span style={{ 
+                              backgroundColor: '#dbeafe', 
+                              padding: '0.25rem 0.75rem', 
+                              borderRadius: '6px',
+                              fontSize: '0.85rem',
+                              fontWeight: '600'
+                            }}>
+                              {detalle.talla?.nombre || 'N/A'}
+                            </span>
+                          </td>
+                          <td style={{ padding: '0.75rem', fontSize: '0.9rem', color: '#666' }}>
+                            {detalle.especificaciones || '-'}
+                          </td>
+                          <td style={{ padding: '0.75rem', textAlign: 'center', fontWeight: '600' }}>
+                            {detalle.cantidad}
+                          </td>
+                          <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                            ${detalle.precio_unitario.toFixed(2)}
+                          </td>
+                          <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: '700', color: '#10b981' }}>
+                            ${detalle.subtotal.toFixed(2)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Botón Cerrar */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                <button
+                  onClick={() => setMostrarModal(false)}
+                  className="btn btn-secondary"
+                  style={{ padding: '0.75rem 2rem', fontSize: '1rem' }}
+                >
+                  Cerrar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </LayoutWrapper>
   );
 }
