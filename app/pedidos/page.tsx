@@ -489,14 +489,10 @@ export default function PedidosPage() {
 
   const verDetallePedido = async (pedido: Pedido) => {
     try {
-      // Obtener los detalles del pedido con información de prendas y tallas
+      // Obtener los detalles del pedido
       const { data: detalles, error } = await supabase
         .from('detalle_pedidos')
-        .select(`
-          *,
-          prenda:prendas(nombre),
-          talla:tallas(nombre)
-        `)
+        .select('*')
         .eq('pedido_id', pedido.id);
 
       if (error) {
@@ -505,10 +501,26 @@ export default function PedidosPage() {
         return;
       }
 
+      // Enriquecer los detalles con nombres de prendas y tallas
+      const detallesEnriquecidos = await Promise.all(
+        (detalles || []).map(async (detalle) => {
+          // Buscar prenda
+          const prenda = prendas.find(p => p.id === detalle.prenda_id);
+          // Buscar talla
+          const talla = tallas.find(t => t.id === detalle.talla_id);
+          
+          return {
+            ...detalle,
+            prenda: { nombre: prenda?.nombre || 'N/A' },
+            talla: { nombre: talla?.nombre || 'N/A' }
+          };
+        })
+      );
+
       // Guardar el pedido con sus detalles
       setPedidoSeleccionado({
         ...pedido,
-        detalles: detalles || []
+        detalles: detallesEnriquecidos
       });
       setMostrarModal(true);
     } catch (error) {
