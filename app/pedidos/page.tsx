@@ -335,10 +335,22 @@ export default function PedidosPage() {
 
   const agregarDetalle = () => {
     console.log('➕ Intentando agregar detalle:', detalleActual);
+    console.log('   - prenda_id:', detalleActual.prenda_id);
+    console.log('   - talla_id:', detalleActual.talla_id);
+    console.log('   - cantidad:', detalleActual.cantidad);
+    console.log('   - precio:', detalleActual.precio);
     
-    if (!detalleActual.prenda_id || !detalleActual.talla_id || !detalleActual.cantidad || parseFloat(detalleActual.cantidad) <= 0) {
-      console.log('❌ Detalle incompleto, no se agrega');
-      return; // Solo retorna sin alerta
+    if (!detalleActual.prenda_id) {
+      console.log('❌ Falta prenda_id');
+      return;
+    }
+    if (!detalleActual.talla_id) {
+      console.log('❌ Falta talla_id');
+      return;
+    }
+    if (!detalleActual.cantidad || parseFloat(detalleActual.cantidad) <= 0) {
+      console.log('❌ Falta cantidad válida');
+      return;
     }
 
     const costo = costos.find(c => 
