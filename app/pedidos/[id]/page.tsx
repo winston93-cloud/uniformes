@@ -48,7 +48,7 @@ export default function DetallePedidoPage() {
         /* Reset de márgenes y padding */
         body {
           margin: 0;
-          padding: 20px;
+          padding: 0;
           background: white;
         }
 
@@ -56,42 +56,43 @@ export default function DetallePedidoPage() {
         .print-container {
           max-width: 100%;
           margin: 0;
-          padding: 0;
+          padding: 8px 12px;
         }
 
         /* Encabezado del recibo */
         .print-header {
           text-align: center;
-          border-bottom: 3px solid #1f2937;
-          padding-bottom: 20px;
-          margin-bottom: 30px;
+          border-bottom: 2px solid #1f2937;
+          padding-bottom: 8px;
+          margin-bottom: 12px;
         }
 
         .print-header h1 {
-          font-size: 32px;
+          font-size: 18px;
           font-weight: 700;
           color: #1f2937;
-          margin: 0 0 10px 0;
-          letter-spacing: 2px;
+          margin: 0;
+          letter-spacing: 1px;
         }
 
         .print-header .subtitle {
-          font-size: 14px;
+          font-size: 10px;
           color: #6b7280;
           text-transform: uppercase;
-          letter-spacing: 1px;
+          letter-spacing: 0.5px;
+          margin: 3px 0 0 0;
         }
 
         /* Información del pedido */
         .print-info {
           display: grid;
           grid-template-columns: repeat(3, 1fr);
-          gap: 20px;
-          margin-bottom: 30px;
-          padding: 20px;
+          gap: 8px;
+          margin-bottom: 12px;
+          padding: 8px;
           background: #f9fafb;
-          border-radius: 8px;
-          border: 2px solid #e5e7eb;
+          border-radius: 4px;
+          border: 1px solid #e5e7eb;
         }
 
         .print-info-item {
@@ -99,16 +100,16 @@ export default function DetallePedidoPage() {
         }
 
         .print-info-label {
-          font-size: 11px;
+          font-size: 9px;
           color: #6b7280;
           font-weight: 600;
           text-transform: uppercase;
-          margin-bottom: 5px;
-          letter-spacing: 0.5px;
+          margin-bottom: 2px;
+          letter-spacing: 0.3px;
         }
 
         .print-info-value {
-          font-size: 16px;
+          font-size: 11px;
           font-weight: 700;
           color: #1f2937;
         }
@@ -117,7 +118,8 @@ export default function DetallePedidoPage() {
         .print-table {
           width: 100%;
           border-collapse: collapse;
-          margin-bottom: 30px;
+          margin-bottom: 12px;
+          font-size: 10px;
         }
 
         .print-table thead {
@@ -126,12 +128,12 @@ export default function DetallePedidoPage() {
         }
 
         .print-table th {
-          padding: 12px 8px;
+          padding: 6px 4px;
           text-align: left;
-          font-size: 11px;
+          font-size: 9px;
           font-weight: 600;
           text-transform: uppercase;
-          letter-spacing: 0.5px;
+          letter-spacing: 0.3px;
         }
 
         .print-table tbody tr {
@@ -139,12 +141,12 @@ export default function DetallePedidoPage() {
         }
 
         .print-table tbody tr:last-child {
-          border-bottom: 2px solid #1f2937;
+          border-bottom: 1px solid #1f2937;
         }
 
         .print-table td {
-          padding: 12px 8px;
-          font-size: 13px;
+          padding: 5px 4px;
+          font-size: 10px;
         }
 
         .print-table .product-name {
@@ -156,10 +158,10 @@ export default function DetallePedidoPage() {
           display: inline-block;
           background: #3b82f6;
           color: white;
-          padding: 4px 12px;
-          border-radius: 4px;
+          padding: 2px 6px;
+          border-radius: 3px;
           font-weight: 600;
-          font-size: 12px;
+          font-size: 9px;
         }
 
         .print-table .price {
@@ -170,59 +172,59 @@ export default function DetallePedidoPage() {
         .print-table .total-cell {
           font-weight: 700;
           color: #10b981;
-          font-size: 14px;
+          font-size: 10px;
         }
 
         /* Resumen y observaciones */
         .print-footer {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 30px;
-          margin-top: 30px;
+          gap: 10px;
+          margin-top: 10px;
         }
 
         .print-observations {
           background: #fef3c7;
-          border: 2px solid #fbbf24;
-          border-radius: 8px;
-          padding: 20px;
+          border: 1px solid #fbbf24;
+          border-radius: 4px;
+          padding: 8px;
         }
 
         .print-observations-title {
-          font-size: 14px;
+          font-size: 9px;
           font-weight: 700;
           color: #92400e;
-          margin-bottom: 10px;
+          margin-bottom: 4px;
           text-transform: uppercase;
         }
 
         .print-observations-text {
-          font-size: 13px;
+          font-size: 9px;
           color: #92400e;
           font-style: italic;
-          line-height: 1.6;
+          line-height: 1.3;
         }
 
         .print-summary {
           display: flex;
           flex-direction: column;
-          gap: 15px;
+          gap: 6px;
         }
 
         .print-summary-row {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 15px 20px;
-          border-radius: 8px;
-          font-size: 15px;
+          padding: 6px 10px;
+          border-radius: 4px;
+          font-size: 10px;
         }
 
         .print-summary-total {
           background: #1f2937;
           color: white;
           font-weight: 700;
-          font-size: 18px;
+          font-size: 12px;
         }
 
         .print-summary-anticipo,
@@ -234,12 +236,16 @@ export default function DetallePedidoPage() {
 
         /* Footer del documento */
         .print-document-footer {
-          margin-top: 50px;
-          padding-top: 20px;
-          border-top: 2px solid #e5e7eb;
+          margin-top: 12px;
+          padding-top: 8px;
+          border-top: 1px solid #e5e7eb;
           text-align: center;
-          font-size: 11px;
+          font-size: 8px;
           color: #6b7280;
+        }
+
+        .print-document-footer p {
+          margin: 2px 0;
         }
 
         /* Salto de página si es necesario */
@@ -356,7 +362,6 @@ export default function DetallePedidoPage() {
         {/* Encabezado para impresión */}
         <div className="print-header" style={{ display: 'none' }}>
           <h1>RECIBO DE PAGO</h1>
-          <div className="subtitle">Sistema de Gestión de Uniformes</div>
         </div>
 
         {/* Mensaje de éxito */}
