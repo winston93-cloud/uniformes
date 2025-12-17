@@ -584,7 +584,7 @@ export default function PedidosPage() {
                                 }
                               }}
                               placeholder="SELECCIONAR PRENDA..."
-                              style={{ width: '100%', fontSize: '0.9rem' }}
+                              style={{ width: '100%', fontSize: '0.9rem', fontWeight: '600' }}
                             />
                             
                             {mostrarListaPrendas && prendasEncontradas.length > 0 && (() => {
