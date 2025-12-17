@@ -216,7 +216,7 @@ export default function PedidosPage() {
       cliente_nombre: cliente.nombre,
     });
     setClienteSeleccionado(cliente.datos);
-    setBusquedaCliente(''); // Limpiar el input después de seleccionar
+    setBusquedaCliente(cliente.nombre); // Dejar el nombre del cliente en el input
     setMostrarResultados(false);
   };
 
@@ -461,8 +461,22 @@ export default function PedidosPage() {
     const resultado = await crearPedido(pedidoParaDB, detallesParaDB);
 
     if (resultado.success) {
-      // Redirigir a la página de detalles del pedido
-      router.push(`/pedidos/${resultado.data.id}`);
+      // Mostrar mensaje de éxito y cerrar formulario
+      alert('✅ Pedido creado exitosamente');
+      setMostrarFormulario(false);
+      
+      // Limpiar el formulario
+      setFormData({
+        cliente_id: '',
+        cliente_tipo: '',
+        cliente_nombre: '',
+        detalles: [],
+        observaciones: '',
+        modalidad_pago: 'TOTAL',
+        efectivo_recibido: 0
+      });
+      setBusquedaCliente('');
+      setClienteSeleccionado(null);
     } else {
       alert('❌ Error al crear el pedido. Por favor intenta de nuevo.');
       console.error('Error:', resultado.error);
