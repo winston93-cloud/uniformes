@@ -186,45 +186,45 @@ export default function DetallePedidoPage() {
         .print-observations {
           background: #fef3c7;
           border: 1px solid #fbbf24;
-          border-radius: 4px;
-          padding: 8px;
+          border-radius: 3px;
+          padding: 5px;
         }
 
         .print-observations-title {
-          font-size: 9px;
+          font-size: 8px;
           font-weight: 700;
           color: #92400e;
-          margin-bottom: 4px;
+          margin-bottom: 2px;
           text-transform: uppercase;
         }
 
         .print-observations-text {
-          font-size: 9px;
+          font-size: 8px;
           color: #92400e;
           font-style: italic;
-          line-height: 1.3;
+          line-height: 1.2;
         }
 
         .print-summary {
           display: flex;
           flex-direction: column;
-          gap: 6px;
+          gap: 4px;
         }
 
         .print-summary-row {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 6px 10px;
-          border-radius: 4px;
-          font-size: 10px;
+          padding: 4px 8px;
+          border-radius: 3px;
+          font-size: 9px;
         }
 
         .print-summary-total {
           background: #1f2937;
           color: white;
           font-weight: 700;
-          font-size: 12px;
+          font-size: 10px;
         }
 
         .print-summary-anticipo,
@@ -232,20 +232,12 @@ export default function DetallePedidoPage() {
           background: #f3f4f6;
           color: #1f2937;
           font-weight: 600;
+          font-size: 9px;
         }
 
-        /* Footer del documento */
+        /* Footer del documento - OCULTO */
         .print-document-footer {
-          margin-top: 12px;
-          padding-top: 8px;
-          border-top: 1px solid #e5e7eb;
-          text-align: center;
-          font-size: 8px;
-          color: #6b7280;
-        }
-
-        .print-document-footer p {
-          margin: 2px 0;
+          display: none !important;
         }
 
         /* Salto de página si es necesario */
@@ -605,16 +597,6 @@ export default function DetallePedidoPage() {
           </div>
         </div>
 
-        {/* Footer del documento para impresión */}
-        <div className="print-document-footer" style={{ display: 'none' }}>
-          <p>Este documento fue generado automáticamente el {new Date().toLocaleDateString('es-MX', { 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-          })}</p>
-        </div>
       </div>
     </LayoutWrapper>
   );
