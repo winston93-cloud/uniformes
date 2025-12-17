@@ -53,10 +53,31 @@ export function usePedidos() {
 
   const crearPedido = async (pedido: Omit<Pedido, 'id' | 'created_at' | 'updated_at'>, detalles: Omit<DetallePedido, 'id' | 'pedido_id'>[]) => {
     try {
+      // Preparar datos del pedido
+      const pedidoData: any = {
+        tipo_cliente: pedido.cliente_tipo,
+        estado: pedido.estado,
+        subtotal: pedido.total,
+        total: pedido.total,
+        notas: pedido.observaciones,
+        cliente_nombre: pedido.cliente_nombre,
+        modalidad_pago: pedido.modalidad_pago,
+        efectivo_recibido: pedido.efectivo_recibido,
+      };
+
+      // Asignar alumno_id o externo_id según el tipo
+      if (pedido.cliente_tipo === 'alumno') {
+        pedidoData.alumno_id = pedido.cliente_id;
+        pedidoData.externo_id = null;
+      } else {
+        pedidoData.externo_id = pedido.cliente_id;
+        pedidoData.alumno_id = null;
+      }
+
       // Insertar el pedido
-      const { data: pedidoData, error: pedidoError } = await supabase
+      const { data: pedidoInsertado, error: pedidoError } = await supabase
         .from('pedidos')
-        .insert([pedido])
+        .insert([pedidoData])
         .select()
         .single();
 
@@ -64,8 +85,14 @@ export function usePedidos() {
 
       // Insertar los detalles
       const detallesConPedidoId = detalles.map(detalle => ({
-        ...detalle,
-        pedido_id: pedidoData.id,
+        pedido_id: pedidoInsertado.id,
+        prenda_id: detalle.prenda_id,
+        talla_id: detalle.talla_id,
+        cantidad: detalle.cantidad,
+        precio_unitario: detalle.precio_unitario,
+        subtotal: detalle.subtotal,
+        pendiente: detalle.pendiente,
+        especificaciones: detalle.especificaciones,
       }));
 
       const { error: detallesError } = await supabase
@@ -74,21 +101,36 @@ export function usePedidos() {
 
       if (detallesError) throw detallesError;
 
-      // Actualizar stock de costos
+      // Actualizar stock de costos (restar la cantidad vendida)
       for (const detalle of detalles) {
-        const { error: stockError } = await supabase.rpc('actualizar_stock_pedido', {
-          p_prenda_id: detalle.prenda_id,
-          p_talla_id: detalle.talla_id,
-          p_cantidad: detalle.cantidad,
-        });
-        
-        if (stockError) {
-          console.error('Error al actualizar stock:', stockError);
+        // Buscar el costo correspondiente
+        const { data: costoData, error: costoError } = await supabase
+          .from('costos')
+          .select('stock')
+          .eq('prenda_id', detalle.prenda_id)
+          .eq('talla_id', detalle.talla_id)
+          .single();
+
+        if (costoError) {
+          console.error('Error al buscar costo:', costoError);
+          continue;
+        }
+
+        // Actualizar el stock
+        const nuevoStock = (costoData.stock || 0) - detalle.cantidad;
+        const { error: updateError } = await supabase
+          .from('costos')
+          .update({ stock: nuevoStock })
+          .eq('prenda_id', detalle.prenda_id)
+          .eq('talla_id', detalle.talla_id);
+
+        if (updateError) {
+          console.error('Error al actualizar stock:', updateError);
         }
       }
 
       await fetchPedidos();
-      return { success: true, data: pedidoData };
+      return { success: true, data: pedidoInsertado };
     } catch (error) {
       console.error('Error al crear pedido:', error);
       return { success: false, error };

@@ -7,6 +7,7 @@ import { useAlumnos } from '@/lib/hooks/useAlumnos';
 import { useExternos } from '@/lib/hooks/useExternos';
 import { usePrendas } from '@/lib/hooks/usePrendas';
 import { useTallas } from '@/lib/hooks/useTallas';
+import { usePedidos } from '@/lib/hooks/usePedidos';
 
 interface Pedido {
   id: number;
@@ -39,28 +40,17 @@ export default function PedidosPage() {
   const { externos } = useExternos();
   const { prendas } = usePrendas();
   const { tallas } = useTallas();
+  const { pedidos: pedidosDB, loading: loadingPedidos, crearPedido, actualizarEstadoPedido } = usePedidos();
   
-  // Cargar pedidos desde localStorage
-  const [pedidos, setPedidos] = useState<Pedido[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('pedidos_sistema');
-      if (saved) {
-        return JSON.parse(saved);
-      }
-    }
-    return [
-      { id: 1, fecha: '2024-11-19', cliente: 'Juan Pérez', tipoCliente: 'alumno', total: 750, estado: 'PEDIDO' },
-      { id: 2, fecha: '2024-11-18', cliente: 'María García', tipoCliente: 'alumno', total: 1200, estado: 'ENTREGADO' },
-      { id: 3, fecha: '2024-11-17', cliente: 'Pedro López', tipoCliente: 'externo', total: 950, estado: 'LIQUIDADO' },
-    ];
-  });
-
-  // Guardar pedidos en localStorage cuando cambien
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('pedidos_sistema', JSON.stringify(pedidos));
-    }
-  }, [pedidos]);
+  // Transformar pedidos de la base de datos al formato de la interfaz
+  const pedidos: Pedido[] = pedidosDB.map((p: any) => ({
+    id: parseInt(p.id.substring(0, 13), 16), // Convertir UUID a número para compatibilidad
+    fecha: new Date(p.created_at).toISOString().split('T')[0],
+    cliente: p.cliente_nombre || 'Sin nombre',
+    tipoCliente: p.tipo_cliente,
+    total: p.total,
+    estado: p.estado,
+  }));
 
   const [formData, setFormData] = useState({
     cliente_id: '',
@@ -355,7 +345,7 @@ export default function PedidosPage() {
     );
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.cliente_id || !formData.cliente_tipo) {
       alert('Por favor selecciona un cliente');
@@ -373,38 +363,69 @@ export default function PedidosPage() {
       return;
     }
     
-    const nuevoPedido: Pedido = {
-      id: Date.now(),
+    // Preparar datos del pedido para la base de datos
+    const pedidoParaDB = {
       fecha: new Date().toISOString().split('T')[0],
-      cliente: formData.cliente_nombre,
-      tipoCliente: formData.cliente_tipo,
+      cliente_id: formData.cliente_id,
+      cliente_tipo: formData.cliente_tipo,
+      cliente_nombre: formData.cliente_nombre,
       total: calcularTotal(),
-      estado: 'PEDIDO',
+      estado: 'PEDIDO' as const,
+      observaciones: formData.observaciones,
+      modalidad_pago: formData.modalidad_pago,
+      efectivo_recibido: formData.efectivo_recibido,
     };
-    setPedidos([nuevoPedido, ...pedidos]);
-    setFormData({ 
-      cliente_id: '', 
-      cliente_tipo: '', 
-      cliente_nombre: '', 
-      detalles: [],
-      observaciones: '',
-      modalidad_pago: 'TOTAL',
-      efectivo_recibido: 0
-    });
-    setBusquedaCliente('');
-    setClienteSeleccionado(null);
-    setMostrarFormulario(false);
+
+    // Preparar detalles para la base de datos
+    const detallesParaDB = formData.detalles.map(detalle => ({
+      prenda_id: detalle.prenda_id,
+      talla_id: detalle.talla_id,
+      cantidad: detalle.cantidad,
+      precio_unitario: detalle.precio,
+      subtotal: detalle.total,
+      pendiente: detalle.pendiente,
+      especificaciones: detalle.especificaciones,
+    }));
+
+    // Crear el pedido en la base de datos
+    const resultado = await crearPedido(pedidoParaDB, detallesParaDB);
+
+    if (resultado.success) {
+      alert('✅ Pedido creado exitosamente');
+      setFormData({ 
+        cliente_id: '', 
+        cliente_tipo: '', 
+        cliente_nombre: '', 
+        detalles: [],
+        observaciones: '',
+        modalidad_pago: 'TOTAL',
+        efectivo_recibido: 0
+      });
+      setBusquedaCliente('');
+      setClienteSeleccionado(null);
+      setMostrarFormulario(false);
+    } else {
+      alert('❌ Error al crear el pedido. Por favor intenta de nuevo.');
+      console.error('Error:', resultado.error);
+    }
   };
 
-  const cambiarEstado = (id: number, nuevoEstado: Pedido['estado']) => {
+  const cambiarEstado = async (id: number, nuevoEstado: Pedido['estado']) => {
     if (nuevoEstado === 'CANCELADO') {
       if (!confirm('¿Estás seguro de que deseas cancelar este pedido?')) {
         return;
       }
     }
-    setPedidos(pedidos.map(p => 
-      p.id === id ? { ...p, estado: nuevoEstado } : p
-    ));
+    
+    // Buscar el UUID del pedido en la base de datos
+    const pedidoDB = pedidosDB.find((p: any) => parseInt(p.id.substring(0, 13), 16) === id);
+    if (pedidoDB) {
+      const resultado = await actualizarEstadoPedido(pedidoDB.id, nuevoEstado);
+      if (!resultado.success) {
+        alert('❌ Error al actualizar el estado del pedido');
+        console.error('Error:', resultado.error);
+      }
+    }
   };
 
   const verDetallePedido = (pedido: Pedido) => {
