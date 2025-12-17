@@ -819,7 +819,11 @@ export default function PedidosPage() {
                   }}>
                     <span>💵 Subtotal:</span>
                     <span style={{ color: '#10b981' }}>
-                      ${formData.detalles.reduce((sum, det) => sum + det.total, 0).toFixed(2)}
+                      ${(() => {
+                        const totalDetalles = formData.detalles.reduce((sum, det) => sum + det.total, 0);
+                        const totalActual = (parseFloat(detalleActual.cantidad) || 0) * (parseFloat(detalleActual.precio) || 0);
+                        return (totalDetalles + totalActual).toFixed(2);
+                      })()}
                     </span>
                   </div>
 
@@ -889,11 +893,19 @@ export default function PedidosPage() {
                   }}>
                     <span>🔄 Cambio a Entregar:</span>
                     <span style={{ 
-                      color: formData.efectivo_recibido < formData.detalles.reduce((sum, det) => sum + det.total, 0) 
-                        ? '#ef4444' 
-                        : '#10b981' 
+                      color: (() => {
+                        const totalDetalles = formData.detalles.reduce((sum, det) => sum + det.total, 0);
+                        const totalActual = (parseFloat(detalleActual.cantidad) || 0) * (parseFloat(detalleActual.precio) || 0);
+                        const totalGeneral = totalDetalles + totalActual;
+                        return formData.efectivo_recibido < totalGeneral ? '#ef4444' : '#10b981';
+                      })()
                     }}>
-                      ${Math.max(0, formData.efectivo_recibido - formData.detalles.reduce((sum, det) => sum + det.total, 0)).toFixed(2)}
+                      ${(() => {
+                        const totalDetalles = formData.detalles.reduce((sum, det) => sum + det.total, 0);
+                        const totalActual = (parseFloat(detalleActual.cantidad) || 0) * (parseFloat(detalleActual.precio) || 0);
+                        const totalGeneral = totalDetalles + totalActual;
+                        return Math.max(0, formData.efectivo_recibido - totalGeneral).toFixed(2);
+                      })()}
                     </span>
                   </div>
                 </div>
