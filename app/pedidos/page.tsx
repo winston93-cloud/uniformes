@@ -334,7 +334,10 @@ export default function PedidosPage() {
   };
 
   const agregarDetalle = () => {
+    console.log('➕ Intentando agregar detalle:', detalleActual);
+    
     if (!detalleActual.prenda_id || !detalleActual.talla_id || !detalleActual.cantidad || parseFloat(detalleActual.cantidad) <= 0) {
+      console.log('❌ Detalle incompleto, no se agrega');
       return; // Solo retorna sin alerta
     }
 
@@ -344,11 +347,13 @@ export default function PedidosPage() {
     );
 
     if (!costo) {
+      console.log('❌ No se encontró costo');
       alert('No se encontró el costo para esta prenda y talla');
       return;
     }
 
     if (costo.stock < parseFloat(detalleActual.cantidad)) {
+      console.log('❌ Stock insuficiente');
       alert('Stock insuficiente');
       return;
     }
@@ -370,11 +375,15 @@ export default function PedidosPage() {
       costoId: costo.id,
     };
 
+    console.log('✅ Agregando detalle:', nuevoDetalle);
+    console.log('📋 Detalles actuales:', formData.detalles);
+    
     setFormData({ 
       ...formData, 
       detalles: [...formData.detalles, nuevoDetalle] 
     });
     
+    console.log('🧹 Limpiando campos de entrada');
     setDetalleActual({ 
       prenda_id: '', 
       prenda_nombre: '',
@@ -389,6 +398,8 @@ export default function PedidosPage() {
   };
 
   const limpiarCamposParaNuevaPartida = () => {
+    console.log('🆕 Nueva Partida - Limpiando campos');
+    console.log('📋 Detalles antes de limpiar:', formData.detalles);
     setDetalleActual({ 
       prenda_id: '', 
       prenda_nombre: '',
@@ -400,6 +411,7 @@ export default function PedidosPage() {
     });
     setTextoPrendaBusqueda('');
     setTallasDisponibles([]);
+    console.log('✅ Campos limpiados, detalles siguen igual');
   };
 
   const eliminarDetalle = (index: number) => {
