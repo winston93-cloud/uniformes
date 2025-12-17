@@ -242,13 +242,6 @@ export default function DetallePedidoPage() {
           color: #6b7280;
         }
 
-        .print-logo {
-          font-size: 24px;
-          font-weight: 700;
-          color: #3b82f6;
-          margin-bottom: 5px;
-        }
-
         /* Salto de página si es necesario */
         .page-break {
           page-break-after: always;
@@ -362,7 +355,6 @@ export default function DetallePedidoPage() {
         
         {/* Encabezado para impresión */}
         <div className="print-header" style={{ display: 'none' }}>
-          <div className="print-logo">🎓 WINSTON CHURCHILL</div>
           <h1>RECIBO DE PAGO</h1>
           <div className="subtitle">Sistema de Gestión de Uniformes</div>
         </div>
@@ -610,8 +602,6 @@ export default function DetallePedidoPage() {
 
         {/* Footer del documento para impresión */}
         <div className="print-document-footer" style={{ display: 'none' }}>
-          <div className="print-logo">🎓 WINSTON CHURCHILL</div>
-          <p>Sistema de Gestión de Uniformes</p>
           <p>Este documento fue generado automáticamente el {new Date().toLocaleDateString('es-MX', { 
             year: 'numeric', 
             month: 'long', 
