@@ -67,36 +67,36 @@ export default function DetallePedidoPage() {
         /* Encabezado del recibo */
         .print-header {
           text-align: center;
-          border-bottom: 2px solid #1f2937;
-          padding-bottom: 8px;
-          margin-bottom: 12px;
+          border-bottom: 1px solid #1f2937;
+          padding-bottom: 4px;
+          margin-bottom: 6px;
         }
 
         .print-header h1 {
-          font-size: 18px;
+          font-size: 12px;
           font-weight: 700;
           color: #1f2937;
           margin: 0;
-          letter-spacing: 1px;
+          letter-spacing: 0.5px;
         }
 
         .print-header .subtitle {
-          font-size: 10px;
+          font-size: 8px;
           color: #6b7280;
           text-transform: uppercase;
-          letter-spacing: 0.5px;
-          margin: 3px 0 0 0;
+          letter-spacing: 0.3px;
+          margin: 2px 0 0 0;
         }
 
         /* Información del pedido */
         .print-info {
           display: grid;
           grid-template-columns: repeat(3, 1fr);
-          gap: 8px;
-          margin-bottom: 12px;
-          padding: 8px;
+          gap: 4px;
+          margin-bottom: 6px;
+          padding: 4px 6px;
           background: #f9fafb;
-          border-radius: 4px;
+          border-radius: 2px;
           border: 1px solid #e5e7eb;
         }
 
@@ -105,16 +105,16 @@ export default function DetallePedidoPage() {
         }
 
         .print-info-label {
-          font-size: 9px;
+          font-size: 7px;
           color: #6b7280;
           font-weight: 600;
           text-transform: uppercase;
-          margin-bottom: 2px;
-          letter-spacing: 0.3px;
+          margin-bottom: 1px;
+          letter-spacing: 0.2px;
         }
 
         .print-info-value {
-          font-size: 11px;
+          font-size: 9px;
           font-weight: 700;
           color: #1f2937;
         }
