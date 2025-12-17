@@ -417,21 +417,30 @@ export default function PedidosPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('🚀 Iniciando creación de pedido...');
+    console.log('📋 FormData:', formData);
+    console.log('🛍️ Detalles:', formData.detalles);
+    
     if (!formData.cliente_id || !formData.cliente_tipo) {
+      console.log('❌ Error: No hay cliente seleccionado');
       alert('Por favor selecciona un cliente');
       return;
     }
     
     // Si hay un detalle actual sin agregar, avisar al usuario
     if (detalleActual.prenda_id && detalleActual.talla_id && parseFloat(detalleActual.cantidad) > 0) {
-      alert('Tienes una prenda sin agregar. Por favor da clic en "Agregar Prenda" o limpia los campos.');
+      console.log('❌ Error: Hay una prenda sin agregar');
+      alert('Tienes una prenda sin agregar. Por favor da clic en "Nueva Partida" o limpia los campos.');
       return;
     }
     
     if (formData.detalles.length === 0) {
+      console.log('❌ Error: No hay detalles en el pedido');
       alert('Debes agregar al menos un producto al pedido');
       return;
     }
+    
+    console.log('✅ Validaciones pasadas, preparando datos...');
     
     // Preparar datos del pedido para la base de datos
     const pedidoParaDB = {
@@ -458,12 +467,17 @@ export default function PedidosPage() {
     }));
 
     // Crear el pedido en la base de datos
+    console.log('💾 Llamando a crearPedido...');
     const resultado = await crearPedido(pedidoParaDB, detallesParaDB);
+    console.log('📦 Resultado:', resultado);
 
     if (resultado.success) {
+      console.log('✅ Pedido creado exitosamente, ID:', resultado.data.id);
+      console.log('🔀 Navegando a /pedidos/' + resultado.data.id);
       // Navegar a la página de detalles del pedido
       router.push(`/pedidos/${resultado.data.id}`);
     } else {
+      console.error('❌ Error al crear pedido:', resultado.error);
       alert('❌ Error al crear el pedido. Por favor intenta de nuevo.');
       console.error('Error:', resultado.error);
     }
