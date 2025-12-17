@@ -354,7 +354,15 @@ export default function PedidosPage() {
       estado: 'PEDIDO',
     };
     setPedidos([nuevoPedido, ...pedidos]);
-    setFormData({ cliente_id: '', cliente_tipo: '', cliente_nombre: '', detalles: [] });
+    setFormData({ 
+      cliente_id: '', 
+      cliente_tipo: '', 
+      cliente_nombre: '', 
+      detalles: [],
+      observaciones: '',
+      modalidad_pago: 'TOTAL',
+      efectivo_recibido: 0
+    });
     setBusquedaCliente('');
     setClienteSeleccionado(null);
     setMostrarFormulario(false);
