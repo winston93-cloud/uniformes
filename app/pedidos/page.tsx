@@ -851,8 +851,8 @@ export default function PedidosPage() {
               <div style={{ 
                 display: 'grid', 
                 gridTemplateColumns: '1fr 1fr', 
-                gap: '1rem', 
-                marginTop: '1rem' 
+                gap: '0.75rem', 
+                marginTop: '0.75rem' 
               }}>
                 {/* Observaciones del Pedido */}
                 <div style={{ 
@@ -869,8 +869,8 @@ export default function PedidosPage() {
                     value={formData.observaciones}
                     onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })}
                     placeholder="Agregar observaciones o notas especiales..."
-                    rows={5}
-                    style={{ width: '100%', resize: 'vertical' }}
+                    rows={3}
+                    style={{ width: '100%', resize: 'vertical', fontSize: '0.85rem', padding: '0.4rem' }}
                   />
                 </div>
 
