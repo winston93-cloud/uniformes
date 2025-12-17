@@ -210,7 +210,7 @@ export default function PedidosPage() {
       cliente_nombre: cliente.nombre,
     });
     setClienteSeleccionado(cliente.datos);
-    setBusquedaCliente(cliente.nombre);
+    setBusquedaCliente(''); // Limpiar el input después de seleccionar
     setMostrarResultados(false);
   };
 
