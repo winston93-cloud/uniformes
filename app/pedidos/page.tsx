@@ -791,6 +791,13 @@ export default function PedidosPage() {
                                 // Mostrar todas las prendas ordenadas alfabéticamente al hacer focus
                                 ejecutarBusquedaPrenda(textoPrendaBusqueda);
                               }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !detalleActual.prenda_id && formData.detalles.length > 0) {
+                                  // Si presiona Enter sin prenda seleccionada y ya hay partidas, ir a efectivo recibido
+                                  e.preventDefault();
+                                  inputEfectivoRef.current?.focus();
+                                }
+                              }}
                               placeholder="SELECCIONAR PRENDA..."
                               style={{ width: '100%', fontSize: '0.85rem', fontWeight: '600', padding: '0.3rem' }}
                             />
