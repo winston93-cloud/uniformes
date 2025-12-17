@@ -511,9 +511,9 @@ export default function PedidosPage() {
 
   return (
     <LayoutWrapper>
-      <div className="main-container">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-          <h1 style={{ fontSize: '2.5rem', fontWeight: '700', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.2)' }}>
+      <div className="main-container" style={{ paddingTop: '1rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <h1 style={{ fontSize: '1.8rem', fontWeight: '700', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.2)' }}>
             🛒 Gestión de Pedidos
           </h1>
           <button className="btn btn-primary" onClick={() => setMostrarFormulario(!mostrarFormulario)}>
@@ -522,10 +522,10 @@ export default function PedidosPage() {
         </div>
 
         {mostrarFormulario && (
-          <div className="form-container" style={{ maxWidth: '1600px', width: '95%' }}>
+          <div className="form-container" style={{ maxWidth: '1600px', width: '95%', padding: '1rem', marginTop: '0.5rem' }}>
             <form onSubmit={handleSubmit}>
-              <div className="form-group">
-                <label className="form-label">Cliente *</label>
+              <div className="form-group" style={{ marginBottom: '0.75rem' }}>
+                <label className="form-label" style={{ marginBottom: '0.4rem', fontSize: '0.9rem' }}>Cliente *</label>
                 <div style={{ position: 'relative' }}>
                   <input
                     ref={inputClienteRef}
@@ -548,7 +548,7 @@ export default function PedidosPage() {
                       setTimeout(() => setMostrarResultados(false), 200);
                     }}
                     placeholder="🔍 Buscar cliente (alumno o externo)..."
-                    style={{ width: '100%' }}
+                    style={{ width: '100%', padding: '0.5rem', fontSize: '0.9rem' }}
                   />
 
                   {/* Dropdown de resultados */}
