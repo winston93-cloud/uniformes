@@ -224,12 +224,19 @@ export default function PedidosPage() {
   const ejecutarBusquedaPrenda = (texto: string) => {
     console.log('🆕 Búsqueda nueva - texto:', texto);
     
-    if (!texto || texto.trim().length < 2) {
-      setPrendasEncontradas([]);
-      setMostrarListaPrendas(false);
+    // Si no hay texto, mostrar todas las prendas ordenadas alfabéticamente
+    if (!texto || texto.trim().length === 0) {
+      const todasPrendas = prendas
+        .filter(prenda => prenda.activo)
+        .sort((a, b) => a.nombre.localeCompare(b.nombre))
+        .slice(0, 15);
+      
+      setPrendasEncontradas(todasPrendas);
+      setMostrarListaPrendas(todasPrendas.length > 0);
       return;
     }
 
+    // Filtrar prendas según el texto ingresado
     const textoMinuscula = texto.trim().toLowerCase();
     const resultados = prendas
       .filter(prenda => 
@@ -237,7 +244,8 @@ export default function PedidosPage() {
         (prenda.nombre.toLowerCase().includes(textoMinuscula) || 
          (prenda.codigo && prenda.codigo.toLowerCase().includes(textoMinuscula)))
       )
-      .slice(0, 10);
+      .sort((a, b) => a.nombre.localeCompare(b.nombre))
+      .slice(0, 15);
 
     console.log('✨ Resultados encontrados:', resultados.length, resultados.map(p => p.nombre));
     setPrendasEncontradas(resultados);
@@ -711,9 +719,8 @@ export default function PedidosPage() {
                               value={textoPrendaBusqueda}
                               onChange={handleCambioBusquedaPrenda}
                               onFocus={() => {
-                                if (textoPrendaBusqueda.trim().length >= 2 && prendasEncontradas.length > 0) {
-                                  setMostrarListaPrendas(true);
-                                }
+                                // Mostrar todas las prendas ordenadas alfabéticamente al hacer focus
+                                ejecutarBusquedaPrenda(textoPrendaBusqueda);
                               }}
                               placeholder="SELECCIONAR PRENDA..."
                               style={{ width: '100%', fontSize: '0.85rem', fontWeight: '600', padding: '0.3rem' }}
