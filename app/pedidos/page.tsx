@@ -468,8 +468,6 @@ export default function PedidosPage() {
 
         {mostrarFormulario && (
           <div className="form-container" style={{ maxWidth: '1600px', width: '95%' }}>
-            <h2 className="form-title">Nuevo Pedido</h2>
-            
             <form onSubmit={handleSubmit}>
               <div className="form-group">
                 <label className="form-label">Cliente *</label>
