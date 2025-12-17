@@ -40,11 +40,27 @@ export default function PedidosPage() {
   const { prendas } = usePrendas();
   const { tallas } = useTallas();
   
-  const [pedidos, setPedidos] = useState<Pedido[]>([
-    { id: 1, fecha: '2024-11-19', cliente: 'Juan Pérez', tipoCliente: 'alumno', total: 750, estado: 'PEDIDO' },
-    { id: 2, fecha: '2024-11-18', cliente: 'María García', tipoCliente: 'alumno', total: 1200, estado: 'ENTREGADO' },
-    { id: 3, fecha: '2024-11-17', cliente: 'Pedro López', tipoCliente: 'externo', total: 950, estado: 'LIQUIDADO' },
-  ]);
+  // Cargar pedidos desde localStorage
+  const [pedidos, setPedidos] = useState<Pedido[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('pedidos_sistema');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    }
+    return [
+      { id: 1, fecha: '2024-11-19', cliente: 'Juan Pérez', tipoCliente: 'alumno', total: 750, estado: 'PEDIDO' },
+      { id: 2, fecha: '2024-11-18', cliente: 'María García', tipoCliente: 'alumno', total: 1200, estado: 'ENTREGADO' },
+      { id: 3, fecha: '2024-11-17', cliente: 'Pedro López', tipoCliente: 'externo', total: 950, estado: 'LIQUIDADO' },
+    ];
+  });
+
+  // Guardar pedidos en localStorage cuando cambien
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('pedidos_sistema', JSON.stringify(pedidos));
+    }
+  }, [pedidos]);
 
   const [formData, setFormData] = useState({
     cliente_id: '',
