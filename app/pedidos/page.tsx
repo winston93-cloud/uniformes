@@ -874,13 +874,22 @@ export default function PedidosPage() {
 
                 {/* Resumen del Pedido */}
                 <div style={{ 
-                  border: '1px solid #e0e0e0', 
-                  borderRadius: '8px', 
-                  padding: '1rem',
-                  backgroundColor: '#2c3e50',
-                  color: 'white'
+                  background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+                  borderRadius: '12px', 
+                  padding: '1.25rem',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                  border: '2px solid rgba(59, 130, 246, 0.3)'
                 }}>
-                  <h3 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <h3 style={{ 
+                    fontSize: '1.15rem', 
+                    fontWeight: '700', 
+                    marginBottom: '1rem', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '0.6rem',
+                    color: '#1e40af',
+                    textShadow: '0 1px 2px rgba(0,0,0,0.1)'
+                  }}>
                     📊 Resumen del Pedido
                   </h3>
                   
@@ -889,14 +898,16 @@ export default function PedidosPage() {
                     display: 'flex', 
                     justifyContent: 'space-between', 
                     marginBottom: '1rem',
-                    fontSize: '1.2rem',
-                    fontWeight: '600',
-                    padding: '0.5rem',
-                    backgroundColor: 'rgba(255,255,255,0.1)',
-                    borderRadius: '4px'
+                    fontSize: '1.25rem',
+                    fontWeight: '700',
+                    padding: '0.75rem 1rem',
+                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                    borderRadius: '8px',
+                    color: 'white',
+                    boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)'
                   }}>
                     <span>💵 Subtotal:</span>
-                    <span style={{ color: '#10b981' }}>
+                    <span>
                       ${(() => {
                         const totalDetalles = formData.detalles.reduce((sum, det) => sum + det.total, 0);
                         const totalActual = (parseFloat(detalleActual.cantidad) || 0) * (parseFloat(detalleActual.precio) || 0);
@@ -906,30 +917,56 @@ export default function PedidosPage() {
                   </div>
 
                   {/* Modalidad de Pago */}
-                  <div style={{ marginBottom: '1rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>
+                  <div style={{ 
+                    marginBottom: '1rem',
+                    padding: '0.75rem',
+                    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+                    borderRadius: '8px',
+                    border: '1px solid rgba(59, 130, 246, 0.2)'
+                  }}>
+                    <label style={{ 
+                      display: 'block', 
+                      marginBottom: '0.6rem', 
+                      fontWeight: '700',
+                      color: '#1e40af',
+                      fontSize: '0.95rem'
+                    }}>
                       💳 Modalidad de Pago:
                     </label>
-                    <div style={{ display: 'flex', gap: '1rem' }}>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                    <div style={{ display: 'flex', gap: '1.5rem' }}>
+                      <label style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '0.5rem', 
+                        cursor: 'pointer',
+                        fontWeight: '600',
+                        color: '#374151'
+                      }}>
                         <input
                           type="radio"
                           name="modalidad_pago"
                           value="TOTAL"
                           checked={formData.modalidad_pago === 'TOTAL'}
                           onChange={(e) => setFormData({ ...formData, modalidad_pago: 'TOTAL' })}
-                          style={{ cursor: 'pointer' }}
+                          style={{ cursor: 'pointer', width: '18px', height: '18px' }}
                         />
                         Pago Total
                       </label>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                      <label style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '0.5rem', 
+                        cursor: 'pointer',
+                        fontWeight: '600',
+                        color: '#374151'
+                      }}>
                         <input
                           type="radio"
                           name="modalidad_pago"
                           value="ANTICIPO"
                           checked={formData.modalidad_pago === 'ANTICIPO'}
                           onChange={(e) => setFormData({ ...formData, modalidad_pago: 'ANTICIPO' })}
-                          style={{ cursor: 'pointer' }}
+                          style={{ cursor: 'pointer', width: '18px', height: '18px' }}
                         />
                         Anticipo
                       </label>
@@ -937,8 +974,20 @@ export default function PedidosPage() {
                   </div>
 
                   {/* Efectivo Recibido */}
-                  <div style={{ marginBottom: '1rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>
+                  <div style={{ 
+                    marginBottom: '1rem',
+                    padding: '0.75rem',
+                    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+                    borderRadius: '8px',
+                    border: '1px solid rgba(59, 130, 246, 0.2)'
+                  }}>
+                    <label style={{ 
+                      display: 'block', 
+                      marginBottom: '0.6rem', 
+                      fontWeight: '700',
+                      color: '#1e40af',
+                      fontSize: '0.95rem'
+                    }}>
                       💰 Efectivo Recibido:
                     </label>
                     <input
@@ -951,10 +1000,13 @@ export default function PedidosPage() {
                       placeholder="0.00"
                       style={{ 
                         width: '100%', 
-                        padding: '0.5rem',
-                        fontSize: '1rem',
+                        padding: '0.6rem',
+                        fontSize: '1.05rem',
+                        fontWeight: '600',
+                        border: '2px solid #3b82f6',
+                        borderRadius: '6px',
                         backgroundColor: 'white',
-                        color: '#2c3e50'
+                        color: '#1f2937'
                       }}
                     />
                   </div>
@@ -963,21 +1015,23 @@ export default function PedidosPage() {
                   <div style={{ 
                     display: 'flex', 
                     justifyContent: 'space-between',
-                    padding: '0.75rem',
-                    backgroundColor: 'rgba(255,255,255,0.1)',
-                    borderRadius: '4px',
-                    fontSize: '1.1rem',
-                    fontWeight: '600'
+                    padding: '0.75rem 1rem',
+                    background: (() => {
+                      const totalDetalles = formData.detalles.reduce((sum, det) => sum + det.total, 0);
+                      const totalActual = (parseFloat(detalleActual.cantidad) || 0) * (parseFloat(detalleActual.precio) || 0);
+                      const totalGeneral = totalDetalles + totalActual;
+                      return formData.efectivo_recibido < totalGeneral 
+                        ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)' 
+                        : 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)';
+                    })(),
+                    borderRadius: '8px',
+                    fontSize: '1.15rem',
+                    fontWeight: '700',
+                    color: 'white',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
                   }}>
                     <span>🔄 Cambio a Entregar:</span>
-                    <span style={{ 
-                      color: (() => {
-                        const totalDetalles = formData.detalles.reduce((sum, det) => sum + det.total, 0);
-                        const totalActual = (parseFloat(detalleActual.cantidad) || 0) * (parseFloat(detalleActual.precio) || 0);
-                        const totalGeneral = totalDetalles + totalActual;
-                        return formData.efectivo_recibido < totalGeneral ? '#ef4444' : '#10b981';
-                      })()
-                    }}>
+                    <span>
                       ${(() => {
                         const totalDetalles = formData.detalles.reduce((sum, det) => sum + det.total, 0);
                         const totalActual = (parseFloat(detalleActual.cantidad) || 0) * (parseFloat(detalleActual.precio) || 0);
