@@ -66,118 +66,124 @@ export default function DetallePedidoPage() {
 
         /* Encabezado del recibo */
         .print-header {
-          text-align: center;
-          border-bottom: 1px solid #1f2937;
-          padding-bottom: 4px;
-          margin-bottom: 6px;
+          text-align: center !important;
+          border-bottom: 1px solid #1f2937 !important;
+          padding-bottom: 2px !important;
+          margin-bottom: 4px !important;
         }
 
         .print-header h1 {
-          font-size: 12px;
-          font-weight: 700;
-          color: #1f2937;
-          margin: 0;
-          letter-spacing: 0.5px;
+          font-size: 10px !important;
+          font-weight: 700 !important;
+          color: #1f2937 !important;
+          margin: 0 !important;
+          letter-spacing: 0.3px !important;
         }
 
         .print-header .subtitle {
-          font-size: 8px;
-          color: #6b7280;
-          text-transform: uppercase;
-          letter-spacing: 0.3px;
-          margin: 2px 0 0 0;
+          font-size: 7px !important;
+          color: #6b7280 !important;
+          text-transform: uppercase !important;
+          letter-spacing: 0.2px !important;
+          margin: 1px 0 0 0 !important;
         }
 
         /* Información del pedido */
         .print-info {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 4px;
-          margin-bottom: 6px;
-          padding: 4px 6px;
-          background: #f9fafb;
-          border-radius: 2px;
-          border: 1px solid #e5e7eb;
+          display: grid !important;
+          grid-template-columns: repeat(3, 1fr) !important;
+          gap: 3px !important;
+          margin-bottom: 4px !important;
+          padding: 3px 4px !important;
+          background: #f9fafb !important;
+          border-radius: 2px !important;
+          border: 1px solid #e5e7eb !important;
         }
 
         .print-info-item {
-          text-align: center;
+          text-align: center !important;
         }
 
         .print-info-label {
-          font-size: 7px;
-          color: #6b7280;
-          font-weight: 600;
-          text-transform: uppercase;
-          margin-bottom: 1px;
-          letter-spacing: 0.2px;
+          font-size: 6px !important;
+          color: #6b7280 !important;
+          font-weight: 600 !important;
+          text-transform: uppercase !important;
+          margin-bottom: 1px !important;
+          letter-spacing: 0.1px !important;
         }
 
         .print-info-value {
-          font-size: 9px;
-          font-weight: 700;
-          color: #1f2937;
+          font-size: 8px !important;
+          font-weight: 700 !important;
+          color: #1f2937 !important;
+        }
+        
+        .print-info * {
+          font-size: inherit !important;
         }
 
         /* Tabla de productos */
         .print-table {
-          width: 100%;
-          border-collapse: collapse;
-          margin-bottom: 12px;
-          font-size: 10px;
+          width: 100% !important;
+          border-collapse: collapse !important;
+          margin-bottom: 6px !important;
+          font-size: 8px !important;
         }
 
         .print-table thead {
-          background: #1f2937;
-          color: white;
+          background: #1f2937 !important;
+          color: white !important;
         }
 
         .print-table th {
-          padding: 6px 4px;
-          text-align: left;
-          font-size: 9px;
-          font-weight: 600;
-          text-transform: uppercase;
-          letter-spacing: 0.3px;
+          padding: 3px 2px !important;
+          text-align: left !important;
+          font-size: 7px !important;
+          font-weight: 600 !important;
+          text-transform: uppercase !important;
+          letter-spacing: 0.2px !important;
         }
 
         .print-table tbody tr {
-          border-bottom: 1px solid #e5e7eb;
+          border-bottom: 1px solid #e5e7eb !important;
         }
 
         .print-table tbody tr:last-child {
-          border-bottom: 1px solid #1f2937;
+          border-bottom: 1px solid #1f2937 !important;
         }
 
         .print-table td {
-          padding: 5px 4px;
-          font-size: 10px;
+          padding: 3px 2px !important;
+          font-size: 8px !important;
         }
 
         .print-table .product-name {
-          font-weight: 600;
-          color: #1f2937;
+          font-weight: 600 !important;
+          color: #1f2937 !important;
+          font-size: 8px !important;
         }
 
         .print-table .size-badge {
-          display: inline-block;
-          background: #3b82f6;
-          color: white;
-          padding: 2px 6px;
-          border-radius: 3px;
-          font-weight: 600;
-          font-size: 9px;
+          display: inline-block !important;
+          background: #3b82f6 !important;
+          color: white !important;
+          padding: 1px 4px !important;
+          border-radius: 2px !important;
+          font-weight: 600 !important;
+          font-size: 7px !important;
         }
 
         .print-table .price {
-          text-align: right;
-          font-weight: 600;
+          text-align: right !important;
+          font-weight: 600 !important;
+          font-size: 8px !important;
         }
 
         .print-table .total-cell {
-          font-weight: 700;
-          color: #10b981;
-          font-size: 10px;
+          font-weight: 700 !important;
+          color: #10b981 !important;
+          font-size: 8px !important;
         }
 
         /* Resumen y observaciones */
