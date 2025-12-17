@@ -116,7 +116,7 @@ export default function PedidosPage() {
     talla_id: '',
     talla_nombre: '',
     especificaciones: '',
-    cantidad: '0',
+    cantidad: '',
     precio: '0',
   });
 
@@ -408,7 +408,7 @@ export default function PedidosPage() {
       talla_id: '', 
       talla_nombre: '',
       especificaciones: '',
-      cantidad: '0', 
+      cantidad: '', 
       precio: '0' 
     });
     setTextoPrendaBusqueda('');
@@ -429,7 +429,7 @@ export default function PedidosPage() {
       talla_id: '', 
       talla_nombre: '',
       especificaciones: '',
-      cantidad: '0', 
+      cantidad: '', 
       precio: '0' 
     });
     setTextoPrendaBusqueda('');
@@ -950,7 +950,7 @@ export default function PedidosPage() {
                                 talla_id: '', 
                                 talla_nombre: '',
                                 especificaciones: '',
-                                cantidad: '0', 
+                                cantidad: '', 
                                 precio: '0' 
                               });
                               setTextoPrendaBusqueda('');
