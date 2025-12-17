@@ -493,7 +493,6 @@ export default function PedidosPage() {
                       setTimeout(() => setMostrarResultados(false), 200);
                     }}
                     placeholder="🔍 Buscar cliente (alumno o externo)..."
-                    required
                     style={{ width: '100%' }}
                   />
 
