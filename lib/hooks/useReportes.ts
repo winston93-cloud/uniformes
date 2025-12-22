@@ -26,6 +26,22 @@ export interface ClienteFrecuente {
   total: number;
 }
 
+export interface ReporteGanancias {
+  periodo: string;
+  totalVentas: number;
+  totalCostos: number;
+  ganancia: number;
+  margen: number;
+  detalles: {
+    prenda: string;
+    talla: string;
+    cantidad: number;
+    ingresos: number;
+    costos: number;
+    ganancia: number;
+  }[];
+}
+
 export function useReportes() {
   const [loading, setLoading] = useState(false);
 
@@ -277,6 +293,132 @@ export function useReportes() {
     }
   };
 
+  const ingresosYGanancias = async (fechaInicio: string, fechaFin: string): Promise<ReporteGanancias | null> => {
+    try {
+      setLoading(true);
+      
+      // Crear fechas en timezone local
+      const [yearInicio, mesInicio, diaInicio] = fechaInicio.split('-').map(Number);
+      const fechaInicioObj = new Date(yearInicio, mesInicio - 1, diaInicio, 0, 0, 0, 0);
+      
+      const [yearFin, mesFin, diaFin] = fechaFin.split('-').map(Number);
+      const fechaFinObj = new Date(yearFin, mesFin - 1, diaFin, 23, 59, 59, 999);
+
+      // Obtener pedidos liquidados en el periodo
+      const { data: pedidos, error: pedidosError } = await supabase
+        .from('pedidos')
+        .select('id, created_at, fecha_liquidacion')
+        .eq('estado', 'LIQUIDADO');
+
+      if (pedidosError) throw pedidosError;
+
+      // Filtrar por fecha
+      const pedidosEnPeriodo = pedidos?.filter((pedido: any) => {
+        const fechaPedido = new Date(pedido.fecha_liquidacion || pedido.created_at);
+        const fechaPedidoSolo = new Date(fechaPedido.getFullYear(), fechaPedido.getMonth(), fechaPedido.getDate());
+        const fechaInicioSolo = new Date(fechaInicioObj.getFullYear(), fechaInicioObj.getMonth(), fechaInicioObj.getDate());
+        const fechaFinSolo = new Date(fechaFinObj.getFullYear(), fechaFinObj.getMonth(), fechaFinObj.getDate());
+        return fechaPedidoSolo >= fechaInicioSolo && fechaPedidoSolo <= fechaFinSolo;
+      }) || [];
+
+      if (pedidosEnPeriodo.length === 0) {
+        return {
+          periodo: `${fechaInicio} al ${fechaFin}`,
+          totalVentas: 0,
+          totalCostos: 0,
+          ganancia: 0,
+          margen: 0,
+          detalles: []
+        };
+      }
+
+      const pedidoIds = pedidosEnPeriodo.map((p: any) => p.id);
+
+      // Obtener detalles de pedidos
+      const { data: detalles, error: detallesError } = await supabase
+        .from('detalle_pedidos')
+        .select(`
+          cantidad,
+          precio_unitario,
+          subtotal,
+          prenda_id,
+          talla_id,
+          prenda:prendas(nombre),
+          talla:tallas(nombre)
+        `)
+        .in('pedido_id', pedidoIds);
+
+      if (detallesError) throw detallesError;
+
+      // Obtener precios de compra de costos
+      const { data: costos, error: costosError } = await supabase
+        .from('costos')
+        .select('prenda_id, talla_id, precio_compra, precio_venta');
+
+      if (costosError) throw costosError;
+
+      // Crear mapa de costos
+      const costosMap = new Map(
+        costos?.map((c: any) => [`${c.prenda_id}-${c.talla_id}`, c]) || []
+      );
+
+      // Calcular por prenda
+      const detallesPorPrenda = new Map<string, any>();
+      let totalVentas = 0;
+      let totalCostos = 0;
+
+      detalles?.forEach((detalle: any) => {
+        const key = `${detalle.prenda_id}-${detalle.talla_id}`;
+        const costo = costosMap.get(key);
+        const prendaNombre = detalle.prenda?.nombre || 'Sin nombre';
+        const tallaNombre = detalle.talla?.nombre || 'Sin talla';
+        const keyPrenda = `${prendaNombre}-${tallaNombre}`;
+
+        const ingresos = detalle.subtotal;
+        const costoTotal = (costo?.precio_compra || 0) * detalle.cantidad;
+
+        totalVentas += ingresos;
+        totalCostos += costoTotal;
+
+        const existente = detallesPorPrenda.get(keyPrenda) || {
+          prenda: prendaNombre,
+          talla: tallaNombre,
+          cantidad: 0,
+          ingresos: 0,
+          costos: 0,
+          ganancia: 0
+        };
+
+        detallesPorPrenda.set(keyPrenda, {
+          prenda: prendaNombre,
+          talla: tallaNombre,
+          cantidad: existente.cantidad + detalle.cantidad,
+          ingresos: existente.ingresos + ingresos,
+          costos: existente.costos + costoTotal,
+          ganancia: existente.ganancia + (ingresos - costoTotal)
+        });
+      });
+
+      const ganancia = totalVentas - totalCostos;
+      const margen = totalVentas > 0 ? (ganancia / totalVentas) * 100 : 0;
+
+      return {
+        periodo: `${fechaInicio} al ${fechaFin}`,
+        totalVentas,
+        totalCostos,
+        ganancia,
+        margen,
+        detalles: Array.from(detallesPorPrenda.values())
+          .sort((a, b) => b.ganancia - a.ganancia)
+      };
+    } catch (err: any) {
+      console.error('Error en ingresosYGanancias:', err);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     loading,
     ventasPorPeriodo,
@@ -285,6 +427,7 @@ export function useReportes() {
     pedidosPendientes,
     clientesFrecuentes,
     resumenGeneral,
+    ingresosYGanancias,
   };
 }
 
