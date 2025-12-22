@@ -134,7 +134,7 @@ export default function ReportesPage() {
       head: [['ID Pedido', 'Cliente', 'Fecha', 'Total', 'Estado']],
       body: datos.map(p => [
         `#${p.id.substring(0, 8)}`,
-        p.alumno?.alumno_nombre_completo || p.externo?.nombre || 'Sin cliente',
+        p.cliente_nombre || 'Sin cliente',
         new Date(p.created_at).toLocaleDateString('es-MX'),
         `$${p.total.toFixed(2)}`,
         p.estado

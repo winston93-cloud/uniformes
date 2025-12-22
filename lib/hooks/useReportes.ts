@@ -36,10 +36,10 @@ export function useReportes() {
       const fechaFinObj = new Date(fechaFin);
       fechaFinObj.setHours(23, 59, 59, 999);
 
-      // Obtener todos los pedidos liquidados con información del cliente
+      // Obtener todos los pedidos liquidados con el nombre del cliente
       const { data, error } = await supabase
         .from('pedidos')
-        .select('*')
+        .select('id, created_at, total, fecha_liquidacion, tipo_cliente, cliente_nombre')
         .eq('estado', 'LIQUIDADO')
         .order('created_at', { ascending: true });
 
@@ -48,24 +48,6 @@ export function useReportes() {
         throw error;
       }
 
-      // Obtener los IDs de alumnos y externos  
-      const alumnosIds = data?.filter(p => p.tipo_cliente === 'alumno' && p.alumno_id).map(p => p.alumno_id) || [];
-      const externosIds = data?.filter(p => p.tipo_cliente === 'externo' && p.externo_id).map(p => p.externo_id) || [];
-
-      // Consultar alumnos y externos por separado
-      const [alumnosResult, externosResult] = await Promise.all([
-        alumnosIds.length > 0 
-          ? supabase.from('alumno').select('alumno_id, alumno_ref, alumno_nombre_completo').in('alumno_id', alumnosIds)
-          : { data: [], error: null },
-        externosIds.length > 0
-          ? supabase.from('externos').select('id, nombre').in('id', externosIds)
-          : { data: [], error: null }
-      ]);
-
-      // Crear mapas de alumnos y externos usando IDs como strings
-      const alumnosMap = new Map((alumnosResult.data || []).map((a: any) => [String(a.alumno_id), a]));
-      const externosMap = new Map((externosResult.data || []).map((e: any) => [e.id, e]));
-
       // Filtrar por fecha y mapear a detalle individual
       const pedidosDetalle = data?.filter((pedido: any) => {
         const fechaPedido = new Date(pedido.fecha_liquidacion || pedido.created_at);
@@ -73,19 +55,10 @@ export function useReportes() {
       }).map((pedido: any) => {
         const fechaPedido = new Date(pedido.fecha_liquidacion || pedido.created_at);
         
-        let nombreCliente = 'Sin cliente';
-        if (pedido.tipo_cliente === 'alumno' && pedido.alumno_id) {
-          const alumno = alumnosMap.get(String(pedido.alumno_id));
-          nombreCliente = alumno?.alumno_nombre_completo || `Alumno ${alumno?.alumno_ref || pedido.alumno_id}`;
-        } else if (pedido.tipo_cliente === 'externo' && pedido.externo_id) {
-          const externo = externosMap.get(pedido.externo_id);
-          nombreCliente = externo?.nombre || 'Cliente externo';
-        }
-        
         return {
           id: pedido.id,
           fecha: fechaPedido.toISOString(),
-          cliente: nombreCliente,
+          cliente: pedido.cliente_nombre || 'Sin cliente',
           tipo_cliente: pedido.tipo_cliente,
           total: parseFloat(pedido.total.toString()),
         };
@@ -204,36 +177,7 @@ export function useReportes() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-
-      // Obtener los IDs de alumnos y externos
-      const alumnosIds = data?.filter(p => p.tipo_cliente === 'alumno' && p.alumno_id).map(p => p.alumno_id) || [];
-      const externosIds = data?.filter(p => p.tipo_cliente === 'externo' && p.externo_id).map(p => p.externo_id) || [];
-
-      // Consultar alumnos y externos por separado
-      const [alumnosResult, externosResult] = await Promise.all([
-        alumnosIds.length > 0 
-          ? supabase.from('alumno').select('alumno_id, alumno_ref, alumno_nombre_completo').in('alumno_id', alumnosIds)
-          : { data: [], error: null },
-        externosIds.length > 0
-          ? supabase.from('externos').select('id, nombre').in('id', externosIds)
-          : { data: [], error: null }
-      ]);
-
-      // Crear mapas usando IDs como strings
-      const alumnosMap = new Map((alumnosResult.data || []).map((a: any) => [String(a.alumno_id), a]));
-      const externosMap = new Map((externosResult.data || []).map((e: any) => [e.id, e]));
-
-      // Agregar datos de alumno/externo a cada pedido
-      const pedidosConClientes = (data || []).map((pedido: any) => {
-        if (pedido.tipo_cliente === 'alumno' && pedido.alumno_id) {
-          pedido.alumno = alumnosMap.get(String(pedido.alumno_id)) || null;
-        } else if (pedido.tipo_cliente === 'externo' && pedido.externo_id) {
-          pedido.externo = externosMap.get(pedido.externo_id) || null;
-        }
-        return pedido;
-      });
-
-      return pedidosConClientes;
+      return data || [];
     } catch (err: any) {
       console.error('Error en pedidosPendientes:', err);
       return [];
@@ -246,88 +190,32 @@ export function useReportes() {
     try {
       setLoading(true);
       
-      // Obtener pedidos liquidados
+      // Obtener pedidos liquidados con nombre del cliente
       const { data: pedidos, error } = await supabase
         .from('pedidos')
-        .select('alumno_id, externo_id, tipo_cliente, total')
+        .select('cliente_nombre, tipo_cliente, total')
         .eq('estado', 'LIQUIDADO');
 
       if (error) throw error;
 
-      // Agrupar primero por cliente
-      const agrupadosTemp = new Map<string, { total: number; pedidos: number; tipo: string }>();
+      // Agrupar por nombre de cliente
+      const agrupados = new Map<string, ClienteFrecuente>();
       
       for (const pedido of pedidos || []) {
-        let clienteId: string;
+        const nombreCliente = pedido.cliente_nombre || 'Sin cliente';
         
-        if (pedido.tipo_cliente === 'alumno' && pedido.alumno_id) {
-          clienteId = String(pedido.alumno_id);
-        } else if (pedido.tipo_cliente === 'externo' && pedido.externo_id) {
-          clienteId = pedido.externo_id;
-        } else {
-          continue;
-        }
-
-        const existente = agrupadosTemp.get(clienteId) || {
-          total: 0,
+        const existente = agrupados.get(nombreCliente) || {
+          id: nombreCliente,
+          nombre: nombreCliente,
+          tipo: pedido.tipo_cliente as 'alumno' | 'externo',
           pedidos: 0,
-          tipo: pedido.tipo_cliente,
+          total: 0,
         };
 
-        agrupadosTemp.set(clienteId, {
+        agrupados.set(nombreCliente, {
           ...existente,
           pedidos: existente.pedidos + 1,
           total: existente.total + parseFloat(pedido.total.toString()),
-        });
-      }
-
-      // Ahora obtener nombres de clientes
-      const alumnosIds = Array.from(agrupadosTemp.entries())
-        .filter(([_, data]) => data.tipo === 'alumno')
-        .map(([id]) => parseInt(id));
-
-      const externosIds = Array.from(agrupadosTemp.entries())
-        .filter(([_, data]) => data.tipo === 'externo')
-        .map(([id]) => id);
-
-      const nombresClientes = new Map<string, string>();
-
-      if (alumnosIds.length > 0) {
-        const { data: alumnos } = await supabase
-          .from('alumno')
-          .select('alumno_id, alumno_nombre_completo, alumno_ref')
-          .in('alumno_id', alumnosIds);
-
-        alumnos?.forEach((alumno: any) => {
-          nombresClientes.set(String(alumno.alumno_id), alumno.alumno_nombre_completo || `Alumno ${alumno.alumno_ref}`);
-        });
-      }
-
-      if (externosIds.length > 0) {
-        const { data: externos } = await supabase
-          .from('externos')
-          .select('id, nombre')
-          .in('id', externosIds);
-
-        externos?.forEach((externo: any) => {
-          nombresClientes.set(externo.id, externo.nombre || 'Cliente Externo');
-        });
-      }
-
-      // Construir resultado final
-      const agrupados = new Map<string, ClienteFrecuente>();
-
-      if (error) throw error;
-
-      for (const [clienteId, datos] of agrupadosTemp.entries()) {
-        const nombre = nombresClientes.get(clienteId) || `Cliente ${clienteId}`;
-        
-        agrupados.set(clienteId, {
-          id: clienteId,
-          nombre,
-          tipo: datos.tipo as 'alumno' | 'externo',
-          pedidos: datos.pedidos,
-          total: datos.total,
         });
       }
 
