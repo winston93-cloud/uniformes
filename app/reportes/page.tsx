@@ -53,15 +53,21 @@ export default function ReportesPage() {
     doc.setFontSize(11);
     doc.text(`Período: ${periodo.fechaInicio} al ${periodo.fechaFin}`, 14, 28);
     
-    // Tabla
+    // Calcular total
+    const totalGeneral = datos.reduce((sum, v) => sum + v.total, 0);
+    
+    // Tabla con detalle de cada venta
     autoTable(doc, {
       startY: 35,
-      head: [['Fecha', 'Pedidos', 'Total Ventas']],
+      head: [['ID Pedido', 'Fecha', 'Cliente', 'Tipo', 'Total']],
       body: datos.map(v => [
+        `#${v.id.substring(0, 8)}`,
         new Date(v.fecha).toLocaleDateString('es-MX'),
-        v.pedidos.toString(),
+        v.cliente,
+        v.tipo_cliente === 'alumno' ? 'Alumno' : 'Externo',
         `$${v.total.toFixed(2)}`
       ]),
+      foot: [['', '', '', 'Total:', `$${totalGeneral.toFixed(2)}`]],
     });
     
     // Mostrar PDF en nueva pestaña en lugar de descargar

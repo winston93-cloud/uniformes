@@ -4,9 +4,11 @@ import { useState } from 'react';
 import { supabase } from '../supabase';
 
 export interface ReporteVentas {
+  id: string;
   fecha: string;
+  cliente: string;
+  tipo_cliente: string;
   total: number;
-  pedidos: number;
 }
 
 export interface PrendaVendida {
@@ -34,39 +36,44 @@ export function useReportes() {
       const fechaFinObj = new Date(fechaFin);
       fechaFinObj.setHours(23, 59, 59, 999);
 
-      // Obtener todos los pedidos liquidados
+      // Obtener todos los pedidos liquidados con información del cliente
       const { data, error } = await supabase
         .from('pedidos')
-        .select('created_at, total, estado, fecha_liquidacion')
+        .select(`
+          id,
+          created_at,
+          total,
+          estado,
+          fecha_liquidacion,
+          tipo_cliente,
+          alumno:alumnos(nombre, referencia),
+          externo:externos(nombre)
+        `)
         .eq('estado', 'LIQUIDADO')
         .order('created_at', { ascending: true });
 
       if (error) throw error;
 
-      // Filtrar por fecha en JavaScript para mayor flexibilidad
-      const pedidosFiltrados = data?.filter((pedido: any) => {
-        // Usar fecha_liquidacion si existe, sino created_at
+      // Filtrar por fecha y mapear a detalle individual
+      const pedidosDetalle = data?.filter((pedido: any) => {
         const fechaPedido = new Date(pedido.fecha_liquidacion || pedido.created_at);
         return fechaPedido >= fechaInicioObj && fechaPedido <= fechaFinObj;
+      }).map((pedido: any) => {
+        const fechaPedido = new Date(pedido.fecha_liquidacion || pedido.created_at);
+        const nombreCliente = pedido.tipo_cliente === 'alumno' 
+          ? (pedido.alumno?.nombre || 'Alumno sin nombre')
+          : (pedido.externo?.nombre || 'Cliente sin nombre');
+        
+        return {
+          id: pedido.id,
+          fecha: fechaPedido.toISOString(),
+          cliente: nombreCliente,
+          tipo_cliente: pedido.tipo_cliente,
+          total: parseFloat(pedido.total.toString()),
+        };
       }) || [];
 
-      // Agrupar por fecha
-      const porFecha = new Map<string, { total: number; pedidos: number }>();
-      
-      pedidosFiltrados.forEach((pedido: any) => {
-        const fechaPedido = new Date(pedido.fecha_liquidacion || pedido.created_at);
-        const fecha = fechaPedido.toISOString().split('T')[0];
-        const existente = porFecha.get(fecha) || { total: 0, pedidos: 0 };
-        porFecha.set(fecha, {
-          total: existente.total + parseFloat(pedido.total.toString()),
-          pedidos: existente.pedidos + 1,
-        });
-      });
-
-      return Array.from(porFecha.entries()).map(([fecha, datos]) => ({
-        fecha,
-        ...datos,
-      }));
+      return pedidosDetalle;
     } catch (err: any) {
       console.error('Error en ventasPorPeriodo:', err);
       return [];
