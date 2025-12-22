@@ -32,11 +32,12 @@ export function useReportes() {
   const ventasPorPeriodo = async (fechaInicio: string, fechaFin: string): Promise<ReporteVentas[]> => {
     try {
       setLoading(true);
-      const fechaInicioObj = new Date(fechaInicio);
-      fechaInicioObj.setHours(0, 0, 0, 0);
+      // Crear fechas en timezone local para evitar problemas de interpretación UTC
+      const [yearInicio, mesInicio, diaInicio] = fechaInicio.split('-').map(Number);
+      const fechaInicioObj = new Date(yearInicio, mesInicio - 1, diaInicio, 0, 0, 0, 0);
       
-      const fechaFinObj = new Date(fechaFin);
-      fechaFinObj.setHours(23, 59, 59, 999);
+      const [yearFin, mesFin, diaFin] = fechaFin.split('-').map(Number);
+      const fechaFinObj = new Date(yearFin, mesFin - 1, diaFin, 23, 59, 59, 999);
 
       // Obtener todos los pedidos liquidados con el nombre del cliente
       const { data, error } = await supabase
