@@ -169,7 +169,7 @@ export function useReportes() {
         .from('pedidos')
         .select(`
           *,
-          alumno:alumno(alumno_ref, alumno_nombre_completo),
+          alumno:alumnos(nombre, referencia),
           externo:externos(nombre)
         `)
         .in('estado', ['PEDIDO', 'ENTREGADO'])
