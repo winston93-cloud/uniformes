@@ -40,14 +40,9 @@ export function useReportes() {
       const { data, error } = await supabase
         .from('pedidos')
         .select(`
-          id,
-          created_at,
-          total,
-          estado,
-          fecha_liquidacion,
-          tipo_cliente,
-          alumno:alumnos(nombre, referencia),
-          externo:externos(nombre)
+          *,
+          alumnos(nombre, referencia),
+          externos(nombre)
         `)
         .eq('estado', 'LIQUIDADO')
         .order('created_at', { ascending: true });
@@ -66,13 +61,13 @@ export function useReportes() {
         // Debug
         console.log('🔍 Pedido:', {
           tipo: pedido.tipo_cliente,
-          alumno: pedido.alumno,
-          externo: pedido.externo
+          alumnos: pedido.alumnos,
+          externos: pedido.externos
         });
         
         const nombreCliente = pedido.tipo_cliente === 'alumno' 
-          ? (pedido.alumno?.nombre || 'Alumno sin nombre')
-          : (pedido.externo?.nombre || 'Cliente sin nombre');
+          ? (pedido.alumnos?.nombre || 'Alumno sin nombre')
+          : (pedido.externos?.nombre || 'Cliente sin nombre');
         
         return {
           id: pedido.id,
