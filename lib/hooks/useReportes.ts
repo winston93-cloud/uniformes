@@ -54,12 +54,22 @@ export function useReportes() {
 
       if (error) throw error;
 
+      console.log('📊 Datos de pedidos:', data?.[0]); // Debug: ver estructura
+
       // Filtrar por fecha y mapear a detalle individual
       const pedidosDetalle = data?.filter((pedido: any) => {
         const fechaPedido = new Date(pedido.fecha_liquidacion || pedido.created_at);
         return fechaPedido >= fechaInicioObj && fechaPedido <= fechaFinObj;
       }).map((pedido: any) => {
         const fechaPedido = new Date(pedido.fecha_liquidacion || pedido.created_at);
+        
+        // Debug
+        console.log('🔍 Pedido:', {
+          tipo: pedido.tipo_cliente,
+          alumno: pedido.alumno,
+          externo: pedido.externo
+        });
+        
         const nombreCliente = pedido.tipo_cliente === 'alumno' 
           ? (pedido.alumno?.nombre || 'Alumno sin nombre')
           : (pedido.externo?.nombre || 'Cliente sin nombre');
