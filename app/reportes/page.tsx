@@ -26,9 +26,14 @@ export default function ReportesPage() {
 
   const [mostrarReporte, setMostrarReporte] = useState<string | null>(null);
   const [datosReporte, setDatosReporte] = useState<any[]>([]);
+  
+  // Inicializar fechas: primer día del mes actual hasta hoy
+  const hoy = new Date();
+  const primerDiaMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+  
   const [periodo, setPeriodo] = useState({
-    fechaInicio: '',
-    fechaFin: '',
+    fechaInicio: primerDiaMes.toISOString().split('T')[0],
+    fechaFin: hoy.toISOString().split('T')[0],
   });
 
   useEffect(() => {
@@ -118,31 +123,29 @@ export default function ReportesPage() {
         </div>
 
         {/* Filtros de Período */}
-        {(mostrarReporte === 'ventas' || mostrarReporte === 'prendas') && (
-          <div className="form-container" style={{ marginBottom: '2rem' }}>
-            <h3 style={{ marginBottom: '1rem', fontSize: '1.2rem', fontWeight: '600' }}>Filtros de Período</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">Fecha Inicio</label>
-                <input
-                  type="date"
-                  className="form-input"
-                  value={periodo.fechaInicio}
-                  onChange={(e) => setPeriodo({ ...periodo, fechaInicio: e.target.value })}
-                />
-              </div>
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">Fecha Fin</label>
-                <input
-                  type="date"
-                  className="form-input"
-                  value={periodo.fechaFin}
-                  onChange={(e) => setPeriodo({ ...periodo, fechaFin: e.target.value })}
-                />
-              </div>
+        <div className="form-container" style={{ marginBottom: '2rem' }}>
+          <h3 style={{ marginBottom: '1rem', fontSize: '1.2rem', fontWeight: '600' }}>Filtros de Período</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">Fecha Inicio</label>
+              <input
+                type="date"
+                className="form-input"
+                value={periodo.fechaInicio}
+                onChange={(e) => setPeriodo({ ...periodo, fechaInicio: e.target.value })}
+              />
+            </div>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">Fecha Fin</label>
+              <input
+                type="date"
+                className="form-input"
+                value={periodo.fechaFin}
+                onChange={(e) => setPeriodo({ ...periodo, fechaFin: e.target.value })}
+              />
             </div>
           </div>
-        )}
+        </div>
 
         {/* Cards de Reportes */}
         <div className="cards-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))' }}>
@@ -409,9 +412,15 @@ export default function ReportesPage() {
           </div>
         )}
 
+        {mostrarReporte && datosReporte.length === 0 && loading && (
+          <div className="alert alert-info" style={{ marginTop: '2rem' }}>
+            ⏳ Cargando datos del reporte...
+          </div>
+        )}
+
         {mostrarReporte && datosReporte.length === 0 && !loading && (
           <div className="alert alert-info" style={{ marginTop: '2rem' }}>
-            No hay datos para mostrar en este reporte
+            📊 No hay datos para mostrar en este reporte
           </div>
         )}
       </div>
