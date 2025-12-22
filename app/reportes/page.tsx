@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import { useReportes } from '@/lib/hooks/useReportes';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,9 +26,6 @@ export default function ReportesPage() {
     prendasStock: 0,
   });
 
-  const [mostrarReporte, setMostrarReporte] = useState<string | null>(null);
-  const [datosReporte, setDatosReporte] = useState<any[]>([]);
-  
   // Inicializar fechas: primer día del mes actual hasta hoy
   const hoy = new Date();
   const primerDiaMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
@@ -45,10 +44,120 @@ export default function ReportesPage() {
     setResumen(datos);
   };
 
-  const handleGenerarReporte = async (tipo: string) => {
-    setMostrarReporte(tipo);
-    setDatosReporte([]);
+  const generarPDFVentas = (datos: any[]) => {
+    const doc = new jsPDF();
+    
+    // Título
+    doc.setFontSize(18);
+    doc.text('Reporte de Ventas por Período', 14, 20);
+    doc.setFontSize(11);
+    doc.text(`Período: ${periodo.fechaInicio} al ${periodo.fechaFin}`, 14, 28);
+    
+    // Tabla
+    autoTable(doc, {
+      startY: 35,
+      head: [['Fecha', 'Pedidos', 'Total Ventas']],
+      body: datos.map(v => [
+        new Date(v.fecha).toLocaleDateString('es-MX'),
+        v.pedidos.toString(),
+        `$${v.total.toFixed(2)}`
+      ]),
+    });
+    
+    doc.save(`ventas_${periodo.fechaInicio}_${periodo.fechaFin}.pdf`);
+  };
 
+  const generarPDFPrendas = (datos: any[]) => {
+    const doc = new jsPDF();
+    
+    doc.setFontSize(18);
+    doc.text('Prendas Más Vendidas', 14, 20);
+    doc.setFontSize(11);
+    doc.text(`Generado: ${new Date().toLocaleDateString('es-MX')}`, 14, 28);
+    
+    autoTable(doc, {
+      startY: 35,
+      head: [['Prenda', 'Talla', 'Cantidad', 'Total']],
+      body: datos.map(p => [
+        p.prenda,
+        p.talla,
+        p.cantidad.toString(),
+        `$${p.total.toFixed(2)}`
+      ]),
+    });
+    
+    doc.save(`prendas_mas_vendidas_${new Date().toISOString().split('T')[0]}.pdf`);
+  };
+
+  const generarPDFInventario = (datos: any[]) => {
+    const doc = new jsPDF();
+    
+    doc.setFontSize(18);
+    doc.text('Estado de Inventario - Stock Bajo', 14, 20);
+    doc.setFontSize(11);
+    doc.text(`Generado: ${new Date().toLocaleDateString('es-MX')}`, 14, 28);
+    
+    autoTable(doc, {
+      startY: 35,
+      head: [['Prenda', 'Talla', 'Stock Inicial', 'Stock Actual', 'Estado']],
+      body: datos.map(i => [
+        i.prenda?.nombre || '-',
+        i.talla?.nombre || '-',
+        (i.stock_inicial || 0).toString(),
+        i.stock.toString(),
+        '⚠️ Stock Bajo'
+      ]),
+    });
+    
+    doc.save(`inventario_stock_bajo_${new Date().toISOString().split('T')[0]}.pdf`);
+  };
+
+  const generarPDFPendientes = (datos: any[]) => {
+    const doc = new jsPDF();
+    
+    doc.setFontSize(18);
+    doc.text('Pedidos Pendientes', 14, 20);
+    doc.setFontSize(11);
+    doc.text(`Generado: ${new Date().toLocaleDateString('es-MX')}`, 14, 28);
+    
+    autoTable(doc, {
+      startY: 35,
+      head: [['ID Pedido', 'Cliente', 'Fecha', 'Total', 'Estado']],
+      body: datos.map(p => [
+        `#${p.id.substring(0, 8)}`,
+        p.alumno?.alumno_nombre_completo || p.externo?.nombre || 'Sin cliente',
+        new Date(p.created_at).toLocaleDateString('es-MX'),
+        `$${p.total.toFixed(2)}`,
+        p.estado
+      ]),
+    });
+    
+    doc.save(`pedidos_pendientes_${new Date().toISOString().split('T')[0]}.pdf`);
+  };
+
+  const generarPDFClientes = (datos: any[]) => {
+    const doc = new jsPDF();
+    
+    doc.setFontSize(18);
+    doc.text('Clientes Frecuentes', 14, 20);
+    doc.setFontSize(11);
+    doc.text(`Generado: ${new Date().toLocaleDateString('es-MX')}`, 14, 28);
+    
+    autoTable(doc, {
+      startY: 35,
+      head: [['Cliente', 'Tipo', 'Pedidos', 'Total Comprado']],
+      body: datos.map(c => [
+        c.nombre,
+        c.tipo === 'alumno' ? 'Alumno' : 'Externo',
+        c.pedidos.toString(),
+        `$${c.total.toFixed(2)}`
+      ]),
+    });
+    
+    doc.save(`clientes_frecuentes_${new Date().toISOString().split('T')[0]}.pdf`);
+  };
+
+  const handleGenerarReporte = async (tipo: string) => {
     try {
       let datos: any[] = [];
 
@@ -59,27 +168,51 @@ export default function ReportesPage() {
             return;
           }
           datos = await ventasPorPeriodo(periodo.fechaInicio, periodo.fechaFin);
+          if (datos.length === 0) {
+            alert('No hay datos para el período seleccionado');
+            return;
+          }
+          generarPDFVentas(datos);
           break;
 
         case 'prendas':
           datos = await prendasMasVendidas(periodo.fechaInicio || undefined, periodo.fechaFin || undefined);
+          if (datos.length === 0) {
+            alert('No hay datos de prendas vendidas');
+            return;
+          }
+          generarPDFPrendas(datos);
           break;
 
         case 'inventario':
           datos = await stockBajo();
+          if (datos.length === 0) {
+            alert('No hay productos con stock bajo');
+            return;
+          }
+          generarPDFInventario(datos);
           break;
 
         case 'pendientes':
           datos = await pedidosPendientes();
+          if (datos.length === 0) {
+            alert('No hay pedidos pendientes');
+            return;
+          }
+          generarPDFPendientes(datos);
           break;
 
         case 'clientes':
           datos = await clientesFrecuentes();
+          if (datos.length === 0) {
+            alert('No hay datos de clientes');
+            return;
+          }
+          generarPDFClientes(datos);
           break;
       }
-
-      setDatosReporte(datos);
     } catch (error: any) {
+      console.error('Error al generar reporte:', error);
       alert(`Error al generar reporte: ${error.message}`);
     }
   };
@@ -251,176 +384,7 @@ export default function ReportesPage() {
           </div>
         </div>
 
-        {/* Resultado del Reporte */}
-        {mostrarReporte && datosReporte.length > 0 && (
-          <div className="table-container" style={{ marginTop: '3rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h3 style={{ fontSize: '1.5rem', fontWeight: '600' }}>
-                {mostrarReporte === 'ventas' && 'Ventas por Período'}
-                {mostrarReporte === 'prendas' && 'Prendas Más Vendidas'}
-                {mostrarReporte === 'inventario' && 'Stock Bajo'}
-                {mostrarReporte === 'pendientes' && 'Pedidos Pendientes'}
-                {mostrarReporte === 'clientes' && 'Clientes Frecuentes'}
-              </h3>
-              <button
-                className="btn btn-secondary"
-                onClick={() => {
-                  setMostrarReporte(null);
-                  setDatosReporte([]);
-                }}
-              >
-                ✕ Cerrar
-              </button>
-            </div>
-
-            {mostrarReporte === 'ventas' && (
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Fecha</th>
-                    <th>Pedidos</th>
-                    <th>Total Ventas</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {datosReporte.map((venta: any, index) => (
-                    <tr key={index}>
-                      <td>{new Date(venta.fecha).toLocaleDateString('es-MX')}</td>
-                      <td>{venta.pedidos}</td>
-                      <td style={{ fontWeight: '700', color: '#10b981' }}>${venta.total.toFixed(2)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-
-            {mostrarReporte === 'prendas' && (
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Prenda</th>
-                    <th>Talla</th>
-                    <th>Cantidad Vendida</th>
-                    <th>Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {datosReporte.map((prenda: any, index) => (
-                    <tr key={index}>
-                      <td style={{ fontWeight: '600' }}>{prenda.prenda}</td>
-                      <td><span className="badge badge-info">{prenda.talla}</span></td>
-                      <td>{prenda.cantidad}</td>
-                      <td style={{ fontWeight: '700', color: '#10b981' }}>${prenda.total.toFixed(2)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-
-            {mostrarReporte === 'inventario' && (
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Prenda</th>
-                    <th>Talla</th>
-                    <th>Stock Inicial</th>
-                    <th>Stock Actual</th>
-                    <th>Estado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {datosReporte.map((item: any) => (
-                    <tr key={item.id}>
-                      <td style={{ fontWeight: '600' }}>{item.prenda?.nombre || '-'}</td>
-                      <td><span className="badge badge-info">{item.talla?.nombre || '-'}</span></td>
-                      <td style={{ fontWeight: '600' }}>{item.stock_inicial || 0}</td>
-                      <td style={{ fontWeight: '600' }}>{item.stock}</td>
-                      <td>
-                        <span className="badge badge-danger">⚠️ Stock Bajo</span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-
-            {mostrarReporte === 'pendientes' && (
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Cliente</th>
-                    <th>Fecha</th>
-                    <th>Total</th>
-                    <th>Estado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {datosReporte.map((pedido: any) => (
-                    <tr key={pedido.id}>
-                      <td style={{ fontFamily: 'monospace' }}>#{pedido.id.substring(0, 8)}...</td>
-                      <td>
-                        {pedido.alumno?.alumno_nombre_completo 
-                          ? `🎓 ${pedido.alumno.alumno_nombre_completo}`
-                          : pedido.externo?.nombre 
-                          ? `👤 ${pedido.externo.nombre}`
-                          : 'Sin cliente'}
-                      </td>
-                      <td>{new Date(pedido.created_at).toLocaleDateString('es-MX')}</td>
-                      <td style={{ fontWeight: '700', color: '#10b981' }}>${pedido.total.toFixed(2)}</td>
-                      <td>
-                        <span className={`badge ${
-                          pedido.estado === 'PEDIDO' ? 'badge-warning' : 'badge-info'
-                        }`}>
-                          {pedido.estado}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-
-            {mostrarReporte === 'clientes' && (
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Cliente</th>
-                    <th>Tipo</th>
-                    <th>Pedidos</th>
-                    <th>Total Comprado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {datosReporte.map((cliente: any, index) => (
-                    <tr key={index}>
-                      <td style={{ fontWeight: '600' }}>{cliente.nombre}</td>
-                      <td>
-                        <span className={`badge ${cliente.tipo === 'alumno' ? 'badge-info' : 'badge-warning'}`}>
-                          {cliente.tipo === 'alumno' ? '🎓 Alumno' : '👤 Externo'}
-                        </span>
-                      </td>
-                      <td>{cliente.pedidos}</td>
-                      <td style={{ fontWeight: '700', color: '#10b981' }}>${cliente.total.toFixed(2)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        )}
-
-        {mostrarReporte && datosReporte.length === 0 && loading && (
-          <div className="alert alert-info" style={{ marginTop: '2rem' }}>
-            ⏳ Cargando datos del reporte...
-          </div>
-        )}
-
-        {mostrarReporte && datosReporte.length === 0 && !loading && (
-          <div className="alert alert-info" style={{ marginTop: '2rem' }}>
-            📊 No hay datos para mostrar en este reporte
-          </div>
-        )}
+        {/* Los reportes se descargan automáticamente como PDF */}
       </div>
     </LayoutWrapper>
   );
