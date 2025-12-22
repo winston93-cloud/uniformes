@@ -21,6 +21,7 @@ export default function CostosPage() {
   const [mostrarModalEdicion, setMostrarModalEdicion] = useState(false);
   const [formDataEdicion, setFormDataEdicion] = useState({
     precioVenta: '',
+    precioCompra: '',
   });
   const [botonEstado, setBotonEstado] = useState<'normal' | 'exito' | 'error'>('normal');
   
@@ -190,6 +191,7 @@ export default function CostosPage() {
     setCostoEditando(costo);
     setFormDataEdicion({
       precioVenta: costo.precio_venta.toString(),
+      precioCompra: (costo.precio_compra || 0).toString(),
     });
     setMostrarModalEdicion(true);
   };
@@ -202,6 +204,7 @@ export default function CostosPage() {
     
     const { error } = await updateCosto(costoEditando.id, {
       precio_venta: parseFloat(formDataEdicion.precioVenta) || 0,
+      precio_compra: parseFloat(formDataEdicion.precioCompra) || 0,
     });
 
     if (error) {
@@ -666,6 +669,21 @@ export default function CostosPage() {
               
               <form onSubmit={handleGuardarEdicion}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem' }}>
+                  <div className="form-group">
+                    <label className="form-label">Precio de Compra</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="form-input"
+                      value={formDataEdicion.precioCompra}
+                      onChange={(e) => setFormDataEdicion({ ...formDataEdicion, precioCompra: e.target.value })}
+                      placeholder="$0.00"
+                    />
+                    <small style={{ color: '#888', fontSize: '0.875rem', marginTop: '0.25rem', display: 'block' }}>
+                      Costo de adquisición de la prenda (opcional)
+                    </small>
+                  </div>
+                  
                   <div className="form-group">
                     <label className="form-label">Precio de Venta *</label>
                     <input
