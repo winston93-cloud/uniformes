@@ -34,21 +34,28 @@ export function useReportes() {
       const fechaFinObj = new Date(fechaFin);
       fechaFinObj.setHours(23, 59, 59, 999);
 
+      // Obtener todos los pedidos liquidados
       const { data, error } = await supabase
         .from('pedidos')
-        .select('created_at, total, estado')
+        .select('created_at, total, estado, fecha_liquidacion')
         .eq('estado', 'LIQUIDADO')
-        .gte('fecha_liquidacion', fechaInicioObj.toISOString())
-        .lte('fecha_liquidacion', fechaFinObj.toISOString())
-        .order('fecha_liquidacion', { ascending: true });
+        .order('created_at', { ascending: true });
 
       if (error) throw error;
+
+      // Filtrar por fecha en JavaScript para mayor flexibilidad
+      const pedidosFiltrados = data?.filter((pedido: any) => {
+        // Usar fecha_liquidacion si existe, sino created_at
+        const fechaPedido = new Date(pedido.fecha_liquidacion || pedido.created_at);
+        return fechaPedido >= fechaInicioObj && fechaPedido <= fechaFinObj;
+      }) || [];
 
       // Agrupar por fecha
       const porFecha = new Map<string, { total: number; pedidos: number }>();
       
-      data?.forEach((pedido: any) => {
-        const fecha = new Date(pedido.fecha_liquidacion || pedido.created_at).toISOString().split('T')[0];
+      pedidosFiltrados.forEach((pedido: any) => {
+        const fechaPedido = new Date(pedido.fecha_liquidacion || pedido.created_at);
+        const fecha = fechaPedido.toISOString().split('T')[0];
         const existente = porFecha.get(fecha) || { total: 0, pedidos: 0 };
         porFecha.set(fecha, {
           total: existente.total + parseFloat(pedido.total.toString()),
