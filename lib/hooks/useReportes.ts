@@ -92,10 +92,8 @@ export function useReportes() {
         .select(`
           cantidad,
           subtotal,
-          costo:costos(
-            prenda:prendas(nombre),
-            talla:tallas(nombre)
-          )
+          prenda:prendas(nombre),
+          talla:tallas(nombre)
         `)
         .order('cantidad', { ascending: false })
         .limit(20);
@@ -122,8 +120,8 @@ export function useReportes() {
       const agrupados = new Map<string, PrendaVendida>();
 
       data?.forEach((detalle: any) => {
-        const prendaNombre = detalle.costo?.prenda?.nombre || 'Sin nombre';
-        const tallaNombre = detalle.costo?.talla?.nombre || 'Sin talla';
+        const prendaNombre = detalle.prenda?.nombre || 'Sin nombre';
+        const tallaNombre = detalle.talla?.nombre || 'Sin talla';
         const key = `${prendaNombre}-${tallaNombre}`;
 
         const existente = agrupados.get(key) || {
