@@ -41,15 +41,18 @@ export function useReportes() {
         .from('pedidos')
         .select(`
           *,
-          alumnos(nombre, referencia),
-          externos(nombre)
+          alumno:alumno(nombre, referencia),
+          externo:externos(nombre)
         `)
         .eq('estado', 'LIQUIDADO')
         .order('created_at', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error en consulta Supabase:', error);
+        throw error;
+      }
 
-      console.log('📊 Datos de pedidos:', data?.[0]); // Debug: ver estructura
+      console.error('📊 DATOS DE PEDIDOS - Primer elemento:', JSON.stringify(data?.[0], null, 2));
 
       // Filtrar por fecha y mapear a detalle individual
       const pedidosDetalle = data?.filter((pedido: any) => {
@@ -61,13 +64,13 @@ export function useReportes() {
         // Debug
         console.log('🔍 Pedido:', {
           tipo: pedido.tipo_cliente,
-          alumnos: pedido.alumnos,
-          externos: pedido.externos
+          alumno: pedido.alumno,
+          externo: pedido.externo
         });
         
         const nombreCliente = pedido.tipo_cliente === 'alumno' 
-          ? (pedido.alumnos?.nombre || 'Alumno sin nombre')
-          : (pedido.externos?.nombre || 'Cliente sin nombre');
+          ? (pedido.alumno?.nombre || 'Alumno sin nombre')
+          : (pedido.externo?.nombre || 'Cliente sin nombre');
         
         return {
           id: pedido.id,
@@ -188,7 +191,7 @@ export function useReportes() {
         .from('pedidos')
         .select(`
           *,
-          alumno:alumnos(nombre, referencia),
+          alumno:alumno(nombre, referencia),
           externo:externos(nombre)
         `)
         .in('estado', ['PEDIDO', 'ENTREGADO'])
