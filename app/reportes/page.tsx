@@ -64,7 +64,8 @@ export default function ReportesPage() {
       ]),
     });
     
-    doc.save(`ventas_${periodo.fechaInicio}_${periodo.fechaFin}.pdf`);
+    // Mostrar PDF en nueva pestaña en lugar de descargar
+    window.open(doc.output('bloburl'), '_blank');
   };
 
   const generarPDFPrendas = (datos: any[]) => {
@@ -86,7 +87,8 @@ export default function ReportesPage() {
       ]),
     });
     
-    doc.save(`prendas_mas_vendidas_${new Date().toISOString().split('T')[0]}.pdf`);
+    // Mostrar PDF en nueva pestaña en lugar de descargar
+    window.open(doc.output('bloburl'), '_blank');
   };
 
   const generarPDFInventario = (datos: any[]) => {
@@ -109,7 +111,8 @@ export default function ReportesPage() {
       ]),
     });
     
-    doc.save(`inventario_stock_bajo_${new Date().toISOString().split('T')[0]}.pdf`);
+    // Mostrar PDF en nueva pestaña en lugar de descargar
+    window.open(doc.output('bloburl'), '_blank');
   };
 
   const generarPDFPendientes = (datos: any[]) => {
@@ -132,7 +135,8 @@ export default function ReportesPage() {
       ]),
     });
     
-    doc.save(`pedidos_pendientes_${new Date().toISOString().split('T')[0]}.pdf`);
+    // Mostrar PDF en nueva pestaña en lugar de descargar
+    window.open(doc.output('bloburl'), '_blank');
   };
 
   const generarPDFClientes = (datos: any[]) => {
@@ -154,7 +158,8 @@ export default function ReportesPage() {
       ]),
     });
     
-    doc.save(`clientes_frecuentes_${new Date().toISOString().split('T')[0]}.pdf`);
+    // Mostrar PDF en nueva pestaña en lugar de descargar
+    window.open(doc.output('bloburl'), '_blank');
   };
 
   const handleGenerarReporte = async (tipo: string) => {
@@ -384,7 +389,7 @@ export default function ReportesPage() {
           </div>
         </div>
 
-        {/* Los reportes se descargan automáticamente como PDF */}
+        {/* Los reportes se muestran en una nueva pestaña como PDF */}
       </div>
     </LayoutWrapper>
   );
