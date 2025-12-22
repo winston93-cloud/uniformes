@@ -39,15 +39,32 @@ export function useReportes() {
       // Obtener todos los pedidos liquidados con información del cliente
       const { data, error } = await supabase
         .from('pedidos')
-        .select(`
-          *,
-          alumno:alumno(alumno_ref, alumno_nombre_completo),
-          externo:externos(nombre)
-        `)
+        .select('*')
         .eq('estado', 'LIQUIDADO')
         .order('created_at', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error obteniendo pedidos:', error);
+        throw error;
+      }
+
+      // Obtener los IDs de alumnos y externos
+      const alumnosIds = data?.filter(p => p.tipo_cliente === 'alumno' && p.alumno_id).map(p => p.alumno_id) || [];
+      const externosIds = data?.filter(p => p.tipo_cliente === 'externo' && p.externo_id).map(p => p.externo_id) || [];
+
+      // Consultar alumnos y externos por separado
+      const [alumnosResult, externosResult] = await Promise.all([
+        alumnosIds.length > 0 
+          ? supabase.from('alumno').select('*').in('alumno_id', alumnosIds)
+          : { data: [], error: null },
+        externosIds.length > 0
+          ? supabase.from('externos').select('*').in('id', externosIds)
+          : { data: [], error: null }
+      ]);
+
+      // Crear mapas de alumnos y externos
+      const alumnosMap = new Map((alumnosResult.data || []).map((a: any) => [a.alumno_id, a]));
+      const externosMap = new Map((externosResult.data || []).map((e: any) => [e.id, e]));
 
       // Filtrar por fecha y mapear a detalle individual
       const pedidosDetalle = data?.filter((pedido: any) => {
@@ -56,9 +73,14 @@ export function useReportes() {
       }).map((pedido: any) => {
         const fechaPedido = new Date(pedido.fecha_liquidacion || pedido.created_at);
         
-        const nombreCliente = pedido.tipo_cliente === 'alumno' 
-          ? (pedido.alumno?.alumno_nombre_completo || `Alumno ${pedido.alumno?.alumno_ref || 'sin nombre'}`)
-          : (pedido.externo?.nombre || 'Cliente sin nombre');
+        let nombreCliente = 'Sin cliente';
+        if (pedido.tipo_cliente === 'alumno' && pedido.alumno_id) {
+          const alumno = alumnosMap.get(pedido.alumno_id);
+          nombreCliente = alumno?.alumno_nombre_completo || `Alumno ${alumno?.alumno_ref || pedido.alumno_id.substring(0, 8)}`;
+        } else if (pedido.tipo_cliente === 'externo' && pedido.externo_id) {
+          const externo = externosMap.get(pedido.externo_id);
+          nombreCliente = externo?.nombre || 'Cliente externo';
+        }
         
         return {
           id: pedido.id,
@@ -177,16 +199,41 @@ export function useReportes() {
       setLoading(true);
       const { data, error } = await supabase
         .from('pedidos')
-        .select(`
-          *,
-          alumno:alumno(alumno_ref, alumno_nombre_completo),
-          externo:externos(nombre)
-        `)
+        .select('*')
         .in('estado', ['PEDIDO', 'ENTREGADO'])
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data || [];
+
+      // Obtener los IDs de alumnos y externos
+      const alumnosIds = data?.filter(p => p.tipo_cliente === 'alumno' && p.alumno_id).map(p => p.alumno_id) || [];
+      const externosIds = data?.filter(p => p.tipo_cliente === 'externo' && p.externo_id).map(p => p.externo_id) || [];
+
+      // Consultar alumnos y externos por separado
+      const [alumnosResult, externosResult] = await Promise.all([
+        alumnosIds.length > 0 
+          ? supabase.from('alumno').select('*').in('alumno_id', alumnosIds)
+          : { data: [], error: null },
+        externosIds.length > 0
+          ? supabase.from('externos').select('*').in('id', externosIds)
+          : { data: [], error: null }
+      ]);
+
+      // Crear mapas
+      const alumnosMap = new Map((alumnosResult.data || []).map((a: any) => [a.alumno_id, a]));
+      const externosMap = new Map((externosResult.data || []).map((e: any) => [e.id, e]));
+
+      // Agregar datos de alumno/externo a cada pedido
+      const pedidosConClientes = (data || []).map((pedido: any) => {
+        if (pedido.tipo_cliente === 'alumno' && pedido.alumno_id) {
+          pedido.alumno = alumnosMap.get(pedido.alumno_id) || null;
+        } else if (pedido.tipo_cliente === 'externo' && pedido.externo_id) {
+          pedido.externo = externosMap.get(pedido.externo_id) || null;
+        }
+        return pedido;
+      });
+
+      return pedidosConClientes;
     } catch (err: any) {
       console.error('Error en pedidosPendientes:', err);
       return [];
