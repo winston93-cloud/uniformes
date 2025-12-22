@@ -66,13 +66,11 @@ export default function ReportesPage() {
           break;
 
         case 'inventario':
-          const { data: stock } = await stockBajo();
-          datos = stock || [];
+          datos = await stockBajo();
           break;
 
         case 'pendientes':
-          const { data: pendientes } = await pedidosPendientes();
-          datos = pendientes || [];
+          datos = await pedidosPendientes();
           break;
 
         case 'clientes':

@@ -151,11 +151,12 @@ export function useReportes() {
       if (error) throw error;
 
       // Filtrar en JavaScript donde stock <= 0 (sin stock)
-      const stockBajo = (data || []).filter((costo: any) => costo.stock <= 0);
+      const stockBajoData = (data || []).filter((costo: any) => costo.stock <= 0);
 
-      return { data: stockBajo, error: null };
+      return stockBajoData;
     } catch (err: any) {
-      return { data: null, error: err.message };
+      console.error('Error en stockBajo:', err);
+      return [];
     } finally {
       setLoading(false);
     }
@@ -175,9 +176,10 @@ export function useReportes() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return { data, error: null };
+      return data || [];
     } catch (err: any) {
-      return { data: null, error: err.message };
+      console.error('Error en pedidosPendientes:', err);
+      return [];
     } finally {
       setLoading(false);
     }
