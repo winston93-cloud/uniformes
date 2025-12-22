@@ -48,22 +48,22 @@ export function useReportes() {
         throw error;
       }
 
-      // Obtener los IDs de alumnos y externos
+      // Obtener los IDs de alumnos y externos  
       const alumnosIds = data?.filter(p => p.tipo_cliente === 'alumno' && p.alumno_id).map(p => p.alumno_id) || [];
       const externosIds = data?.filter(p => p.tipo_cliente === 'externo' && p.externo_id).map(p => p.externo_id) || [];
 
       // Consultar alumnos y externos por separado
       const [alumnosResult, externosResult] = await Promise.all([
         alumnosIds.length > 0 
-          ? supabase.from('alumno').select('*').in('alumno_id', alumnosIds)
+          ? supabase.from('alumno').select('alumno_id, alumno_ref, alumno_nombre_completo').in('alumno_id', alumnosIds)
           : { data: [], error: null },
         externosIds.length > 0
-          ? supabase.from('externos').select('*').in('id', externosIds)
+          ? supabase.from('externos').select('id, nombre').in('id', externosIds)
           : { data: [], error: null }
       ]);
 
-      // Crear mapas de alumnos y externos
-      const alumnosMap = new Map((alumnosResult.data || []).map((a: any) => [a.alumno_id, a]));
+      // Crear mapas de alumnos y externos usando IDs como strings
+      const alumnosMap = new Map((alumnosResult.data || []).map((a: any) => [String(a.alumno_id), a]));
       const externosMap = new Map((externosResult.data || []).map((e: any) => [e.id, e]));
 
       // Filtrar por fecha y mapear a detalle individual
@@ -75,8 +75,8 @@ export function useReportes() {
         
         let nombreCliente = 'Sin cliente';
         if (pedido.tipo_cliente === 'alumno' && pedido.alumno_id) {
-          const alumno = alumnosMap.get(pedido.alumno_id);
-          nombreCliente = alumno?.alumno_nombre_completo || `Alumno ${alumno?.alumno_ref || pedido.alumno_id.substring(0, 8)}`;
+          const alumno = alumnosMap.get(String(pedido.alumno_id));
+          nombreCliente = alumno?.alumno_nombre_completo || `Alumno ${alumno?.alumno_ref || pedido.alumno_id}`;
         } else if (pedido.tipo_cliente === 'externo' && pedido.externo_id) {
           const externo = externosMap.get(pedido.externo_id);
           nombreCliente = externo?.nombre || 'Cliente externo';
@@ -212,21 +212,21 @@ export function useReportes() {
       // Consultar alumnos y externos por separado
       const [alumnosResult, externosResult] = await Promise.all([
         alumnosIds.length > 0 
-          ? supabase.from('alumno').select('*').in('alumno_id', alumnosIds)
+          ? supabase.from('alumno').select('alumno_id, alumno_ref, alumno_nombre_completo').in('alumno_id', alumnosIds)
           : { data: [], error: null },
         externosIds.length > 0
-          ? supabase.from('externos').select('*').in('id', externosIds)
+          ? supabase.from('externos').select('id, nombre').in('id', externosIds)
           : { data: [], error: null }
       ]);
 
-      // Crear mapas
-      const alumnosMap = new Map((alumnosResult.data || []).map((a: any) => [a.alumno_id, a]));
+      // Crear mapas usando IDs como strings
+      const alumnosMap = new Map((alumnosResult.data || []).map((a: any) => [String(a.alumno_id), a]));
       const externosMap = new Map((externosResult.data || []).map((e: any) => [e.id, e]));
 
       // Agregar datos de alumno/externo a cada pedido
       const pedidosConClientes = (data || []).map((pedido: any) => {
         if (pedido.tipo_cliente === 'alumno' && pedido.alumno_id) {
-          pedido.alumno = alumnosMap.get(pedido.alumno_id) || null;
+          pedido.alumno = alumnosMap.get(String(pedido.alumno_id)) || null;
         } else if (pedido.tipo_cliente === 'externo' && pedido.externo_id) {
           pedido.externo = externosMap.get(pedido.externo_id) || null;
         }
@@ -261,7 +261,7 @@ export function useReportes() {
         let clienteId: string;
         
         if (pedido.tipo_cliente === 'alumno' && pedido.alumno_id) {
-          clienteId = pedido.alumno_id;
+          clienteId = String(pedido.alumno_id);
         } else if (pedido.tipo_cliente === 'externo' && pedido.externo_id) {
           clienteId = pedido.externo_id;
         } else {
@@ -284,7 +284,7 @@ export function useReportes() {
       // Ahora obtener nombres de clientes
       const alumnosIds = Array.from(agrupadosTemp.entries())
         .filter(([_, data]) => data.tipo === 'alumno')
-        .map(([id]) => id);
+        .map(([id]) => parseInt(id));
 
       const externosIds = Array.from(agrupadosTemp.entries())
         .filter(([_, data]) => data.tipo === 'externo')
@@ -293,31 +293,14 @@ export function useReportes() {
       const nombresClientes = new Map<string, string>();
 
       if (alumnosIds.length > 0) {
-        // Intentar buscar por alumno_ref primero (por si es texto)
         const { data: alumnos } = await supabase
           .from('alumno')
           .select('alumno_id, alumno_nombre_completo, alumno_ref')
-          .in('alumno_ref', alumnosIds);
+          .in('alumno_id', alumnosIds);
 
         alumnos?.forEach((alumno: any) => {
-          nombresClientes.set(alumno.alumno_ref, alumno.alumno_nombre_completo || `Alumno ${alumno.alumno_ref}`);
+          nombresClientes.set(String(alumno.alumno_id), alumno.alumno_nombre_completo || `Alumno ${alumno.alumno_ref}`);
         });
-
-        // Si no se encontraron, intentar por alumno_id (por si es número)
-        const idsNumericos = alumnosIds.filter(id => !isNaN(Number(id)));
-        if (idsNumericos.length > 0) {
-          const { data: alumnosPorId } = await supabase
-            .from('alumno')
-            .select('alumno_id, alumno_nombre_completo, alumno_ref')
-            .in('alumno_id', idsNumericos.map(id => parseInt(id)));
-
-          alumnosPorId?.forEach((alumno: any) => {
-            const key = String(alumno.alumno_id);
-            if (!nombresClientes.has(key)) {
-              nombresClientes.set(key, alumno.alumno_nombre_completo || `Alumno ${alumno.alumno_ref}`);
-            }
-          });
-        }
       }
 
       if (externosIds.length > 0) {
