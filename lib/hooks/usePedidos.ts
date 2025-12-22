@@ -43,7 +43,15 @@ export function usePedidos() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setPedidos(data || []);
+      
+      // Mapear tipo_cliente a cliente_tipo para compatibilidad
+      const pedidosMapeados = (data || []).map((p: any) => ({
+        ...p,
+        cliente_tipo: p.tipo_cliente,
+        fecha: new Date(p.created_at).toLocaleDateString('es-MX'),
+      }));
+      
+      setPedidos(pedidosMapeados);
     } catch (error) {
       console.error('Error al cargar pedidos:', error);
     } finally {

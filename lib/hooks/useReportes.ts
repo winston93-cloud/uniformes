@@ -33,6 +33,8 @@ export function useReportes() {
     try {
       setLoading(true);
       const fechaInicioObj = new Date(fechaInicio);
+      fechaInicioObj.setHours(0, 0, 0, 0);
+      
       const fechaFinObj = new Date(fechaFin);
       fechaFinObj.setHours(23, 59, 59, 999);
 
@@ -48,10 +50,34 @@ export function useReportes() {
         throw error;
       }
 
+      // Log inicial
+      if (typeof window !== 'undefined') {
+        console.log('🔍 Rango de fechas:', {
+          inicio: fechaInicioObj.toISOString(),
+          fin: fechaFinObj.toISOString(),
+          totalPedidos: data?.length
+        });
+      }
+
       // Filtrar por fecha y mapear a detalle individual
       const pedidosDetalle = data?.filter((pedido: any) => {
         const fechaPedido = new Date(pedido.fecha_liquidacion || pedido.created_at);
-        return fechaPedido >= fechaInicioObj && fechaPedido <= fechaFinObj;
+        const incluido = fechaPedido >= fechaInicioObj && fechaPedido <= fechaFinObj;
+        
+        // Log para pedidos del 22 de diciembre (solo en cliente)
+        if (typeof window !== 'undefined' && pedido.created_at.includes('2025-12-22')) {
+          console.log('📅 Pedido del 22-12:', {
+            id: pedido.id.substring(0, 8),
+            created_at: pedido.created_at,
+            fecha_liquidacion: pedido.fecha_liquidacion,
+            fechaUsada: fechaPedido.toISOString(),
+            rangoInicio: fechaInicioObj.toISOString(),
+            rangoFin: fechaFinObj.toISOString(),
+            incluido
+          });
+        }
+        
+        return incluido;
       }).map((pedido: any) => {
         const fechaPedido = new Date(pedido.fecha_liquidacion || pedido.created_at);
         
@@ -63,6 +89,10 @@ export function useReportes() {
           total: parseFloat(pedido.total.toString()),
         };
       }) || [];
+
+      if (typeof window !== 'undefined') {
+        console.log('✅ Pedidos filtrados:', pedidosDetalle.length);
+      }
 
       return pedidosDetalle;
     } catch (err: any) {
