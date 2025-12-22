@@ -50,32 +50,16 @@ export function useReportes() {
         throw error;
       }
 
-      // Log inicial
-      if (typeof window !== 'undefined') {
-        console.log('🔍 Rango de fechas:', {
-          inicio: fechaInicioObj.toISOString(),
-          fin: fechaFinObj.toISOString(),
-          totalPedidos: data?.length
-        });
-      }
-
-      // Filtrar por fecha y mapear a detalle individual
+      // Filtrar por fecha (solo año-mes-día) y mapear a detalle individual
       const pedidosDetalle = data?.filter((pedido: any) => {
         const fechaPedido = new Date(pedido.fecha_liquidacion || pedido.created_at);
-        const incluido = fechaPedido >= fechaInicioObj && fechaPedido <= fechaFinObj;
         
-        // Log para pedidos del 22 de diciembre (solo en cliente)
-        if (typeof window !== 'undefined' && pedido.created_at.includes('2025-12-22')) {
-          console.log('📅 Pedido del 22-12:', {
-            id: pedido.id.substring(0, 8),
-            created_at: pedido.created_at,
-            fecha_liquidacion: pedido.fecha_liquidacion,
-            fechaUsada: fechaPedido.toISOString(),
-            rangoInicio: fechaInicioObj.toISOString(),
-            rangoFin: fechaFinObj.toISOString(),
-            incluido
-          });
-        }
+        // Comparar solo fechas (año, mes, día) sin horas para evitar problemas de timezone
+        const fechaPedidoSolo = new Date(fechaPedido.getFullYear(), fechaPedido.getMonth(), fechaPedido.getDate());
+        const fechaInicioSolo = new Date(fechaInicioObj.getFullYear(), fechaInicioObj.getMonth(), fechaInicioObj.getDate());
+        const fechaFinSolo = new Date(fechaFinObj.getFullYear(), fechaFinObj.getMonth(), fechaFinObj.getDate());
+        
+        const incluido = fechaPedidoSolo >= fechaInicioSolo && fechaPedidoSolo <= fechaFinSolo;
         
         return incluido;
       }).map((pedido: any) => {
@@ -89,10 +73,6 @@ export function useReportes() {
           total: parseFloat(pedido.total.toString()),
         };
       }) || [];
-
-      if (typeof window !== 'undefined') {
-        console.log('✅ Pedidos filtrados:', pedidosDetalle.length);
-      }
 
       return pedidosDetalle;
     } catch (err: any) {
