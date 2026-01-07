@@ -252,11 +252,11 @@ export default function StockPage() {
   return (
     <LayoutWrapper>
       <div className="main-container">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-          <h1 style={{ fontSize: '2.5rem', fontWeight: '700', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.2)' }}>
+        <div style={{ marginBottom: '2rem' }}>
+          <h1 style={{ fontSize: '2.5rem', fontWeight: '700', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.2)', marginBottom: '1rem' }}>
             📦 Stock
           </h1>
-          <button className="btn btn-primary" onClick={() => setMostrarFormulario(!mostrarFormulario)}>
+          <button className="btn btn-primary" onClick={() => setMostrarFormulario(!mostrarFormulario)} style={{ width: '100%', maxWidth: '300px' }}>
             ➕ Asignar Stock
           </button>
         </div>
@@ -360,8 +360,8 @@ export default function StockPage() {
             <h2 className="form-title">Asignar Stock Inicial</h2>
             
             <form onSubmit={handleSubmit}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem' }}>
+                <div className="form-group">
                   <label className="form-label">Prenda *</label>
                   <div style={{ position: 'relative' }}>
                     <input
@@ -589,7 +589,7 @@ export default function StockPage() {
                 </div>
 
                 {formData.tallas_seleccionadas.length > 0 && (
-                  <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                  <div className="form-group">
                     <label className="form-label">Stock Inicial por Talla *</label>
                     <div style={{ 
                       border: '1px solid #ddd', 
@@ -708,16 +708,16 @@ export default function StockPage() {
               ) : (
                 costosFiltrados.map((costo: any) => (
                   <tr key={costo.id}>
-                    <td style={{ fontWeight: '600' }}>{costo.prenda?.nombre || '-'}</td>
-                    <td><span className="badge badge-info">{costo.talla?.nombre || '-'}</span></td>
-                    <td>{costo.stock_inicial}</td>
-                    <td style={{ fontWeight: '600', color: costo.cantidad_venta > 0 ? '#3b82f6' : '#999' }}>
+                    <td data-label="Prenda" style={{ fontWeight: '600' }}>{costo.prenda?.nombre || '-'}</td>
+                    <td data-label="Talla"><span className="badge badge-info">{costo.talla?.nombre || '-'}</span></td>
+                    <td data-label="Stock Inicial">{costo.stock_inicial}</td>
+                    <td data-label="Venta" style={{ fontWeight: '600', color: costo.cantidad_venta > 0 ? '#3b82f6' : '#999' }}>
                       {costo.cantidad_venta || 0}
                     </td>
-                    <td style={{ fontWeight: '600', color: costo.stock > 0 ? '#10b981' : '#ef4444' }}>
+                    <td data-label="Stock Reabastecer" style={{ fontWeight: '600', color: costo.stock > 0 ? '#10b981' : '#ef4444' }}>
                       {costo.stock}
                     </td>
-                    <td style={{ fontWeight: '600', color: costo.stock_minimo ? '#f59e0b' : '#999' }}>
+                    <td data-label="Stock Mínimo" style={{ fontWeight: '600', color: costo.stock_minimo ? '#f59e0b' : '#999' }}>
                       {costo.stock_minimo || 0}
                     </td>
                     <td>

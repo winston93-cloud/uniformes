@@ -517,30 +517,93 @@ body {
   }
 
   .btn {
-    padding: 0.6rem 1rem;
-    font-size: 0.9rem;
+    padding: 0.75rem 1.25rem;
+    font-size: 1rem;
+    width: 100%;
+    justify-content: center;
+    min-height: 44px; /* Tamaño mínimo táctil recomendado */
   }
 
   .logout-button {
-    padding: 0.5rem 1rem;
-    font-size: 0.9rem;
+    padding: 0.75rem 1.25rem;
+    font-size: 1rem;
+    min-height: 44px;
   }
 
   .form-container {
     padding: 1.5rem;
+    border-radius: 15px;
   }
 
   .table-container {
-    overflow-x: auto;
+    overflow-x: visible;
+    padding: 1rem;
   }
 
-  .table {
-    font-size: 0.9rem;
+  /* Ocultar tabla tradicional en móvil */
+  .table thead {
+    display: none;
   }
 
-  .table th,
-  .table td {
-    padding: 0.8rem 0.5rem;
+  .table tbody {
+    display: block;
+  }
+
+  .table tbody tr {
+    display: block;
+    margin-bottom: 1.5rem;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    padding: 1rem;
+    border: 2px solid rgba(236, 72, 153, 0.1);
+  }
+
+  .table tbody tr:hover {
+    background: white;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+  }
+
+  .table tbody td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-top: none;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    gap: 1rem;
+  }
+
+  .table tbody td:last-child {
+    border-bottom: none;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+    padding-top: 1rem;
+    margin-top: 0.5rem;
+    border-top: 2px solid rgba(0, 0, 0, 0.05);
+  }
+
+  .table tbody td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: var(--text-primary);
+    flex-shrink: 0;
+    min-width: 100px;
+  }
+
+  .table tbody td:last-child::before {
+    content: 'Acciones';
+    margin-bottom: 0.5rem;
+  }
+
+  /* Botones en móvil más grandes */
+  .table tbody td button {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    min-height: 44px;
   }
 
   .card {
@@ -555,6 +618,92 @@ body {
 
   .card-title {
     font-size: 1.3rem;
+  }
+
+  /* Ajustes para inputs en móvil */
+  .form-input,
+  .form-select,
+  .form-textarea {
+    font-size: 16px; /* Evita zoom automático en iOS */
+    padding: 0.75rem 1rem;
+    min-height: 44px;
+  }
+
+  /* Títulos más compactos */
+  h1 {
+    font-size: 1.75rem !important;
+  }
+
+  h2 {
+    font-size: 1.5rem !important;
+  }
+
+  /* Ajustar btn-group para móvil */
+  .btn-group {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .btn-group .btn {
+    width: 100%;
+  }
+
+  /* Mejorar espaciado en formularios */
+  .form-group {
+    margin-bottom: 1.25rem;
+  }
+
+  /* Tabla de tallas responsive en móvil - ajustar a 2 columnas */
+  .tallas-grid-container table tbody tr {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    margin-bottom: 0;
+    background: transparent;
+    box-shadow: none;
+    border: none;
+  }
+
+  .tallas-grid-container table tbody tr td {
+    display: block !important;
+    border: 1px solid #ddd !important;
+    border-radius: 8px;
+    padding: 0.75rem !important;
+    background: white;
+    width: 100% !important;
+  }
+
+  .tallas-grid-container table tbody tr td::before {
+    display: none !important;
+  }
+
+  .tallas-grid-container table tbody tr td label {
+    width: 100%;
+  }
+
+  .tallas-grid-container table tbody tr td input[type="checkbox"] {
+    width: 20px !important;
+    height: 20px !important;
+  }
+}
+
+/* Media query adicional para pantallas muy pequeñas */
+@media (max-width: 480px) {
+  .main-container {
+    padding: 0.75rem;
+  }
+
+  .form-container {
+    padding: 1rem;
+  }
+
+  .card {
+    padding: 1.25rem;
+  }
+
+  h1 {
+    font-size: 1.5rem !important;
   }
 }
 

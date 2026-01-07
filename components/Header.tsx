@@ -36,8 +36,8 @@ export default function Header({ onMenuClick }: HeaderProps) {
         </Link>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-        <button onClick={handleIrAlPanel} className="btn btn-primary" style={{ padding: '0.6rem 1.5rem', cursor: 'pointer' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+        <button onClick={handleIrAlPanel} className="btn btn-primary" style={{ padding: '0.6rem 1.5rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
           🏠 Ir al Panel
         </button>
 
@@ -45,7 +45,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
           ⭐ Bienvenido, Administrador del Sistema ⭐
         </div>
 
-        <button className="logout-button">
+        <button className="logout-button" style={{ whiteSpace: 'nowrap' }}>
           🚪 Cerrar Sesión
         </button>
       </div>

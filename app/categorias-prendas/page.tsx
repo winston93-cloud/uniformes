@@ -121,11 +121,11 @@ export default function CategoriasPrendasPage() {
   return (
     <LayoutWrapper>
       <div className="main-container">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-          <h1 style={{ fontSize: '2.5rem', fontWeight: '700', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.2)' }}>
+        <div style={{ marginBottom: '2rem' }}>
+          <h1 style={{ fontSize: '2.5rem', fontWeight: '700', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.2)', marginBottom: '1rem' }}>
             🏷️ Gestión de Categorías de Prendas
           </h1>
-          <button className="btn btn-primary" onClick={handleNuevo}>
+          <button className="btn btn-primary" onClick={handleNuevo} style={{ width: '100%', maxWidth: '300px' }}>
             ➕ Nueva Categoría
           </button>
         </div>
@@ -254,8 +254,8 @@ export default function CategoriasPrendasPage() {
               ) : (
                 categoriasFiltradas.map((categoria) => (
                   <tr key={categoria.id}>
-                    <td style={{ fontWeight: '600' }}>{categoria.nombre}</td>
-                    <td>
+                    <td data-label="Nombre" style={{ fontWeight: '600' }}>{categoria.nombre}</td>
+                    <td data-label="Estado">
                       <span className={`badge ${categoria.activo ? 'badge-success' : 'badge-danger'}`}>
                         {categoria.activo ? '✓ Activa' : '✗ Inactiva'}
                       </span>

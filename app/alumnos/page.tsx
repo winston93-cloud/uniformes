@@ -92,11 +92,11 @@ export default function AlumnosPage() {
               ) : (
                 alumnosToShow.map((alumno) => (
                   <tr key={alumno.id}>
-                    <td style={{ fontFamily: 'monospace', fontWeight: '700' }}>{alumno.referencia}</td>
-                    <td style={{ fontWeight: '600' }}>{alumno.nombre}</td>
-                    <td><span className="badge badge-info">{alumno.grado || '-'}</span></td>
-                    <td><span className="badge badge-info">{alumno.grupo || '-'}</span></td>
-                    <td>
+                    <td data-label="Referencia" style={{ fontFamily: 'monospace', fontWeight: '700' }}>{alumno.referencia}</td>
+                    <td data-label="Nombre" style={{ fontWeight: '600' }}>{alumno.nombre}</td>
+                    <td data-label="Grado"><span className="badge badge-info">{alumno.grado || '-'}</span></td>
+                    <td data-label="Grupo"><span className="badge badge-info">{alumno.grupo || '-'}</span></td>
+                    <td data-label="Estado">
                       <span className={`badge ${alumno.activo ? 'badge-success' : 'badge-danger'}`}>
                         {alumno.activo ? '✓ Activo' : '✗ Inactivo'}
                       </span>

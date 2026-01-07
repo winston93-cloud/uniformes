@@ -61,11 +61,11 @@ export default function InventarioPage() {
   return (
     <LayoutWrapper>
       <div className="main-container">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-          <h1 style={{ fontSize: '2.5rem', fontWeight: '700', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.2)' }}>
+        <div style={{ marginBottom: '2rem' }}>
+          <h1 style={{ fontSize: '2.5rem', fontWeight: '700', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.2)', marginBottom: '1rem' }}>
             📦 Gestión de Inventario
           </h1>
-          <button className="btn btn-primary" onClick={() => setMostrarFormulario(!mostrarFormulario)}>
+          <button className="btn btn-primary" onClick={() => setMostrarFormulario(!mostrarFormulario)} style={{ width: '100%', maxWidth: '300px' }}>
             ➕ Nuevo Movimiento
           </button>
         </div>
@@ -163,8 +163,8 @@ export default function InventarioPage() {
             <tbody>
               {movimientos.map((mov) => (
                 <tr key={mov.id}>
-                  <td>{mov.fecha}</td>
-                  <td>
+                  <td data-label="Fecha">{mov.fecha}</td>
+                  <td data-label="Tipo">
                     <span className={`badge ${
                       mov.tipo === 'ENTRADA' ? 'badge-success' :
                       mov.tipo === 'SALIDA' ? 'badge-danger' : 'badge-warning'
@@ -172,13 +172,13 @@ export default function InventarioPage() {
                       {mov.tipo}
                     </span>
                   </td>
-                  <td style={{ fontWeight: '600' }}>{mov.prenda}</td>
-                  <td>{mov.talla}</td>
-                  <td style={{ fontWeight: '600', color: mov.cantidad > 0 ? '#10b981' : '#ef4444' }}>
+                  <td data-label="Prenda" style={{ fontWeight: '600' }}>{mov.prenda}</td>
+                  <td data-label="Talla">{mov.talla}</td>
+                  <td data-label="Cantidad" style={{ fontWeight: '600', color: mov.cantidad > 0 ? '#10b981' : '#ef4444' }}>
                     {mov.cantidad > 0 ? '+' : ''}{mov.cantidad}
                   </td>
-                  <td>{mov.usuario}</td>
-                  <td>{mov.observaciones}</td>
+                  <td data-label="Usuario">{mov.usuario}</td>
+                  <td data-label="Observaciones">{mov.observaciones}</td>
                 </tr>
               ))}
             </tbody>

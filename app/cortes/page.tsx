@@ -78,11 +78,11 @@ export default function CortesPage() {
   return (
     <LayoutWrapper>
       <div className="main-container">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-          <h1 style={{ fontSize: '2.5rem', fontWeight: '700', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.2)' }}>
+        <div style={{ marginBottom: '2rem' }}>
+          <h1 style={{ fontSize: '2.5rem', fontWeight: '700', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.2)', marginBottom: '1rem' }}>
             💵 Cortes de Caja
           </h1>
-          <button className="btn btn-primary" onClick={() => setMostrarFormulario(!mostrarFormulario)}>
+          <button className="btn btn-primary" onClick={() => setMostrarFormulario(!mostrarFormulario)} style={{ width: '100%', maxWidth: '300px' }}>
             ➕ Nuevo Corte
           </button>
         </div>
@@ -216,19 +216,19 @@ export default function CortesPage() {
               ) : (
                 cortes.map((corte: Corte) => (
                   <tr key={corte.id}>
-                    <td style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>{corte.id.substring(0, 8)}...</td>
-                    <td>{new Date(corte.fecha).toLocaleDateString('es-MX')}</td>
-                    <td>
+                    <td data-label="ID" style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>{corte.id.substring(0, 8)}...</td>
+                    <td data-label="Fecha Creación">{new Date(corte.fecha).toLocaleDateString('es-MX')}</td>
+                    <td data-label="Periodo">
                       <div style={{ fontSize: '0.9rem' }}>
                         <div>Del: {new Date(corte.fecha_inicio).toLocaleDateString('es-MX')}</div>
                         <div>Al: {new Date(corte.fecha_fin).toLocaleDateString('es-MX')}</div>
                       </div>
                     </td>
-                    <td style={{ fontWeight: '600' }}>{corte.total_pedidos}</td>
-                    <td style={{ fontWeight: '700', color: '#10b981', fontSize: '1.1rem' }}>
+                    <td data-label="Pedidos" style={{ fontWeight: '600' }}>{corte.total_pedidos}</td>
+                    <td data-label="Total Ventas" style={{ fontWeight: '700', color: '#10b981', fontSize: '1.1rem' }}>
                       ${corte.total_ventas.toFixed(2)}
                     </td>
-                    <td>
+                    <td data-label="Estado">
                       <span className={`badge ${corte.activo ? 'badge-success' : 'badge-info'}`}>
                         {corte.activo ? '✓ Activo' : '🔒 Cerrado'}
                       </span>

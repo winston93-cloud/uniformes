@@ -90,15 +90,15 @@ export default function ExternosPage() {
   return (
     <LayoutWrapper>
       <div className="main-container">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-          <h1 style={{ fontSize: '2.5rem', fontWeight: '700', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.2)' }}>
+        <div style={{ marginBottom: '2rem' }}>
+          <h1 style={{ fontSize: '2.5rem', fontWeight: '700', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.2)', marginBottom: '1rem' }}>
             👤 Clientes Externos
           </h1>
           <button className="btn btn-primary" onClick={() => {
             setExternoEditando(null);
             setFormData({ nombre: '', telefono: '', email: '', direccion: '', activo: true });
             setMostrarFormulario(true);
-          }}>
+          }} style={{ width: '100%', maxWidth: '300px' }}>
             ➕ Nuevo Cliente
           </button>
         </div>
@@ -128,28 +128,26 @@ export default function ExternosPage() {
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div className="form-group">
-                  <label className="form-label">Teléfono</label>
-                  <input
-                    type="tel"
-                    className="form-input"
-                    value={formData.telefono}
-                    onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
-                    placeholder="555-1234"
-                  />
-                </div>
+              <div className="form-group">
+                <label className="form-label">Teléfono</label>
+                <input
+                  type="tel"
+                  className="form-input"
+                  value={formData.telefono}
+                  onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
+                  placeholder="555-1234"
+                />
+              </div>
 
-                <div className="form-group">
-                  <label className="form-label">Email</label>
-                  <input
-                    type="email"
-                    className="form-input"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    placeholder="cliente@ejemplo.com"
-                  />
-                </div>
+              <div className="form-group">
+                <label className="form-label">Email</label>
+                <input
+                  type="email"
+                  className="form-input"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  placeholder="cliente@ejemplo.com"
+                />
               </div>
 
               <div className="form-group">
@@ -217,12 +215,12 @@ export default function ExternosPage() {
               ) : (
                 externos.map((cliente) => (
                   <tr key={cliente.id}>
-                    <td style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>{cliente.id.substring(0, 8)}...</td>
-                    <td style={{ fontWeight: '600' }}>{cliente.nombre}</td>
-                    <td>{cliente.telefono || '-'}</td>
-                    <td>{cliente.email || '-'}</td>
-                    <td>{cliente.direccion || '-'}</td>
-                    <td>
+                    <td data-label="ID" style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>{cliente.id.substring(0, 8)}...</td>
+                    <td data-label="Nombre" style={{ fontWeight: '600' }}>{cliente.nombre}</td>
+                    <td data-label="Teléfono">{cliente.telefono || '-'}</td>
+                    <td data-label="Email">{cliente.email || '-'}</td>
+                    <td data-label="Dirección">{cliente.direccion || '-'}</td>
+                    <td data-label="Estado">
                       <span className={`badge ${cliente.activo ? 'badge-success' : 'badge-danger'}`}>
                         {cliente.activo ? '✓ Activo' : '✗ Inactivo'}
                       </span>

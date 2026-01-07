@@ -1354,16 +1354,16 @@ function PedidosPageContent() {
             <tbody>
               {pedidos.map((pedido) => (
                 <tr key={pedido.id}>
-                  <td style={{ fontFamily: 'monospace' }}>#{pedido.id}</td>
-                  <td>{pedido.fecha}</td>
-                  <td style={{ fontWeight: '600' }}>{pedido.cliente_nombre || pedido.cliente || 'N/A'}</td>
-                  <td>
+                  <td data-label="ID" style={{ fontFamily: 'monospace' }}>#{pedido.id}</td>
+                  <td data-label="Fecha">{pedido.fecha}</td>
+                  <td data-label="Cliente" style={{ fontWeight: '600' }}>{pedido.cliente_nombre || pedido.cliente || 'N/A'}</td>
+                  <td data-label="Tipo">
                     <span className={`badge ${pedido.cliente_tipo === 'alumno' ? 'badge-info' : 'badge-warning'}`}>
                       {pedido.cliente_tipo === 'alumno' ? '🎓 Alumno' : '👤 Externo'}
                     </span>
                   </td>
-                  <td style={{ fontWeight: '700', color: '#10b981' }}>${pedido.total.toFixed(2)}</td>
-                  <td>
+                  <td data-label="Total" style={{ fontWeight: '700', color: '#10b981' }}>${pedido.total.toFixed(2)}</td>
+                  <td data-label="Estado">
                     <span className={`badge ${
                       pedido.estado === 'PEDIDO' ? 'badge-warning' :
                       pedido.estado === 'ENTREGADO' ? 'badge-info' :

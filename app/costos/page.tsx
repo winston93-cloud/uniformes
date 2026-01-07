@@ -236,11 +236,11 @@ export default function CostosPage() {
   return (
     <LayoutWrapper>
       <div className="main-container">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-          <h1 style={{ fontSize: '2.5rem', fontWeight: '700', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.2)' }}>
+        <div style={{ marginBottom: '2rem' }}>
+          <h1 style={{ fontSize: '2.5rem', fontWeight: '700', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.2)', marginBottom: '1rem' }}>
             💰 Costos
           </h1>
-          <button className="btn btn-primary" onClick={() => setMostrarFormulario(!mostrarFormulario)}>
+          <button className="btn btn-primary" onClick={() => setMostrarFormulario(!mostrarFormulario)} style={{ width: '100%', maxWidth: '300px' }}>
             ➕ Nuevo Costo
           </button>
         </div>
@@ -344,8 +344,8 @@ export default function CostosPage() {
             <h2 className="form-title">Nuevo Costo de Prenda</h2>
             
               <form onSubmit={handleSubmit}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem' }}>
+                <div className="form-group">
                   <label className="form-label">Prenda *</label>
                   <div style={{ position: 'relative' }}>
                     <input
@@ -559,11 +559,11 @@ export default function CostosPage() {
                 </div>
 
                 {formData.tallas_seleccionadas.length > 0 && (
-                  <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                  <div className="form-group">
                     <label className="form-label">
                       Precio de Venta * 
                       {formData.tallas_seleccionadas.length > 1 && (
-                        <span style={{ fontSize: '0.85rem', fontWeight: 'normal', color: '#666', marginLeft: '0.5rem' }}>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 'normal', color: '#666', marginLeft: '0.5rem', display: 'block', marginTop: '0.25rem' }}>
                           (Se aplicará a las {formData.tallas_seleccionadas.length} tallas seleccionadas)
                         </span>
                       )}
@@ -576,7 +576,6 @@ export default function CostosPage() {
                       onChange={(e) => setFormData({ ...formData, precioVenta: e.target.value })}
                       placeholder="$0.00"
                       required
-                      style={{ maxWidth: '300px' }}
                     />
                     {formData.tallas_seleccionadas.length > 1 && (
                       <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.5rem', display: 'block' }}>
@@ -623,9 +622,9 @@ export default function CostosPage() {
               ) : (
                 costosFiltrados.map((costo: any) => (
                   <tr key={costo.id}>
-                    <td style={{ fontWeight: '600' }}>{costo.prenda?.nombre || '-'}</td>
-                    <td><span className="badge badge-info">{costo.talla?.nombre || '-'}</span></td>
-                    <td style={{ fontWeight: '600', color: '#10b981' }}>${costo.precio_venta.toFixed(2)}</td>
+                    <td data-label="Prenda" style={{ fontWeight: '600' }}>{costo.prenda?.nombre || '-'}</td>
+                    <td data-label="Talla"><span className="badge badge-info">{costo.talla?.nombre || '-'}</span></td>
+                    <td data-label="Precio Venta" style={{ fontWeight: '600', color: '#10b981' }}>${costo.precio_venta.toFixed(2)}</td>
                     <td>
                       <button 
                         className="btn btn-secondary" 

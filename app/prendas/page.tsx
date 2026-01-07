@@ -330,15 +330,15 @@ export default function PrendasPage() {
   return (
     <LayoutWrapper>
       <div className="main-container">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-          <h1 style={{ fontSize: '2.5rem', fontWeight: '700', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.2)' }}>
+        <div style={{ marginBottom: '2rem' }}>
+          <h1 style={{ fontSize: '2.5rem', fontWeight: '700', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.2)', marginBottom: '1rem' }}>
             👕 Gestión de Prendas
           </h1>
-          <div style={{ display: 'flex', gap: '1rem' }}>
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
             <button 
               className="btn btn-secondary" 
               onClick={() => window.location.href = '/categorias-prendas'}
-              style={{ backgroundColor: '#6c757d', borderColor: '#6c757d' }}
+              style={{ backgroundColor: '#6c757d', borderColor: '#6c757d', flex: '1', minWidth: '200px' }}
             >
               🏷️ Gestionar Categorías
             </button>
@@ -348,7 +348,7 @@ export default function PrendasPage() {
               setTallasSeleccionadas([]);
               setTallasAsociadas([]);
               setMostrarFormulario(true);
-            }}>
+            }} style={{ flex: '1', minWidth: '200px' }}>
               ➕ Nueva Prenda
             </button>
           </div>
@@ -451,8 +451,8 @@ export default function PrendasPage() {
                 <label className="form-label">Tallas Disponibles *</label>
                 
                 {/* Filtros de tallas */}
-                <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', alignItems: 'center' }}>
-                  <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                  <div style={{ flex: '1 1 200px', minWidth: '150px' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: '500' }}>
                       Tipo de Talla
                     </label>
@@ -474,7 +474,7 @@ export default function PrendasPage() {
                   </div>
                   
                   {filtroTipo === 'numeros' && (
-                    <div style={{ flex: 1 }}>
+                    <div style={{ flex: '1 1 200px', minWidth: '150px' }}>
                       <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: '500' }}>
                         Filtro de Números
                       </label>
@@ -495,14 +495,14 @@ export default function PrendasPage() {
                   )}
                 </div>
                 
-                {/* Tabla de todas las tallas en 4 columnas */}
+                {/* Tabla de todas las tallas en 4 columnas (responsive) */}
                 <div style={{ 
                   border: '1px solid #ddd', 
                   borderRadius: '8px', 
                   overflow: 'hidden',
                   maxHeight: '400px',
                   overflowY: 'auto'
-                }}>
+                }} className="tallas-grid-container">
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <tbody>
                       {(() => {
@@ -705,11 +705,11 @@ export default function PrendasPage() {
               ) : (
                 prendasFiltradas.map((prenda) => (
                   <tr key={prenda.id}>
-                    <td style={{ fontFamily: 'monospace', fontWeight: '600' }}>{prenda.codigo || '-'}</td>
-                    <td style={{ fontWeight: '600' }}>{prenda.nombre}</td>
-                    <td><span className="badge badge-info">{prenda.categoria?.nombre || '-'}</span></td>
-                    <td>{prenda.descripcion || '-'}</td>
-                    <td>
+                    <td data-label="Código" style={{ fontFamily: 'monospace', fontWeight: '600' }}>{prenda.codigo || '-'}</td>
+                    <td data-label="Nombre" style={{ fontWeight: '600' }}>{prenda.nombre}</td>
+                    <td data-label="Categoría"><span className="badge badge-info">{prenda.categoria?.nombre || '-'}</span></td>
+                    <td data-label="Descripción">{prenda.descripcion || '-'}</td>
+                    <td data-label="Estado">
                       <span className={`badge ${prenda.activo ? 'badge-success' : 'badge-danger'}`}>
                         {prenda.activo ? '✓ Activa' : '✗ Inactiva'}
                       </span>

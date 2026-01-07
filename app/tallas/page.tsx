@@ -127,11 +127,11 @@ export default function TallasPage() {
   return (
     <LayoutWrapper>
       <div className="main-container">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-          <h1 style={{ fontSize: '2.5rem', fontWeight: '700', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.2)' }}>
+        <div style={{ marginBottom: '2rem' }}>
+          <h1 style={{ fontSize: '2.5rem', fontWeight: '700', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.2)', marginBottom: '1rem' }}>
             📏 Gestión de Tallas
           </h1>
-          <button className="btn btn-primary" onClick={handleNuevo}>
+          <button className="btn btn-primary" onClick={handleNuevo} style={{ width: '100%', maxWidth: '300px' }}>
             ➕ Nueva Talla
           </button>
         </div>
@@ -278,9 +278,9 @@ export default function TallasPage() {
               ) : (
                 tallasFiltradas.map((talla) => (
                   <tr key={talla.id}>
-                    <td>{talla.orden}</td>
-                    <td style={{ fontWeight: '600' }}>{talla.nombre}</td>
-                    <td>
+                    <td data-label="Orden">{talla.orden}</td>
+                    <td data-label="Nombre" style={{ fontWeight: '600' }}>{talla.nombre}</td>
+                    <td data-label="Estado">
                       <span className={`badge ${talla.activo ? 'badge-success' : 'badge-danger'}`}>
                         {talla.activo ? '✓ Activa' : '✗ Inactiva'}
                       </span>
