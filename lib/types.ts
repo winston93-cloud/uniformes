@@ -123,3 +123,15 @@ export interface Corte {
   updated_at?: string;
 }
 
+export interface Insumo {
+  id: string;
+  codigo: string;
+  nombre: string;
+  descripcion: string | null;
+  presentacion: string; // kilo, bolsa, metro, etc.
+  cantidad_por_presentacion: number; // ej: 500 botones en una bolsa
+  activo: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+

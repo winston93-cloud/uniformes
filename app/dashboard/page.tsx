@@ -11,6 +11,17 @@ export default function Dashboard() {
         </h1>
 
         <div className="cards-grid">
+          {/* Insumos */}
+          <Link href="/insumos" className="card">
+            <div className="card-icon purple">
+              🧵
+            </div>
+            <h3 className="card-title">Insumos</h3>
+            <p className="card-description">
+              Catálogo de materiales e insumos para fabricación de prendas
+            </p>
+          </Link>
+
           {/* Tallas */}
           <Link href="/tallas" className="card">
             <div className="card-icon orange">
