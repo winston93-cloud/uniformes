@@ -10,6 +10,7 @@ interface SidebarProps {
 
 const menuItems = [
   { href: '/dashboard', label: 'Dashboard', icon: '📊' },
+  { href: '/presentaciones', label: 'Presentaciones', icon: '📦' },
   { href: '/insumos', label: 'Insumos', icon: '🧵' },
   { href: '/tallas', label: 'Tallas', icon: '📏' },
   { href: '/prendas', label: 'Prendas', icon: '👕' },

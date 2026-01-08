@@ -3,24 +3,10 @@
 import { useState, useRef, useEffect } from 'react';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import { useInsumos } from '@/lib/hooks/useInsumos';
+import { usePresentaciones } from '@/lib/hooks/usePresentaciones';
 import type { Insumo } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
-
-// Opciones de presentación comunes
-const PRESENTACIONES = [
-  'Kilo',
-  'Bolsa',
-  'Metro',
-  'Rollo',
-  'Caja',
-  'Paquete',
-  'Pieza',
-  'Litro',
-  'Unidad',
-  'Docena',
-  'Otro',
-];
 
 // Función para generar código automático
 const generarCodigo = (nombre: string, insumos: Insumo[]): string => {
@@ -57,12 +43,13 @@ export default function InsumosPage() {
   const [botonEstado, setBotonEstado] = useState<'normal' | 'exito' | 'error'>('normal');
   const inputBusquedaRef = useRef<HTMLInputElement>(null);
   const { insumos, loading, error, createInsumo, updateInsumo, deleteInsumo } = useInsumos();
+  const { presentaciones, loading: loadingPresentaciones } = usePresentaciones();
 
   const [formData, setFormData] = useState({
     nombre: '',
     codigo: '',
     descripcion: '',
-    presentacion: '',
+    presentacion_id: '',
     cantidad_por_presentacion: '',
     activo: true,
   });
@@ -75,7 +62,7 @@ export default function InsumosPage() {
       nombre: formData.nombre,
       codigo: formData.codigo,
       descripcion: formData.descripcion || null,
-      presentacion: formData.presentacion,
+      presentacion_id: formData.presentacion_id,
       cantidad_por_presentacion: parseFloat(formData.cantidad_por_presentacion) || 0,
       activo: formData.activo,
     };
@@ -88,7 +75,7 @@ export default function InsumosPage() {
       }
       setBotonEstado('exito');
       setTimeout(() => {
-        setFormData({ nombre: '', codigo: '', descripcion: '', presentacion: '', cantidad_por_presentacion: '', activo: true });
+        setFormData({ nombre: '', codigo: '', descripcion: '', presentacion_id: '', cantidad_por_presentacion: '', activo: true });
         setMostrarFormulario(false);
         setInsumoEditando(null);
         setBotonEstado('normal');
@@ -104,7 +91,7 @@ export default function InsumosPage() {
       }
       setBotonEstado('exito');
       setTimeout(() => {
-        setFormData({ nombre: '', codigo: '', descripcion: '', presentacion: '', cantidad_por_presentacion: '', activo: true });
+        setFormData({ nombre: '', codigo: '', descripcion: '', presentacion_id: '', cantidad_por_presentacion: '', activo: true });
         setMostrarFormulario(false);
         setInsumoEditando(null);
         setBotonEstado('normal');
@@ -121,7 +108,7 @@ export default function InsumosPage() {
       nombre: insumo.nombre,
       codigo: insumo.codigo,
       descripcion: insumo.descripcion || '',
-      presentacion: insumo.presentacion,
+      presentacion_id: insumo.presentacion_id,
       cantidad_por_presentacion: insumo.cantidad_por_presentacion.toString(),
       activo: insumo.activo,
     });
@@ -141,7 +128,7 @@ export default function InsumosPage() {
 
   const handleNuevo = () => {
     setInsumoEditando(null);
-    setFormData({ nombre: '', codigo: '', descripcion: '', presentacion: '', cantidad_por_presentacion: '', activo: true });
+    setFormData({ nombre: '', codigo: '', descripcion: '', presentacion_id: '', cantidad_por_presentacion: '', activo: true });
     setMostrarFormulario(true);
   };
 
@@ -170,7 +157,7 @@ export default function InsumosPage() {
     insumo.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
     (insumo.codigo && insumo.codigo.toLowerCase().includes(busqueda.toLowerCase())) ||
     (insumo.descripcion && insumo.descripcion.toLowerCase().includes(busqueda.toLowerCase())) ||
-    insumo.presentacion.toLowerCase().includes(busqueda.toLowerCase())
+    (insumo.presentacion?.nombre && insumo.presentacion.nombre.toLowerCase().includes(busqueda.toLowerCase()))
   );
 
   if (loading) {
@@ -278,17 +265,18 @@ export default function InsumosPage() {
                 <label className="form-label">Presentación *</label>
                 <select
                   className="form-select"
-                  value={formData.presentacion}
-                  onChange={(e) => setFormData({ ...formData, presentacion: e.target.value })}
+                  value={formData.presentacion_id}
+                  onChange={(e) => setFormData({ ...formData, presentacion_id: e.target.value })}
                   required
+                  disabled={loadingPresentaciones}
                 >
                   <option value="">Seleccionar presentación</option>
-                  {PRESENTACIONES.map(pres => (
-                    <option key={pres} value={pres}>{pres}</option>
+                  {presentaciones.filter(p => p.activo).map(pres => (
+                    <option key={pres.id} value={pres.id}>{pres.nombre}</option>
                   ))}
                 </select>
                 <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
-                  Unidad de medida del insumo (Kilo, Bolsa, Metro, etc.)
+                  Unidad de medida del insumo. <a href="/presentaciones" style={{ color: '#007bff', textDecoration: 'underline' }}>Gestionar presentaciones</a>
                 </small>
               </div>
 
@@ -355,7 +343,7 @@ export default function InsumosPage() {
                   onClick={() => {
                     setMostrarFormulario(false);
                     setInsumoEditando(null);
-                    setFormData({ nombre: '', codigo: '', descripcion: '', presentacion: '', cantidad_por_presentacion: '', activo: true });
+                    setFormData({ nombre: '', codigo: '', descripcion: '', presentacion_id: '', cantidad_por_presentacion: '', activo: true });
                     setTimeout(() => {
                       inputBusquedaRef.current?.focus();
                     }, 100);
@@ -394,7 +382,7 @@ export default function InsumosPage() {
                   <tr key={insumo.id}>
                     <td data-label="Código" style={{ fontFamily: 'monospace', fontWeight: '600' }}>{insumo.codigo}</td>
                     <td data-label="Nombre" style={{ fontWeight: '600' }}>{insumo.nombre}</td>
-                    <td data-label="Presentación"><span className="badge badge-info">{insumo.presentacion}</span></td>
+                    <td data-label="Presentación"><span className="badge badge-info">{insumo.presentacion?.nombre || '-'}</span></td>
                     <td data-label="Cantidad" style={{ fontWeight: '600', color: '#3b82f6' }}>
                       {insumo.cantidad_por_presentacion} {insumo.cantidad_por_presentacion === 1 ? 'unidad' : 'unidades'}
                     </td>

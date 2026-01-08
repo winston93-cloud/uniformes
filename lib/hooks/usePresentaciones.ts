@@ -1,22 +1,22 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
-import type { Insumo } from '../types';
+import type { Presentacion } from '../types';
 
-export function useInsumos() {
-  const [insumos, setInsumos] = useState<Insumo[]>([]);
+export function usePresentaciones() {
+  const [presentaciones, setPresentaciones] = useState<Presentacion[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchInsumos = async () => {
+  const fetchPresentaciones = async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('insumos')
-        .select('*, presentacion:presentaciones(*)')
-        .order('created_at', { ascending: false});
+        .from('presentaciones')
+        .select('*')
+        .order('nombre', { ascending: true });
 
       if (error) throw error;
-      setInsumos(data || []);
+      setPresentaciones(data || []);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -25,17 +25,17 @@ export function useInsumos() {
   };
 
   useEffect(() => {
-    fetchInsumos();
+    fetchPresentaciones();
 
     // Suscripción en tiempo real
     const subscription = supabase
-      .channel('insumos_changes')
+      .channel('presentaciones_changes')
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
-        table: 'insumos' 
+        table: 'presentaciones' 
       }, () => {
-        fetchInsumos();
+        fetchPresentaciones();
       })
       .subscribe();
 
@@ -44,11 +44,11 @@ export function useInsumos() {
     };
   }, []);
 
-  const createInsumo = async (insumoData: Omit<Insumo, 'id' | 'created_at' | 'updated_at'>) => {
+  const createPresentacion = async (presentacionData: Omit<Presentacion, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       const { data, error } = await supabase
-        .from('insumos')
-        .insert([insumoData])
+        .from('presentaciones')
+        .insert([presentacionData])
         .select()
         .single();
 
@@ -59,11 +59,11 @@ export function useInsumos() {
     }
   };
 
-  const updateInsumo = async (id: string, insumoData: Partial<Insumo>) => {
+  const updatePresentacion = async (id: string, presentacionData: Partial<Presentacion>) => {
     try {
       const { data, error } = await supabase
-        .from('insumos')
-        .update(insumoData)
+        .from('presentaciones')
+        .update(presentacionData)
         .eq('id', id)
         .select()
         .single();
@@ -75,10 +75,10 @@ export function useInsumos() {
     }
   };
 
-  const deleteInsumo = async (id: string) => {
+  const deletePresentacion = async (id: string) => {
     try {
       const { error } = await supabase
-        .from('insumos')
+        .from('presentaciones')
         .delete()
         .eq('id', id);
 
@@ -89,31 +89,13 @@ export function useInsumos() {
     }
   };
 
-  const searchInsumos = async (query: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('insumos')
-        .select('*, presentacion:presentaciones(*)')
-        .or(`nombre.ilike.%${query}%,codigo.ilike.%${query}%,descripcion.ilike.%${query}%`)
-        .order('nombre', { ascending: true });
-
-      if (error) throw error;
-      return data || [];
-    } catch (err: any) {
-      console.error('Error buscando insumos:', err);
-      return [];
-    }
-  };
-
   return {
-    insumos,
+    presentaciones,
     loading,
     error,
-    createInsumo,
-    updateInsumo,
-    deleteInsumo,
-    searchInsumos,
-    refetch: fetchInsumos,
+    createPresentacion,
+    updatePresentacion,
+    deletePresentacion,
+    refetch: fetchPresentaciones,
   };
 }
-
