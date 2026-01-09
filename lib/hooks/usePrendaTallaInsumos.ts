@@ -16,7 +16,7 @@ export interface PrendaTallaInsumo {
     presentacion_id: string;
     presentacion?: {
       nombre: string;
-      unidad_medida: string;
+      descripcion: string;
     };
   };
 }

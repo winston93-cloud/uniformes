@@ -90,7 +90,7 @@ export default function ModalInsumosTalla({
   };
 
   const getUnidadMedida = (insumo: any) => {
-    return insumo?.presentacion?.unidad_medida || 'unidad';
+    return insumo?.presentacion?.nombre || 'unidad';
   };
 
   // Filtrar insumos que no están ya asignados
