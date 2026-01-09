@@ -6,8 +6,10 @@ import { usePrendas } from '@/lib/hooks/usePrendas';
 import { useCategorias } from '@/lib/hooks/useCategorias';
 import { useTallas } from '@/lib/hooks/useTallas';
 import { useCostos } from '@/lib/hooks/useCostos';
+import { usePrendaTallaInsumos } from '@/lib/hooks/usePrendaTallaInsumos';
 import { supabase } from '@/lib/supabase';
 import type { Prenda } from '@/lib/types';
+import ModalInsumosTalla from '@/components/ModalInsumosTalla';
 
 export const dynamic = 'force-dynamic';
 
@@ -82,6 +84,12 @@ export default function PrendasPage() {
   const [filtroTipo, setFiltroTipo] = useState<'todos' | 'letras' | 'numeros'>('todos');
   const [filtroNumeros, setFiltroNumeros] = useState<'todos' | 'pares' | 'nones' | 'combinados'>('todos');
   
+  // Estados para modal de insumos
+  const [modalInsumosAbierto, setModalInsumosAbierto] = useState(false);
+  const [tallaSeleccionadaModal, setTallaSeleccionadaModal] = useState<{ id: string; nombre: string } | null>(null);
+  const [conteoInsumosPorTalla, setConteoInsumosPorTalla] = useState<Record<string, number>>({});
+  const { getInsumosByPrendaTalla } = usePrendaTallaInsumos();
+  
   useEffect(() => {
     const cargarTodasCategorias = async () => {
       const { data } = await supabase
@@ -95,6 +103,21 @@ export default function PrendasPage() {
       refetchCategorias();
     }
   }, [mostrarFormulario]);
+
+  // Cargar conteo de insumos por talla cuando se edita una prenda
+  useEffect(() => {
+    const cargarConteoInsumos = async () => {
+      if (prendaEditando && tallasAsociadas.length > 0) {
+        const conteos: Record<string, number> = {};
+        for (const tallaId of tallasAsociadas) {
+          const insumos = await getInsumosByPrendaTalla(prendaEditando.id, tallaId);
+          conteos[tallaId] = insumos.length;
+        }
+        setConteoInsumosPorTalla(conteos);
+      }
+    };
+    cargarConteoInsumos();
+  }, [prendaEditando, tallasAsociadas, getInsumosByPrendaTalla]);
 
   // Cargar tallas asociadas cuando se edita una prenda
   useEffect(() => {
@@ -573,36 +596,74 @@ export default function PrendasPage() {
                                   borderRight: fila.indexOf(talla) < fila.length - 1 ? '1px solid #f0f0f0' : 'none'
                                 }}
                               >
-                                <label style={{ 
-                                  display: 'flex', 
-                                  alignItems: 'center', 
-                                  gap: '0.5rem',
-                                  cursor: 'pointer',
-                                  userSelect: 'none'
-                                }}>
-                                  <input
-                                    type="checkbox"
-                                    checked={tallasSeleccionadas.includes(talla.id)}
-                                    onChange={(e) => {
-                                      if (e.target.checked) {
-                                        setTallasSeleccionadas([...tallasSeleccionadas, talla.id]);
-                                      } else {
-                                        setTallasSeleccionadas(tallasSeleccionadas.filter(id => id !== talla.id));
-                                      }
-                                    }}
-                                    style={{ 
-                                      width: '18px', 
-                                      height: '18px', 
-                                      cursor: 'pointer' 
-                                    }}
-                                  />
-                                  <span style={{ 
-                                    fontWeight: tallasSeleccionadas.includes(talla.id) ? '600' : '400',
-                                    color: tallasSeleccionadas.includes(talla.id) ? '#007bff' : 'inherit'
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'space-between' }}>
+                                  <label style={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: '0.5rem',
+                                    cursor: 'pointer',
+                                    userSelect: 'none',
+                                    flex: 1
                                   }}>
-                                    {talla.nombre}
-                                  </span>
-                                </label>
+                                    <input
+                                      type="checkbox"
+                                      checked={tallasSeleccionadas.includes(talla.id)}
+                                      onChange={(e) => {
+                                        if (e.target.checked) {
+                                          setTallasSeleccionadas([...tallasSeleccionadas, talla.id]);
+                                        } else {
+                                          setTallasSeleccionadas(tallasSeleccionadas.filter(id => id !== talla.id));
+                                        }
+                                      }}
+                                      style={{ 
+                                        width: '18px', 
+                                        height: '18px', 
+                                        cursor: 'pointer' 
+                                      }}
+                                    />
+                                    <span style={{ 
+                                      fontWeight: tallasSeleccionadas.includes(talla.id) ? '600' : '400',
+                                      color: tallasSeleccionadas.includes(talla.id) ? '#007bff' : 'inherit'
+                                    }}>
+                                      {talla.nombre}
+                                    </span>
+                                  </label>
+                                  {tallasSeleccionadas.includes(talla.id) && prendaEditando && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setTallaSeleccionadaModal({ id: talla.id, nombre: talla.nombre });
+                                        setModalInsumosAbierto(true);
+                                      }}
+                                      title="Gestionar insumos de esta talla"
+                                      style={{
+                                        padding: '0.25rem 0.5rem',
+                                        background: conteoInsumosPorTalla[talla.id] > 0 ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#e2e8f0',
+                                        color: conteoInsumosPorTalla[talla.id] > 0 ? 'white' : '#64748b',
+                                        border: 'none',
+                                        borderRadius: '6px',
+                                        cursor: 'pointer',
+                                        fontSize: '0.75rem',
+                                        fontWeight: '600',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.25rem',
+                                        transition: 'all 0.2s',
+                                        whiteSpace: 'nowrap'
+                                      }}
+                                      onMouseOver={(e) => {
+                                        e.currentTarget.style.transform = 'scale(1.05)';
+                                        e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+                                      }}
+                                      onMouseOut={(e) => {
+                                        e.currentTarget.style.transform = 'scale(1)';
+                                        e.currentTarget.style.boxShadow = 'none';
+                                      }}
+                                    >
+                                      🧵 {conteoInsumosPorTalla[talla.id] || 0}
+                                    </button>
+                                  )}
+                                </div>
                               </td>
                             ))}
                             {/* Rellenar celdas vacías si la última fila no tiene 4 elementos */}
@@ -737,6 +798,33 @@ export default function PrendasPage() {
           </table>
         </div>
       </div>
+
+      {/* Modal de insumos por talla */}
+      {modalInsumosAbierto && prendaEditando && tallaSeleccionadaModal && (
+        <ModalInsumosTalla
+          isOpen={modalInsumosAbierto}
+          onClose={() => {
+            setModalInsumosAbierto(false);
+            setTallaSeleccionadaModal(null);
+            // Recargar conteo de insumos
+            const recargarConteo = async () => {
+              if (prendaEditando && tallasAsociadas.length > 0) {
+                const conteos: Record<string, number> = {};
+                for (const tallaId of tallasAsociadas) {
+                  const insumos = await getInsumosByPrendaTalla(prendaEditando.id, tallaId);
+                  conteos[tallaId] = insumos.length;
+                }
+                setConteoInsumosPorTalla(conteos);
+              }
+            };
+            recargarConteo();
+          }}
+          prendaId={prendaEditando.id}
+          prendaNombre={prendaEditando.nombre}
+          tallaId={tallaSeleccionadaModal.id}
+          tallaNombre={tallaSeleccionadaModal.nombre}
+        />
+      )}
     </LayoutWrapper>
   );
 }
