@@ -43,7 +43,7 @@ export function usePrendaTallaInsumos(prendaId?: string, tallaId?: string) {
             presentacion_id,
             presentacion:presentaciones(
               nombre,
-              unidad_medida
+              descripcion
             )
           )
         `)
@@ -89,7 +89,7 @@ export function usePrendaTallaInsumos(prendaId?: string, tallaId?: string) {
             presentacion_id,
             presentacion:presentaciones(
               nombre,
-              unidad_medida
+              descripcion
             )
           )
         `)
@@ -149,7 +149,7 @@ export function usePrendaTallaInsumos(prendaId?: string, tallaId?: string) {
             presentacion_id,
             presentacion:presentaciones(
               nombre,
-              unidad_medida
+              descripcion
             )
           )
         `)
