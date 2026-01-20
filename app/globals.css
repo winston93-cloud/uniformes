@@ -6,10 +6,16 @@
 }
 
 :root {
-  /* Colores principales */
+  /* Colores principales - INSTITUCIONALES (Blanco/Morado/Azul Marino) */
+  --gradient-start: #f8fafc;    /* Blanco/Gris muy claro */
+  --gradient-middle: #8b5cf6;   /* Morado institucional */
+  --gradient-end: #1e3a8a;      /* Azul marino institucional */
+  
+  /* DEGRADADO ANTERIOR (Rosa/Naranja/Amarillo) - Descomentar para regresar
   --gradient-start: #ec4899;
   --gradient-middle: #f97316;
   --gradient-end: #fbbf24;
+  */
   
   /* Colores de acento */
   --orange: #fb923c;
