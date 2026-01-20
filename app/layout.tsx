@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import ThemeToggler from "@/components/ThemeToggler";
 
 export const metadata: Metadata = {
   title: "Sistema de Gestión de Uniformes",
@@ -13,7 +14,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
-      <body>{children}</body>
+      <body>
+        <ThemeToggler />
+        {children}
+      </body>
     </html>
   );
 }
