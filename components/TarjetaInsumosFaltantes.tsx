@@ -312,16 +312,15 @@ export default function TarjetaInsumosFaltantes({ expandido, minimizado = false,
                 <div className="tabla-insumos-faltantes" style={{
                   overflowX: 'auto',
                   maxWidth: '100%',
+                  WebkitOverflowScrolling: 'touch',
                 }}>
                   <table style={{
                     width: '100%',
-                    minWidth: '600px',
                     borderCollapse: 'separate',
                     borderSpacing: '0',
                     background: 'rgba(255, 255, 255, 0.1)',
                     borderRadius: '8px',
                     overflow: 'hidden',
-                    tableLayout: 'fixed',
                   }}>
                     <thead>
                       <tr style={{
