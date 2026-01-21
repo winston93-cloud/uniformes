@@ -126,7 +126,7 @@ export default function TarjetaAlertasStock() {
                 fontSize: '1rem',
                 opacity: 0.9,
               }}>
-                Control de inventario en tiempo real
+                Control de stock de insumos en tiempo real
               </p>
             </div>
           </div>
