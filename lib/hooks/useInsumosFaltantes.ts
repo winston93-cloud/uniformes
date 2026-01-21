@@ -73,10 +73,12 @@ export function useInsumosFaltantes() {
       const insumosMap = new Map<string, InsumoFaltante>();
 
       for (const detalle of detallesPedidos) {
-        if (!detalle.costos) continue;
+        // TypeScript trata las relaciones como arrays, accedemos al primer elemento
+        const costo = Array.isArray(detalle.costos) ? detalle.costos[0] : detalle.costos;
+        if (!costo) continue;
 
-        const prenda_id = detalle.costos.prenda_id;
-        const talla_id = detalle.costos.talla_id;
+        const prenda_id = costo.prenda_id;
+        const talla_id = costo.talla_id;
         const cantidad_prendas = detalle.cantidad;
 
         // Obtener los insumos para esta combinación prenda-talla
@@ -104,9 +106,12 @@ export function useInsumosFaltantes() {
 
         // Acumular cantidades por insumo
         for (const insumoItem of insumosPrenda) {
-          if (!insumoItem.insumos) continue;
+          // TypeScript trata las relaciones como arrays, accedemos al primer elemento
+          const insumo = Array.isArray(insumoItem.insumos) ? insumoItem.insumos[0] : insumoItem.insumos;
+          if (!insumo) continue;
 
-          const insumo = insumoItem.insumos;
+          const presentacion = Array.isArray(insumo.presentaciones) ? insumo.presentaciones[0] : insumo.presentaciones;
+
           const cantidad_por_prenda = insumoItem.cantidad;
           const cantidad_total = cantidad_por_prenda * cantidad_prendas;
 
@@ -121,8 +126,8 @@ export function useInsumosFaltantes() {
               insumo_nombre: insumo.nombre,
               insumo_codigo: insumo.codigo,
               cantidad_necesaria: cantidad_total,
-              presentacion_nombre: insumo.presentaciones?.nombre || 'unidad',
-              presentacion_descripcion: insumo.presentaciones?.descripcion || '',
+              presentacion_nombre: presentacion?.nombre || 'unidad',
+              presentacion_descripcion: presentacion?.descripcion || '',
             });
           }
         }
