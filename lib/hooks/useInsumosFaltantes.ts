@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
 
 export interface InsumoFaltante {
   insumo_id: string;
@@ -16,7 +16,6 @@ export function useInsumosFaltantes() {
   const [insumosFaltantes, setInsumosFaltantes] = useState<InsumoFaltante[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const supabase = createClient();
 
   useEffect(() => {
     obtenerInsumosFaltantes();
