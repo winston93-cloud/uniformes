@@ -4,9 +4,13 @@ import { useState } from 'react';
 import { useAlertasStock } from '@/lib/hooks/useAlertasStock';
 import ModalRegistrarCompra from './ModalRegistrarCompra';
 
-export default function TarjetaAlertasStock() {
+interface TarjetaAlertasStockProps {
+  expandido: boolean;
+  onToggle: () => void;
+}
+
+export default function TarjetaAlertasStock({ expandido, onToggle }: TarjetaAlertasStockProps) {
   const { alertas, cargando, error, recargar, contadores } = useAlertasStock();
-  const [expandido, setExpandido] = useState(false);
   const [modalCompraAbierto, setModalCompraAbierto] = useState(false);
   const [insumoSeleccionado, setInsumoSeleccionado] = useState<any>(null);
 
@@ -74,7 +78,7 @@ export default function TarjetaAlertasStock() {
   return (
     <>
       <div
-        onClick={() => setExpandido(!expandido)}
+        onClick={onToggle}
         style={{
           background: badgeInfo.background,
           borderRadius: '16px',

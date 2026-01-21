@@ -1,9 +1,22 @@
+'use client';
+
+import { useState } from 'react';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import Link from 'next/link';
 import TarjetaInsumosFaltantes from '@/components/TarjetaInsumosFaltantes';
 import TarjetaAlertasStock from '@/components/TarjetaAlertasStock';
 
 export default function Dashboard() {
+  const [tarjetaExpandida, setTarjetaExpandida] = useState<'insumos' | 'alertas' | null>(null);
+
+  const handleToggleInsumos = () => {
+    setTarjetaExpandida(prev => prev === 'insumos' ? null : 'insumos');
+  };
+
+  const handleToggleAlertas = () => {
+    setTarjetaExpandida(prev => prev === 'alertas' ? null : 'alertas');
+  };
+
   return (
     <LayoutWrapper>
       <div className="main-container">
@@ -25,12 +38,18 @@ export default function Dashboard() {
         >
           {/* Insumos Necesarios para Producción */}
           <div style={{ width: '100%', minWidth: 0 }}>
-            <TarjetaInsumosFaltantes />
+            <TarjetaInsumosFaltantes 
+              expandido={tarjetaExpandida === 'insumos'}
+              onToggle={handleToggleInsumos}
+            />
           </div>
           
           {/* Alertas de Stock Mínimo */}
           <div style={{ width: '100%', minWidth: 0 }}>
-            <TarjetaAlertasStock />
+            <TarjetaAlertasStock 
+              expandido={tarjetaExpandida === 'alertas'}
+              onToggle={handleToggleAlertas}
+            />
           </div>
         </div>
 

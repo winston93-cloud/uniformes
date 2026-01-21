@@ -5,9 +5,13 @@ import { useComprasInsumos } from '@/lib/hooks/useComprasInsumos';
 import { useState } from 'react';
 import ModalRegistrarCompra from './ModalRegistrarCompra';
 
-export default function TarjetaInsumosFaltantes() {
+interface TarjetaInsumosFaltantesProps {
+  expandido: boolean;
+  onToggle: () => void;
+}
+
+export default function TarjetaInsumosFaltantes({ expandido, onToggle }: TarjetaInsumosFaltantesProps) {
   const { insumosFaltantes, cargando, error, recargar } = useInsumosFaltantes();
-  const [expandido, setExpandido] = useState(false);
   const [insumoExpandido, setInsumoExpandido] = useState<string | null>(null);
   const [modalCompraAbierto, setModalCompraAbierto] = useState(false);
   const [insumoSeleccionado, setInsumoSeleccionado] = useState<any>(null);
@@ -84,7 +88,7 @@ export default function TarjetaInsumosFaltantes() {
             cursor: 'pointer',
             padding: '1rem',
           }}
-          onClick={() => setExpandido(!expandido)}
+          onClick={onToggle}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <div 
