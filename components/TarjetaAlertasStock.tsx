@@ -78,13 +78,11 @@ export default function TarjetaAlertasStock({ expandido, onToggle }: TarjetaAler
   return (
     <>
       <div
-        onClick={onToggle}
         style={{
           background: badgeInfo.background,
           borderRadius: '16px',
           padding: '1.5rem',
           color: 'white',
-          cursor: 'pointer',
           transition: 'all 0.3s ease',
           boxShadow: expandido 
             ? '0 20px 25px -5px rgba(0, 0, 0, 0.3)' 
@@ -97,12 +95,16 @@ export default function TarjetaAlertasStock({ expandido, onToggle }: TarjetaAler
         }}
       >
         {/* Header */}
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'flex-start',
-          marginBottom: '1rem',
-        }}>
+        <div 
+          onClick={onToggle}
+          style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'flex-start',
+            marginBottom: '1rem',
+            cursor: 'pointer',
+          }}
+        >
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <div style={{
               fontSize: '2.5rem',
