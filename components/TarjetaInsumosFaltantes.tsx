@@ -303,10 +303,10 @@ export default function TarjetaInsumosFaltantes() {
                             <td style={{ padding: '1rem', textAlign: 'right', fontSize: '1.1rem', fontWeight: '500' }}>
                               {insumo.cantidad_necesaria.toFixed(2)} {insumo.presentacion_nombre}
                             </td>
-                            <td style={{ padding: '1rem', textAlign: 'right', fontSize: '1.1rem', fontWeight: '500', color: '#10b981' }}>
+                            <td style={{ padding: '1rem', textAlign: 'right', fontSize: '1.1rem', fontWeight: '500', color: '#a7f3d0' }}>
                               {insumo.cantidad_comprada.toFixed(2)} {insumo.presentacion_nombre}
                             </td>
-                            <td style={{ padding: '1rem', textAlign: 'right', fontSize: '1.2rem', fontWeight: 'bold', color: insumo.cantidad_faltante > 0 ? '#ef4444' : '#10b981' }}>
+                            <td style={{ padding: '1rem', textAlign: 'right', fontSize: '1.2rem', fontWeight: 'bold', color: insumo.cantidad_faltante > 0 ? '#fca5a5' : '#a7f3d0' }}>
                               {insumo.cantidad_faltante.toFixed(2)} {insumo.presentacion_nombre}
                             </td>
                             <td style={{ padding: '1rem', textAlign: 'center' }}>
