@@ -276,14 +276,19 @@ export default function TarjetaAlertasStock() {
                 </div>
 
                 {/* Tabla de alertas */}
-                <div className="tabla-alertas-stock">
+                <div className="tabla-alertas-stock" style={{
+                  overflowX: 'auto',
+                  maxWidth: '100%',
+                }}>
                   <table style={{
                     width: '100%',
+                    minWidth: '600px',
                     borderCollapse: 'separate',
                     borderSpacing: '0',
                     background: 'rgba(255, 255, 255, 0.1)',
                     borderRadius: '8px',
                     overflow: 'hidden',
+                    tableLayout: 'fixed',
                   }}>
                     <thead>
                       <tr style={{
