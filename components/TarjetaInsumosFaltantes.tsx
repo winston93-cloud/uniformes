@@ -7,10 +7,11 @@ import ModalRegistrarCompra from './ModalRegistrarCompra';
 
 interface TarjetaInsumosFaltantesProps {
   expandido: boolean;
+  minimizado?: boolean;
   onToggle: () => void;
 }
 
-export default function TarjetaInsumosFaltantes({ expandido, onToggle }: TarjetaInsumosFaltantesProps) {
+export default function TarjetaInsumosFaltantes({ expandido, minimizado = false, onToggle }: TarjetaInsumosFaltantesProps) {
   const { insumosFaltantes, cargando, error, recargar } = useInsumosFaltantes();
   const [insumoExpandido, setInsumoExpandido] = useState<string | null>(null);
   const [modalCompraAbierto, setModalCompraAbierto] = useState(false);
@@ -65,6 +66,61 @@ export default function TarjetaInsumosFaltantes({ expandido, onToggle }: Tarjeta
   };
 
   const colorEstado = getColorEstado();
+
+  // Vista minimizada (botón compacto)
+  if (minimizado) {
+    return (
+      <div
+        onClick={onToggle}
+        style={{
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          borderRadius: '16px',
+          padding: '1rem',
+          color: 'white',
+          cursor: 'pointer',
+          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minWidth: '80px',
+          height: '200px',
+          transition: 'all 0.3s ease',
+          writingMode: 'vertical-rl',
+          textOrientation: 'mixed',
+        }}
+        onMouseOver={(e) => {
+          e.currentTarget.style.transform = 'scale(1.05)';
+          e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.2)';
+        }}
+        onMouseOut={(e) => {
+          e.currentTarget.style.transform = 'scale(1)';
+          e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+        }}
+      >
+        <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📋</div>
+        <div style={{ fontSize: '0.9rem', fontWeight: 'bold', textAlign: 'center' }}>
+          Insumos Necesarios
+        </div>
+        {insumosFaltantes.length > 0 && (
+          <div style={{
+            background: 'rgba(251, 191, 36, 0.9)',
+            borderRadius: '50%',
+            width: '30px',
+            height: '30px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '0.8rem',
+            fontWeight: 'bold',
+            marginTop: '0.5rem',
+          }}>
+            {insumosFaltantes.length}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <>

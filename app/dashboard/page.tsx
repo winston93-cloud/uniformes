@@ -25,29 +25,41 @@ export default function Dashboard() {
           <span className="title-icon">✨</span>
         </h1>
 
-        {/* ⭐ MÓDULOS PRINCIPALES VIP - Layout 2 Columnas (responsive) ⭐ */}
+        {/* ⭐ MÓDULOS PRINCIPALES VIP - Layout Dinámico ⭐ */}
         <div 
           className="modulos-vip-grid"
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 450px), 1fr))',
+            gridTemplateColumns: 
+              tarjetaExpandida === 'insumos' ? '1fr auto' :
+              tarjetaExpandida === 'alertas' ? 'auto 1fr' :
+              'repeat(auto-fit, minmax(min(100%, 450px), 1fr))',
             gap: '1.5rem',
             marginBottom: '2rem',
             width: '100%',
+            transition: 'all 0.3s ease',
           }}
         >
           {/* Insumos Necesarios para Producción */}
-          <div style={{ width: '100%', minWidth: 0 }}>
+          <div style={{ 
+            width: '100%', 
+            minWidth: tarjetaExpandida === 'alertas' ? 'auto' : 0,
+          }}>
             <TarjetaInsumosFaltantes 
               expandido={tarjetaExpandida === 'insumos'}
+              minimizado={tarjetaExpandida === 'alertas'}
               onToggle={handleToggleInsumos}
             />
           </div>
           
           {/* Alertas de Stock Mínimo */}
-          <div style={{ width: '100%', minWidth: 0 }}>
+          <div style={{ 
+            width: '100%', 
+            minWidth: tarjetaExpandida === 'insumos' ? 'auto' : 0,
+          }}>
             <TarjetaAlertasStock 
               expandido={tarjetaExpandida === 'alertas'}
+              minimizado={tarjetaExpandida === 'insumos'}
               onToggle={handleToggleAlertas}
             />
           </div>

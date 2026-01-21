@@ -6,10 +6,11 @@ import ModalRegistrarCompra from './ModalRegistrarCompra';
 
 interface TarjetaAlertasStockProps {
   expandido: boolean;
+  minimizado?: boolean;
   onToggle: () => void;
 }
 
-export default function TarjetaAlertasStock({ expandido, onToggle }: TarjetaAlertasStockProps) {
+export default function TarjetaAlertasStock({ expandido, minimizado = false, onToggle }: TarjetaAlertasStockProps) {
   const { alertas, cargando, error, recargar, contadores } = useAlertasStock();
   const [modalCompraAbierto, setModalCompraAbierto] = useState(false);
   const [insumoSeleccionado, setInsumoSeleccionado] = useState<any>(null);
@@ -74,6 +75,61 @@ export default function TarjetaAlertasStock({ expandido, onToggle }: TarjetaAler
       default: return { bg: '#f3f4f6', text: '#374151', emoji: 'ℹ️' };
     }
   };
+
+  // Vista minimizada (botón compacto)
+  if (minimizado) {
+    return (
+      <div
+        onClick={onToggle}
+        style={{
+          background: badgeInfo.background,
+          borderRadius: '16px',
+          padding: '1rem',
+          color: 'white',
+          cursor: 'pointer',
+          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minWidth: '80px',
+          height: '200px',
+          transition: 'all 0.3s ease',
+          writingMode: 'vertical-rl',
+          textOrientation: 'mixed',
+        }}
+        onMouseOver={(e) => {
+          e.currentTarget.style.transform = 'scale(1.05)';
+          e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.2)';
+        }}
+        onMouseOut={(e) => {
+          e.currentTarget.style.transform = 'scale(1)';
+          e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+        }}
+      >
+        <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📦</div>
+        <div style={{ fontSize: '0.9rem', fontWeight: 'bold', textAlign: 'center' }}>
+          Alertas Stock
+        </div>
+        {contadores.critico > 0 && (
+          <div style={{
+            background: 'rgba(239, 68, 68, 0.9)',
+            borderRadius: '50%',
+            width: '30px',
+            height: '30px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '0.8rem',
+            fontWeight: 'bold',
+            marginTop: '0.5rem',
+          }}>
+            {contadores.critico}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <>
