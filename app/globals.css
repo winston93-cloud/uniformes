@@ -507,7 +507,13 @@ body {
   /* Tarjetas VIP en móviles */
   .modulos-vip-grid {
     grid-template-columns: 1fr !important;
+    grid-template-rows: auto auto !important;
     gap: 1rem;
+  }
+
+  /* En móviles, el botón minimizado se hace horizontal */
+  .modulos-vip-grid > div {
+    width: 100% !important;
   }
 
   /* Ajustar tamaños de fuente en tarjetas expandidas */
@@ -720,6 +726,34 @@ body {
   }
 }
 
+/* Estilos para tarjetas minimizadas */
+.tarjeta-minimizada {
+  height: 200px;
+  flex-direction: column !important;
+}
+
+.texto-vertical {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
+
+/* Media query para móviles - botones minimizados horizontales */
+@media (max-width: 768px) {
+  .tarjeta-minimizada {
+    height: auto !important;
+    min-height: 60px !important;
+    flex-direction: row !important;
+    width: 100% !important;
+    justify-content: flex-start !important;
+    padding: 0.75rem 1rem !important;
+  }
+
+  .texto-vertical {
+    writing-mode: horizontal-tb !important;
+    text-orientation: initial !important;
+  }
+}
+
 /* Media query adicional para pantallas muy pequeñas */
 @media (max-width: 480px) {
   .main-container {
@@ -736,6 +770,11 @@ body {
 
   h1 {
     font-size: 1.5rem !important;
+  }
+
+  .tarjeta-minimizada {
+    min-height: 50px !important;
+    font-size: 0.85rem !important;
   }
 }
 

@@ -81,6 +81,7 @@ export default function TarjetaAlertasStock({ expandido, minimizado = false, onT
     return (
       <div
         onClick={onToggle}
+        className="tarjeta-minimizada"
         style={{
           background: badgeInfo.background,
           borderRadius: '16px',
@@ -89,14 +90,11 @@ export default function TarjetaAlertasStock({ expandido, minimizado = false, onT
           cursor: 'pointer',
           boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
           display: 'flex',
-          flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          minWidth: '80px',
-          height: '200px',
+          gap: '0.5rem',
           transition: 'all 0.3s ease',
-          writingMode: 'vertical-rl',
-          textOrientation: 'mixed',
+          minWidth: '80px',
         }}
         onMouseOver={(e) => {
           e.currentTarget.style.transform = 'scale(1.05)';
@@ -107,26 +105,31 @@ export default function TarjetaAlertasStock({ expandido, minimizado = false, onT
           e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
         }}
       >
-        <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📦</div>
-        <div style={{ fontSize: '0.9rem', fontWeight: 'bold', textAlign: 'center' }}>
-          Alertas Stock
+        <div style={{ fontSize: '2rem' }}>📦</div>
+        <div style={{ 
+          fontSize: '0.9rem', 
+          fontWeight: 'bold',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+        }}>
+          <span className="texto-vertical">Alertas</span>
+          {contadores.critico > 0 && (
+            <span style={{
+              background: 'rgba(239, 68, 68, 0.9)',
+              borderRadius: '50%',
+              width: '24px',
+              height: '24px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '0.75rem',
+              marginTop: '0.25rem',
+            }}>
+              {contadores.critico}
+            </span>
+          )}
         </div>
-        {contadores.critico > 0 && (
-          <div style={{
-            background: 'rgba(239, 68, 68, 0.9)',
-            borderRadius: '50%',
-            width: '30px',
-            height: '30px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '0.8rem',
-            fontWeight: 'bold',
-            marginTop: '0.5rem',
-          }}>
-            {contadores.critico}
-          </div>
-        )}
       </div>
     );
   }
