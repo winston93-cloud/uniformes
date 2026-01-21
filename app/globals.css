@@ -503,6 +503,32 @@ body {
     grid-template-columns: 1fr;
     gap: 1.5rem;
   }
+
+  /* Tarjetas VIP en móviles */
+  .modulos-vip-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem;
+  }
+
+  /* Ajustar tamaños de fuente en tarjetas expandidas */
+  .modulos-vip-grid h2 {
+    font-size: 1.5rem !important;
+  }
+
+  .modulos-vip-grid table {
+    font-size: 0.85rem !important;
+  }
+
+  .modulos-vip-grid th,
+  .modulos-vip-grid td {
+    padding: 0.5rem !important;
+    font-size: 0.85rem !important;
+  }
+
+  .modulos-vip-grid button {
+    padding: 0.5rem 0.75rem !important;
+    font-size: 0.85rem !important;
+  }
   
   .main-container {
     padding: 1rem;

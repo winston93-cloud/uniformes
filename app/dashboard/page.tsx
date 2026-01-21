@@ -12,15 +12,17 @@ export default function Dashboard() {
           <span className="title-icon">✨</span>
         </h1>
 
-        {/* ⭐ MÓDULOS PRINCIPALES VIP - Layout 2 Columnas ⭐ */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(2, 1fr)',
-          gap: '1.5rem',
-          marginBottom: '2rem',
-          width: '100%',
-          gridAutoFlow: 'column',
-        }}>
+        {/* ⭐ MÓDULOS PRINCIPALES VIP - Layout 2 Columnas (responsive) ⭐ */}
+        <div 
+          className="modulos-vip-grid"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 450px), 1fr))',
+            gap: '1.5rem',
+            marginBottom: '2rem',
+            width: '100%',
+          }}
+        >
           {/* Insumos Necesarios para Producción */}
           <div style={{ width: '100%', minWidth: 0 }}>
             <TarjetaInsumosFaltantes />
