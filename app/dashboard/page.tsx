@@ -1,6 +1,7 @@
 import LayoutWrapper from '@/components/LayoutWrapper';
 import Link from 'next/link';
 import TarjetaInsumosFaltantes from '@/components/TarjetaInsumosFaltantes';
+import TarjetaAlertasStock from '@/components/TarjetaAlertasStock';
 
 export default function Dashboard() {
   return (
@@ -11,9 +12,21 @@ export default function Dashboard() {
           <span className="title-icon">✨</span>
         </h1>
 
-        <div className="cards-grid">
-          {/* ⭐ TARJETA PRINCIPAL - Insumos Faltantes para la Dueña ⭐ */}
+        {/* ⭐ MÓDULOS PRINCIPALES VIP - Layout 2 Columnas ⭐ */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))',
+          gap: '1.5rem',
+          marginBottom: '2rem',
+        }}>
+          {/* Insumos Necesarios para Producción */}
           <TarjetaInsumosFaltantes />
+          
+          {/* Alertas de Stock Mínimo */}
+          <TarjetaAlertasStock />
+        </div>
+
+        <div className="cards-grid">
           {/* Presentaciones */}
           <Link href="/presentaciones" className="card">
             <div className="card-icon blue">
