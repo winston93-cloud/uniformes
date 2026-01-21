@@ -1,5 +1,6 @@
 import LayoutWrapper from '@/components/LayoutWrapper';
 import Link from 'next/link';
+import TarjetaInsumosFaltantes from '@/components/TarjetaInsumosFaltantes';
 
 export default function Dashboard() {
   return (
@@ -11,6 +12,8 @@ export default function Dashboard() {
         </h1>
 
         <div className="cards-grid">
+          {/* ⭐ TARJETA PRINCIPAL - Insumos Faltantes para la Dueña ⭐ */}
+          <TarjetaInsumosFaltantes />
           {/* Presentaciones */}
           <Link href="/presentaciones" className="card">
             <div className="card-icon blue">
