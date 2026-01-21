@@ -8,6 +8,9 @@ export interface InsumoFaltante {
   insumo_nombre: string;
   insumo_codigo: string;
   cantidad_necesaria: number;
+  cantidad_comprada: number;
+  cantidad_faltante: number;
+  porcentaje_completado: number;
   presentacion_nombre: string;
   presentacion_descripcion: string;
 }
@@ -133,9 +136,36 @@ export function useInsumosFaltantes() {
         }
       }
 
-      // Convertir el Map a array y ordenar por cantidad descendente
-      const resultado = Array.from(insumosMap.values()).sort(
-        (a, b) => b.cantidad_necesaria - a.cantidad_necesaria
+      // Obtener cantidades compradas de cada insumo
+      const insumosConCompras = await Promise.all(
+        Array.from(insumosMap.values()).map(async (insumo) => {
+          const { data: compras } = await supabase
+            .from('compras_insumos')
+            .select('cantidad_comprada')
+            .eq('insumo_id', insumo.insumo_id);
+
+          const cantidad_comprada = (compras || []).reduce(
+            (sum, compra) => sum + (compra.cantidad_comprada || 0),
+            0
+          );
+
+          const cantidad_faltante = Math.max(0, insumo.cantidad_necesaria - cantidad_comprada);
+          const porcentaje_completado = insumo.cantidad_necesaria > 0
+            ? Math.round((cantidad_comprada / insumo.cantidad_necesaria) * 100)
+            : 0;
+
+          return {
+            ...insumo,
+            cantidad_comprada,
+            cantidad_faltante,
+            porcentaje_completado,
+          };
+        })
+      );
+
+      // Ordenar por cantidad faltante descendente (los más urgentes primero)
+      const resultado = insumosConCompras.sort(
+        (a, b) => b.cantidad_faltante - a.cantidad_faltante
       );
 
       setInsumosFaltantes(resultado);

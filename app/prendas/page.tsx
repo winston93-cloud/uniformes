@@ -597,37 +597,37 @@ export default function PrendasPage() {
                                 }}
                               >
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'space-between' }}>
-                                  <label style={{ 
-                                    display: 'flex', 
-                                    alignItems: 'center', 
-                                    gap: '0.5rem',
-                                    cursor: 'pointer',
+                                <label style={{ 
+                                  display: 'flex', 
+                                  alignItems: 'center', 
+                                  gap: '0.5rem',
+                                  cursor: 'pointer',
                                     userSelect: 'none',
                                     flex: 1
+                                }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={tallasSeleccionadas.includes(talla.id)}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setTallasSeleccionadas([...tallasSeleccionadas, talla.id]);
+                                      } else {
+                                        setTallasSeleccionadas(tallasSeleccionadas.filter(id => id !== talla.id));
+                                      }
+                                    }}
+                                    style={{ 
+                                      width: '18px', 
+                                      height: '18px', 
+                                      cursor: 'pointer' 
+                                    }}
+                                  />
+                                  <span style={{ 
+                                    fontWeight: tallasSeleccionadas.includes(talla.id) ? '600' : '400',
+                                    color: tallasSeleccionadas.includes(talla.id) ? '#007bff' : 'inherit'
                                   }}>
-                                    <input
-                                      type="checkbox"
-                                      checked={tallasSeleccionadas.includes(talla.id)}
-                                      onChange={(e) => {
-                                        if (e.target.checked) {
-                                          setTallasSeleccionadas([...tallasSeleccionadas, talla.id]);
-                                        } else {
-                                          setTallasSeleccionadas(tallasSeleccionadas.filter(id => id !== talla.id));
-                                        }
-                                      }}
-                                      style={{ 
-                                        width: '18px', 
-                                        height: '18px', 
-                                        cursor: 'pointer' 
-                                      }}
-                                    />
-                                    <span style={{ 
-                                      fontWeight: tallasSeleccionadas.includes(talla.id) ? '600' : '400',
-                                      color: tallasSeleccionadas.includes(talla.id) ? '#007bff' : 'inherit'
-                                    }}>
-                                      {talla.nombre}
-                                    </span>
-                                  </label>
+                                    {talla.nombre}
+                                  </span>
+                                </label>
                                   {tallasSeleccionadas.includes(talla.id) && prendaEditando && (
                                     <button
                                       type="button"
