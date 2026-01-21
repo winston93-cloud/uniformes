@@ -129,6 +129,9 @@ export function useInsumosFaltantes() {
               insumo_nombre: insumo.nombre,
               insumo_codigo: insumo.codigo,
               cantidad_necesaria: cantidad_total,
+              cantidad_comprada: 0,
+              cantidad_faltante: 0,
+              porcentaje_completado: 0,
               presentacion_nombre: presentacion?.nombre || 'unidad',
               presentacion_descripcion: presentacion?.descripcion || '',
             });
