@@ -15,15 +15,21 @@ export default function Dashboard() {
         {/* ⭐ MÓDULOS PRINCIPALES VIP - Layout 2 Columnas ⭐ */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
+          gridTemplateColumns: 'repeat(2, 1fr)',
           gap: '1.5rem',
           marginBottom: '2rem',
+          width: '100%',
+          gridAutoFlow: 'column',
         }}>
           {/* Insumos Necesarios para Producción */}
-          <TarjetaInsumosFaltantes />
+          <div style={{ width: '100%', minWidth: 0 }}>
+            <TarjetaInsumosFaltantes />
+          </div>
           
           {/* Alertas de Stock Mínimo */}
-          <TarjetaAlertasStock />
+          <div style={{ width: '100%', minWidth: 0 }}>
+            <TarjetaAlertasStock />
+          </div>
         </div>
 
         <div className="cards-grid">
