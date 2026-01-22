@@ -20,15 +20,18 @@ export default function CostosPage() {
   const [costoEditando, setCostoEditando] = useState<Costo | null>(null);
   const [mostrarModalEdicion, setMostrarModalEdicion] = useState(false);
   const [formDataEdicion, setFormDataEdicion] = useState({
-    precioVenta: '',
     precioCompra: '',
+    precioMayoreo: '',
+    precioMenudeo: '',
   });
   const [botonEstado, setBotonEstado] = useState<'normal' | 'exito' | 'error'>('normal');
   
   const [formData, setFormData] = useState({
     prenda_id: '',
     tallas_seleccionadas: [] as string[],
-    precioVenta: '',
+    precioCompra: '',
+    precioMayoreo: '',
+    precioMenudeo: '',
   });
   
   const [busquedaPrenda, setBusquedaPrenda] = useState('');
@@ -158,7 +161,10 @@ export default function CostosPage() {
     const costosData = tallasSinCosto.map(talla_id => ({
       prenda_id: formData.prenda_id,
       talla_id: talla_id,
-      precio_venta: parseFloat(formData.precioVenta) || 0,
+      precio_venta: parseFloat(formData.precioMenudeo) || 0, // Legacy: usar precio menudeo
+      precio_compra: parseFloat(formData.precioCompra) || 0,
+      precio_mayoreo: parseFloat(formData.precioMayoreo) || 0,
+      precio_menudeo: parseFloat(formData.precioMenudeo) || 0,
       stock_inicial: 0,
       stock: 0,
       cantidad_venta: 0,
@@ -181,7 +187,7 @@ export default function CostosPage() {
     
     alert(`${costosData.length} costo(s) creado(s) exitosamente para las tallas: ${tallasCreadas}`);
     
-    setFormData({ prenda_id: '', tallas_seleccionadas: [], precioVenta: '' });
+    setFormData({ prenda_id: '', tallas_seleccionadas: [], precioCompra: '', precioMayoreo: '', precioMenudeo: '' });
     setBusquedaPrenda('');
     setTallasDisponibles([]);
     setMostrarFormulario(false);
@@ -190,8 +196,9 @@ export default function CostosPage() {
   const handleEditarCosto = (costo: Costo) => {
     setCostoEditando(costo);
     setFormDataEdicion({
-      precioVenta: costo.precio_venta.toString(),
       precioCompra: (costo.precio_compra || 0).toString(),
+      precioMayoreo: (costo.precio_mayoreo || 0).toString(),
+      precioMenudeo: (costo.precio_menudeo || 0).toString(),
     });
     setMostrarModalEdicion(true);
   };
@@ -203,8 +210,10 @@ export default function CostosPage() {
     setBotonEstado('normal');
     
     const { error } = await updateCosto(costoEditando.id, {
-      precio_venta: parseFloat(formDataEdicion.precioVenta) || 0,
+      precio_venta: parseFloat(formDataEdicion.precioMenudeo) || 0, // Legacy: usar precio menudeo
       precio_compra: parseFloat(formDataEdicion.precioCompra) || 0,
+      precio_mayoreo: parseFloat(formDataEdicion.precioMayoreo) || 0,
+      precio_menudeo: parseFloat(formDataEdicion.precioMenudeo) || 0,
     });
 
     if (error) {
@@ -553,36 +562,79 @@ export default function CostosPage() {
                   
                   {formData.tallas_seleccionadas.length > 0 && (
                     <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.5rem', display: 'block' }}>
-                      {formData.tallas_seleccionadas.length} talla{formData.tallas_seleccionadas.length !== 1 ? 's' : ''} seleccionada{formData.tallas_seleccionadas.length !== 1 ? 's' : ''}. El precio de venta que ingreses se aplicará a todas las tallas seleccionadas.
+                      {formData.tallas_seleccionadas.length} talla{formData.tallas_seleccionadas.length !== 1 ? 's' : ''} seleccionada{formData.tallas_seleccionadas.length !== 1 ? 's' : ''}. Los precios que ingreses se aplicarán a todas las tallas seleccionadas.
                     </small>
                   )}
                 </div>
 
                 {formData.tallas_seleccionadas.length > 0 && (
-                  <div className="form-group">
-                    <label className="form-label">
-                      Precio de Venta * 
-                      {formData.tallas_seleccionadas.length > 1 && (
-                        <span style={{ fontSize: '0.85rem', fontWeight: 'normal', color: '#666', marginLeft: '0.5rem', display: 'block', marginTop: '0.25rem' }}>
-                          (Se aplicará a las {formData.tallas_seleccionadas.length} tallas seleccionadas)
-                        </span>
-                      )}
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      className="form-input"
-                      value={formData.precioVenta}
-                      onChange={(e) => setFormData({ ...formData, precioVenta: e.target.value })}
-                      placeholder="$0.00"
-                      required
-                    />
-                    {formData.tallas_seleccionadas.length > 1 && (
-                      <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.5rem', display: 'block' }}>
-                        💡 Se crearán {formData.tallas_seleccionadas.length} costos con el precio de ${formData.precioVenta || '0.00'} para cada talla seleccionada.
+                  <>
+                    <div className="form-group">
+                      <label className="form-label">💰 Precio de Compra</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        className="form-input"
+                        value={formData.precioCompra}
+                        onChange={(e) => setFormData({ ...formData, precioCompra: e.target.value })}
+                        placeholder="$0.00"
+                        style={{ fontSize: '1.1rem', padding: '0.75rem' }}
+                      />
+                      <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
+                        Costo de adquisición de la prenda
                       </small>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">📦 Precio Mayoreo *</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        className="form-input"
+                        value={formData.precioMayoreo}
+                        onChange={(e) => setFormData({ ...formData, precioMayoreo: e.target.value })}
+                        placeholder="$0.00"
+                        required
+                        style={{ fontSize: '1.1rem', padding: '0.75rem' }}
+                      />
+                      <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
+                        Precio de venta al por mayor (pedidos grandes)
+                      </small>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">🛍️ Precio Menudeo *</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        className="form-input"
+                        value={formData.precioMenudeo}
+                        onChange={(e) => setFormData({ ...formData, precioMenudeo: e.target.value })}
+                        placeholder="$0.00"
+                        required
+                        style={{ fontSize: '1.1rem', padding: '0.75rem' }}
+                      />
+                      <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
+                        Precio de venta al detalle/menudeo
+                      </small>
+                    </div>
+
+                    {formData.tallas_seleccionadas.length > 1 && (
+                      <div style={{ 
+                        padding: '1rem', 
+                        backgroundColor: '#e7f3ff', 
+                        borderRadius: '8px',
+                        borderLeft: '4px solid #007bff'
+                      }}>
+                        <small style={{ color: '#0056b3', fontSize: '0.9rem', display: 'block' }}>
+                          💡 Se crearán {formData.tallas_seleccionadas.length} costos con estos precios para cada talla seleccionada.
+                        </small>
+                      </div>
                     )}
-                  </div>
+                  </>
                 )}
               </div>
 
@@ -608,14 +660,16 @@ export default function CostosPage() {
               <tr>
                 <th>Prenda</th>
                 <th>Talla</th>
-                <th>Precio Venta</th>
+                <th>💰 Compra</th>
+                <th>📦 Mayoreo</th>
+                <th>🛍️ Menudeo</th>
                 <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
               {costosFiltrados.length === 0 ? (
                 <tr>
-                  <td colSpan={4} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                  <td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
                     {busquedaTabla ? 'No se encontraron costos con ese criterio.' : 'No hay costos registrados. Crea tu primer costo.'}
                   </td>
                 </tr>
@@ -624,7 +678,15 @@ export default function CostosPage() {
                   <tr key={costo.id}>
                     <td data-label="Prenda" style={{ fontWeight: '600' }}>{costo.prenda?.nombre || '-'}</td>
                     <td data-label="Talla"><span className="badge badge-info">{costo.talla?.nombre || '-'}</span></td>
-                    <td data-label="Precio Venta" style={{ fontWeight: '600', color: '#10b981' }}>${costo.precio_venta.toFixed(2)}</td>
+                    <td data-label="💰 Compra" style={{ fontWeight: '600', color: '#f59e0b' }}>
+                      ${(costo.precio_compra || 0).toFixed(2)}
+                    </td>
+                    <td data-label="📦 Mayoreo" style={{ fontWeight: '600', color: '#3b82f6' }}>
+                      ${(costo.precio_mayoreo || 0).toFixed(2)}
+                    </td>
+                    <td data-label="🛍️ Menudeo" style={{ fontWeight: '600', color: '#10b981' }}>
+                      ${(costo.precio_menudeo || 0).toFixed(2)}
+                    </td>
                     <td>
                       <button 
                         className="btn btn-secondary" 
@@ -669,31 +731,56 @@ export default function CostosPage() {
               <form onSubmit={handleGuardarEdicion}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem' }}>
                   <div className="form-group">
-                    <label className="form-label">Precio de Compra</label>
+                    <label className="form-label">💰 Precio de Compra</label>
                     <input
                       type="number"
                       step="0.01"
+                      min="0"
                       className="form-input"
                       value={formDataEdicion.precioCompra}
                       onChange={(e) => setFormDataEdicion({ ...formDataEdicion, precioCompra: e.target.value })}
                       placeholder="$0.00"
+                      style={{ fontSize: '1.1rem', padding: '0.75rem' }}
                     />
                     <small style={{ color: '#888', fontSize: '0.875rem', marginTop: '0.25rem', display: 'block' }}>
-                      Costo de adquisición de la prenda (opcional)
+                      Costo de adquisición de la prenda
                     </small>
                   </div>
                   
                   <div className="form-group">
-                    <label className="form-label">Precio de Venta *</label>
+                    <label className="form-label">📦 Precio Mayoreo *</label>
                     <input
                       type="number"
                       step="0.01"
+                      min="0"
                       className="form-input"
-                      value={formDataEdicion.precioVenta}
-                      onChange={(e) => setFormDataEdicion({ ...formDataEdicion, precioVenta: e.target.value })}
+                      value={formDataEdicion.precioMayoreo}
+                      onChange={(e) => setFormDataEdicion({ ...formDataEdicion, precioMayoreo: e.target.value })}
                       placeholder="$0.00"
                       required
+                      style={{ fontSize: '1.1rem', padding: '0.75rem' }}
                     />
+                    <small style={{ color: '#888', fontSize: '0.875rem', marginTop: '0.25rem', display: 'block' }}>
+                      Precio de venta al por mayor (pedidos grandes)
+                    </small>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">🛍️ Precio Menudeo *</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      className="form-input"
+                      value={formDataEdicion.precioMenudeo}
+                      onChange={(e) => setFormDataEdicion({ ...formDataEdicion, precioMenudeo: e.target.value })}
+                      placeholder="$0.00"
+                      required
+                      style={{ fontSize: '1.1rem', padding: '0.75rem' }}
+                    />
+                    <small style={{ color: '#888', fontSize: '0.875rem', marginTop: '0.25rem', display: 'block' }}>
+                      Precio de venta al detalle/menudeo
+                    </small>
                   </div>
                 </div>
 
