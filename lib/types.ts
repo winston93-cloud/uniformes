@@ -146,3 +146,39 @@ export interface Insumo {
   presentacion?: Presentacion;
 }
 
+export interface Cotizacion {
+  id: string;
+  folio: string;
+  alumno_id: string | null;
+  externo_id: string | null;
+  tipo_cliente: 'alumno' | 'externo';
+  fecha_cotizacion: string;
+  fecha_vigencia: string | null;
+  subtotal: number;
+  total: number;
+  observaciones: string | null;
+  condiciones_pago: string | null;
+  tiempo_entrega: string | null;
+  pdf_url: string | null;
+  estado: 'vigente' | 'aceptada' | 'rechazada' | 'vencida';
+  usuario_id: string | null;
+  created_at?: string;
+  updated_at?: string;
+  alumno?: Alumno;
+  externo?: Externo;
+}
+
+export interface DetalleCotizacion {
+  id: string;
+  cotizacion_id: string;
+  prenda_nombre: string;
+  talla: string;
+  color: string | null;
+  especificaciones: string | null;
+  cantidad: number;
+  precio_unitario: number;
+  subtotal: number;
+  orden: number;
+  created_at?: string;
+}
+
