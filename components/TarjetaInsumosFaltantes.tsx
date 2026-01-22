@@ -133,8 +133,8 @@ export default function TarjetaInsumosFaltantes({ expandido, minimizado = false,
           gridColumn: '1 / -1',
           background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
           color: 'white',
-          border: '3px solid rgba(255, 255, 255, 0.3)',
-          boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)',
+          border: '4px solid rgba(255, 255, 255, 0.6)',
+          boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1) inset',
         }}
       >
         {/* Header de la tarjeta */}
