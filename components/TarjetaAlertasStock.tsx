@@ -143,7 +143,6 @@ export default function TarjetaAlertasStock({ expandido, minimizado = false, onT
           padding: '1.5rem',
           color: 'white',
           border: '3px solid rgba(255, 255, 255, 0.3)',
-          boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)',
           transition: 'all 0.3s ease',
           boxShadow: expandido 
             ? '0 20px 25px -5px rgba(0, 0, 0, 0.3)' 
