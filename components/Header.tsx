@@ -34,11 +34,42 @@ export default function Header({ onMenuClick }: HeaderProps) {
               </div>
             </button>
             
-            <Link href="/dashboard" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span style={{ fontSize: '2rem' }}>👔</span>
-              <span style={{ fontSize: '1.2rem', fontWeight: '700', color: 'var(--text-primary)' }}>
-                Sistema de Uniformes
-              </span>
+            <Link href="/dashboard" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                borderRadius: '12px',
+                padding: '0.5rem 0.75rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
+                border: '2px solid rgba(255, 255, 255, 0.2)',
+              }}>
+                <span style={{ fontSize: '1.8rem' }}>🎓</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
+                <span style={{ 
+                  fontSize: '1.4rem', 
+                  fontWeight: '800',
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                  letterSpacing: '-0.02em',
+                  lineHeight: '1.2',
+                }}>
+                  Sistema de Uniformes
+                </span>
+                <span style={{ 
+                  fontSize: '0.7rem', 
+                  fontWeight: '600',
+                  color: '#667eea',
+                  letterSpacing: '0.05em',
+                  opacity: 0.8,
+                }}>
+                  WINSTON CHURCHILL
+                </span>
+              </div>
             </Link>
           </div>
 
