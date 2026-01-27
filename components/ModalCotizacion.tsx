@@ -18,7 +18,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   // Estados principales
   const [vista, setVista] = useState<'nueva' | 'historial'>('nueva');
   const [tipoPrecio, setTipoPrecio] = useState<'mayoreo' | 'menudeo' | null>(null);
-  const [tipoCliente, setTipoCliente] = useState<'alumno' | 'externo'>('alumno');
+  const [tipoCliente, setTipoCliente] = useState<'alumno' | 'externo'>('externo');
   const [busquedaCliente, setBusquedaCliente] = useState('');
   const [clienteSeleccionado, setClienteSeleccionado] = useState<any>(null);
   const [resultadosBusqueda, setResultadosBusqueda] = useState<any[]>([]);
@@ -538,24 +538,6 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
               <div style={{ display: 'flex', gap: '1rem' }}>
                 <button
                   onClick={() => {
-                    setTipoCliente('alumno');
-                    setClienteSeleccionado(null);
-                    setBusquedaCliente('');
-                  }}
-                  style={{
-                    padding: '0.75rem 2rem',
-                    background: tipoCliente === 'alumno' ? '#667eea' : '#f0f0f0',
-                    color: tipoCliente === 'alumno' ? 'white' : '#666',
-                    border: 'none',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    fontWeight: 'bold',
-                  }}
-                >
-                  👨‍🎓 Alumno
-                </button>
-                <button
-                  onClick={() => {
                     setTipoCliente('externo');
                     setClienteSeleccionado(null);
                     setBusquedaCliente('');
@@ -571,6 +553,24 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                   }}
                 >
                   👤 Externo
+                </button>
+                <button
+                  onClick={() => {
+                    setTipoCliente('alumno');
+                    setClienteSeleccionado(null);
+                    setBusquedaCliente('');
+                  }}
+                  style={{
+                    padding: '0.75rem 2rem',
+                    background: tipoCliente === 'alumno' ? '#667eea' : '#f0f0f0',
+                    color: tipoCliente === 'alumno' ? 'white' : '#666',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontWeight: 'bold',
+                  }}
+                >
+                  👨‍🎓 Alumno
                 </button>
               </div>
             </div>
@@ -725,10 +725,15 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                       const costo = costosDisponibles.find(c => c.id === costo_id);
                       setCostoSeleccionado(costo || null);
                       if (costo) {
+                        // Validar que tipoPrecio esté seleccionado antes de asignar precio
+                        const precio = tipoPrecio 
+                          ? (tipoPrecio === 'mayoreo' ? costo.precio_mayoreo : costo.precio_menudeo)
+                          : 0;
+                        
                         setPartidaActual({ 
                           ...partidaActual, 
                           talla: costo.talla?.nombre || '',
-                          precio_unitario: tipoPrecio === 'mayoreo' ? costo.precio_mayoreo : costo.precio_menudeo,
+                          precio_unitario: precio,
                         });
                       }
                     }}
@@ -749,11 +754,13 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                           ? 'No hay tallas disponibles' 
                           : 'Selecciona una talla...'}
                     </option>
-                    {costosDisponibles.map(costo => (
-                      <option key={costo.id} value={costo.id}>
-                        {costo.talla?.nombre || 'Sin talla'} - ${tipoPrecio === 'mayoreo' ? costo.precio_mayoreo : costo.precio_menudeo}
-                      </option>
-                    ))}
+                    {costosDisponibles
+                      .filter(costo => costo.activo !== false) // Filtrar costos activos
+                      .map(costo => (
+                        <option key={costo.id} value={costo.id}>
+                          {costo.talla?.nombre || 'Sin talla'} - ${tipoPrecio === 'mayoreo' ? costo.precio_mayoreo : costo.precio_menudeo}
+                        </option>
+                      ))}
                   </select>
                 </div>
 
