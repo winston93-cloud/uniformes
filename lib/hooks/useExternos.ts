@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabase';
 import type { Externo } from '../types';
 
@@ -83,7 +83,7 @@ export function useExternos() {
     }
   };
 
-  const searchExternos = async (query: string) => {
+  const searchExternos = useCallback(async (query: string) => {
     try {
       const consulta = escaparWildcards(query.trim());
       if (!consulta) return [];
@@ -96,19 +96,13 @@ export function useExternos() {
         .order('nombre', { ascending: true })
         .limit(20);
 
-      if (error) {
-        console.error('❌ Error en searchExternos:', error);
-        throw error;
-      }
+      if (error) throw error;
       
-      const resultados = data || [];
-      console.log('✅ searchExternos resultados:', resultados.length, 'encontrados');
-      return resultados;
+      return data || [];
     } catch (err: any) {
-      console.error('❌ Error searching externos:', err.message || err);
-      return [];
+      throw err; // Propagar error para que el componente lo maneje
     }
-  };
+  }, []);
 
   return {
     externos,

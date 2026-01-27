@@ -22,6 +22,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   const [busquedaCliente, setBusquedaCliente] = useState('');
   const [clienteSeleccionado, setClienteSeleccionado] = useState<any>(null);
   const [resultadosBusqueda, setResultadosBusqueda] = useState<any[]>([]);
+  const [errorBusqueda, setErrorBusqueda] = useState<string | null>(null);
   
   // Partidas
   const [partidas, setPartidas] = useState<PartidaCotizacion[]>([]);
@@ -58,29 +59,29 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     const buscar = async () => {
       if (busquedaCliente.length < 2) {
         setResultadosBusqueda([]);
+        setErrorBusqueda(null);
         return;
       }
 
       try {
+        setErrorBusqueda(null);
         if (tipoCliente === 'alumno') {
           const resultados = await searchAlumnos(busquedaCliente);
-          console.log('🔍 Búsqueda alumno:', resultados.length, 'resultados');
           setResultadosBusqueda(resultados);
         } else {
           const resultados = await searchExternos(busquedaCliente);
-          console.log('🔍 Búsqueda externo:', resultados.length, 'resultados');
           setResultadosBusqueda(resultados);
         }
-      } catch (err) {
-        console.error('❌ Error al buscar:', err);
+      } catch (err: any) {
+        const mensaje = err?.message || 'Error al realizar la búsqueda';
+        setErrorBusqueda(mensaje);
         setResultadosBusqueda([]);
       }
     };
 
     const timeout = setTimeout(buscar, 300);
     return () => clearTimeout(timeout);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [busquedaCliente, tipoCliente]);
+  }, [busquedaCliente, tipoCliente, searchAlumnos, searchExternos]);
 
   // Cargar costos cuando se selecciona una prenda
   useEffect(() => {
@@ -581,7 +582,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
             {/* Búsqueda de cliente */}
             <div style={{ marginBottom: '1.5rem' }}>
               <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem' }}>
-                Buscar {tipoCliente === 'alumno' ? 'Alumno' : 'Cliente'}:
+                Buscar {tipoCliente === 'alumno' ? 'Alumno' : 'Externo'}:
               </label>
               <input
                 type="text"
@@ -596,6 +597,21 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                   borderRadius: '8px',
                 }}
               />
+              
+              {/* Error de búsqueda */}
+              {errorBusqueda && (
+                <div style={{
+                  marginTop: '0.5rem',
+                  padding: '0.75rem',
+                  backgroundColor: '#fee',
+                  border: '1px solid #fcc',
+                  borderRadius: '6px',
+                  color: '#c33',
+                  fontSize: '0.9rem',
+                }}>
+                  ⚠️ {errorBusqueda}
+                </div>
+              )}
               
               {/* Resultados búsqueda */}
               {resultadosBusqueda.length > 0 && !clienteSeleccionado && (

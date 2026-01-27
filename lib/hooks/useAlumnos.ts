@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabase';
 
 export interface AlumnoFromDB {
@@ -97,7 +97,7 @@ export function useAlumnos() {
     return valor.replace(/[%_\\]/g, '\\$&');
   };
 
-  const searchAlumnos = async (query: string) => {
+  const searchAlumnos = useCallback(async (query: string) => {
     try {
       const consulta = escaparWildcards(query.trim());
       if (!consulta) return [];
@@ -108,19 +108,13 @@ export function useAlumnos() {
         .or(`alumno_ref.ilike.%${consulta}%,alumno_nombre.ilike.%${consulta}%,alumno_app.ilike.%${consulta}%,alumno_apm.ilike.%${consulta}%`)
         .limit(100);
 
-      if (error) {
-        console.error('❌ Error en searchAlumnos:', error);
-        throw error;
-      }
+      if (error) throw error;
       
-      const resultados = (data || []).map(mapAlumnoFromDB);
-      console.log('✅ searchAlumnos resultados:', resultados.length, 'encontrados');
-      return resultados;
+      return (data || []).map(mapAlumnoFromDB);
     } catch (err: any) {
-      console.error('❌ Error searching alumnos:', err.message || err);
-      return [];
+      throw err; // Propagar error para que el componente lo maneje
     }
-  };
+  }, []);
 
   return {
     alumnos,
