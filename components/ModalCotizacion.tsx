@@ -14,6 +14,7 @@ interface ModalCotizacionProps {
 export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   // Estados principales
   const [vista, setVista] = useState<'nueva' | 'historial'>('nueva');
+  const [tipoPrecio, setTipoPrecio] = useState<'mayoreo' | 'menudeo' | null>(null);
   const [tipoCliente, setTipoCliente] = useState<'alumno' | 'externo'>('alumno');
   const [busquedaCliente, setBusquedaCliente] = useState('');
   const [clienteSeleccionado, setClienteSeleccionado] = useState<any>(null);
@@ -70,6 +71,11 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
 
   // Agregar partida
   const agregarPartida = () => {
+    if (!tipoPrecio) {
+      alert('⚠️ Debes seleccionar un tipo de precio (Mayoreo o Menudeo) antes de agregar partidas');
+      return;
+    }
+    
     if (!partidaActual.prenda_nombre || !partidaActual.talla || !partidaActual.cantidad || !partidaActual.precio_unitario) {
       alert('Por favor completa todos los campos obligatorios de la partida');
       return;
@@ -198,6 +204,11 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
 
   // Crear cotización
   const handleCrearCotizacion = async () => {
+    if (!tipoPrecio) {
+      alert('⚠️ Debes seleccionar un tipo de precio (Mayoreo o Menudeo) antes de crear la cotización');
+      return;
+    }
+
     if (!clienteSeleccionado) {
       alert('Por favor selecciona un cliente');
       return;
@@ -235,6 +246,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       alert(`✅ Cotización ${data.folio} generada exitosamente`);
 
       // Limpiar formulario
+      setTipoPrecio(null);
       setClienteSeleccionado(null);
       setBusquedaCliente('');
       setPartidas([]);
@@ -400,6 +412,64 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
         {/* Contenido */}
         {vista === 'nueva' ? (
           <div>
+            {/* Tipo de precio */}
+            <div style={{ marginBottom: '2rem', padding: '1.5rem', backgroundColor: tipoPrecio ? '#f0f9ff' : '#fff5f5', border: `2px solid ${tipoPrecio ? '#3b82f6' : '#ef4444'}`, borderRadius: '12px' }}>
+              <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem', fontSize: '1.1rem', color: tipoPrecio ? '#1e40af' : '#dc2626' }}>
+                💰 Tipo de Precio: {!tipoPrecio && <span style={{ color: '#dc2626', fontSize: '0.9rem' }}>(Requerido)</span>}
+              </label>
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <button
+                  onClick={() => setTipoPrecio('mayoreo')}
+                  style={{
+                    padding: '1rem 2rem',
+                    background: tipoPrecio === 'mayoreo' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#f0f0f0',
+                    color: tipoPrecio === 'mayoreo' ? 'white' : '#666',
+                    border: tipoPrecio === 'mayoreo' ? '3px solid #4c51bf' : '2px solid #ddd',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontWeight: 'bold',
+                    fontSize: '1rem',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseOver={(e) => {
+                    if (tipoPrecio !== 'mayoreo') e.currentTarget.style.backgroundColor = '#e0e0e0';
+                  }}
+                  onMouseOut={(e) => {
+                    if (tipoPrecio !== 'mayoreo') e.currentTarget.style.backgroundColor = '#f0f0f0';
+                  }}
+                >
+                  📦 Mayoreo
+                </button>
+                <button
+                  onClick={() => setTipoPrecio('menudeo')}
+                  style={{
+                    padding: '1rem 2rem',
+                    background: tipoPrecio === 'menudeo' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#f0f0f0',
+                    color: tipoPrecio === 'menudeo' ? 'white' : '#666',
+                    border: tipoPrecio === 'menudeo' ? '3px solid #4c51bf' : '2px solid #ddd',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontWeight: 'bold',
+                    fontSize: '1rem',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseOver={(e) => {
+                    if (tipoPrecio !== 'menudeo') e.currentTarget.style.backgroundColor = '#e0e0e0';
+                  }}
+                  onMouseOut={(e) => {
+                    if (tipoPrecio !== 'menudeo') e.currentTarget.style.backgroundColor = '#f0f0f0';
+                  }}
+                >
+                  🛍️ Menudeo
+                </button>
+              </div>
+              {tipoPrecio && (
+                <div style={{ marginTop: '0.75rem', padding: '0.75rem', backgroundColor: 'rgba(102, 126, 234, 0.1)', borderRadius: '6px', fontSize: '0.9rem', color: '#4c51bf' }}>
+                  ✓ Tipo seleccionado: <strong>{tipoPrecio === 'mayoreo' ? 'Mayoreo' : 'Menudeo'}</strong>
+                </div>
+              )}
+            </div>
+
             {/* Tipo de cliente */}
             <div style={{ marginBottom: '1.5rem' }}>
               <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem' }}>
