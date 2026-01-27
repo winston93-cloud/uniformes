@@ -64,20 +64,23 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       try {
         if (tipoCliente === 'alumno') {
           const resultados = await searchAlumnos(busquedaCliente);
+          console.log('🔍 Búsqueda alumno:', resultados.length, 'resultados');
           setResultadosBusqueda(resultados);
         } else {
           const resultados = await searchExternos(busquedaCliente);
+          console.log('🔍 Búsqueda externo:', resultados.length, 'resultados');
           setResultadosBusqueda(resultados);
         }
       } catch (err) {
-        console.error('Error al buscar:', err);
+        console.error('❌ Error al buscar:', err);
         setResultadosBusqueda([]);
       }
     };
 
     const timeout = setTimeout(buscar, 300);
     return () => clearTimeout(timeout);
-  }, [busquedaCliente, tipoCliente, searchAlumnos, searchExternos]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busquedaCliente, tipoCliente]);
 
   // Cargar costos cuando se selecciona una prenda
   useEffect(() => {
