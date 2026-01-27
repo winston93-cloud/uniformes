@@ -39,6 +39,10 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   const [prendaSeleccionada, setPrendaSeleccionada] = useState<string | null>(null);
   const [costosDisponibles, setCostosDisponibles] = useState<Costo[]>([]);
   const [costoSeleccionado, setCostoSeleccionado] = useState<Costo | null>(null);
+  
+  // Estados para autocomplete de prenda
+  const [busquedaPrenda, setBusquedaPrenda] = useState('');
+  const [dropdownPrendaVisible, setDropdownPrendaVisible] = useState(false);
 
   // Información adicional
   const [observaciones, setObservaciones] = useState('');
@@ -139,6 +143,12 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       alert('Por favor completa todos los campos obligatorios de la partida');
       return;
     }
+    
+    // Validar cantidad > 0
+    if (partidaActual.cantidad <= 0) {
+      alert('⚠️ La cantidad debe ser mayor a 0');
+      return;
+    }
 
     const nuevaPartida: PartidaCotizacion = {
       prenda_nombre: partidaActual.prenda_nombre!,
@@ -165,6 +175,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     setPrendaSeleccionada(null);
     setCostoSeleccionado(null);
     setCostosDisponibles([]);
+    setBusquedaPrenda(''); // Limpiar búsqueda de prenda
   };
 
   // Eliminar partida
@@ -704,47 +715,162 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
               <h3 style={{ marginTop: 0, color: '#667eea' }}>➕ Agregar Partida</h3>
               
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-                {/* PRIMERO: Cantidad */}
+                {/* PRIMERO: Cantidad (sin spinner, solo > 0) */}
                 <div>
                   <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem' }}>
                     Cantidad *
                   </label>
                   <input
                     type="number"
-                    value={partidaActual.cantidad || 1}
-                    onChange={(e) => setPartidaActual({ ...partidaActual, cantidad: parseInt(e.target.value) || 1 })}
+                    value={partidaActual.cantidad || ''}
+                    onChange={(e) => {
+                      const valor = parseInt(e.target.value);
+                      // Solo permitir números > 0
+                      if (isNaN(valor) || valor < 1) {
+                        setPartidaActual({ ...partidaActual, cantidad: undefined });
+                      } else {
+                        setPartidaActual({ ...partidaActual, cantidad: valor });
+                      }
+                    }}
                     min="1"
-                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
+                    placeholder="0"
+                    style={{ 
+                      width: '100%', 
+                      padding: '0.5rem', 
+                      borderRadius: '4px', 
+                      border: '1px solid #ddd',
+                      // Quitar spinners
+                      MozAppearance: 'textfield',
+                      WebkitAppearance: 'none',
+                      appearance: 'textfield',
+                    }}
+                    onKeyDown={(e) => {
+                      // Bloquear signos negativos y punto decimal
+                      if (e.key === '-' || e.key === '.' || e.key === 'e' || e.key === 'E') {
+                        e.preventDefault();
+                      }
+                    }}
                   />
+                  <style jsx>{`
+                    input[type="number"]::-webkit-outer-spin-button,
+                    input[type="number"]::-webkit-inner-spin-button {
+                      -webkit-appearance: none;
+                      margin: 0;
+                    }
+                    input[type="number"] {
+                      -moz-appearance: textfield;
+                    }
+                  `}</style>
                 </div>
 
-                <div>
+                {/* SEGUNDO: Prenda (con autocomplete) */}
+                <div style={{ position: 'relative' }}>
                   <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem' }}>
                     Prenda *
                   </label>
-                  <select
-                    value={prendaSeleccionada || ''}
+                  <input
+                    type="text"
+                    value={busquedaPrenda}
                     onChange={(e) => {
-                      const prenda_id = e.target.value;
-                      setPrendaSeleccionada(prenda_id || null);
-                      const prenda = prendas.find(p => p.id === prenda_id);
-                      setPartidaActual({ 
-                        ...partidaActual, 
-                        prenda_nombre: prenda?.nombre || '',
-                        talla: '',
-                        precio_unitario: 0,
-                      });
-                      setCostoSeleccionado(null);
+                      setBusquedaPrenda(e.target.value);
+                      setDropdownPrendaVisible(true);
                     }}
-                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd', backgroundColor: 'white' }}
-                  >
-                    <option value="">Selecciona una prenda...</option>
-                    {prendas.filter(p => p.activo).map(prenda => (
-                      <option key={prenda.id} value={prenda.id}>
-                        {prenda.nombre}
-                      </option>
-                    ))}
-                  </select>
+                    onFocus={() => setDropdownPrendaVisible(true)}
+                    onBlur={() => {
+                      // Delay para permitir click en dropdown
+                      setTimeout(() => setDropdownPrendaVisible(false), 200);
+                    }}
+                    placeholder="Buscar prenda..."
+                    style={{ 
+                      width: '100%', 
+                      padding: '0.5rem', 
+                      borderRadius: '4px', 
+                      border: '1px solid #ddd', 
+                      backgroundColor: 'white' 
+                    }}
+                  />
+                  
+                  {/* Dropdown de prendas */}
+                  {dropdownPrendaVisible && (() => {
+                    const prendasActivas = prendas
+                      .filter(p => p.activo)
+                      .sort((a, b) => a.nombre.localeCompare(b.nombre)); // Orden ascendente
+                    
+                    const prendasFiltradas = busquedaPrenda.trim()
+                      ? prendasActivas.filter(p => 
+                          p.nombre.toLowerCase().includes(busquedaPrenda.toLowerCase())
+                        )
+                      : prendasActivas;
+                    
+                    const prendasMostrar = prendasFiltradas.slice(0, 10); // Máximo 10
+                    
+                    return prendasMostrar.length > 0 ? (
+                      <div style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: 0,
+                        right: 0,
+                        maxHeight: '250px',
+                        overflowY: 'auto',
+                        background: 'white',
+                        border: '1px solid #ddd',
+                        borderRadius: '4px',
+                        marginTop: '0.25rem',
+                        boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                        zIndex: 1000,
+                      }}>
+                        {prendasMostrar.map(prenda => (
+                          <div
+                            key={prenda.id}
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              setPrendaSeleccionada(prenda.id);
+                              setBusquedaPrenda(prenda.nombre);
+                              setPartidaActual({ 
+                                ...partidaActual, 
+                                prenda_nombre: prenda.nombre,
+                                talla: '',
+                                precio_unitario: 0,
+                              });
+                              setCostoSeleccionado(null);
+                              setDropdownPrendaVisible(false);
+                            }}
+                            style={{
+                              padding: '0.75rem',
+                              cursor: 'pointer',
+                              borderBottom: '1px solid #f0f0f0',
+                              transition: 'background 0.15s',
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = '#f8f9fa';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = 'white';
+                            }}
+                          >
+                            {prenda.nombre}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: 0,
+                        right: 0,
+                        background: 'white',
+                        border: '1px solid #ddd',
+                        borderRadius: '4px',
+                        marginTop: '0.25rem',
+                        padding: '0.75rem',
+                        color: '#999',
+                        fontSize: '0.9rem',
+                        zIndex: 1000,
+                      }}>
+                        No se encontraron prendas
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 <div>
