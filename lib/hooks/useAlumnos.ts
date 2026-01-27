@@ -93,12 +93,19 @@ export function useAlumnos() {
     fetchAlumnos();
   }, []);
 
+  const escaparWildcards = (valor: string) => {
+    return valor.replace(/[%_\\]/g, '\\$&');
+  };
+
   const searchAlumnos = async (query: string) => {
     try {
+      const consulta = escaparWildcards(query.trim());
+      if (!consulta) return [];
+
       const { data, error } = await supabase
         .from('alumno')
         .select('*')
-        .or(`alumno_ref.ilike.%${query}%,alumno_nombre_completo.ilike.%${query}%,alumno_app.ilike.%${query}%,alumno_apm.ilike.%${query}%,alumno_nombre.ilike.%${query}%`)
+        .or(`alumno_ref.ilike.%${consulta}%,alumno_nombre_completo.ilike.%${consulta}%,alumno_app.ilike.%${consulta}%,alumno_apm.ilike.%${consulta}%,alumno_nombre.ilike.%${consulta}%`)
         .limit(100);
 
       if (error) throw error;

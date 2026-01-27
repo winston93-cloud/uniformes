@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useCotizaciones, type PartidaCotizacion } from '@/lib/hooks/useCotizaciones';
-import { supabase } from '@/lib/supabase';
+import { useAlumnos } from '@/lib/hooks/useAlumnos';
+import { useExternos } from '@/lib/hooks/useExternos';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -38,6 +39,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   const [generando, setGenerando] = useState(false);
   
   const { crearCotizacion, cotizaciones, obtenerCotizacion, cargando } = useCotizaciones();
+  const { searchAlumnos } = useAlumnos();
+  const { searchExternos } = useExternos();
 
   // Buscar clientes
   useEffect(() => {
@@ -48,25 +51,22 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       }
 
       try {
-        const tabla = tipoCliente === 'alumno' ? 'alumnos' : 'externos';
-        const { data, error } = await supabase
-          .from(tabla)
-          .select('*')
-          .or(`nombre.ilike.%${busquedaCliente}%,referencia.ilike.%${busquedaCliente}%`)
-          .eq('activo', true)
-          .order('nombre', { ascending: true })
-          .limit(10);
-
-        if (error) throw error;
-        setResultadosBusqueda(data || []);
+        if (tipoCliente === 'alumno') {
+          const resultados = await searchAlumnos(busquedaCliente);
+          setResultadosBusqueda(resultados);
+        } else {
+          const resultados = await searchExternos(busquedaCliente);
+          setResultadosBusqueda(resultados);
+        }
       } catch (err) {
         console.error('Error al buscar:', err);
+        setResultadosBusqueda([]);
       }
     };
 
     const timeout = setTimeout(buscar, 300);
     return () => clearTimeout(timeout);
-  }, [busquedaCliente, tipoCliente]);
+  }, [busquedaCliente, tipoCliente, searchAlumnos, searchExternos]);
 
   // Agregar partida
   const agregarPartida = () => {

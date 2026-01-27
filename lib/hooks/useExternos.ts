@@ -9,6 +9,10 @@ export function useExternos() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const escaparWildcards = (valor: string) => {
+    return valor.replace(/[%_\\]/g, '\\$&');
+  };
+
   const fetchExternos = async () => {
     try {
       setLoading(true);
@@ -79,6 +83,27 @@ export function useExternos() {
     }
   };
 
+  const searchExternos = async (query: string) => {
+    try {
+      const consulta = escaparWildcards(query.trim());
+      if (!consulta) return [];
+
+      const { data, error } = await supabase
+        .from('externos')
+        .select('*')
+        .or(`nombre.ilike.%${consulta}%,email.ilike.%${consulta}%,telefono.ilike.%${consulta}%`)
+        .eq('activo', true)
+        .order('nombre', { ascending: true })
+        .limit(20);
+
+      if (error) throw error;
+      return data || [];
+    } catch (err: any) {
+      console.error('Error searching externos:', err);
+      return [];
+    }
+  };
+
   return {
     externos,
     loading,
@@ -87,6 +112,7 @@ export function useExternos() {
     updateExterno,
     deleteExterno,
     refetch: fetchExternos,
+    searchExternos,
   };
 }
 
