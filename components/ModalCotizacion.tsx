@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react';
 import { useCotizaciones, type PartidaCotizacion } from '@/lib/hooks/useCotizaciones';
 import { useAlumnos } from '@/lib/hooks/useAlumnos';
 import { useExternos } from '@/lib/hooks/useExternos';
+import { usePrendas } from '@/lib/hooks/usePrendas';
+import { useCostos } from '@/lib/hooks/useCostos';
+import type { Costo } from '@/lib/types';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -30,6 +33,11 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     cantidad: 1,
     precio_unitario: 0,
   });
+  
+  // Estados para integración con costos
+  const [prendaSeleccionada, setPrendaSeleccionada] = useState<string | null>(null);
+  const [costosDisponibles, setCostosDisponibles] = useState<Costo[]>([]);
+  const [costoSeleccionado, setCostoSeleccionado] = useState<Costo | null>(null);
 
   // Información adicional
   const [observaciones, setObservaciones] = useState('');
@@ -42,6 +50,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   const { crearCotizacion, cotizaciones, obtenerCotizacion, cargando } = useCotizaciones();
   const { searchAlumnos } = useAlumnos();
   const { searchExternos } = useExternos();
+  const { prendas } = usePrendas();
+  const { getCostosByPrenda } = useCostos();
 
   // Buscar clientes
   useEffect(() => {
@@ -69,14 +79,59 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     return () => clearTimeout(timeout);
   }, [busquedaCliente, tipoCliente, searchAlumnos, searchExternos]);
 
+  // Cargar costos cuando se selecciona una prenda
+  useEffect(() => {
+    if (prendaSeleccionada) {
+      getCostosByPrenda(prendaSeleccionada).then(({ data, error }) => {
+        if (error) {
+          console.error('Error al cargar costos:', error);
+          setCostosDisponibles([]);
+        } else {
+          setCostosDisponibles(data);
+        }
+      });
+    } else {
+      setCostosDisponibles([]);
+      setCostoSeleccionado(null);
+    }
+  }, [prendaSeleccionada, getCostosByPrenda]);
+
+  // Actualizar precio cuando cambia tipoPrecio o costoSeleccionado
+  useEffect(() => {
+    if (costoSeleccionado && tipoPrecio) {
+      const precio = tipoPrecio === 'mayoreo' 
+        ? costoSeleccionado.precio_mayoreo 
+        : costoSeleccionado.precio_menudeo;
+      
+      setPartidaActual(prev => ({
+        ...prev,
+        precio_unitario: precio,
+      }));
+    }
+  }, [tipoPrecio, costoSeleccionado]);
+
   // Agregar partida
   const agregarPartida = () => {
     if (!tipoPrecio) {
       alert('⚠️ Debes seleccionar un tipo de precio (Mayoreo o Menudeo) antes de agregar partidas');
       return;
     }
+
+    if (!costoSeleccionado) {
+      alert('⚠️ Debes seleccionar una prenda y talla para obtener el precio');
+      return;
+    }
+
+    const precio = tipoPrecio === 'mayoreo' 
+      ? costoSeleccionado.precio_mayoreo 
+      : costoSeleccionado.precio_menudeo;
+
+    if (!precio || precio === 0) {
+      alert(`⚠️ No hay precio de ${tipoPrecio} disponible para esta prenda y talla`);
+      return;
+    }
     
-    if (!partidaActual.prenda_nombre || !partidaActual.talla || !partidaActual.cantidad || !partidaActual.precio_unitario) {
+    if (!partidaActual.prenda_nombre || !partidaActual.talla || !partidaActual.cantidad) {
       alert('Por favor completa todos los campos obligatorios de la partida');
       return;
     }
@@ -93,6 +148,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     };
 
     setPartidas([...partidas, nuevaPartida]);
+    
+    // Limpiar formulario
     setPartidaActual({
       prenda_nombre: '',
       talla: '',
@@ -101,6 +158,9 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       cantidad: 1,
       precio_unitario: 0,
     });
+    setPrendaSeleccionada(null);
+    setCostoSeleccionado(null);
+    setCostosDisponibles([]);
   };
 
   // Eliminar partida
@@ -629,26 +689,72 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                   <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem' }}>
                     Prenda *
                   </label>
-                  <input
-                    type="text"
-                    value={partidaActual.prenda_nombre || ''}
-                    onChange={(e) => setPartidaActual({ ...partidaActual, prenda_nombre: e.target.value })}
-                    placeholder="Ej: Polo manga corta"
-                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
-                  />
+                  <select
+                    value={prendaSeleccionada || ''}
+                    onChange={(e) => {
+                      const prenda_id = e.target.value;
+                      setPrendaSeleccionada(prenda_id || null);
+                      const prenda = prendas.find(p => p.id === prenda_id);
+                      setPartidaActual({ 
+                        ...partidaActual, 
+                        prenda_nombre: prenda?.nombre || '',
+                        talla: '',
+                        precio_unitario: 0,
+                      });
+                      setCostoSeleccionado(null);
+                    }}
+                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd', backgroundColor: 'white' }}
+                  >
+                    <option value="">Selecciona una prenda...</option>
+                    {prendas.filter(p => p.activo).map(prenda => (
+                      <option key={prenda.id} value={prenda.id}>
+                        {prenda.nombre}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
                   <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem' }}>
                     Talla *
                   </label>
-                  <input
-                    type="text"
-                    value={partidaActual.talla || ''}
-                    onChange={(e) => setPartidaActual({ ...partidaActual, talla: e.target.value })}
-                    placeholder="Ej: M, 10, 12"
-                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
-                  />
+                  <select
+                    value={costoSeleccionado?.id || ''}
+                    onChange={(e) => {
+                      const costo_id = e.target.value;
+                      const costo = costosDisponibles.find(c => c.id === costo_id);
+                      setCostoSeleccionado(costo || null);
+                      if (costo) {
+                        setPartidaActual({ 
+                          ...partidaActual, 
+                          talla: costo.talla?.nombre || '',
+                          precio_unitario: tipoPrecio === 'mayoreo' ? costo.precio_mayoreo : costo.precio_menudeo,
+                        });
+                      }
+                    }}
+                    disabled={!prendaSeleccionada || costosDisponibles.length === 0}
+                    style={{ 
+                      width: '100%', 
+                      padding: '0.5rem', 
+                      borderRadius: '4px', 
+                      border: '1px solid #ddd', 
+                      backgroundColor: (!prendaSeleccionada || costosDisponibles.length === 0) ? '#f5f5f5' : 'white',
+                      cursor: (!prendaSeleccionada || costosDisponibles.length === 0) ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    <option value="">
+                      {!prendaSeleccionada 
+                        ? 'Primero selecciona una prenda' 
+                        : costosDisponibles.length === 0 
+                          ? 'No hay tallas disponibles' 
+                          : 'Selecciona una talla...'}
+                    </option>
+                    {costosDisponibles.map(costo => (
+                      <option key={costo.id} value={costo.id}>
+                        {costo.talla?.nombre || 'Sin talla'} - ${tipoPrecio === 'mayoreo' ? costo.precio_mayoreo : costo.precio_menudeo}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
@@ -679,16 +785,34 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
 
                 <div>
                   <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem' }}>
-                    Precio Unitario *
+                    Precio {tipoPrecio ? `(${tipoPrecio === 'mayoreo' ? 'Mayoreo' : 'Menudeo'})` : 'Unitario'} *
                   </label>
                   <input
                     type="number"
                     value={partidaActual.precio_unitario || 0}
-                    onChange={(e) => setPartidaActual({ ...partidaActual, precio_unitario: parseFloat(e.target.value) || 0 })}
-                    min="0"
-                    step="0.01"
-                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
+                    readOnly
+                    disabled
+                    style={{ 
+                      width: '100%', 
+                      padding: '0.5rem', 
+                      borderRadius: '4px', 
+                      border: '1px solid #ddd',
+                      backgroundColor: '#f5f5f5',
+                      color: '#333',
+                      fontWeight: 'bold',
+                      cursor: 'not-allowed',
+                    }}
                   />
+                  {!tipoPrecio && (
+                    <div style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '0.25rem' }}>
+                      ⚠️ Selecciona tipo de precio primero
+                    </div>
+                  )}
+                  {tipoPrecio && !costoSeleccionado && (
+                    <div style={{ fontSize: '0.75rem', color: '#f59e0b', marginTop: '0.25rem' }}>
+                      ℹ️ Selecciona prenda y talla para ver el precio
+                    </div>
+                  )}
                 </div>
               </div>
 
