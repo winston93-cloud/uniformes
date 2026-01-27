@@ -704,6 +704,20 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
               <h3 style={{ marginTop: 0, color: '#667eea' }}>➕ Agregar Partida</h3>
               
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                {/* PRIMERO: Cantidad */}
+                <div>
+                  <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem' }}>
+                    Cantidad *
+                  </label>
+                  <input
+                    type="number"
+                    value={partidaActual.cantidad || 1}
+                    onChange={(e) => setPartidaActual({ ...partidaActual, cantidad: parseInt(e.target.value) || 1 })}
+                    min="1"
+                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
+                  />
+                </div>
+
                 <div>
                   <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem' }}>
                     Prenda *
@@ -792,19 +806,6 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                     value={partidaActual.color || ''}
                     onChange={(e) => setPartidaActual({ ...partidaActual, color: e.target.value })}
                     placeholder="Ej: Azul marino"
-                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem' }}>
-                    Cantidad *
-                  </label>
-                  <input
-                    type="number"
-                    value={partidaActual.cantidad || 1}
-                    onChange={(e) => setPartidaActual({ ...partidaActual, cantidad: parseInt(e.target.value) || 1 })}
-                    min="1"
                     style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
                   />
                 </div>
