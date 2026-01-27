@@ -105,13 +105,19 @@ export function useAlumnos() {
       const { data, error } = await supabase
         .from('alumno')
         .select('*')
-        .or(`alumno_ref.ilike.%${consulta}%,alumno_nombre_completo.ilike.%${consulta}%,alumno_app.ilike.%${consulta}%,alumno_apm.ilike.%${consulta}%,alumno_nombre.ilike.%${consulta}%`)
+        .or(`alumno_ref.ilike.%${consulta}%,alumno_nombre.ilike.%${consulta}%,alumno_app.ilike.%${consulta}%,alumno_apm.ilike.%${consulta}%`)
         .limit(100);
 
-      if (error) throw error;
-      return (data || []).map(mapAlumnoFromDB);
+      if (error) {
+        console.error('❌ Error en searchAlumnos:', error);
+        throw error;
+      }
+      
+      const resultados = (data || []).map(mapAlumnoFromDB);
+      console.log('✅ searchAlumnos resultados:', resultados.length, 'encontrados');
+      return resultados;
     } catch (err: any) {
-      console.error('Error searching alumnos:', err);
+      console.error('❌ Error searching alumnos:', err.message || err);
       return [];
     }
   };

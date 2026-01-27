@@ -96,10 +96,16 @@ export function useExternos() {
         .order('nombre', { ascending: true })
         .limit(20);
 
-      if (error) throw error;
-      return data || [];
+      if (error) {
+        console.error('❌ Error en searchExternos:', error);
+        throw error;
+      }
+      
+      const resultados = data || [];
+      console.log('✅ searchExternos resultados:', resultados.length, 'encontrados');
+      return resultados;
     } catch (err: any) {
-      console.error('Error searching externos:', err);
+      console.error('❌ Error searching externos:', err.message || err);
       return [];
     }
   };
