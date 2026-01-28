@@ -164,10 +164,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     }
   }, [dropdownPrendaVisible]);
 
-  // Buscar clientes con AbortController (evita race conditions)
+  // Buscar clientes
   useEffect(() => {
-    const abortController = new AbortController();
-    
     const buscar = async () => {
       if (busquedaCliente.length < 2) {
         setResultadosBusqueda([]);
@@ -176,27 +174,20 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
 
       try {
         if (tipoCliente === 'alumno') {
-          const resultados = await searchAlumnos(busquedaCliente, abortController.signal);
+          const resultados = await searchAlumnos(busquedaCliente);
           setResultadosBusqueda(resultados);
         } else {
-          const resultados = await searchExternos(busquedaCliente, abortController.signal);
+          const resultados = await searchExternos(busquedaCliente);
           setResultadosBusqueda(resultados);
         }
       } catch (err) {
-        // No mostrar error si la petición fue cancelada
-        if (!abortController.signal.aborted) {
-          console.error('Error al buscar:', err);
-          setResultadosBusqueda([]);
-        }
+        console.error('Error al buscar:', err);
+        setResultadosBusqueda([]);
       }
     };
 
     const timeout = setTimeout(buscar, 300);
-    
-    return () => {
-      clearTimeout(timeout);
-      abortController.abort(); // Cancelar petición en vuelo
-    };
+    return () => clearTimeout(timeout);
   }, [busquedaCliente, tipoCliente, searchAlumnos, searchExternos]);
 
   // Cargar costos cuando se selecciona una prenda

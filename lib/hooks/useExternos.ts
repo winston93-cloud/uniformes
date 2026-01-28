@@ -83,24 +83,18 @@ export function useExternos() {
     }
   };
 
-  const searchExternos = async (query: string, signal?: AbortSignal) => {
+  const searchExternos = async (query: string) => {
     try {
       const consulta = escaparWildcards(query.trim());
       if (!consulta) return [];
 
-      let builder = supabase
+      const { data, error } = await supabase
         .from('externos')
         .select('*')
         .or(`nombre.ilike.%${consulta}%,email.ilike.%${consulta}%,telefono.ilike.%${consulta}%`)
         .eq('activo', true)
         .order('nombre', { ascending: true })
         .limit(20);
-      
-      if (signal) {
-        builder = builder.abortSignal(signal);
-      }
-      
-      const { data, error } = await builder;
 
       if (error) {
         console.error('❌ Error en searchExternos:', error);
@@ -111,11 +105,6 @@ export function useExternos() {
       console.log('✅ searchExternos resultados:', resultados.length, 'encontrados');
       return resultados;
     } catch (err: any) {
-      // Si es error de cancelación, no propagarlo
-      if (err.name === 'AbortError') {
-        console.log('🔄 Búsqueda cancelada (AbortController)');
-        return [];
-      }
       console.error('❌ Error searching externos:', err.message || err);
       return [];
     }
