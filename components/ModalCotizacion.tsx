@@ -166,28 +166,44 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
 
   // Buscar clientes
   useEffect(() => {
+    console.log('🔍 [BÚSQUEDA] useEffect disparado:', { 
+      busquedaCliente, 
+      tipoCliente,
+      largo: busquedaCliente.length 
+    });
+    
     const buscar = async () => {
       if (busquedaCliente.length < 2) {
+        console.log('⏸️ [BÚSQUEDA] Texto muy corto (<2), no buscar');
         setResultadosBusqueda([]);
         return;
       }
 
+      console.log('🚀 [BÚSQUEDA] Iniciando búsqueda...', { busquedaCliente, tipoCliente });
+
       try {
         if (tipoCliente === 'alumno') {
+          console.log('👨‍🎓 [BÚSQUEDA] Buscando en ALUMNOS...');
           const resultados = await searchAlumnos(busquedaCliente);
+          console.log('✅ [BÚSQUEDA] Alumnos encontrados:', resultados.length, resultados);
           setResultadosBusqueda(resultados);
         } else {
+          console.log('🏢 [BÚSQUEDA] Buscando en EXTERNOS...');
           const resultados = await searchExternos(busquedaCliente);
+          console.log('✅ [BÚSQUEDA] Externos encontrados:', resultados.length, resultados);
           setResultadosBusqueda(resultados);
         }
       } catch (err) {
-        console.error('Error al buscar:', err);
+        console.error('❌ [BÚSQUEDA] ERROR capturado:', err);
         setResultadosBusqueda([]);
       }
     };
 
     const timeout = setTimeout(buscar, 300);
-    return () => clearTimeout(timeout);
+    return () => {
+      console.log('🧹 [BÚSQUEDA] Cleanup - cancelando timeout');
+      clearTimeout(timeout);
+    };
   }, [busquedaCliente, tipoCliente, searchAlumnos, searchExternos]);
 
   // Cargar costos cuando se selecciona una prenda
