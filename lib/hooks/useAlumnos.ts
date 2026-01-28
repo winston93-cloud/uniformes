@@ -98,34 +98,20 @@ export function useAlumnos() {
   };
 
   const searchAlumnos = useCallback(async (query: string) => {
-    console.log('🔎 [useAlumnos] searchAlumnos llamado con:', query);
     try {
       const consulta = escaparWildcards(query.trim());
-      console.log('🔎 [useAlumnos] Consulta escapada:', consulta);
-      
-      if (!consulta) {
-        console.log('⏸️ [useAlumnos] Consulta vacía, retornando []');
-        return [];
-      }
+      if (!consulta) return [];
 
-      console.log('🔎 [useAlumnos] Ejecutando query en Supabase...');
       const { data, error } = await supabase
         .from('alumno')
         .select('*')
         .or(`alumno_ref.ilike.%${consulta}%,alumno_nombre.ilike.%${consulta}%,alumno_app.ilike.%${consulta}%,alumno_apm.ilike.%${consulta}%`)
         .limit(100);
 
-      if (error) {
-        console.error('❌ [useAlumnos] Error de Supabase:', error);
-        throw error;
-      }
+      if (error) throw error;
       
-      console.log('✅ [useAlumnos] Data recibida:', data?.length || 0, 'filas');
-      const resultados = (data || []).map(mapAlumnoFromDB);
-      console.log('✅ [useAlumnos] Resultados mapeados:', resultados.length, resultados);
-      return resultados;
+      return (data || []).map(mapAlumnoFromDB);
     } catch (err: any) {
-      console.error('💥 [useAlumnos] Excepción capturada:', err);
       throw err; // Propagar error para que el componente lo maneje
     }
   }, []);

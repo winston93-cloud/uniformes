@@ -84,17 +84,10 @@ export function useExternos() {
   };
 
   const searchExternos = async (query: string) => {
-    console.log('🔎 [useExternos] searchExternos llamado con:', query);
     try {
       const consulta = escaparWildcards(query.trim());
-      console.log('🔎 [useExternos] Consulta escapada:', consulta);
-      
-      if (!consulta) {
-        console.log('⏸️ [useExternos] Consulta vacía, retornando []');
-        return [];
-      }
+      if (!consulta) return [];
 
-      console.log('🔎 [useExternos] Ejecutando query en Supabase...');
       const { data, error } = await supabase
         .from('externos')
         .select('*')
@@ -104,16 +97,13 @@ export function useExternos() {
         .limit(20);
 
       if (error) {
-        console.error('❌ [useExternos] Error de Supabase:', error);
+        console.error('Error en searchExternos:', error);
         throw error;
       }
       
-      const resultados = data || [];
-      console.log('✅ [useExternos] Data recibida:', resultados.length, 'filas');
-      console.log('✅ [useExternos] Resultados:', resultados);
-      return resultados;
+      return data || [];
     } catch (err: any) {
-      console.error('💥 [useExternos] Excepción capturada:', err.message || err);
+      console.error('Error searching externos:', err.message || err);
       return [];
     }
   };
