@@ -39,6 +39,11 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   const [prendaSeleccionada, setPrendaSeleccionada] = useState<string | null>(null);
   const [costosDisponibles, setCostosDisponibles] = useState<Costo[]>([]);
   const [costoSeleccionado, setCostoSeleccionado] = useState<Costo | null>(null);
+  
+  // Estados para autocomplete de prenda
+  const [busquedaPrenda, setBusquedaPrenda] = useState('');
+  const [dropdownPrendaVisible, setDropdownPrendaVisible] = useState(false);
+  const [indiceSeleccionadoPrenda, setIndiceSeleccionadoPrenda] = useState(-1);
 
   // Información adicional
   const [observaciones, setObservaciones] = useState('');
@@ -161,6 +166,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     });
     setPrendaSeleccionada(null);
     setCostoSeleccionado(null);
+    setBusquedaPrenda(''); // Limpiar búsqueda de prenda
     setCostosDisponibles([]);
   };
 
@@ -734,33 +740,161 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
               <h3 style={{ marginTop: 0, color: '#667eea' }}>➕ Agregar Partida</h3>
               
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-                <div>
+                {/* Prenda con autocomplete */}
+                <div style={{ position: 'relative' }}>
                   <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem' }}>
                     Prenda *
                   </label>
-                  <select
-                    value={prendaSeleccionada || ''}
+                  <input
+                    type="text"
+                    value={busquedaPrenda}
                     onChange={(e) => {
-                      const prenda_id = e.target.value;
-                      setPrendaSeleccionada(prenda_id || null);
-                      const prenda = prendas.find(p => p.id === prenda_id);
-                      setPartidaActual({ 
-                        ...partidaActual, 
-                        prenda_nombre: prenda?.nombre || '',
-                        talla: '',
-                        precio_unitario: 0,
-                      });
-                      setCostoSeleccionado(null);
+                      setBusquedaPrenda(e.target.value);
+                      setDropdownPrendaVisible(true);
+                      setIndiceSeleccionadoPrenda(-1);
                     }}
-                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd', backgroundColor: 'white' }}
-                  >
-                    <option value="">Selecciona una prenda...</option>
-                    {prendas.filter(p => p.activo).map(prenda => (
-                      <option key={prenda.id} value={prenda.id}>
-                        {prenda.nombre}
-                      </option>
-                    ))}
-                  </select>
+                    onFocus={() => {
+                      setDropdownPrendaVisible(true);
+                      setIndiceSeleccionadoPrenda(-1);
+                    }}
+                    onBlur={() => {
+                      setTimeout(() => {
+                        setDropdownPrendaVisible(false);
+                        setIndiceSeleccionadoPrenda(-1);
+                      }, 200);
+                    }}
+                    onKeyDown={(e) => {
+                      const prendasActivas = prendas
+                        .filter(p => p.activo)
+                        .sort((a, b) => a.nombre.localeCompare(b.nombre));
+                      
+                      const prendasFiltradas = busquedaPrenda.trim()
+                        ? prendasActivas.filter(p => 
+                            p.nombre.toLowerCase().includes(busquedaPrenda.toLowerCase())
+                          )
+                        : prendasActivas;
+                      
+                      const prendasMostrar = prendasFiltradas.slice(0, 10);
+
+                      if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        setIndiceSeleccionadoPrenda(prev => 
+                          prev < prendasMostrar.length - 1 ? prev + 1 : prev
+                        );
+                      } else if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        setIndiceSeleccionadoPrenda(prev => prev > 0 ? prev - 1 : -1);
+                      } else if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (indiceSeleccionadoPrenda >= 0 && prendasMostrar[indiceSeleccionadoPrenda]) {
+                          const prenda = prendasMostrar[indiceSeleccionadoPrenda];
+                          setPrendaSeleccionada(prenda.id);
+                          setBusquedaPrenda(prenda.nombre);
+                          setPartidaActual({ 
+                            ...partidaActual, 
+                            prenda_nombre: prenda.nombre,
+                            talla: '',
+                            precio_unitario: 0,
+                          });
+                          setCostoSeleccionado(null);
+                          setDropdownPrendaVisible(false);
+                          setIndiceSeleccionadoPrenda(-1);
+                        }
+                      } else if (e.key === 'Escape') {
+                        e.preventDefault();
+                        setDropdownPrendaVisible(false);
+                        setIndiceSeleccionadoPrenda(-1);
+                      }
+                    }}
+                    placeholder="Buscar prenda..."
+                    style={{ 
+                      width: '100%', 
+                      padding: '0.5rem', 
+                      borderRadius: '4px', 
+                      border: '1px solid #ddd', 
+                      backgroundColor: 'white' 
+                    }}
+                  />
+                  
+                  {/* Dropdown de prendas */}
+                  {dropdownPrendaVisible && (() => {
+                    const prendasActivas = prendas
+                      .filter(p => p.activo)
+                      .sort((a, b) => a.nombre.localeCompare(b.nombre));
+                    
+                    const prendasFiltradas = busquedaPrenda.trim()
+                      ? prendasActivas.filter(p => 
+                          p.nombre.toLowerCase().includes(busquedaPrenda.toLowerCase())
+                        )
+                      : prendasActivas;
+                    
+                    const prendasMostrar = prendasFiltradas.slice(0, 10);
+                    
+                    return prendasMostrar.length > 0 ? (
+                      <div style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: 0,
+                        right: 0,
+                        maxHeight: '250px',
+                        overflowY: 'auto',
+                        background: 'white',
+                        border: '1px solid #ddd',
+                        borderRadius: '4px',
+                        marginTop: '0.25rem',
+                        boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                        zIndex: 1000,
+                      }}>
+                        {prendasMostrar.map((prenda, index) => (
+                          <div
+                            key={prenda.id}
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              setPrendaSeleccionada(prenda.id);
+                              setBusquedaPrenda(prenda.nombre);
+                              setPartidaActual({ 
+                                ...partidaActual, 
+                                prenda_nombre: prenda.nombre,
+                                talla: '',
+                                precio_unitario: 0,
+                              });
+                              setCostoSeleccionado(null);
+                              setDropdownPrendaVisible(false);
+                              setIndiceSeleccionadoPrenda(-1);
+                            }}
+                            onMouseEnter={() => setIndiceSeleccionadoPrenda(index)}
+                            style={{
+                              padding: '0.75rem',
+                              cursor: 'pointer',
+                              borderBottom: '1px solid #f0f0f0',
+                              transition: 'background 0.15s',
+                              background: indiceSeleccionadoPrenda === index ? '#667eea' : 'white',
+                              color: indiceSeleccionadoPrenda === index ? 'white' : 'black',
+                            }}
+                          >
+                            {prenda.nombre}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: 0,
+                        right: 0,
+                        background: 'white',
+                        border: '1px solid #ddd',
+                        borderRadius: '4px',
+                        marginTop: '0.25rem',
+                        padding: '0.75rem',
+                        color: '#999',
+                        fontSize: '0.9rem',
+                        zIndex: 1000,
+                      }}>
+                        No se encontraron prendas
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 <div>
