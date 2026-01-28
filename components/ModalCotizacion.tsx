@@ -38,20 +38,22 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     id: string;
     costo_id: string;
     talla: string;
-    color: string;
     cantidad: number;
     precio_unitario: number;
-    especificaciones: string;
   }
   
   const [subPartidas, setSubPartidas] = useState<SubPartida[]>([
-    { id: crypto.randomUUID(), costo_id: '', talla: '', color: '', cantidad: 0, precio_unitario: 0, especificaciones: '' }
+    { id: crypto.randomUUID(), costo_id: '', talla: '', cantidad: 0, precio_unitario: 0 }
   ]);
   
   // Estados para autocomplete de prenda
   const [busquedaPrenda, setBusquedaPrenda] = useState('');
   const [dropdownPrendaVisible, setDropdownPrendaVisible] = useState(false);
   const [indiceSeleccionadoPrenda, setIndiceSeleccionadoPrenda] = useState(-1);
+  
+  // Estados globales para color y especificaciones (ya no por talla)
+  const [colorGlobal, setColorGlobal] = useState('');
+  const [especificacionesGlobales, setEspecificacionesGlobales] = useState('');
   
   // Estados para accesibilidad
   const [mostrarAyuda, setMostrarAyuda] = useState(false);
@@ -208,7 +210,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
           setErrorCargaCostos(null);
           // Resetear sub-partidas con una fila vacía
           setSubPartidas([
-            { id: crypto.randomUUID(), costo_id: '', talla: '', color: '', cantidad: 0, precio_unitario: 0, especificaciones: '' }
+            { id: crypto.randomUUID(), costo_id: '', talla: '', cantidad: 0, precio_unitario: 0 }
           ]);
         }
       });
@@ -225,10 +227,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       id: crypto.randomUUID(),
       costo_id: '',
       talla: '',
-      color: '',
       cantidad: 0,
-      precio_unitario: 0,
-      especificaciones: ''
+      precio_unitario: 0
     }]);
   };
 
@@ -272,13 +272,18 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       return;
     }
 
+    if (!colorGlobal.trim()) {
+      alert('⚠️ Debes especificar el Color de la prenda');
+      return;
+    }
+
     // Validar que todas las sub-partidas estén completas
     const incompletas = subPartidas.filter(sp => 
-      !sp.costo_id || !sp.talla || sp.cantidad <= 0 || !sp.color.trim()
+      !sp.costo_id || !sp.talla || sp.cantidad <= 0
     );
 
     if (incompletas.length > 0) {
-      alert(`⚠️ Hay ${incompletas.length} fila(s) incompleta(s). Por favor completa Talla, Color y Cantidad (>0) en todas las filas.`);
+      alert(`⚠️ Hay ${incompletas.length} fila(s) incompleta(s). Por favor completa Talla y Cantidad (>0) en todas las filas.`);
       return;
     }
 
@@ -293,8 +298,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     const nuevasPartidas: PartidaCotizacion[] = subPartidas.map((sp, index) => ({
       prenda_nombre: prenda.nombre,
       talla: sp.talla,
-      color: sp.color,
-      especificaciones: sp.especificaciones,
+      color: colorGlobal,
+      especificaciones: especificacionesGlobales,
       cantidad: sp.cantidad,
       precio_unitario: sp.precio_unitario,
       subtotal: sp.cantidad * sp.precio_unitario,
@@ -306,9 +311,11 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     // Limpiar formulario
     setPrendaSeleccionada(null);
     setBusquedaPrenda('');
+    setColorGlobal('');
+    setEspecificacionesGlobales('');
     setCostosDisponibles([]);
     setSubPartidas([
-      { id: crypto.randomUUID(), costo_id: '', talla: '', color: '', cantidad: 0, precio_unitario: 0, especificaciones: '' }
+      { id: crypto.randomUUID(), costo_id: '', talla: '', cantidad: 0, precio_unitario: 0 }
     ]);
 
     alert(`✅ Se agregaron ${nuevasPartidas.length} partida(s) exitosamente`);
@@ -757,10 +764,24 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
               </div>
             </div>
 
-            {/* Búsqueda de cliente */}
-            <div style={{ marginBottom: '1.5rem', position: 'relative' }}>
-              <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem' }}>
-                Buscar {tipoCliente === 'alumno' ? 'Alumno' : 'Cliente'}:
+            {/* Búsqueda de cliente - RESALTADO */}
+            <div style={{ 
+              marginBottom: '2rem', 
+              position: 'relative',
+              padding: '1.5rem',
+              background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.05) 100%)',
+              borderRadius: '12px',
+              border: '3px solid #667eea',
+              boxShadow: '0 4px 12px rgba(102, 126, 234, 0.2)'
+            }}>
+              <label style={{ 
+                fontWeight: 'bold', 
+                display: 'block', 
+                marginBottom: '0.75rem',
+                fontSize: '1.1rem',
+                color: '#667eea'
+              }}>
+                🔍 Buscar {tipoCliente === 'alumno' ? 'Alumno' : 'Cliente'}:
               </label>
               <input
                 ref={inputClienteRef}
@@ -803,10 +824,12 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                 placeholder="Escribe nombre o referencia..."
                 style={{
                   width: '100%',
-                  padding: '0.75rem',
-                  fontSize: '1rem',
-                  border: '2px solid #ddd',
+                  padding: '1rem',
+                  fontSize: '1.1rem',
+                  border: '3px solid #667eea',
                   borderRadius: '8px',
+                  backgroundColor: 'white',
+                  fontWeight: '500',
                 }}
               />
               
