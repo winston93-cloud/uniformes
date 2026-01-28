@@ -216,7 +216,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       setCostosDisponibles([]);
       setErrorCargaCostos(null);
     }
-  }, [prendaSeleccionada, getCostosByPrenda]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prendaSeleccionada]);
 
   // NUEVO: Funciones para manejar sub-partidas
   const agregarSubPartida = () => {
