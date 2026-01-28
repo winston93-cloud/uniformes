@@ -111,14 +111,23 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
 
   // Calcular posición del dropdown de clientes cuando se muestra
   useEffect(() => {
+    console.log('📍 [DROPDOWN POS] Calculando posición...', {
+      resultadosLength: resultadosBusqueda.length,
+      clienteSeleccionado: !!clienteSeleccionado,
+      inputRefExists: !!inputClienteRef.current
+    });
+    
     if (resultadosBusqueda.length > 0 && !clienteSeleccionado && inputClienteRef.current) {
       const rect = inputClienteRef.current.getBoundingClientRect();
-      setDropdownClientePos({
+      const pos = {
         top: rect.bottom + window.scrollY + 8,
         left: rect.left + window.scrollX,
         width: rect.width
-      });
+      };
+      console.log('📍 [DROPDOWN POS] Posición calculada:', pos);
+      setDropdownClientePos(pos);
     } else {
+      console.log('📍 [DROPDOWN POS] Limpiando posición (no se cumplen condiciones)');
       setDropdownClientePos(null);
     }
   }, [resultadosBusqueda, clienteSeleccionado]);
