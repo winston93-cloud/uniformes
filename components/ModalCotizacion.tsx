@@ -30,6 +30,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   // Estados para integración con costos
   const [prendaSeleccionada, setPrendaSeleccionada] = useState<string | null>(null);
   const [costosDisponibles, setCostosDisponibles] = useState<Costo[]>([]);
+  const [errorCargaCostos, setErrorCargaCostos] = useState<string | null>(null);
   
   // NUEVO: Sub-partidas multi-talla
   interface SubPartida {
@@ -115,12 +116,18 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   // Cargar costos cuando se selecciona una prenda
   useEffect(() => {
     if (prendaSeleccionada) {
+      setErrorCargaCostos(null); // Reset error
       getCostosByPrenda(prendaSeleccionada).then(({ data, error }) => {
         if (error) {
           console.error('Error al cargar costos:', error);
           setCostosDisponibles([]);
+          setErrorCargaCostos('Error al cargar tallas. Por favor, intenta de nuevo.');
+        } else if (!data || data.length === 0) {
+          setCostosDisponibles([]);
+          setErrorCargaCostos(null); // No es error, simplemente no hay tallas
         } else {
           setCostosDisponibles(data);
+          setErrorCargaCostos(null);
           // Resetear sub-partidas con una fila vacía
           setSubPartidas([
             { id: crypto.randomUUID(), costo_id: '', talla: '', color: '', cantidad: 0, precio_unitario: 0, especificaciones: '' }
@@ -129,6 +136,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       });
     } else {
       setCostosDisponibles([]);
+      setErrorCargaCostos(null);
     }
   }, [prendaSeleccionada, getCostosByPrenda]);
 
@@ -730,47 +738,49 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                   borderRadius: '8px',
                   maxHeight: '200px',
                   overflow: 'auto',
+                  zIndex: 1000,
+                  position: 'relative',
+                  background: 'white',
+                  boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
                 }}>
-                  {resultadosBusqueda.map((cliente, index) => (
-                    <div
-                      key={cliente.id}
-                      onClick={() => {
-                        setClienteSeleccionado(cliente);
-                        setBusquedaCliente(cliente.nombre || cliente.alumno_nombre || '');
-                        setResultadosBusqueda([]);
-                        setIndiceSeleccionadoCliente(-1);
-                      }}
-                      onMouseEnter={() => setIndiceSeleccionadoCliente(index)}
-                      style={{
-                        padding: '0.75rem',
-                        cursor: 'pointer',
-                        borderBottom: '1px solid #eee',
-                        backgroundColor: indiceSeleccionadoCliente === index ? '#667eea' : '#fff',
-                        color: indiceSeleccionadoCliente === index ? 'white' : 'black',
-                        transition: 'all 0.15s',
-                      }}
-                    >
-                      <div style={{ fontWeight: 'bold' }}>
-                        {cliente.nombre || cliente.alumno_nombre || 'Sin nombre'}
+                  {resultadosBusqueda.map((cliente, index) => {
+                    const nombreCliente = cliente.nombre || cliente.alumno_nombre || 'Sin nombre';
+                    const referenciaCliente = cliente.referencia || cliente.alumno_ref || null;
+                    
+                    return (
+                      <div
+                        key={cliente.id}
+                        onMouseDown={(e) => {
+                          e.preventDefault(); // Evitar que el blur del input cancele el click
+                          setClienteSeleccionado(cliente);
+                          setBusquedaCliente(nombreCliente);
+                          setResultadosBusqueda([]);
+                          setIndiceSeleccionadoCliente(-1);
+                        }}
+                        onMouseEnter={() => setIndiceSeleccionadoCliente(index)}
+                        style={{
+                          padding: '0.75rem',
+                          cursor: 'pointer',
+                          borderBottom: index < resultadosBusqueda.length - 1 ? '1px solid #eee' : 'none',
+                          backgroundColor: indiceSeleccionadoCliente === index ? '#667eea' : '#fff',
+                          color: indiceSeleccionadoCliente === index ? 'white' : 'black',
+                          transition: 'all 0.15s',
+                        }}
+                      >
+                        <div style={{ fontWeight: 'bold' }}>
+                          {nombreCliente}
+                        </div>
+                        {referenciaCliente && (
+                          <div style={{ 
+                            fontSize: '0.85rem', 
+                            color: indiceSeleccionadoCliente === index ? '#e0e7ff' : '#666' 
+                          }}>
+                            Ref: {referenciaCliente}
+                          </div>
+                        )}
                       </div>
-                      {cliente.referencia && (
-                        <div style={{ 
-                          fontSize: '0.85rem', 
-                          color: indiceSeleccionadoCliente === index ? '#e0e7ff' : '#666' 
-                        }}>
-                          Ref: {cliente.referencia}
-                        </div>
-                      )}
-                      {cliente.alumno_ref && (
-                        <div style={{ 
-                          fontSize: '0.85rem', 
-                          color: indiceSeleccionadoCliente === index ? '#e0e7ff' : '#666' 
-                        }}>
-                          Ref: {cliente.alumno_ref}
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
 
@@ -788,11 +798,11 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                 }}>
                   <div>
                     <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>
-                      {clienteSeleccionado.nombre}
+                      {clienteSeleccionado.nombre || clienteSeleccionado.alumno_nombre || 'Sin nombre'}
                     </div>
-                    {clienteSeleccionado.referencia && (
+                    {(clienteSeleccionado.referencia || clienteSeleccionado.alumno_ref) && (
                       <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>
-                        Ref: {clienteSeleccionado.referencia}
+                        Ref: {clienteSeleccionado.referencia || clienteSeleccionado.alumno_ref}
                       </div>
                     )}
                   </div>
@@ -1199,8 +1209,46 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                 </div>
               )}
 
+              {/* Mensaje de error al cargar costos */}
+              {prendaSeleccionada && errorCargaCostos && (
+                <div style={{
+                  padding: '1.5rem',
+                  background: '#fee2e2',
+                  border: '2px solid #ef4444',
+                  borderRadius: '8px',
+                  color: '#991b1b',
+                  textAlign: 'center',
+                  fontWeight: '500',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.5rem',
+                  alignItems: 'center',
+                }}>
+                  <div>🚨 {errorCargaCostos}</div>
+                  <button
+                    onClick={() => {
+                      // Forzar recarga
+                      const prendaActual = prendaSeleccionada;
+                      setPrendaSeleccionada(null);
+                      setTimeout(() => setPrendaSeleccionada(prendaActual), 100);
+                    }}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      background: '#ef4444',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontWeight: 'bold',
+                    }}
+                  >
+                    🔄 Reintentar
+                  </button>
+                </div>
+              )}
+
               {/* Mensaje si prenda no tiene costos */}
-              {prendaSeleccionada && costosDisponibles.length === 0 && (
+              {prendaSeleccionada && !errorCargaCostos && costosDisponibles.length === 0 && (
                 <div style={{
                   padding: '1.5rem',
                   background: '#fef3c7',
