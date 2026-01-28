@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useCotizaciones, type PartidaCotizacion } from '@/lib/hooks/useCotizaciones';
 import { useAlumnos } from '@/lib/hooks/useAlumnos';
 import { useExternos } from '@/lib/hooks/useExternos';
@@ -55,8 +56,15 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   // Estados para accesibilidad
   const [mostrarAyuda, setMostrarAyuda] = useState(false);
   
-  // Refs para manejo de foco
+  // Refs para manejo de foco y posicionamiento de dropdowns
   const inputTallaRef = useRef<HTMLInputElement>(null);
+  const inputClienteRef = useRef<HTMLInputElement>(null);
+  const inputPrendaRef = useRef<HTMLInputElement>(null);
+  
+  // Estados para posicionamiento de dropdowns en portal
+  const [dropdownClientePos, setDropdownClientePos] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [dropdownPrendaPos, setDropdownPrendaPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [mounted, setMounted] = useState(false);
 
   // Información adicional
   const [observaciones, setObservaciones] = useState('');
@@ -86,6 +94,39 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     
     return prendasFiltradas.slice(0, 10);
   }, [prendas, busquedaPrenda]);
+
+  // Montar componente (necesario para portales)
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Calcular posición del dropdown de clientes cuando se muestra
+  useEffect(() => {
+    if (resultadosBusqueda.length > 0 && !clienteSeleccionado && inputClienteRef.current) {
+      const rect = inputClienteRef.current.getBoundingClientRect();
+      setDropdownClientePos({
+        top: rect.bottom + window.scrollY + 8,
+        left: rect.left + window.scrollX,
+        width: rect.width
+      });
+    } else {
+      setDropdownClientePos(null);
+    }
+  }, [resultadosBusqueda, clienteSeleccionado]);
+
+  // Calcular posición del dropdown de prendas cuando se muestra
+  useEffect(() => {
+    if (dropdownPrendaVisible && inputPrendaRef.current) {
+      const rect = inputPrendaRef.current.getBoundingClientRect();
+      setDropdownPrendaPos({
+        top: rect.bottom + window.scrollY + 8,
+        left: rect.left + window.scrollX,
+        width: rect.width
+      });
+    } else {
+      setDropdownPrendaPos(null);
+    }
+  }, [dropdownPrendaVisible]);
 
   // Buscar clientes
   useEffect(() => {
@@ -684,6 +725,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                 Buscar {tipoCliente === 'alumno' ? 'Alumno' : 'Cliente'}:
               </label>
               <input
+                ref={inputClienteRef}
                 type="text"
                 value={busquedaCliente}
                 onChange={(e) => {
@@ -730,62 +772,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                 }}
               />
               
-              {/* Resultados búsqueda */}
-              {resultadosBusqueda.length > 0 && !clienteSeleccionado && (
-                <div style={{
-                  position: 'absolute',
-                  top: '100%',
-                  left: 0,
-                  right: 0,
-                  marginTop: '0.5rem',
-                  border: '2px solid #667eea',
-                  borderRadius: '8px',
-                  maxHeight: '250px',
-                  overflow: 'auto',
-                  zIndex: 1000,
-                  background: 'white',
-                  boxShadow: '0 8px 16px rgba(102, 126, 234, 0.3)',
-                }}>
-                  {resultadosBusqueda.map((cliente, index) => {
-                    const nombreCliente = cliente.nombre || cliente.alumno_nombre || 'Sin nombre';
-                    const referenciaCliente = cliente.referencia || cliente.alumno_ref || null;
-                    
-                    return (
-                      <div
-                        key={cliente.id}
-                        onMouseDown={(e) => {
-                          e.preventDefault(); // Evitar que el blur del input cancele el click
-                          setClienteSeleccionado(cliente);
-                          setBusquedaCliente(nombreCliente);
-                          setResultadosBusqueda([]);
-                          setIndiceSeleccionadoCliente(-1);
-                        }}
-                        onMouseEnter={() => setIndiceSeleccionadoCliente(index)}
-                        style={{
-                          padding: '0.75rem',
-                          cursor: 'pointer',
-                          borderBottom: index < resultadosBusqueda.length - 1 ? '1px solid #eee' : 'none',
-                          backgroundColor: indiceSeleccionadoCliente === index ? '#667eea' : '#fff',
-                          color: indiceSeleccionadoCliente === index ? 'white' : 'black',
-                          transition: 'all 0.15s',
-                        }}
-                      >
-                        <div style={{ fontWeight: 'bold' }}>
-                          {nombreCliente}
-                        </div>
-                        {referenciaCliente && (
-                          <div style={{ 
-                            fontSize: '0.85rem', 
-                            color: indiceSeleccionadoCliente === index ? '#e0e7ff' : '#666' 
-                          }}>
-                            Ref: {referenciaCliente}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+              {/* Resultados búsqueda se renderizan en Portal (ver final del componente) */}
 
               {/* Cliente seleccionado */}
               {clienteSeleccionado && (
@@ -847,6 +834,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                 </label>
                 <div style={{ position: 'relative', maxWidth: '400px' }}>
                   <input
+                    ref={inputPrendaRef}
                     type="text"
                     value={busquedaPrenda}
                     onChange={(e) => {
@@ -908,67 +896,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                     }}
                   />
                   
-                  {/* Dropdown de prendas */}
-                  {dropdownPrendaVisible && (
-                    prendasMostrar.length > 0 ? (
-                      <div style={{
-                        position: 'absolute',
-                        top: '100%',
-                        left: 0,
-                        right: 0,
-                        maxHeight: '250px',
-                        overflowY: 'auto',
-                        background: 'white',
-                        border: '2px solid #667eea',
-                        borderRadius: '8px',
-                        marginTop: '0.5rem',
-                        boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
-                        zIndex: 1000,
-                      }}>
-                        {prendasMostrar.map((prenda, index) => (
-                          <div
-                            key={prenda.id}
-                            onMouseDown={(e) => {
-                              e.preventDefault();
-                              setPrendaSeleccionada(prenda.id);
-                              setBusquedaPrenda(prenda.nombre);
-                              setDropdownPrendaVisible(false);
-                              setIndiceSeleccionadoPrenda(-1);
-                            }}
-                            onMouseEnter={() => setIndiceSeleccionadoPrenda(index)}
-                            style={{
-                              padding: '0.75rem 1rem',
-                              cursor: 'pointer',
-                              borderBottom: index < prendasMostrar.length - 1 ? '1px solid #f0f0f0' : 'none',
-                              transition: 'all 0.15s',
-                              background: indiceSeleccionadoPrenda === index ? '#667eea' : 'white',
-                              color: indiceSeleccionadoPrenda === index ? 'white' : 'black',
-                              fontWeight: indiceSeleccionadoPrenda === index ? 'bold' : 'normal',
-                            }}
-                          >
-                            {prenda.nombre}
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div style={{
-                        position: 'absolute',
-                        top: '100%',
-                        left: 0,
-                        right: 0,
-                        background: 'white',
-                        border: '2px solid #ddd',
-                        borderRadius: '8px',
-                        marginTop: '0.5rem',
-                        padding: '0.75rem',
-                        color: '#999',
-                        fontSize: '0.9rem',
-                        zIndex: 1000,
-                      }}>
-                        No se encontraron prendas
-                      </div>
-                    )
-                  )}
+                  {/* Dropdown de prendas se renderiza en Portal (ver final del componente) */}
                 </div>
                 
                 {prendaSeleccionada && (
@@ -1613,6 +1541,126 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
           </div>
         )}
       </div>
+
+      {/* PORTALES: Dropdowns renderizados fuera del modal para evitar overflow: auto */}
+      {mounted && dropdownClientePos && resultadosBusqueda.length > 0 && !clienteSeleccionado && createPortal(
+        <div 
+          style={{
+            position: 'fixed',
+            top: dropdownClientePos.top,
+            left: dropdownClientePos.left,
+            width: dropdownClientePos.width,
+            maxHeight: '250px',
+            overflow: 'auto',
+            zIndex: 10000,
+            background: 'white',
+            border: '2px solid #667eea',
+            borderRadius: '8px',
+            boxShadow: '0 8px 16px rgba(102, 126, 234, 0.3)',
+          }}
+        >
+          {resultadosBusqueda.map((cliente, index) => {
+            const nombreCliente = cliente.nombre || cliente.alumno_nombre || 'Sin nombre';
+            const referenciaCliente = cliente.referencia || cliente.alumno_ref || null;
+            
+            return (
+              <div
+                key={cliente.id}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  setClienteSeleccionado(cliente);
+                  setBusquedaCliente(nombreCliente);
+                  setResultadosBusqueda([]);
+                  setIndiceSeleccionadoCliente(-1);
+                }}
+                onMouseEnter={() => setIndiceSeleccionadoCliente(index)}
+                style={{
+                  padding: '0.75rem',
+                  cursor: 'pointer',
+                  borderBottom: index < resultadosBusqueda.length - 1 ? '1px solid #eee' : 'none',
+                  backgroundColor: indiceSeleccionadoCliente === index ? '#667eea' : '#fff',
+                  color: indiceSeleccionadoCliente === index ? 'white' : 'black',
+                  transition: 'all 0.15s',
+                }}
+              >
+                <div style={{ fontWeight: 'bold' }}>
+                  {nombreCliente}
+                </div>
+                {referenciaCliente && (
+                  <div style={{ 
+                    fontSize: '0.85rem', 
+                    color: indiceSeleccionadoCliente === index ? '#e0e7ff' : '#666' 
+                  }}>
+                    Ref: {referenciaCliente}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>,
+        document.body
+      )}
+
+      {mounted && dropdownPrendaPos && dropdownPrendaVisible && createPortal(
+        prendasMostrar.length > 0 ? (
+          <div style={{
+            position: 'fixed',
+            top: dropdownPrendaPos.top,
+            left: dropdownPrendaPos.left,
+            width: dropdownPrendaPos.width,
+            maxHeight: '250px',
+            overflowY: 'auto',
+            background: 'white',
+            border: '2px solid #667eea',
+            borderRadius: '8px',
+            boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
+            zIndex: 10000,
+          }}>
+            {prendasMostrar.map((prenda, index) => (
+              <div
+                key={prenda.id}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  setPrendaSeleccionada(prenda.id);
+                  setBusquedaPrenda(prenda.nombre);
+                  setDropdownPrendaVisible(false);
+                  setIndiceSeleccionadoPrenda(-1);
+                }}
+                onMouseEnter={() => setIndiceSeleccionadoPrenda(index)}
+                style={{
+                  padding: '0.75rem 1rem',
+                  cursor: 'pointer',
+                  borderBottom: index < prendasMostrar.length - 1 ? '1px solid #f0f0f0' : 'none',
+                  transition: 'all 0.15s',
+                  background: indiceSeleccionadoPrenda === index ? '#667eea' : 'white',
+                  color: indiceSeleccionadoPrenda === index ? 'white' : 'black',
+                  fontWeight: indiceSeleccionadoPrenda === index ? 'bold' : 'normal',
+                }}
+              >
+                {prenda.nombre}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{
+            position: 'fixed',
+            top: dropdownPrendaPos.top,
+            left: dropdownPrendaPos.left,
+            width: dropdownPrendaPos.width,
+            background: 'white',
+            border: '2px solid #ddd',
+            borderRadius: '8px',
+            padding: '0.75rem',
+            color: '#999',
+            fontSize: '0.9rem',
+            zIndex: 10000,
+            boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+          }}>
+            No se encontraron prendas
+          </div>
+        ),
+        document.body
+      )}
     </div>
   );
 }
