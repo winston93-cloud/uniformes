@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useCotizaciones, type PartidaCotizacion } from '@/lib/hooks/useCotizaciones';
 import { useAlumnos } from '@/lib/hooks/useAlumnos';
 import { useExternos } from '@/lib/hooks/useExternos';
@@ -47,6 +47,9 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   
   // Estados para modal de ayuda
   const [mostrarAyuda, setMostrarAyuda] = useState(false);
+  
+  // Refs para accesibilidad
+  const primerInputRef = useRef<HTMLButtonElement>(null);
 
   // Información adicional
   const [observaciones, setObservaciones] = useState('');
@@ -90,6 +93,16 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     const timeout = setTimeout(buscar, 300);
     return () => clearTimeout(timeout);
   }, [busquedaCliente, tipoCliente, searchAlumnos, searchExternos]);
+
+  // Focus inicial en el primer elemento interactivo (UX con teclado)
+  useEffect(() => {
+    if (vista === 'nueva' && primerInputRef.current) {
+      // Pequeño delay para asegurar que el DOM esté listo
+      setTimeout(() => {
+        primerInputRef.current?.focus();
+      }, 100);
+    }
+  }, [vista]);
 
   // Cargar costos cuando se selecciona una prenda
   useEffect(() => {
@@ -519,6 +532,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
               </label>
               <div style={{ display: 'flex', gap: '1rem' }}>
                 <button
+                  ref={primerInputRef}
                   onClick={() => setTipoPrecio('mayoreo')}
                   style={{
                     padding: '1rem 2rem',
@@ -1362,15 +1376,15 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginLeft: '1rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span>Navegar opciones:</span>
-                      <kbd style={{ padding: '0.25rem 0.5rem', background: '#f0f0f0', borderRadius: '4px', border: '1px solid #ccc' }}>↑ / ↓</kbd>
+                      <kbd style={{ padding: '0.4rem 0.75rem', background: '#e0e7ff', borderRadius: '6px', border: '2px solid #667eea', fontWeight: 'bold', fontSize: '0.95rem', color: '#4c51bf' }}>↑ / ↓</kbd>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span>Seleccionar prenda:</span>
-                      <kbd style={{ padding: '0.25rem 0.5rem', background: '#f0f0f0', borderRadius: '4px', border: '1px solid #ccc' }}>Enter</kbd>
+                      <kbd style={{ padding: '0.4rem 0.75rem', background: '#e0e7ff', borderRadius: '6px', border: '2px solid #667eea', fontWeight: 'bold', fontSize: '0.95rem', color: '#4c51bf' }}>Enter</kbd>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span>Cerrar dropdown:</span>
-                      <kbd style={{ padding: '0.25rem 0.5rem', background: '#f0f0f0', borderRadius: '4px', border: '1px solid #ccc' }}>Esc</kbd>
+                      <kbd style={{ padding: '0.4rem 0.75rem', background: '#e0e7ff', borderRadius: '6px', border: '2px solid #667eea', fontWeight: 'bold', fontSize: '0.95rem', color: '#4c51bf' }}>Esc</kbd>
                     </div>
                   </div>
                 </div>
@@ -1380,15 +1394,15 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginLeft: '1rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span>Siguiente campo:</span>
-                      <kbd style={{ padding: '0.25rem 0.5rem', background: '#f0f0f0', borderRadius: '4px', border: '1px solid #ccc' }}>Tab</kbd>
+                      <kbd style={{ padding: '0.4rem 0.75rem', background: '#e0e7ff', borderRadius: '6px', border: '2px solid #667eea', fontWeight: 'bold', fontSize: '0.95rem', color: '#4c51bf' }}>Tab</kbd>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span>Campo anterior:</span>
-                      <kbd style={{ padding: '0.25rem 0.5rem', background: '#f0f0f0', borderRadius: '4px', border: '1px solid #ccc' }}>Shift + Tab</kbd>
+                      <kbd style={{ padding: '0.4rem 0.75rem', background: '#e0e7ff', borderRadius: '6px', border: '2px solid #667eea', fontWeight: 'bold', fontSize: '0.95rem', color: '#4c51bf' }}>Shift + Tab</kbd>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span>Activar botón:</span>
-                      <kbd style={{ padding: '0.25rem 0.5rem', background: '#f0f0f0', borderRadius: '4px', border: '1px solid #ccc' }}>Enter / Espacio</kbd>
+                      <kbd style={{ padding: '0.4rem 0.75rem', background: '#e0e7ff', borderRadius: '6px', border: '2px solid #667eea', fontWeight: 'bold', fontSize: '0.95rem', color: '#4c51bf' }}>Enter / Espacio</kbd>
                     </div>
                   </div>
                 </div>
