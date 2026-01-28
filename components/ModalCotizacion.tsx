@@ -204,7 +204,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       console.log('🧹 [BÚSQUEDA] Cleanup - cancelando timeout');
       clearTimeout(timeout);
     };
-  }, [busquedaCliente, tipoCliente, searchAlumnos, searchExternos]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busquedaCliente, tipoCliente]);
 
   // Cargar costos cuando se selecciona una prenda
   useEffect(() => {
