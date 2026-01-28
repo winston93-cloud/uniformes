@@ -317,8 +317,6 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     setSubPartidas([
       { id: crypto.randomUUID(), costo_id: '', talla: '', cantidad: 0, precio_unitario: 0 }
     ]);
-
-    alert(`✅ Se agregaron ${nuevasPartidas.length} partida(s) exitosamente`);
   };
 
   // Eliminar partida
