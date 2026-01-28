@@ -661,106 +661,142 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
         {/* Contenido */}
         {vista === 'nueva' ? (
           <div>
-            {/* Tipo de precio */}
-            <div style={{ marginBottom: '2rem', padding: '1.5rem', backgroundColor: tipoPrecio ? '#f0f9ff' : '#fff5f5', border: `2px solid ${tipoPrecio ? '#3b82f6' : '#ef4444'}`, borderRadius: '12px' }}>
-              <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem', fontSize: '1.1rem', color: tipoPrecio ? '#1e40af' : '#dc2626' }}>
-                💰 Tipo de Precio: {!tipoPrecio && <span style={{ color: '#dc2626', fontSize: '0.9rem' }}>(Requerido)</span>}
-              </label>
-              <div style={{ display: 'flex', gap: '1rem' }}>
-                <button
-                  onClick={() => setTipoPrecio('mayoreo')}
-                  style={{
-                    padding: '1rem 2rem',
-                    background: tipoPrecio === 'mayoreo' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#f0f0f0',
-                    color: tipoPrecio === 'mayoreo' ? 'white' : '#666',
-                    border: tipoPrecio === 'mayoreo' ? '3px solid #4c51bf' : '2px solid #ddd',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    fontWeight: 'bold',
-                    fontSize: '1rem',
-                    transition: 'all 0.2s',
-                  }}
-                  onMouseOver={(e) => {
-                    if (tipoPrecio !== 'mayoreo') e.currentTarget.style.backgroundColor = '#e0e0e0';
-                  }}
-                  onMouseOut={(e) => {
-                    if (tipoPrecio !== 'mayoreo') e.currentTarget.style.backgroundColor = '#f0f0f0';
-                  }}
-                >
-                  📦 Mayoreo
-                </button>
-                <button
-                  onClick={() => setTipoPrecio('menudeo')}
-                  style={{
-                    padding: '1rem 2rem',
-                    background: tipoPrecio === 'menudeo' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#f0f0f0',
-                    color: tipoPrecio === 'menudeo' ? 'white' : '#666',
-                    border: tipoPrecio === 'menudeo' ? '3px solid #4c51bf' : '2px solid #ddd',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    fontWeight: 'bold',
-                    fontSize: '1rem',
-                    transition: 'all 0.2s',
-                  }}
-                  onMouseOver={(e) => {
-                    if (tipoPrecio !== 'menudeo') e.currentTarget.style.backgroundColor = '#e0e0e0';
-                  }}
-                  onMouseOut={(e) => {
-                    if (tipoPrecio !== 'menudeo') e.currentTarget.style.backgroundColor = '#f0f0f0';
-                  }}
-                >
-                  🛍️ Menudeo
-                </button>
-              </div>
-              {tipoPrecio && (
-                <div style={{ marginTop: '0.75rem', padding: '0.75rem', backgroundColor: 'rgba(102, 126, 234, 0.1)', borderRadius: '6px', fontSize: '0.9rem', color: '#4c51bf' }}>
-                  ✓ Tipo seleccionado: <strong>{tipoPrecio === 'mayoreo' ? 'Mayoreo' : 'Menudeo'}</strong>
+            {/* Fila superior: Tipo de Precio | Tipo de Cliente | Cotización Directa */}
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: '1fr auto 1fr auto 1fr', 
+              gap: '1.5rem', 
+              marginBottom: '2rem',
+              alignItems: 'start'
+            }}>
+              {/* Tipo de precio */}
+              <div>
+                <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.75rem', fontSize: '1rem', color: '#667eea' }}>
+                  💰 Tipo de Precio:
+                </label>
+                <div style={{ display: 'flex', gap: '0.75rem', flexDirection: 'column' }}>
+                  <button
+                    onClick={() => setTipoPrecio('mayoreo')}
+                    style={{
+                      padding: '0.75rem 1.5rem',
+                      background: tipoPrecio === 'mayoreo' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#f0f0f0',
+                      color: tipoPrecio === 'mayoreo' ? 'white' : '#666',
+                      border: tipoPrecio === 'mayoreo' ? '2px solid #4c51bf' : '2px solid #ddd',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontWeight: 'bold',
+                      fontSize: '0.95rem',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    📦 Mayoreo
+                  </button>
+                  <button
+                    onClick={() => setTipoPrecio('menudeo')}
+                    style={{
+                      padding: '0.75rem 1.5rem',
+                      background: tipoPrecio === 'menudeo' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#f0f0f0',
+                      color: tipoPrecio === 'menudeo' ? 'white' : '#666',
+                      border: tipoPrecio === 'menudeo' ? '2px solid #4c51bf' : '2px solid #ddd',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontWeight: 'bold',
+                      fontSize: '0.95rem',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    🛍️ Menudeo
+                  </button>
                 </div>
-              )}
-            </div>
+              </div>
 
-            {/* Tipo de cliente */}
-            <div style={{ marginBottom: '1.5rem' }}>
-              <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem' }}>
-                Tipo de Cliente:
-              </label>
-              <div style={{ display: 'flex', gap: '1rem' }}>
+              {/* Separador 1 */}
+              <div style={{ width: '3px', background: 'linear-gradient(to bottom, #667eea, #764ba2)', alignSelf: 'stretch', borderRadius: '3px', marginTop: '2rem' }}></div>
+
+              {/* Tipo de cliente */}
+              <div>
+                <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.75rem', fontSize: '1rem', color: '#667eea' }}>
+                  👥 Tipo de Cliente:
+                </label>
+                <div style={{ display: 'flex', gap: '0.75rem', flexDirection: 'column' }}>
+                  <button
+                    onClick={() => {
+                      setTipoCliente('externo');
+                      setClienteSeleccionado(null);
+                      setBusquedaCliente('');
+                    }}
+                    style={{
+                      padding: '0.75rem 1.5rem',
+                      background: tipoCliente === 'externo' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#f0f0f0',
+                      color: tipoCliente === 'externo' ? 'white' : '#666',
+                      border: tipoCliente === 'externo' ? '2px solid #4c51bf' : '2px solid #ddd',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontWeight: 'bold',
+                      fontSize: '0.95rem',
+                    }}
+                  >
+                    👤 Externo
+                  </button>
+                  <button
+                    onClick={() => {
+                      setTipoCliente('alumno');
+                      setClienteSeleccionado(null);
+                      setBusquedaCliente('');
+                    }}
+                    style={{
+                      padding: '0.75rem 1.5rem',
+                      background: tipoCliente === 'alumno' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#f0f0f0',
+                      color: tipoCliente === 'alumno' ? 'white' : '#666',
+                      border: tipoCliente === 'alumno' ? '2px solid #4c51bf' : '2px solid #ddd',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontWeight: 'bold',
+                      fontSize: '0.95rem',
+                    }}
+                  >
+                    👨‍🎓 Alumno
+                  </button>
+                </div>
+              </div>
+
+              {/* Separador 2 */}
+              <div style={{ width: '3px', background: 'linear-gradient(to bottom, #667eea, #764ba2)', alignSelf: 'stretch', borderRadius: '3px', marginTop: '2rem' }}></div>
+
+              {/* Cotización Directa */}
+              <div>
+                <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.75rem', fontSize: '1rem', color: '#10b981' }}>
+                  ⚡ Acción Rápida:
+                </label>
                 <button
-                  onClick={() => {
-                    setTipoCliente('externo');
-                    setClienteSeleccionado(null);
-                    setBusquedaCliente('');
-                  }}
+                  onClick={() => alert('🚧 Cotización Directa - Próximamente\n\nEsta función permitirá crear cotizaciones sin agregar partidas individuales.')}
                   style={{
-                    padding: '0.75rem 2rem',
-                    background: tipoCliente === 'externo' ? '#667eea' : '#f0f0f0',
-                    color: tipoCliente === 'externo' ? 'white' : '#666',
-                    border: 'none',
+                    padding: '1rem 1.5rem',
+                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                    color: 'white',
+                    border: '2px solid #047857',
                     borderRadius: '8px',
                     cursor: 'pointer',
                     fontWeight: 'bold',
+                    fontSize: '0.95rem',
+                    width: '100%',
+                    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 6px 16px rgba(16, 185, 129, 0.4)';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.3)';
                   }}
                 >
-                  👤 Externo
+                  📋 Cotización Directa
                 </button>
-                <button
-                  onClick={() => {
-                    setTipoCliente('alumno');
-                    setClienteSeleccionado(null);
-                    setBusquedaCliente('');
-                  }}
-                  style={{
-                    padding: '0.75rem 2rem',
-                    background: tipoCliente === 'alumno' ? '#667eea' : '#f0f0f0',
-                    color: tipoCliente === 'alumno' ? 'white' : '#666',
-                    border: 'none',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    fontWeight: 'bold',
-                  }}
-                >
-                  👨‍🎓 Alumno
-                </button>
+                <div style={{ marginTop: '0.5rem', padding: '0.5rem', backgroundColor: 'rgba(16, 185, 129, 0.1)', borderRadius: '6px', fontSize: '0.75rem', color: '#059669', textAlign: 'center' }}>
+                  Sin partidas
+                </div>
               </div>
             </div>
 
@@ -901,10 +937,12 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                     onChange={(e) => {
                       const nuevaBusqueda = e.target.value;
                       // Si hay sub-partidas llenas y cambia la prenda, confirmar
-                      if (prendaSeleccionada && subPartidas.some(sp => sp.cantidad > 0 || sp.color)) {
-                        if (confirm('⚠️ Cambiar de prenda limpiará las tallas ingresadas. ¿Continuar?')) {
+                      if (prendaSeleccionada && (subPartidas.some(sp => sp.cantidad > 0) || colorGlobal.trim())) {
+                        if (confirm('⚠️ Cambiar de prenda limpiará las tallas y datos ingresados. ¿Continuar?')) {
                           setBusquedaPrenda(nuevaBusqueda);
                           setPrendaSeleccionada(null);
+                          setColorGlobal('');
+                          setEspecificacionesGlobales('');
                         }
                       } else {
                         setBusquedaPrenda(nuevaBusqueda);
@@ -977,6 +1015,57 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                 )}
               </div>
 
+              {/* Color y Especificaciones Globales (aplica a todas las tallas) */}
+              {prendaSeleccionada && (
+                <div style={{ 
+                  marginTop: '1.5rem',
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 2fr',
+                  gap: '1rem',
+                  padding: '1rem',
+                  background: 'rgba(102, 126, 234, 0.05)',
+                  borderRadius: '8px',
+                  border: '2px dashed #667eea'
+                }}>
+                  <div>
+                    <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem', color: '#667eea' }}>
+                      🎨 Color: *
+                    </label>
+                    <input
+                      type="text"
+                      value={colorGlobal}
+                      onChange={(e) => setColorGlobal(e.target.value)}
+                      placeholder="Ej: Azul marino"
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem',
+                        borderRadius: '6px',
+                        border: '2px solid #667eea',
+                        fontSize: '0.95rem',
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem', color: '#667eea' }}>
+                      📝 Especificaciones:
+                    </label>
+                    <input
+                      type="text"
+                      value={especificacionesGlobales}
+                      onChange={(e) => setEspecificacionesGlobales(e.target.value)}
+                      placeholder="Ej: Logo bordado, etc."
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem',
+                        borderRadius: '6px',
+                        border: '2px solid #667eea',
+                        fontSize: '0.95rem',
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
               {/* NIVEL 2: Sub-partidas (Tallas) */}
               {prendaSeleccionada && costosDisponibles.length > 0 && (
                 <div>
@@ -987,7 +1076,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                   {/* Header de la tabla */}
                   <div className="subpartidas-grid-header" style={{
                     display: 'grid',
-                    gridTemplateColumns: '1fr 100px 80px 100px 1fr 40px',
+                    gridTemplateColumns: '1fr 80px 100px 40px',
                     gap: '0.5rem',
                     padding: '0.5rem',
                     background: '#667eea',
@@ -997,10 +1086,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                     fontSize: '0.85rem',
                   }}>
                     <div>Talla</div>
-                    <div>Color</div>
-                    <div>Cant.</div>
+                    <div>Cantidad</div>
                     <div>Precio</div>
-                    <div>Especificaciones</div>
                     <div></div>
                   </div>
 
@@ -1040,20 +1127,6 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                           ))}
                       </select>
 
-                      {/* Color */}
-                      <input
-                        type="text"
-                        value={sp.color}
-                        onChange={(e) => actualizarSubPartida(sp.id, 'color', e.target.value)}
-                        placeholder="Color"
-                        style={{
-                          padding: '0.5rem',
-                          borderRadius: '4px',
-                          border: '1px solid #ddd',
-                          fontSize: '0.9rem',
-                        }}
-                      />
-
                       {/* Cantidad */}
                       <input
                         type="number"
@@ -1085,20 +1158,6 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                           color: '#333',
                           fontWeight: 'bold',
                           textAlign: 'right',
-                        }}
-                      />
-
-                      {/* Especificaciones */}
-                      <input
-                        type="text"
-                        value={sp.especificaciones}
-                        onChange={(e) => actualizarSubPartida(sp.id, 'especificaciones', e.target.value)}
-                        placeholder="Logo, bordado, etc."
-                        style={{
-                          padding: '0.5rem',
-                          borderRadius: '4px',
-                          border: '1px solid #ddd',
-                          fontSize: '0.9rem',
                         }}
                       />
 
@@ -1161,14 +1220,16 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                       disabled={
                         !tipoPrecio ||
                         !prendaSeleccionada ||
-                        subPartidas.every(sp => !sp.costo_id || sp.cantidad <= 0 || !sp.color.trim())
+                        !colorGlobal.trim() ||
+                        subPartidas.every(sp => !sp.costo_id || sp.cantidad <= 0)
                       }
                       style={{
                         padding: '0.75rem 2rem',
                         background: (
                           !tipoPrecio ||
                           !prendaSeleccionada ||
-                          subPartidas.every(sp => !sp.costo_id || sp.cantidad <= 0 || !sp.color.trim())
+                          !colorGlobal.trim() ||
+                          subPartidas.every(sp => !sp.costo_id || sp.cantidad <= 0)
                         ) ? '#9ca3af' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                         color: 'white',
                         border: 'none',
@@ -1176,14 +1237,15 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                         cursor: (
                           !tipoPrecio ||
                           !prendaSeleccionada ||
-                          subPartidas.every(sp => !sp.costo_id || sp.cantidad <= 0 || !sp.color.trim())
+                          !colorGlobal.trim() ||
+                          subPartidas.every(sp => !sp.costo_id || sp.cantidad <= 0)
                         ) ? 'not-allowed' : 'pointer',
                         fontWeight: 'bold',
                         fontSize: '1rem',
                         boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
                       }}
                     >
-                      💾 Guardar Todo ({subPartidas.filter(sp => sp.costo_id && sp.cantidad > 0 && sp.color.trim()).length} {subPartidas.filter(sp => sp.costo_id && sp.cantidad > 0 && sp.color.trim()).length === 1 ? 'partida' : 'partidas'})
+                      💾 Guardar Todo ({subPartidas.filter(sp => sp.costo_id && sp.cantidad > 0).length} {subPartidas.filter(sp => sp.costo_id && sp.cantidad > 0).length === 1 ? 'partida' : 'partidas'})
                     </button>
                   </div>
                 </div>
