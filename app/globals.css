@@ -47,6 +47,15 @@ body {
   background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-middle) 50%, var(--gradient-end) 100%);
   min-height: 100vh;
   color: var(--text-primary);
+  overflow-x: hidden; /* Prevenir scroll horizontal */
+}
+
+/* Layout Main */
+.layout-main {
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 
 /* Header */
@@ -491,6 +500,27 @@ body {
   color: #2563eb;
 }
 
+/* Header Buttons Container */
+.header-buttons {
+  display: flex;
+  alignItems: center;
+  gap: 1rem;
+  flexWrap: wrap;
+}
+
+.header-btn {
+  whiteSpace: nowrap;
+  padding: 0.6rem 1.5rem;
+}
+
+.btn-icon {
+  display: inline;
+}
+
+.btn-text {
+  display: inline;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .page-title {
@@ -502,6 +532,31 @@ body {
   .cards-grid {
     grid-template-columns: 1fr;
     gap: 1.5rem;
+  }
+  
+  /* Header Responsive */
+  .header-buttons {
+    display: flex;
+    flex-direction: row;
+    gap: 0.5rem;
+    width: 100%;
+    justify-content: flex-end;
+  }
+  
+  .header-btn {
+    padding: 0.5rem !important;
+    min-width: auto !important;
+    width: auto !important;
+    flex-shrink: 1;
+  }
+  
+  .header-btn .btn-text {
+    display: none;
+  }
+  
+  .header-btn .btn-icon {
+    font-size: 1.3rem;
+    display: block;
   }
 
   /* Tarjetas VIP en móviles */
@@ -669,6 +724,70 @@ body {
 
   .card {
     padding: 1.5rem;
+  }
+  
+  /* MODAL DE COTIZACIONES RESPONSIVE */
+  .modal-cotizacion-container {
+    max-width: 95vw !important;
+    width: 95vw !important;
+    max-height: 95vh !important;
+    padding: 1rem !important;
+    border-radius: 12px !important;
+  }
+  
+  /* Header del modal */
+  .modal-cotizacion-container h2 {
+    font-size: 1.5rem !important;
+  }
+  
+  /* Grid de inputs en modal - stackear verticalmente */
+  .modal-cotizacion-container div[style*="display: grid"] {
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem !important;
+  }
+  
+  /* Botones en modal más grandes para táctil */
+  .modal-cotizacion-container button {
+    min-height: 44px;
+    padding: 0.75rem 1rem !important;
+    font-size: 0.95rem !important;
+  }
+  
+  /* Botones pequeños del modal (cerrar, ayuda) */
+  .modal-cotizacion-container button[style*="borderRadius: 50%"] {
+    width: 36px !important;
+    height: 36px !important;
+    min-height: 36px !important;
+    font-size: 1.1rem !important;
+  }
+  
+  /* Tablas dentro de modal responsive */
+  .modal-cotizacion-container table {
+    font-size: 0.8rem;
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .modal-cotizacion-container th,
+  .modal-cotizacion-container td {
+    padding: 0.5rem !important;
+    font-size: 0.8rem !important;
+    white-space: nowrap;
+  }
+  
+  /* Inputs y selects más grandes para móvil */
+  .modal-cotizacion-container input,
+  .modal-cotizacion-container select,
+  .modal-cotizacion-container textarea {
+    font-size: 16px !important; /* Evita zoom en iOS */
+    padding: 0.75rem !important;
+    min-height: 44px !important;
+  }
+  
+  /* Sección de partidas más compacta */
+  .modal-cotizacion-container div[style*="padding: 1.5rem"] {
+    padding: 1rem !important;
   }
 
   .card-icon {

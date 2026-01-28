@@ -73,22 +73,21 @@ export default function Header({ onMenuClick }: HeaderProps) {
             </Link>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+          <div className="header-buttons">
             <button 
               onClick={handleIrAlPanel} 
-              className="btn btn-primary" 
-              style={{ padding: '0.6rem 1.5rem', cursor: 'pointer', whiteSpace: 'nowrap' }}
+              className="btn btn-primary header-btn" 
+              style={{ cursor: 'pointer' }}
             >
-              🏠 Ir al Panel
+              <span className="btn-icon">🏠</span>
+              <span className="btn-text">Ir al Panel</span>
             </button>
 
             <button 
               onClick={() => setModalCotizacionAbierto(true)} 
-              className="btn"
+              className="btn header-btn"
               style={{ 
-                padding: '0.6rem 1.5rem', 
-                cursor: 'pointer', 
-                whiteSpace: 'nowrap',
+                cursor: 'pointer',
                 background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                 color: 'white',
                 border: 'none',
@@ -96,11 +95,13 @@ export default function Header({ onMenuClick }: HeaderProps) {
                 boxShadow: '0 4px 6px rgba(102, 126, 234, 0.4)',
               }}
             >
-              📄 Cotizaciones
+              <span className="btn-icon">📄</span>
+              <span className="btn-text">Cotizaciones</span>
             </button>
 
-            <button className="logout-button" style={{ whiteSpace: 'nowrap' }}>
-              🚪 Cerrar Sesión
+            <button className="logout-button header-btn">
+              <span className="btn-icon">🚪</span>
+              <span className="btn-text">Cerrar Sesión</span>
             </button>
           </div>
         </div>

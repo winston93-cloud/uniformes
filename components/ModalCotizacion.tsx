@@ -432,6 +432,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       onClick={onClose}
     >
       <div 
+        className="modal-cotizacion-container"
         style={{
           backgroundColor: 'white',
           borderRadius: '16px',
