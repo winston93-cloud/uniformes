@@ -97,22 +97,32 @@ export function useAlumnos() {
     return valor.replace(/[%_\\]/g, '\\$&');
   };
 
-  const searchAlumnos = useCallback(async (query: string) => {
+  const searchAlumnos = useCallback(async (query: string, signal?: AbortSignal) => {
     try {
       const consulta = escaparWildcards(query.trim());
       if (!consulta) return [];
 
-      const { data, error } = await supabase
+      let builder = supabase
         .from('alumno')
         .select('*')
         .or(`alumno_ref.ilike.%${consulta}%,alumno_nombre.ilike.%${consulta}%,alumno_app.ilike.%${consulta}%,alumno_apm.ilike.%${consulta}%`)
         .limit(100);
+      
+      if (signal) {
+        builder = builder.abortSignal(signal);
+      }
+      
+      const { data, error } = await builder;
 
       if (error) throw error;
       
       return (data || []).map(mapAlumnoFromDB);
     } catch (err: any) {
-      throw err; // Propagar error para que el componente lo maneje
+      // Si es error de cancelación, no propagarlo
+      if (err.name === 'AbortError') {
+        return [];
+      }
+      throw err; // Propagar otros errores para que el componente los maneje
     }
   }, []);
 
