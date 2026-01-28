@@ -558,6 +558,21 @@ body {
     font-size: 1.3rem;
     display: block;
   }
+  
+  /* Botones de tarjetas responsive */
+  .btn-actualizar-tarjeta .btn-text {
+    display: none;
+  }
+  
+  .btn-actualizar-tarjeta .btn-icon {
+    font-size: 1.2rem;
+    display: block;
+  }
+  
+  .btn-actualizar-tarjeta {
+    padding: 0.5rem !important;
+    min-width: auto !important;
+  }
 
   /* Tarjetas VIP en móviles */
   .modulos-vip-grid {

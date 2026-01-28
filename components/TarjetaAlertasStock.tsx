@@ -217,6 +217,7 @@ export default function TarjetaAlertasStock({ expandido, minimizado = false, onT
                 e.stopPropagation();
                 recargar();
               }}
+              className="btn-actualizar-tarjeta"
               style={{
                 background: 'rgba(255, 255, 255, 0.2)',
                 border: '2px solid rgba(255, 255, 255, 0.3)',
@@ -234,8 +235,10 @@ export default function TarjetaAlertasStock({ expandido, minimizado = false, onT
               onMouseOut={(e) => {
                 e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
               }}
+              title="Actualizar"
             >
-              🔄 Actualizar
+              <span className="btn-icon">🔄</span>
+              <span className="btn-text">Actualizar</span>
             </button>
 
             <div style={{
