@@ -175,22 +175,29 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
 
   // Buscar clientes
   useEffect(() => {
+    console.log('🔍 [BÚSQUEDA] Iniciando búsqueda...', { busquedaCliente, tipoCliente });
     const buscar = async () => {
       if (busquedaCliente.length < 2) {
+        console.log('🔍 [BÚSQUEDA] Muy corto, limpiando resultados');
         setResultadosBusqueda([]);
         return;
       }
 
+      console.log('🔍 [BÚSQUEDA] Ejecutando búsqueda...', { busquedaCliente, tipoCliente });
       try {
         if (tipoCliente === 'alumno') {
+          console.log('🔍 [BÚSQUEDA] Buscando alumnos...');
           const resultados = await searchAlumnos(busquedaCliente);
+          console.log('🔍 [BÚSQUEDA] Resultados alumnos:', resultados);
           setResultadosBusqueda(resultados);
         } else {
+          console.log('🔍 [BÚSQUEDA] Buscando externos...');
           const resultados = await searchExternos(busquedaCliente);
+          console.log('🔍 [BÚSQUEDA] Resultados externos:', resultados);
           setResultadosBusqueda(resultados);
         }
       } catch (err) {
-        console.error('Error al buscar:', err);
+        console.error('❌ [BÚSQUEDA] Error al buscar:', err);
         setResultadosBusqueda([]);
       }
     };
