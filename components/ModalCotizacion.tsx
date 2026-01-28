@@ -111,12 +111,11 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
 
   // Calcular posición del dropdown de clientes cuando se muestra
   useEffect(() => {
-    console.log('📍 [DROPDOWN POS] Calculando posición...', {
-      resultadosLength: resultadosBusqueda.length,
-      clienteSeleccionado: !!clienteSeleccionado,
-      inputRefExists: !!inputClienteRef.current
+    console.log('📍 [POSICIÓN] Calculando posición dropdown...', { 
+      resultadosLength: resultadosBusqueda.length, 
+      clienteSeleccionado: !!clienteSeleccionado, 
+      inputRef: !!inputClienteRef.current 
     });
-    
     if (resultadosBusqueda.length > 0 && !clienteSeleccionado && inputClienteRef.current) {
       const rect = inputClienteRef.current.getBoundingClientRect();
       const pos = {
@@ -124,10 +123,10 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
         left: rect.left + window.scrollX,
         width: rect.width
       };
-      console.log('📍 [DROPDOWN POS] Posición calculada:', pos);
+      console.log('📍 [POSICIÓN] Posición calculada:', pos);
       setDropdownClientePos(pos);
     } else {
-      console.log('📍 [DROPDOWN POS] Limpiando posición (no se cumplen condiciones)');
+      console.log('📍 [POSICIÓN] Limpiando posición');
       setDropdownClientePos(null);
     }
   }, [resultadosBusqueda, clienteSeleccionado]);
@@ -1937,7 +1936,11 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       </div>
 
       {/* PORTALES: Dropdowns renderizados fuera del modal para evitar overflow: auto */}
-      {mounted && dropdownClientePos && resultadosBusqueda.length > 0 && !clienteSeleccionado && createPortal(
+      {(() => {
+        const shouldShow = mounted && dropdownClientePos && resultadosBusqueda.length > 0 && !clienteSeleccionado;
+        console.log('🖼️ [PORTAL] Renderizando Portal de clientes:', { mounted, dropdownClientePos: !!dropdownClientePos, resultadosLength: resultadosBusqueda.length, clienteSeleccionado: !!clienteSeleccionado, shouldShow });
+        return shouldShow;
+      })() && createPortal(
         <div 
           style={{
             position: 'fixed',
