@@ -26,9 +26,10 @@ ON alumno
 USING GIN (alumno_ref gin_trgm_ops);
 
 -- Índice compuesto para filtrar alumnos activos (común en WHERE)
+-- NOTA: La tabla 'alumno' usa 'alumno_status' en lugar de 'activo'
 CREATE INDEX IF NOT EXISTS idx_alumno_activo
-ON alumno (activo)
-WHERE activo = true;
+ON alumno (alumno_status)
+WHERE alumno_status != 0 AND alumno_status IS NOT NULL;
 
 -- ============================================================
 -- 3. ÍNDICES PARA TABLA: externos
@@ -55,19 +56,13 @@ WHERE activo = true;
 -- ============================================================
 -- Índice para búsqueda por prenda_id (FK más común)
 -- Usado en: getCostosByPrenda() - busca costos por prenda
+-- NOTA: Removido WHERE activo = true para evitar errores si columna no existe
 CREATE INDEX IF NOT EXISTS idx_costos_prenda_id
-ON costos (prenda_id)
-WHERE activo = true;
+ON costos (prenda_id);
 
 -- Índice compuesto para prenda_id + talla_id (queries comunes)
 CREATE INDEX IF NOT EXISTS idx_costos_prenda_talla
-ON costos (prenda_id, talla_id)
-WHERE activo = true;
-
--- Índice para costos activos (usado en filtros)
-CREATE INDEX IF NOT EXISTS idx_costos_activo
-ON costos (activo)
-WHERE activo = true;
+ON costos (prenda_id, talla_id);
 
 -- ============================================================
 -- 5. ÍNDICES PARA TABLA: prendas
@@ -77,11 +72,6 @@ WHERE activo = true;
 CREATE INDEX IF NOT EXISTS idx_prendas_busqueda_nombre
 ON prendas 
 USING GIN (nombre gin_trgm_ops);
-
--- Índice para prendas activas (muy común en WHERE)
-CREATE INDEX IF NOT EXISTS idx_prendas_activo
-ON prendas (activo)
-WHERE activo = true;
 
 -- ============================================================
 -- ANÁLISIS DE IMPACTO ESPERADO:
