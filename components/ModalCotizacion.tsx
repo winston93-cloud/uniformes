@@ -745,7 +745,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
 
               {/* Tipo de cliente */}
               <div>
-                <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.75rem', fontSize: '1rem', color: '#10b981' }}>
+                <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.75rem', fontSize: '1rem', color: '#06b6d4' }}>
                   👥 Tipo de Cliente:
                 </label>
                 <div style={{ display: 'flex', gap: '0.75rem', flexDirection: 'column' }}>
@@ -758,10 +758,10 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                     style={{
                       padding: '0.75rem 1.5rem',
                       background: tipoCliente === 'externo' 
-                        ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' 
-                        : 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)',
-                      color: tipoCliente === 'externo' ? 'white' : '#10b981',
-                      border: tipoCliente === 'externo' ? '2px solid #047857' : '2px solid #6ee7b7',
+                        ? 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)' 
+                        : 'linear-gradient(135deg, #cffafe 0%, #a5f3fc 100%)',
+                      color: tipoCliente === 'externo' ? 'white' : '#06b6d4',
+                      border: tipoCliente === 'externo' ? '2px solid #0e7490' : '2px solid #67e8f9',
                       borderRadius: '8px',
                       cursor: 'pointer',
                       fontWeight: 'bold',
@@ -780,10 +780,10 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                     style={{
                       padding: '0.75rem 1.5rem',
                       background: tipoCliente === 'alumno' 
-                        ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' 
-                        : 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)',
-                      color: tipoCliente === 'alumno' ? 'white' : '#10b981',
-                      border: tipoCliente === 'alumno' ? '2px solid #047857' : '2px solid #6ee7b7',
+                        ? 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)' 
+                        : 'linear-gradient(135deg, #cffafe 0%, #a5f3fc 100%)',
+                      color: tipoCliente === 'alumno' ? 'white' : '#06b6d4',
+                      border: tipoCliente === 'alumno' ? '2px solid #0e7490' : '2px solid #67e8f9',
                       borderRadius: '8px',
                       cursor: 'pointer',
                       fontWeight: 'bold',
@@ -797,7 +797,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
               </div>
 
               {/* Separador 2 */}
-              <div style={{ width: '3px', background: 'linear-gradient(to bottom, #10b981, #059669)', alignSelf: 'stretch', borderRadius: '3px', marginTop: '2rem' }}></div>
+              <div style={{ width: '3px', background: 'linear-gradient(to bottom, #06b6d4, #0891b2)', alignSelf: 'stretch', borderRadius: '3px', marginTop: '2rem' }}></div>
 
               {/* Cotización Directa */}
               <div>
