@@ -274,9 +274,17 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       return;
     }
 
-    if (!prendaSeleccionada) {
-      alert('⚠️ Debes seleccionar una prenda');
-      return;
+    // Validar prenda según el modo
+    if (cotizacionDirecta) {
+      if (!prendaManual.trim()) {
+        alert('⚠️ Debes ingresar el nombre de la prenda');
+        return;
+      }
+    } else {
+      if (!prendaSeleccionada) {
+        alert('⚠️ Debes seleccionar una prenda');
+        return;
+      }
     }
 
     if (!colorGlobal.trim()) {
@@ -284,26 +292,35 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       return;
     }
 
-    // Validar que todas las sub-partidas estén completas
-    const incompletas = subPartidas.filter(sp => 
-      !sp.costo_id || !sp.talla || sp.cantidad <= 0
-    );
+    // Validar que todas las sub-partidas estén completas según el modo
+    const incompletas = cotizacionDirecta
+      ? subPartidas.filter(sp => !sp.talla.trim() || sp.cantidad <= 0 || sp.precio_unitario <= 0)
+      : subPartidas.filter(sp => !sp.costo_id || !sp.talla || sp.cantidad <= 0);
 
     if (incompletas.length > 0) {
-      alert(`⚠️ Hay ${incompletas.length} fila(s) incompleta(s). Por favor completa Talla y Cantidad (>0) en todas las filas.`);
+      const mensaje = cotizacionDirecta
+        ? `⚠️ Hay ${incompletas.length} fila(s) incompleta(s). Por favor completa Talla, Cantidad (>0) y Precio (>0) en todas las filas.`
+        : `⚠️ Hay ${incompletas.length} fila(s) incompleta(s). Por favor completa Talla y Cantidad (>0) en todas las filas.`;
+      alert(mensaje);
       return;
     }
 
-    // Obtener nombre de la prenda
-    const prenda = prendas.find(p => p.id === prendaSeleccionada);
-    if (!prenda) {
-      alert('⚠️ Error: Prenda no encontrada');
-      return;
+    // Obtener nombre de la prenda según el modo
+    let nombrePrenda: string;
+    if (cotizacionDirecta) {
+      nombrePrenda = prendaManual;
+    } else {
+      const prenda = prendas.find(p => p.id === prendaSeleccionada);
+      if (!prenda) {
+        alert('⚠️ Error: Prenda no encontrada');
+        return;
+      }
+      nombrePrenda = prenda.nombre;
     }
 
     // Convertir sub-partidas a partidas y agregar al array
     const nuevasPartidas: PartidaCotizacion[] = subPartidas.map((sp, index) => ({
-      prenda_nombre: prenda.nombre,
+      prenda_nombre: nombrePrenda,
       talla: sp.talla,
       color: colorGlobal,
       especificaciones: especificacionesGlobales,
@@ -315,12 +332,16 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
 
     setPartidas([...partidas, ...nuevasPartidas]);
     
-    // Limpiar formulario
-    setPrendaSeleccionada(null);
-    setBusquedaPrenda('');
+    // Limpiar formulario según el modo
+    if (cotizacionDirecta) {
+      setPrendaManual('');
+    } else {
+      setPrendaSeleccionada(null);
+      setBusquedaPrenda('');
+      setCostosDisponibles([]);
+    }
     setColorGlobal('');
     setEspecificacionesGlobales('');
-    setCostosDisponibles([]);
     setSubPartidas([
       { id: crypto.randomUUID(), costo_id: '', talla: '', cantidad: 0, precio_unitario: 0 }
     ]);
@@ -684,9 +705,11 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                     onClick={() => setTipoPrecio('mayoreo')}
                     style={{
                       padding: '0.75rem 1.5rem',
-                      background: tipoPrecio === 'mayoreo' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#f0f0f0',
-                      color: tipoPrecio === 'mayoreo' ? 'white' : '#666',
-                      border: tipoPrecio === 'mayoreo' ? '2px solid #4c51bf' : '2px solid #ddd',
+                      background: tipoPrecio === 'mayoreo' 
+                        ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' 
+                        : 'linear-gradient(135deg, #e0e7ff 0%, #ddd6fe 100%)',
+                      color: tipoPrecio === 'mayoreo' ? 'white' : '#667eea',
+                      border: tipoPrecio === 'mayoreo' ? '2px solid #4c51bf' : '2px solid #c7d2fe',
                       borderRadius: '8px',
                       cursor: 'pointer',
                       fontWeight: 'bold',
@@ -700,9 +723,11 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                     onClick={() => setTipoPrecio('menudeo')}
                     style={{
                       padding: '0.75rem 1.5rem',
-                      background: tipoPrecio === 'menudeo' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#f0f0f0',
-                      color: tipoPrecio === 'menudeo' ? 'white' : '#666',
-                      border: tipoPrecio === 'menudeo' ? '2px solid #4c51bf' : '2px solid #ddd',
+                      background: tipoPrecio === 'menudeo' 
+                        ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' 
+                        : 'linear-gradient(135deg, #e0e7ff 0%, #ddd6fe 100%)',
+                      color: tipoPrecio === 'menudeo' ? 'white' : '#667eea',
+                      border: tipoPrecio === 'menudeo' ? '2px solid #4c51bf' : '2px solid #c7d2fe',
                       borderRadius: '8px',
                       cursor: 'pointer',
                       fontWeight: 'bold',
@@ -732,13 +757,16 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                     }}
                     style={{
                       padding: '0.75rem 1.5rem',
-                      background: tipoCliente === 'externo' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#f0f0f0',
-                      color: tipoCliente === 'externo' ? 'white' : '#666',
-                      border: tipoCliente === 'externo' ? '2px solid #4c51bf' : '2px solid #ddd',
+                      background: tipoCliente === 'externo' 
+                        ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' 
+                        : 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)',
+                      color: tipoCliente === 'externo' ? 'white' : '#059669',
+                      border: tipoCliente === 'externo' ? '2px solid #047857' : '2px solid #6ee7b7',
                       borderRadius: '8px',
                       cursor: 'pointer',
                       fontWeight: 'bold',
                       fontSize: '0.95rem',
+                      transition: 'all 0.2s',
                     }}
                   >
                     👤 Externo
@@ -751,13 +779,16 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                     }}
                     style={{
                       padding: '0.75rem 1.5rem',
-                      background: tipoCliente === 'alumno' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#f0f0f0',
-                      color: tipoCliente === 'alumno' ? 'white' : '#666',
-                      border: tipoCliente === 'alumno' ? '2px solid #4c51bf' : '2px solid #ddd',
+                      background: tipoCliente === 'alumno' 
+                        ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)' 
+                        : 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)',
+                      color: tipoCliente === 'alumno' ? 'white' : '#2563eb',
+                      border: tipoCliente === 'alumno' ? '2px solid #1d4ed8' : '2px solid #93c5fd',
                       borderRadius: '8px',
                       cursor: 'pointer',
                       fontWeight: 'bold',
                       fontSize: '0.95rem',
+                      transition: 'all 0.2s',
                     }}
                   >
                     👨‍🎓 Alumno
@@ -988,52 +1019,48 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
               
               {/* NIVEL 1: Datos de la prenda */}
               {cotizacionDirecta ? (
-                /* MODO MANUAL: Inputs simples */
+                /* MODO MANUAL: Multi-partidas con prenda manual */
                 <div style={{ marginBottom: '1.5rem' }}>
                   <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.75rem', fontSize: '1rem', color: '#d97706' }}>
-                    Datos de la Prenda *
+                    1. Ingresa el Nombre de la Prenda, Color y Especificaciones *
                   </label>
                   
+                  {/* Grid horizontal: Prenda | Color | Especificaciones */}
                   <div style={{ 
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                    gridTemplateColumns: '2fr 1fr 1.5fr',
                     gap: '1rem',
+                    alignItems: 'end'
                   }}>
-                    {/* Nombre Prenda */}
+                    {/* Nombre de Prenda Manual */}
                     <div>
                       <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#d97706' }}>
-                        👕 Nombre Prenda: *
+                        👕 Nombre Prenda:
                       </label>
                       <input
                         type="text"
                         value={prendaManual}
-                        onChange={(e) => setPrendaManual(e.target.value)}
-                        placeholder="Ej: Camisa polo"
-                        style={{
-                          width: '100%',
-                          padding: '0.75rem',
-                          borderRadius: '8px',
-                          border: '2px solid #f59e0b',
-                          fontSize: '1rem',
+                        onChange={(e) => {
+                          const nuevoNombre = e.target.value;
+                          // Si hay sub-partidas llenas y cambia la prenda, confirmar
+                          if (prendaManual && (subPartidas.some(sp => sp.cantidad > 0) || colorGlobal.trim())) {
+                            if (confirm('⚠️ Cambiar de prenda limpiará las tallas y datos ingresados. ¿Continuar?')) {
+                              setPrendaManual(nuevoNombre);
+                              setColorGlobal('');
+                              setEspecificacionesGlobales('');
+                              setSubPartidas([{ id: crypto.randomUUID(), costo_id: '', talla: '', cantidad: 0, precio_unitario: 0 }]);
+                            }
+                          } else {
+                            setPrendaManual(nuevoNombre);
+                          }
                         }}
-                      />
-                    </div>
-
-                    {/* Talla */}
-                    <div>
-                      <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#d97706' }}>
-                        📏 Talla: *
-                      </label>
-                      <input
-                        type="text"
-                        value={tallaManual}
-                        onChange={(e) => setTallaManual(e.target.value)}
-                        placeholder="Ej: M"
-                        style={{
-                          width: '100%',
-                          padding: '0.75rem',
-                          borderRadius: '8px',
-                          border: '2px solid #f59e0b',
+                        placeholder="Ej: Camisa polo"
+                        style={{ 
+                          width: '100%', 
+                          padding: '0.75rem', 
+                          borderRadius: '8px', 
+                          border: '2px solid #f59e0b', 
+                          backgroundColor: 'white',
                           fontSize: '1rem',
                         }}
                       />
@@ -1068,50 +1095,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                         type="text"
                         value={especificacionesGlobales}
                         onChange={(e) => setEspecificacionesGlobales(e.target.value)}
-                        placeholder="Ej: Logo bordado"
-                        style={{
-                          width: '100%',
-                          padding: '0.75rem',
-                          borderRadius: '8px',
-                          border: '2px solid #f59e0b',
-                          fontSize: '1rem',
-                        }}
-                      />
-                    </div>
-
-                    {/* Cantidad */}
-                    <div>
-                      <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#d97706' }}>
-                        🔢 Cantidad: *
-                      </label>
-                      <input
-                        type="number"
-                        min="1"
-                        value={cantidadManual}
-                        onChange={(e) => setCantidadManual(e.target.value)}
-                        placeholder="1"
-                        style={{
-                          width: '100%',
-                          padding: '0.75rem',
-                          borderRadius: '8px',
-                          border: '2px solid #f59e0b',
-                          fontSize: '1rem',
-                        }}
-                      />
-                    </div>
-
-                    {/* Precio Unitario */}
-                    <div>
-                      <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#d97706' }}>
-                        💲 Precio Unitario: *
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={precioManual}
-                        onChange={(e) => setPrecioManual(e.target.value)}
-                        placeholder="0.00"
+                        placeholder="Ej: Logo bordado, etc."
                         style={{
                           width: '100%',
                           padding: '0.75rem',
@@ -1122,70 +1106,23 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                       />
                     </div>
                   </div>
-
-                  <button
-                    onClick={() => {
-                      // Validaciones
-                      if (!prendaManual.trim()) {
-                        alert('⚠️ Debes ingresar el nombre de la prenda');
-                        return;
-                      }
-                      if (!tallaManual.trim()) {
-                        alert('⚠️ Debes ingresar la talla');
-                        return;
-                      }
-                      if (!colorGlobal.trim()) {
-                        alert('⚠️ Debes ingresar el color');
-                        return;
-                      }
-                      const cantidad = parseInt(cantidadManual);
-                      if (isNaN(cantidad) || cantidad <= 0) {
-                        alert('⚠️ La cantidad debe ser mayor a 0');
-                        return;
-                      }
-                      const precio = parseFloat(precioManual);
-                      if (isNaN(precio) || precio < 0) {
-                        alert('⚠️ El precio debe ser un número válido');
-                        return;
-                      }
-
-                      // Agregar partida manual
-                      const nuevaPartida: PartidaCotizacion = {
-                        prenda_nombre: prendaManual,
-                        talla: tallaManual,
-                        color: colorGlobal,
-                        especificaciones: especificacionesGlobales,
-                        cantidad: cantidad,
-                        precio_unitario: precio,
-                        subtotal: cantidad * precio,
-                        orden: partidas.length + 1,
-                      };
-
-                      setPartidas([...partidas, nuevaPartida]);
-                      
-                      // Limpiar campos
-                      setPrendaManual('');
-                      setTallaManual('');
-                      setColorGlobal('');
-                      setEspecificacionesGlobales('');
-                      setCantidadManual('1');
-                      setPrecioManual('');
-                    }}
-                    disabled={!tipoPrecio}
-                    style={{
-                      marginTop: '1rem',
-                      padding: '0.75rem 1.5rem',
-                      background: !tipoPrecio ? '#ccc' : 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                  
+                  {/* Badge de prenda manual ingresada */}
+                  {prendaManual.trim() && (
+                    <div style={{
+                      marginTop: '0.75rem',
+                      padding: '0.75rem 1rem',
+                      background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
                       color: 'white',
-                      border: 'none',
                       borderRadius: '8px',
-                      cursor: !tipoPrecio ? 'not-allowed' : 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
                       fontWeight: 'bold',
-                      fontSize: '1rem',
-                    }}
-                  >
-                    ➕ Agregar Partida Manual
-                  </button>
+                    }}>
+                      ✓ {prendaManual}
+                    </div>
+                  )}
                 </div>
               ) : (
                 /* MODO NORMAL: Sistema de autocomplete y multi-talla */
@@ -1335,11 +1272,11 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                 </div>
               )}
 
-              {/* NIVEL 2: Sub-partidas (Tallas) - Solo en modo normal */}
-              {!cotizacionDirecta && prendaSeleccionada && costosDisponibles.length > 0 && (
+              {/* NIVEL 2: Sub-partidas (Tallas) */}
+              {((cotizacionDirecta && prendaManual.trim()) || (!cotizacionDirecta && prendaSeleccionada && costosDisponibles.length > 0)) && (
                 <div>
-                  <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.75rem', fontSize: '1rem', color: '#667eea' }}>
-                    2. Agrega las Tallas y Cantidades *
+                  <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.75rem', fontSize: '1rem', color: cotizacionDirecta ? '#d97706' : '#667eea' }}>
+                    2. Agrega las Tallas, Cantidades y Precios *
                   </label>
                   
                   {/* Header de la tabla */}
@@ -1348,7 +1285,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                     gridTemplateColumns: '1fr 80px 100px 40px',
                     gap: '0.5rem',
                     padding: '0.5rem',
-                    background: '#667eea',
+                    background: cotizacionDirecta ? '#f59e0b' : '#667eea',
                     color: 'white',
                     borderRadius: '8px 8px 0 0',
                     fontWeight: 'bold',
@@ -1367,7 +1304,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                       className="subpartidas-grid-row"
                       style={{
                         display: 'grid',
-                        gridTemplateColumns: '1fr 100px 80px 100px 1fr 40px',
+                        gridTemplateColumns: '1fr 80px 100px 40px',
                         gap: '0.5rem',
                         padding: '0.75rem 0.5rem',
                         background: 'white',
@@ -1376,25 +1313,42 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                       }}
                     >
                       {/* Talla */}
-                      <select
-                        value={sp.costo_id}
-                        onChange={(e) => actualizarSubPartida(sp.id, 'costo_id', e.target.value)}
-                        style={{
-                          padding: '0.5rem',
-                          borderRadius: '4px',
-                          border: '1px solid #ddd',
-                          fontSize: '0.9rem',
-                        }}
-                      >
-                        <option value="">Selecciona...</option>
-                        {costosDisponibles
-                          .filter(c => c.activo !== false)
-                          .map(costo => (
-                            <option key={costo.id} value={costo.id}>
-                              {costo.talla?.nombre || 'Sin talla'}
-                            </option>
-                          ))}
-                      </select>
+                      {cotizacionDirecta ? (
+                        /* Modo manual: Input de texto */
+                        <input
+                          type="text"
+                          value={sp.talla}
+                          onChange={(e) => actualizarSubPartida(sp.id, 'talla', e.target.value)}
+                          placeholder="Ej: M"
+                          style={{
+                            padding: '0.5rem',
+                            borderRadius: '4px',
+                            border: '1px solid #f59e0b',
+                            fontSize: '0.9rem',
+                          }}
+                        />
+                      ) : (
+                        /* Modo normal: Select del sistema */
+                        <select
+                          value={sp.costo_id}
+                          onChange={(e) => actualizarSubPartida(sp.id, 'costo_id', e.target.value)}
+                          style={{
+                            padding: '0.5rem',
+                            borderRadius: '4px',
+                            border: '1px solid #ddd',
+                            fontSize: '0.9rem',
+                          }}
+                        >
+                          <option value="">Selecciona...</option>
+                          {costosDisponibles
+                            .filter(c => c.activo !== false)
+                            .map(costo => (
+                              <option key={costo.id} value={costo.id}>
+                                {costo.talla?.nombre || 'Sin talla'}
+                              </option>
+                            ))}
+                        </select>
+                      )}
 
                       {/* Cantidad */}
                       <input
@@ -1406,29 +1360,49 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                         style={{
                           padding: '0.5rem',
                           borderRadius: '4px',
-                          border: '1px solid #ddd',
+                          border: cotizacionDirecta ? '1px solid #f59e0b' : '1px solid #ddd',
                           fontSize: '0.9rem',
                           textAlign: 'center',
                         }}
                       />
 
-                      {/* Precio (readonly) */}
-                      <input
-                        type="text"
-                        value={sp.precio_unitario ? `$${sp.precio_unitario.toFixed(2)}` : '$0.00'}
-                        readOnly
-                        disabled
-                        style={{
-                          padding: '0.5rem',
-                          borderRadius: '4px',
-                          border: '1px solid #ddd',
-                          fontSize: '0.9rem',
-                          backgroundColor: '#f5f5f5',
-                          color: '#333',
-                          fontWeight: 'bold',
-                          textAlign: 'right',
-                        }}
-                      />
+                      {/* Precio */}
+                      {cotizacionDirecta ? (
+                        /* Modo manual: Input editable */
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={sp.precio_unitario || ''}
+                          onChange={(e) => actualizarSubPartida(sp.id, 'precio_unitario', parseFloat(e.target.value) || 0)}
+                          placeholder="0.00"
+                          style={{
+                            padding: '0.5rem',
+                            borderRadius: '4px',
+                            border: '1px solid #f59e0b',
+                            fontSize: '0.9rem',
+                            textAlign: 'right',
+                          }}
+                        />
+                      ) : (
+                        /* Modo normal: Precio readonly del sistema */
+                        <input
+                          type="text"
+                          value={sp.precio_unitario ? `$${sp.precio_unitario.toFixed(2)}` : '$0.00'}
+                          readOnly
+                          disabled
+                          style={{
+                            padding: '0.5rem',
+                            borderRadius: '4px',
+                            border: '1px solid #ddd',
+                            fontSize: '0.9rem',
+                            backgroundColor: '#f5f5f5',
+                            color: '#333',
+                            fontWeight: 'bold',
+                            textAlign: 'right',
+                          }}
+                        />
+                      )}
 
                       {/* Botón eliminar */}
                       <button
@@ -1464,8 +1438,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                       style={{
                         padding: '0.75rem 1.5rem',
                         background: 'white',
-                        color: '#667eea',
-                        border: '2px solid #667eea',
+                        color: cotizacionDirecta ? '#f59e0b' : '#667eea',
+                        border: cotizacionDirecta ? '2px solid #f59e0b' : '2px solid #667eea',
                         borderRadius: '8px',
                         cursor: 'pointer',
                         fontWeight: 'bold',
@@ -1473,12 +1447,12 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                         transition: 'all 0.2s',
                       }}
                       onMouseOver={(e) => {
-                        e.currentTarget.style.background = '#667eea';
+                        e.currentTarget.style.background = cotizacionDirecta ? '#f59e0b' : '#667eea';
                         e.currentTarget.style.color = 'white';
                       }}
                       onMouseOut={(e) => {
                         e.currentTarget.style.background = 'white';
-                        e.currentTarget.style.color = '#667eea';
+                        e.currentTarget.style.color = cotizacionDirecta ? '#f59e0b' : '#667eea';
                       }}
                     >
                       ➕ Agregar otra talla
@@ -1488,26 +1462,39 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                       onClick={guardarTodasSubPartidas}
                       disabled={
                         !tipoPrecio ||
-                        !prendaSeleccionada ||
+                        (cotizacionDirecta ? !prendaManual.trim() : !prendaSeleccionada) ||
                         !colorGlobal.trim() ||
-                        subPartidas.every(sp => !sp.costo_id || sp.cantidad <= 0)
+                        (cotizacionDirecta 
+                          ? subPartidas.every(sp => !sp.talla.trim() || sp.cantidad <= 0 || sp.precio_unitario <= 0)
+                          : subPartidas.every(sp => !sp.costo_id || sp.cantidad <= 0)
+                        )
                       }
                       style={{
                         padding: '0.75rem 2rem',
                         background: (
                           !tipoPrecio ||
-                          !prendaSeleccionada ||
+                          (cotizacionDirecta ? !prendaManual.trim() : !prendaSeleccionada) ||
                           !colorGlobal.trim() ||
-                          subPartidas.every(sp => !sp.costo_id || sp.cantidad <= 0)
-                        ) ? '#9ca3af' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          (cotizacionDirecta 
+                            ? subPartidas.every(sp => !sp.talla.trim() || sp.cantidad <= 0 || sp.precio_unitario <= 0)
+                            : subPartidas.every(sp => !sp.costo_id || sp.cantidad <= 0)
+                          )
+                        ) ? '#9ca3af' : (
+                          cotizacionDirecta 
+                            ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
+                            : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                        ),
                         color: 'white',
                         border: 'none',
                         borderRadius: '8px',
                         cursor: (
                           !tipoPrecio ||
-                          !prendaSeleccionada ||
+                          (cotizacionDirecta ? !prendaManual.trim() : !prendaSeleccionada) ||
                           !colorGlobal.trim() ||
-                          subPartidas.every(sp => !sp.costo_id || sp.cantidad <= 0)
+                          (cotizacionDirecta 
+                            ? subPartidas.every(sp => !sp.talla.trim() || sp.cantidad <= 0 || sp.precio_unitario <= 0)
+                            : subPartidas.every(sp => !sp.costo_id || sp.cantidad <= 0)
+                          )
                         ) ? 'not-allowed' : 'pointer',
                         fontWeight: 'bold',
                         fontSize: '1rem',
