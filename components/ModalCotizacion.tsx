@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useCotizaciones, type PartidaCotizacion } from '@/lib/hooks/useCotizaciones';
 import { useAlumnos } from '@/lib/hooks/useAlumnos';
 import { useExternos } from '@/lib/hooks/useExternos';
@@ -22,7 +22,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   const [busquedaCliente, setBusquedaCliente] = useState('');
   const [clienteSeleccionado, setClienteSeleccionado] = useState<any>(null);
   const [resultadosBusqueda, setResultadosBusqueda] = useState<any[]>([]);
-  const [errorBusqueda, setErrorBusqueda] = useState<string | null>(null);
+  const [indiceSeleccionadoCliente, setIndiceSeleccionadoCliente] = useState(-1);
   
   // Partidas
   const [partidas, setPartidas] = useState<PartidaCotizacion[]>([]);
@@ -39,17 +39,6 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   const [prendaSeleccionada, setPrendaSeleccionada] = useState<string | null>(null);
   const [costosDisponibles, setCostosDisponibles] = useState<Costo[]>([]);
   const [costoSeleccionado, setCostoSeleccionado] = useState<Costo | null>(null);
-  
-  // Estados para autocomplete de prenda
-  const [busquedaPrenda, setBusquedaPrenda] = useState('');
-  const [dropdownPrendaVisible, setDropdownPrendaVisible] = useState(false);
-  const [indiceSeleccionado, setIndiceSeleccionado] = useState(-1);
-  
-  // Estados para modal de ayuda
-  const [mostrarAyuda, setMostrarAyuda] = useState(false);
-  
-  // Refs para accesibilidad
-  const primerInputRef = useRef<HTMLButtonElement>(null);
 
   // Información adicional
   const [observaciones, setObservaciones] = useState('');
@@ -70,12 +59,10 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     const buscar = async () => {
       if (busquedaCliente.length < 2) {
         setResultadosBusqueda([]);
-        setErrorBusqueda(null);
         return;
       }
 
       try {
-        setErrorBusqueda(null);
         if (tipoCliente === 'alumno') {
           const resultados = await searchAlumnos(busquedaCliente);
           setResultadosBusqueda(resultados);
@@ -83,9 +70,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
           const resultados = await searchExternos(busquedaCliente);
           setResultadosBusqueda(resultados);
         }
-      } catch (err: any) {
-        const mensaje = err?.message || 'Error al realizar la búsqueda';
-        setErrorBusqueda(mensaje);
+      } catch (err) {
+        console.error('Error al buscar:', err);
         setResultadosBusqueda([]);
       }
     };
@@ -93,16 +79,6 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     const timeout = setTimeout(buscar, 300);
     return () => clearTimeout(timeout);
   }, [busquedaCliente, tipoCliente, searchAlumnos, searchExternos]);
-
-  // Focus inicial en el primer elemento interactivo (UX con teclado)
-  useEffect(() => {
-    if (vista === 'nueva' && primerInputRef.current) {
-      // Pequeño delay para asegurar que el DOM esté listo
-      setTimeout(() => {
-        primerInputRef.current?.focus();
-      }, 100);
-    }
-  }, [vista]);
 
   // Cargar costos cuando se selecciona una prenda
   useEffect(() => {
@@ -160,12 +136,6 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       alert('Por favor completa todos los campos obligatorios de la partida');
       return;
     }
-    
-    // Validar cantidad > 0
-    if (partidaActual.cantidad <= 0) {
-      alert('⚠️ La cantidad debe ser mayor a 0');
-      return;
-    }
 
     const nuevaPartida: PartidaCotizacion = {
       prenda_nombre: partidaActual.prenda_nombre!,
@@ -192,7 +162,6 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     setPrendaSeleccionada(null);
     setCostoSeleccionado(null);
     setCostosDisponibles([]);
-    setBusquedaPrenda(''); // Limpiar búsqueda de prenda
   };
 
   // Eliminar partida
@@ -453,39 +422,18 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
           <h2 style={{ margin: 0, fontSize: '2rem', color: '#667eea' }}>
             📄 Sistema de Cotizaciones
           </h2>
-          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            <button 
-              onClick={() => setMostrarAyuda(true)}
-              style={{
-                background: '#667eea',
-                color: 'white',
-                border: 'none',
-                borderRadius: '50%',
-                width: '40px',
-                height: '40px',
-                fontSize: '1.5rem',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-              title="Atajos de teclado"
-            >
-              ?
-            </button>
-            <button 
-              onClick={onClose}
-              style={{
-                background: 'none',
-                border: 'none',
-                fontSize: '2rem',
-                cursor: 'pointer',
-                color: '#999',
-              }}
-            >
-              ✕
-            </button>
-          </div>
+          <button 
+            onClick={onClose}
+            style={{
+              background: 'none',
+              border: 'none',
+              fontSize: '2rem',
+              cursor: 'pointer',
+              color: '#999',
+            }}
+          >
+            ✕
+          </button>
         </div>
 
         {/* Tabs */}
@@ -532,7 +480,6 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
               </label>
               <div style={{ display: 'flex', gap: '1rem' }}>
                 <button
-                  ref={primerInputRef}
                   onClick={() => setTipoPrecio('mayoreo')}
                   style={{
                     padding: '1rem 2rem',
@@ -632,12 +579,45 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
             {/* Búsqueda de cliente */}
             <div style={{ marginBottom: '1.5rem' }}>
               <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem' }}>
-                Buscar {tipoCliente === 'alumno' ? 'Alumno' : 'Externo'}:
+                Buscar {tipoCliente === 'alumno' ? 'Alumno' : 'Cliente'}:
               </label>
               <input
                 type="text"
                 value={busquedaCliente}
-                onChange={(e) => setBusquedaCliente(e.target.value)}
+                onChange={(e) => {
+                  setBusquedaCliente(e.target.value);
+                  setIndiceSeleccionadoCliente(-1); // Reset al escribir
+                }}
+                onFocus={() => setIndiceSeleccionadoCliente(-1)}
+                onKeyDown={(e) => {
+                  if (resultadosBusqueda.length === 0) return;
+
+                  if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    setIndiceSeleccionadoCliente(prev => 
+                      prev < resultadosBusqueda.length - 1 ? prev + 1 : prev
+                    );
+                  } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setIndiceSeleccionadoCliente(prev => prev > 0 ? prev - 1 : -1);
+                  } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (indiceSeleccionadoCliente >= 0 && resultadosBusqueda[indiceSeleccionadoCliente]) {
+                      const cliente = resultadosBusqueda[indiceSeleccionadoCliente];
+                      setClienteSeleccionado(cliente);
+                      setBusquedaCliente(cliente.nombre || cliente.alumno_nombre || '');
+                      setResultadosBusqueda([]);
+                      setIndiceSeleccionadoCliente(-1);
+                      // Mantener foco en input
+                      e.currentTarget.blur();
+                      setTimeout(() => e.currentTarget.focus(), 0);
+                    }
+                  } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    setResultadosBusqueda([]);
+                    setIndiceSeleccionadoCliente(-1);
+                  }
+                }}
                 placeholder="Escribe nombre o referencia..."
                 style={{
                   width: '100%',
@@ -648,21 +628,6 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                 }}
               />
               
-              {/* Error de búsqueda */}
-              {errorBusqueda && (
-                <div style={{
-                  marginTop: '0.5rem',
-                  padding: '0.75rem',
-                  backgroundColor: '#fee',
-                  border: '1px solid #fcc',
-                  borderRadius: '6px',
-                  color: '#c33',
-                  fontSize: '0.9rem',
-                }}>
-                  ⚠️ {errorBusqueda}
-                </div>
-              )}
-              
               {/* Resultados búsqueda */}
               {resultadosBusqueda.length > 0 && !clienteSeleccionado && (
                 <div style={{
@@ -672,27 +637,42 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                   maxHeight: '200px',
                   overflow: 'auto',
                 }}>
-                  {resultadosBusqueda.map((cliente) => (
+                  {resultadosBusqueda.map((cliente, index) => (
                     <div
                       key={cliente.id}
                       onClick={() => {
                         setClienteSeleccionado(cliente);
-                        setBusquedaCliente(cliente.nombre);
+                        setBusquedaCliente(cliente.nombre || cliente.alumno_nombre || '');
                         setResultadosBusqueda([]);
+                        setIndiceSeleccionadoCliente(-1);
                       }}
+                      onMouseEnter={() => setIndiceSeleccionadoCliente(index)}
                       style={{
                         padding: '0.75rem',
                         cursor: 'pointer',
                         borderBottom: '1px solid #eee',
-                        backgroundColor: '#fff',
+                        backgroundColor: indiceSeleccionadoCliente === index ? '#667eea' : '#fff',
+                        color: indiceSeleccionadoCliente === index ? 'white' : 'black',
+                        transition: 'all 0.15s',
                       }}
-                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
-                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#fff'}
                     >
-                      <div style={{ fontWeight: 'bold' }}>{cliente.nombre}</div>
+                      <div style={{ fontWeight: 'bold' }}>
+                        {cliente.nombre || cliente.alumno_nombre || 'Sin nombre'}
+                      </div>
                       {cliente.referencia && (
-                        <div style={{ fontSize: '0.85rem', color: '#666' }}>
+                        <div style={{ 
+                          fontSize: '0.85rem', 
+                          color: indiceSeleccionadoCliente === index ? '#e0e7ff' : '#666' 
+                        }}>
                           Ref: {cliente.referencia}
+                        </div>
+                      )}
+                      {cliente.alumno_ref && (
+                        <div style={{ 
+                          fontSize: '0.85rem', 
+                          color: indiceSeleccionadoCliente === index ? '#e0e7ff' : '#666' 
+                        }}>
+                          Ref: {cliente.alumno_ref}
                         </div>
                       )}
                     </div>
@@ -754,179 +734,35 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
               <h3 style={{ marginTop: 0, color: '#667eea' }}>➕ Agregar Partida</h3>
               
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-                {/* PRIMERO: Prenda (con autocomplete) */}
-                <div style={{ position: 'relative' }}>
+                <div>
                   <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem' }}>
                     Prenda *
                   </label>
-                  <input
-                    type="text"
-                    value={busquedaPrenda}
+                  <select
+                    value={prendaSeleccionada || ''}
                     onChange={(e) => {
-                      setBusquedaPrenda(e.target.value);
-                      setDropdownPrendaVisible(true);
-                      setIndiceSeleccionado(-1); // Reset índice al escribir
+                      const prenda_id = e.target.value;
+                      setPrendaSeleccionada(prenda_id || null);
+                      const prenda = prendas.find(p => p.id === prenda_id);
+                      setPartidaActual({ 
+                        ...partidaActual, 
+                        prenda_nombre: prenda?.nombre || '',
+                        talla: '',
+                        precio_unitario: 0,
+                      });
+                      setCostoSeleccionado(null);
                     }}
-                    onFocus={() => {
-                      setDropdownPrendaVisible(true);
-                      setIndiceSeleccionado(-1);
-                    }}
-                    onBlur={() => {
-                      // Delay para permitir click en dropdown
-                      setTimeout(() => {
-                        setDropdownPrendaVisible(false);
-                        setIndiceSeleccionado(-1);
-                      }, 200);
-                    }}
-                    onKeyDown={(e) => {
-                      // Soporte de teclado para el dropdown
-                      const prendasActivas = prendas
-                        .filter(p => p.activo)
-                        .sort((a, b) => a.nombre.localeCompare(b.nombre));
-                      
-                      const prendasFiltradas = busquedaPrenda.trim()
-                        ? prendasActivas.filter(p => 
-                            p.nombre.toLowerCase().includes(busquedaPrenda.toLowerCase())
-                          )
-                        : prendasActivas;
-                      
-                      const prendasMostrar = prendasFiltradas.slice(0, 10);
-
-                      if (e.key === 'ArrowDown') {
-                        e.preventDefault();
-                        setIndiceSeleccionado(prev => 
-                          prev < prendasMostrar.length - 1 ? prev + 1 : prev
-                        );
-                      } else if (e.key === 'ArrowUp') {
-                        e.preventDefault();
-                        setIndiceSeleccionado(prev => prev > 0 ? prev - 1 : -1);
-                      } else if (e.key === 'Enter') {
-                        e.preventDefault();
-                        if (indiceSeleccionado >= 0 && prendasMostrar[indiceSeleccionado]) {
-                          const prenda = prendasMostrar[indiceSeleccionado];
-                          setPrendaSeleccionada(prenda.id);
-                          setBusquedaPrenda(prenda.nombre);
-                          setPartidaActual({ 
-                            ...partidaActual, 
-                            prenda_nombre: prenda.nombre,
-                            talla: '',
-                            precio_unitario: 0,
-                          });
-                          setCostoSeleccionado(null);
-                          setDropdownPrendaVisible(false);
-                          setIndiceSeleccionado(-1);
-                        }
-                      } else if (e.key === 'Escape') {
-                        e.preventDefault();
-                        setDropdownPrendaVisible(false);
-                        setIndiceSeleccionado(-1);
-                      }
-                    }}
-                    placeholder="Buscar prenda..."
-                    style={{ 
-                      width: '100%', 
-                      padding: '0.5rem', 
-                      borderRadius: '4px', 
-                      border: '1px solid #ddd', 
-                      backgroundColor: 'white' 
-                    }}
-                  />
-                  
-                  {/* Dropdown de prendas */}
-                  {dropdownPrendaVisible && (() => {
-                    const prendasActivas = prendas
-                      .filter(p => p.activo)
-                      .sort((a, b) => a.nombre.localeCompare(b.nombre)); // Orden ascendente
-                    
-                    const prendasFiltradas = busquedaPrenda.trim()
-                      ? prendasActivas.filter(p => 
-                          p.nombre.toLowerCase().includes(busquedaPrenda.toLowerCase())
-                        )
-                      : prendasActivas;
-                    
-                    const prendasMostrar = prendasFiltradas.slice(0, 10); // Máximo 10
-                    
-                    return prendasMostrar.length > 0 ? (
-                      <div style={{
-                        position: 'absolute',
-                        top: '100%',
-                        left: 0,
-                        right: 0,
-                        maxHeight: '250px',
-                        overflowY: 'auto',
-                        background: 'white',
-                        border: '1px solid #ddd',
-                        borderRadius: '4px',
-                        marginTop: '0.25rem',
-                        boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-                        zIndex: 1000,
-                      }}>
-                        {prendasMostrar.map((prenda, index) => (
-                          <div
-                            key={prenda.id}
-                            onMouseDown={(e) => {
-                              e.preventDefault();
-                              setPrendaSeleccionada(prenda.id);
-                              setBusquedaPrenda(prenda.nombre);
-                              setPartidaActual({ 
-                                ...partidaActual, 
-                                prenda_nombre: prenda.nombre,
-                                talla: '',
-                                precio_unitario: 0,
-                              });
-                              setCostoSeleccionado(null);
-                              setDropdownPrendaVisible(false);
-                              setIndiceSeleccionado(-1);
-                            }}
-                            onMouseEnter={() => setIndiceSeleccionado(index)}
-                            style={{
-                              padding: '0.75rem',
-                              cursor: 'pointer',
-                              borderBottom: '1px solid #f0f0f0',
-                              transition: 'background 0.15s',
-                              background: indiceSeleccionado === index ? '#667eea' : 'white',
-                              color: indiceSeleccionado === index ? 'white' : 'black',
-                            }}
-                          >
-                            {prenda.nombre}
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div style={{
-                        position: 'absolute',
-                        top: '100%',
-                        left: 0,
-                        right: 0,
-                        background: 'white',
-                        border: '1px solid #ddd',
-                        borderRadius: '4px',
-                        marginTop: '0.25rem',
-                        padding: '0.75rem',
-                        color: '#999',
-                        fontSize: '0.9rem',
-                        zIndex: 1000,
-                      }}>
-                        No se encontraron prendas
-                      </div>
-                    );
-                  })()}
+                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd', backgroundColor: 'white' }}
+                  >
+                    <option value="">Selecciona una prenda...</option>
+                    {prendas.filter(p => p.activo).map(prenda => (
+                      <option key={prenda.id} value={prenda.id}>
+                        {prenda.nombre}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
-                {/* SEGUNDO: Especificación */}
-                <div>
-                  <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem' }}>
-                    Especificación
-                  </label>
-                  <textarea
-                    value={partidaActual.especificaciones || ''}
-                    onChange={(e) => setPartidaActual({ ...partidaActual, especificaciones: e.target.value })}
-                    placeholder="Ej: Bordado del logo en el pecho..."
-                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd', minHeight: '60px', resize: 'vertical' }}
-                  />
-                </div>
-
-                {/* TERCERO: Talla */}
                 <div>
                   <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem' }}>
                     Talla *
@@ -977,55 +813,6 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                   </select>
                 </div>
 
-                {/* CUARTO: Cantidad (sin spinner, solo > 0) */}
-                <div>
-                  <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem' }}>
-                    Cantidad *
-                  </label>
-                  <input
-                    type="number"
-                    value={partidaActual.cantidad || ''}
-                    onChange={(e) => {
-                      const valor = parseInt(e.target.value);
-                      // Solo permitir números > 0
-                      if (isNaN(valor) || valor < 1) {
-                        setPartidaActual({ ...partidaActual, cantidad: undefined });
-                      } else {
-                        setPartidaActual({ ...partidaActual, cantidad: valor });
-                      }
-                    }}
-                    min="1"
-                    placeholder="0"
-                    style={{ 
-                      width: '100%', 
-                      padding: '0.5rem', 
-                      borderRadius: '4px', 
-                      border: '1px solid #ddd',
-                      // Quitar spinners
-                      MozAppearance: 'textfield',
-                      WebkitAppearance: 'none',
-                      appearance: 'textfield',
-                    }}
-                    onKeyDown={(e) => {
-                      // Bloquear signos negativos y punto decimal
-                      if (e.key === '-' || e.key === '.' || e.key === 'e' || e.key === 'E') {
-                        e.preventDefault();
-                      }
-                    }}
-                  />
-                  <style jsx>{`
-                    input[type="number"]::-webkit-outer-spin-button,
-                    input[type="number"]::-webkit-inner-spin-button {
-                      -webkit-appearance: none;
-                      margin: 0;
-                    }
-                    input[type="number"] {
-                      -moz-appearance: textfield;
-                    }
-                  `}</style>
-                </div>
-
-                {/* QUINTO: Color */}
                 <div>
                   <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem' }}>
                     Color
@@ -1039,7 +826,19 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                   />
                 </div>
 
-                {/* SEXTO: Precio (readonly) */}
+                <div>
+                  <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem' }}>
+                    Cantidad *
+                  </label>
+                  <input
+                    type="number"
+                    value={partidaActual.cantidad || 1}
+                    onChange={(e) => setPartidaActual({ ...partidaActual, cantidad: parseInt(e.target.value) || 1 })}
+                    min="1"
+                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
+                  />
+                </div>
+
                 <div>
                   <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem' }}>
                     Precio {tipoPrecio ? `(${tipoPrecio === 'mayoreo' ? 'Mayoreo' : 'Menudeo'})` : 'Unitario'} *
@@ -1071,6 +870,18 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                     </div>
                   )}
                 </div>
+              </div>
+
+              <div style={{ marginTop: '1rem' }}>
+                <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem' }}>
+                  Especificaciones (bordados, logos, etc.)
+                </label>
+                <textarea
+                  value={partidaActual.especificaciones || ''}
+                  onChange={(e) => setPartidaActual({ ...partidaActual, especificaciones: e.target.value })}
+                  placeholder="Ej: Bordado del logo en el pecho..."
+                  style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd', minHeight: '60px' }}
+                />
               </div>
 
               <button
@@ -1323,128 +1134,6 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                 </table>
               </div>
             )}
-          </div>
-        )}
-
-        {/* Modal de Ayuda */}
-        {mostrarAyuda && (
-          <div 
-            style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: 'rgba(0, 0, 0, 0.8)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 10000,
-            }}
-            onClick={() => setMostrarAyuda(false)}
-          >
-            <div 
-              style={{
-                backgroundColor: 'white',
-                borderRadius: '16px',
-                maxWidth: '600px',
-                width: '90%',
-                padding: '2rem',
-                boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)',
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                <h3 style={{ margin: 0, color: '#667eea', fontSize: '1.5rem' }}>⌨️ Atajos de Teclado</h3>
-                <button 
-                  onClick={() => setMostrarAyuda(false)}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    fontSize: '1.5rem',
-                    cursor: 'pointer',
-                    color: '#999',
-                  }}
-                >
-                  ✕
-                </button>
-              </div>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div style={{ borderBottom: '2px solid #eee', paddingBottom: '1rem' }}>
-                  <h4 style={{ color: '#667eea', marginTop: 0 }}>🔍 Búsqueda de Prenda</h4>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginLeft: '1rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span>Navegar opciones:</span>
-                      <kbd style={{ padding: '0.4rem 0.75rem', background: '#e0e7ff', borderRadius: '6px', border: '2px solid #667eea', fontWeight: 'bold', fontSize: '0.95rem', color: '#4c51bf' }}>↑ / ↓</kbd>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span>Seleccionar prenda:</span>
-                      <kbd style={{ padding: '0.4rem 0.75rem', background: '#e0e7ff', borderRadius: '6px', border: '2px solid #667eea', fontWeight: 'bold', fontSize: '0.95rem', color: '#4c51bf' }}>Enter</kbd>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span>Cerrar dropdown:</span>
-                      <kbd style={{ padding: '0.4rem 0.75rem', background: '#e0e7ff', borderRadius: '6px', border: '2px solid #667eea', fontWeight: 'bold', fontSize: '0.95rem', color: '#4c51bf' }}>Esc</kbd>
-                    </div>
-                  </div>
-                </div>
-                
-                <div style={{ borderBottom: '2px solid #eee', paddingBottom: '1rem' }}>
-                  <h4 style={{ color: '#667eea', marginTop: 0 }}>🎯 Navegación General</h4>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginLeft: '1rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span>Siguiente campo:</span>
-                      <kbd style={{ padding: '0.4rem 0.75rem', background: '#e0e7ff', borderRadius: '6px', border: '2px solid #667eea', fontWeight: 'bold', fontSize: '0.95rem', color: '#4c51bf' }}>Tab</kbd>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span>Campo anterior:</span>
-                      <kbd style={{ padding: '0.4rem 0.75rem', background: '#e0e7ff', borderRadius: '6px', border: '2px solid #667eea', fontWeight: 'bold', fontSize: '0.95rem', color: '#4c51bf' }}>Shift + Tab</kbd>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span>Activar botón:</span>
-                      <kbd style={{ padding: '0.4rem 0.75rem', background: '#e0e7ff', borderRadius: '6px', border: '2px solid #667eea', fontWeight: 'bold', fontSize: '0.95rem', color: '#4c51bf' }}>Enter / Espacio</kbd>
-                    </div>
-                  </div>
-                </div>
-                
-                <div>
-                  <h4 style={{ color: '#667eea', marginTop: 0 }}>📝 Flujo Recomendado</h4>
-                  <ol style={{ marginLeft: '1rem', lineHeight: '1.8' }}>
-                    <li>Selecciona <strong>Tipo de Precio</strong> (Mayoreo/Menudeo)</li>
-                    <li>Busca y selecciona un <strong>Cliente</strong> (Externo/Alumno)</li>
-                    <li>Ingresa datos de la partida:
-                      <ul style={{ marginTop: '0.5rem' }}>
-                        <li>Prenda (usa ↑/↓ + Enter)</li>
-                        <li>Especificación</li>
-                        <li>Talla</li>
-                        <li>Cantidad</li>
-                      </ul>
-                    </li>
-                    <li>Presiona <strong>Agregar Partida</strong></li>
-                    <li>Repite para más partidas</li>
-                    <li>Presiona <strong>Generar Cotización</strong></li>
-                  </ol>
-                </div>
-              </div>
-              
-              <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
-                <button 
-                  onClick={() => setMostrarAyuda(false)}
-                  style={{
-                    padding: '0.75rem 2rem',
-                    background: '#667eea',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    fontWeight: 'bold',
-                    fontSize: '1rem',
-                  }}
-                >
-                  Entendido
-                </button>
-              </div>
-            </div>
           </div>
         )}
       </div>
