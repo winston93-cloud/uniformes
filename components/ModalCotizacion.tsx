@@ -26,19 +26,25 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   
   // Partidas
   const [partidas, setPartidas] = useState<PartidaCotizacion[]>([]);
-  const [partidaActual, setPartidaActual] = useState<Partial<PartidaCotizacion>>({
-    prenda_nombre: '',
-    talla: '',
-    color: '',
-    especificaciones: '',
-    cantidad: 1,
-    precio_unitario: 0,
-  });
   
   // Estados para integración con costos
   const [prendaSeleccionada, setPrendaSeleccionada] = useState<string | null>(null);
   const [costosDisponibles, setCostosDisponibles] = useState<Costo[]>([]);
-  const [costoSeleccionado, setCostoSeleccionado] = useState<Costo | null>(null);
+  
+  // NUEVO: Sub-partidas multi-talla
+  interface SubPartida {
+    id: string;
+    costo_id: string;
+    talla: string;
+    color: string;
+    cantidad: number;
+    precio_unitario: number;
+    especificaciones: string;
+  }
+  
+  const [subPartidas, setSubPartidas] = useState<SubPartida[]>([
+    { id: crypto.randomUUID(), costo_id: '', talla: '', color: '', cantidad: 0, precio_unitario: 0, especificaciones: '' }
+  ]);
   
   // Estados para autocomplete de prenda
   const [busquedaPrenda, setBusquedaPrenda] = useState('');
@@ -115,80 +121,110 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
           setCostosDisponibles([]);
         } else {
           setCostosDisponibles(data);
+          // Resetear sub-partidas con una fila vacía
+          setSubPartidas([
+            { id: crypto.randomUUID(), costo_id: '', talla: '', color: '', cantidad: 0, precio_unitario: 0, especificaciones: '' }
+          ]);
         }
       });
     } else {
       setCostosDisponibles([]);
-      setCostoSeleccionado(null);
     }
   }, [prendaSeleccionada, getCostosByPrenda]);
 
-  // Actualizar precio cuando cambia tipoPrecio o costoSeleccionado
-  useEffect(() => {
-    if (costoSeleccionado && tipoPrecio) {
-      const precio = tipoPrecio === 'mayoreo' 
-        ? costoSeleccionado.precio_mayoreo 
-        : costoSeleccionado.precio_menudeo;
-      
-      setPartidaActual(prev => ({
-        ...prev,
-        precio_unitario: precio,
-      }));
-    }
-  }, [tipoPrecio, costoSeleccionado]);
+  // NUEVO: Funciones para manejar sub-partidas
+  const agregarSubPartida = () => {
+    setSubPartidas([...subPartidas, {
+      id: crypto.randomUUID(),
+      costo_id: '',
+      talla: '',
+      color: '',
+      cantidad: 0,
+      precio_unitario: 0,
+      especificaciones: ''
+    }]);
+  };
 
-  // Agregar partida
-  const agregarPartida = () => {
+  const eliminarSubPartida = (id: string) => {
+    // Mantener al menos una fila
+    if (subPartidas.length > 1) {
+      setSubPartidas(subPartidas.filter(sp => sp.id !== id));
+    }
+  };
+
+  const actualizarSubPartida = (id: string, campo: keyof SubPartida, valor: any) => {
+    setSubPartidas(subPartidas.map(sp => {
+      if (sp.id === id) {
+        const actualizada = { ...sp, [campo]: valor };
+        
+        // Si cambia costo_id (talla), actualizar precio automáticamente
+        if (campo === 'costo_id' && valor && tipoPrecio) {
+          const costo = costosDisponibles.find(c => c.id === valor);
+          if (costo) {
+            actualizada.talla = costo.talla?.nombre || '';
+            actualizada.precio_unitario = tipoPrecio === 'mayoreo' 
+              ? costo.precio_mayoreo 
+              : costo.precio_menudeo;
+          }
+        }
+        
+        return actualizada;
+      }
+      return sp;
+    }));
+  };
+
+  const guardarTodasSubPartidas = () => {
     if (!tipoPrecio) {
       alert('⚠️ Debes seleccionar un tipo de precio (Mayoreo o Menudeo) antes de agregar partidas');
       return;
     }
 
-    if (!costoSeleccionado) {
-      alert('⚠️ Debes seleccionar una prenda y talla para obtener el precio');
+    if (!prendaSeleccionada) {
+      alert('⚠️ Debes seleccionar una prenda');
       return;
     }
 
-    const precio = tipoPrecio === 'mayoreo' 
-      ? costoSeleccionado.precio_mayoreo 
-      : costoSeleccionado.precio_menudeo;
+    // Validar que todas las sub-partidas estén completas
+    const incompletas = subPartidas.filter(sp => 
+      !sp.costo_id || !sp.talla || sp.cantidad <= 0 || !sp.color.trim()
+    );
 
-    if (!precio || precio === 0) {
-      alert(`⚠️ No hay precio de ${tipoPrecio} disponible para esta prenda y talla`);
-      return;
-    }
-    
-    if (!partidaActual.prenda_nombre || !partidaActual.talla || !partidaActual.cantidad) {
-      alert('Por favor completa todos los campos obligatorios de la partida');
+    if (incompletas.length > 0) {
+      alert(`⚠️ Hay ${incompletas.length} fila(s) incompleta(s). Por favor completa Talla, Color y Cantidad (>0) en todas las filas.`);
       return;
     }
 
-    const nuevaPartida: PartidaCotizacion = {
-      prenda_nombre: partidaActual.prenda_nombre!,
-      talla: partidaActual.talla!,
-      color: partidaActual.color || '',
-      especificaciones: partidaActual.especificaciones || '',
-      cantidad: partidaActual.cantidad!,
-      precio_unitario: partidaActual.precio_unitario!,
-      subtotal: partidaActual.cantidad! * partidaActual.precio_unitario!,
-      orden: partidas.length + 1,
-    };
+    // Obtener nombre de la prenda
+    const prenda = prendas.find(p => p.id === prendaSeleccionada);
+    if (!prenda) {
+      alert('⚠️ Error: Prenda no encontrada');
+      return;
+    }
 
-    setPartidas([...partidas, nuevaPartida]);
+    // Convertir sub-partidas a partidas y agregar al array
+    const nuevasPartidas: PartidaCotizacion[] = subPartidas.map((sp, index) => ({
+      prenda_nombre: prenda.nombre,
+      talla: sp.talla,
+      color: sp.color,
+      especificaciones: sp.especificaciones,
+      cantidad: sp.cantidad,
+      precio_unitario: sp.precio_unitario,
+      subtotal: sp.cantidad * sp.precio_unitario,
+      orden: partidas.length + index + 1,
+    }));
+
+    setPartidas([...partidas, ...nuevasPartidas]);
     
     // Limpiar formulario
-    setPartidaActual({
-      prenda_nombre: '',
-      talla: '',
-      color: '',
-      especificaciones: '',
-      cantidad: 1,
-      precio_unitario: 0,
-    });
     setPrendaSeleccionada(null);
-    setCostoSeleccionado(null);
-    setBusquedaPrenda(''); // Limpiar búsqueda de prenda
+    setBusquedaPrenda('');
     setCostosDisponibles([]);
+    setSubPartidas([
+      { id: crypto.randomUUID(), costo_id: '', talla: '', color: '', cantidad: 0, precio_unitario: 0, especificaciones: '' }
+    ]);
+
+    alert(`✅ Se agregaron ${nuevasPartidas.length} partida(s) exitosamente`);
   };
 
   // Eliminar partida
@@ -781,7 +817,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
               )}
             </div>
 
-            {/* Agregar partida */}
+            {/* NUEVO: Agregar partida (Multi-talla) */}
             <div style={{
               marginBottom: '1.5rem',
               padding: '1.5rem',
@@ -789,19 +825,28 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
               borderRadius: '12px',
               border: '2px dashed #667eea',
             }}>
-              <h3 style={{ marginTop: 0, color: '#667eea' }}>➕ Agregar Partida</h3>
+              <h3 style={{ marginTop: 0, color: '#667eea' }}>➕ Agregar Partida (Multi-talla)</h3>
               
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-                {/* Prenda con autocomplete */}
-                <div style={{ position: 'relative' }}>
-                  <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem' }}>
-                    Prenda *
-                  </label>
+              {/* NIVEL 1: Selección de Prenda */}
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem', fontSize: '1rem', color: '#667eea' }}>
+                  1. Selecciona la Prenda *
+                </label>
+                <div style={{ position: 'relative', maxWidth: '400px' }}>
                   <input
                     type="text"
                     value={busquedaPrenda}
                     onChange={(e) => {
-                      setBusquedaPrenda(e.target.value);
+                      const nuevaBusqueda = e.target.value;
+                      // Si hay sub-partidas llenas y cambia la prenda, confirmar
+                      if (prendaSeleccionada && subPartidas.some(sp => sp.cantidad > 0 || sp.color)) {
+                        if (confirm('⚠️ Cambiar de prenda limpiará las tallas ingresadas. ¿Continuar?')) {
+                          setBusquedaPrenda(nuevaBusqueda);
+                          setPrendaSeleccionada(null);
+                        }
+                      } else {
+                        setBusquedaPrenda(nuevaBusqueda);
+                      }
                       setDropdownPrendaVisible(true);
                       setIndiceSeleccionadoPrenda(-1);
                     }}
@@ -830,19 +875,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                           const prenda = prendasMostrar[indiceSeleccionadoPrenda];
                           setPrendaSeleccionada(prenda.id);
                           setBusquedaPrenda(prenda.nombre);
-                          setPartidaActual({ 
-                            ...partidaActual, 
-                            prenda_nombre: prenda.nombre,
-                            talla: '',
-                            precio_unitario: 0,
-                          });
-                          setCostoSeleccionado(null);
                           setDropdownPrendaVisible(false);
                           setIndiceSeleccionadoPrenda(-1);
-                          // Mover foco al campo de talla
-                          setTimeout(() => {
-                            inputTallaRef.current?.focus();
-                          }, 100);
                         }
                       } else if (e.key === 'Escape') {
                         e.preventDefault();
@@ -853,10 +887,11 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                     placeholder="Buscar prenda..."
                     style={{ 
                       width: '100%', 
-                      padding: '0.5rem', 
-                      borderRadius: '4px', 
-                      border: '1px solid #ddd', 
-                      backgroundColor: 'white' 
+                      padding: '0.75rem', 
+                      borderRadius: '8px', 
+                      border: '2px solid #667eea', 
+                      backgroundColor: 'white',
+                      fontSize: '1rem',
                     }}
                   />
                   
@@ -871,10 +906,10 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                         maxHeight: '250px',
                         overflowY: 'auto',
                         background: 'white',
-                        border: '1px solid #ddd',
-                        borderRadius: '4px',
-                        marginTop: '0.25rem',
-                        boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                        border: '2px solid #667eea',
+                        borderRadius: '8px',
+                        marginTop: '0.5rem',
+                        boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
                         zIndex: 1000,
                       }}>
                         {prendasMostrar.map((prenda, index) => (
@@ -884,28 +919,18 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                               e.preventDefault();
                               setPrendaSeleccionada(prenda.id);
                               setBusquedaPrenda(prenda.nombre);
-                              setPartidaActual({ 
-                                ...partidaActual, 
-                                prenda_nombre: prenda.nombre,
-                                talla: '',
-                                precio_unitario: 0,
-                              });
-                              setCostoSeleccionado(null);
                               setDropdownPrendaVisible(false);
                               setIndiceSeleccionadoPrenda(-1);
-                              // Mover foco al campo de talla
-                              setTimeout(() => {
-                                inputTallaRef.current?.focus();
-                              }, 100);
                             }}
                             onMouseEnter={() => setIndiceSeleccionadoPrenda(index)}
                             style={{
-                              padding: '0.75rem',
+                              padding: '0.75rem 1rem',
                               cursor: 'pointer',
-                              borderBottom: '1px solid #f0f0f0',
-                              transition: 'background 0.15s',
+                              borderBottom: index < prendasMostrar.length - 1 ? '1px solid #f0f0f0' : 'none',
+                              transition: 'all 0.15s',
                               background: indiceSeleccionadoPrenda === index ? '#667eea' : 'white',
                               color: indiceSeleccionadoPrenda === index ? 'white' : 'black',
+                              fontWeight: indiceSeleccionadoPrenda === index ? 'bold' : 'normal',
                             }}
                           >
                             {prenda.nombre}
@@ -919,9 +944,9 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                         left: 0,
                         right: 0,
                         background: 'white',
-                        border: '1px solid #ddd',
-                        borderRadius: '4px',
-                        marginTop: '0.25rem',
+                        border: '2px solid #ddd',
+                        borderRadius: '8px',
+                        marginTop: '0.5rem',
                         padding: '0.75rem',
                         color: '#999',
                         fontSize: '0.9rem',
@@ -932,145 +957,262 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                     )
                   )}
                 </div>
+                
+                {prendaSeleccionada && (
+                  <div style={{
+                    marginTop: '0.75rem',
+                    padding: '0.75rem 1rem',
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    color: 'white',
+                    borderRadius: '8px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    fontWeight: 'bold',
+                  }}>
+                    ✓ {busquedaPrenda}
+                  </div>
+                )}
+              </div>
 
+              {/* NIVEL 2: Sub-partidas (Tallas) */}
+              {prendaSeleccionada && costosDisponibles.length > 0 && (
                 <div>
-                  <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem' }}>
-                    Talla *
+                  <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.75rem', fontSize: '1rem', color: '#667eea' }}>
+                    2. Agrega las Tallas y Cantidades *
                   </label>
-                  <select
-                    ref={inputTallaRef as any}
-                    value={costoSeleccionado?.id || ''}
-                    onChange={(e) => {
-                      const costo_id = e.target.value;
-                      const costo = costosDisponibles.find(c => c.id === costo_id);
-                      setCostoSeleccionado(costo || null);
-                      if (costo) {
-                        // Validar que tipoPrecio esté seleccionado antes de asignar precio
-                        const precio = tipoPrecio 
-                          ? (tipoPrecio === 'mayoreo' ? costo.precio_mayoreo : costo.precio_menudeo)
-                          : 0;
-                        
-                        setPartidaActual({ 
-                          ...partidaActual, 
-                          talla: costo.talla?.nombre || '',
-                          precio_unitario: precio,
-                        });
+                  
+                  {/* Header de la tabla */}
+                  <div className="subpartidas-grid-header" style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 100px 80px 100px 1fr 40px',
+                    gap: '0.5rem',
+                    padding: '0.5rem',
+                    background: '#667eea',
+                    color: 'white',
+                    borderRadius: '8px 8px 0 0',
+                    fontWeight: 'bold',
+                    fontSize: '0.85rem',
+                  }}>
+                    <div>Talla</div>
+                    <div>Color</div>
+                    <div>Cant.</div>
+                    <div>Precio</div>
+                    <div>Especificaciones</div>
+                    <div></div>
+                  </div>
+
+                  {/* Filas de sub-partidas */}
+                  {subPartidas.map((sp) => (
+                    <div 
+                      key={sp.id}
+                      className="subpartidas-grid-row"
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 100px 80px 100px 1fr 40px',
+                        gap: '0.5rem',
+                        padding: '0.75rem 0.5rem',
+                        background: 'white',
+                        borderBottom: '1px solid #e5e7eb',
+                        alignItems: 'center',
+                      }}
+                    >
+                      {/* Talla */}
+                      <select
+                        value={sp.costo_id}
+                        onChange={(e) => actualizarSubPartida(sp.id, 'costo_id', e.target.value)}
+                        style={{
+                          padding: '0.5rem',
+                          borderRadius: '4px',
+                          border: '1px solid #ddd',
+                          fontSize: '0.9rem',
+                        }}
+                      >
+                        <option value="">Selecciona...</option>
+                        {costosDisponibles
+                          .filter(c => c.activo !== false)
+                          .map(costo => (
+                            <option key={costo.id} value={costo.id}>
+                              {costo.talla?.nombre || 'Sin talla'}
+                            </option>
+                          ))}
+                      </select>
+
+                      {/* Color */}
+                      <input
+                        type="text"
+                        value={sp.color}
+                        onChange={(e) => actualizarSubPartida(sp.id, 'color', e.target.value)}
+                        placeholder="Color"
+                        style={{
+                          padding: '0.5rem',
+                          borderRadius: '4px',
+                          border: '1px solid #ddd',
+                          fontSize: '0.9rem',
+                        }}
+                      />
+
+                      {/* Cantidad */}
+                      <input
+                        type="number"
+                        value={sp.cantidad || ''}
+                        onChange={(e) => actualizarSubPartida(sp.id, 'cantidad', parseInt(e.target.value) || 0)}
+                        min="0"
+                        placeholder="0"
+                        style={{
+                          padding: '0.5rem',
+                          borderRadius: '4px',
+                          border: '1px solid #ddd',
+                          fontSize: '0.9rem',
+                          textAlign: 'center',
+                        }}
+                      />
+
+                      {/* Precio (readonly) */}
+                      <input
+                        type="text"
+                        value={sp.precio_unitario ? `$${sp.precio_unitario.toFixed(2)}` : '$0.00'}
+                        readOnly
+                        disabled
+                        style={{
+                          padding: '0.5rem',
+                          borderRadius: '4px',
+                          border: '1px solid #ddd',
+                          fontSize: '0.9rem',
+                          backgroundColor: '#f5f5f5',
+                          color: '#333',
+                          fontWeight: 'bold',
+                          textAlign: 'right',
+                        }}
+                      />
+
+                      {/* Especificaciones */}
+                      <input
+                        type="text"
+                        value={sp.especificaciones}
+                        onChange={(e) => actualizarSubPartida(sp.id, 'especificaciones', e.target.value)}
+                        placeholder="Logo, bordado, etc."
+                        style={{
+                          padding: '0.5rem',
+                          borderRadius: '4px',
+                          border: '1px solid #ddd',
+                          fontSize: '0.9rem',
+                        }}
+                      />
+
+                      {/* Botón eliminar */}
+                      <button
+                        onClick={() => eliminarSubPartida(sp.id)}
+                        disabled={subPartidas.length === 1}
+                        title="Eliminar fila"
+                        style={{
+                          padding: '0.5rem',
+                          background: subPartidas.length === 1 ? '#e5e7eb' : '#ef4444',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: subPartidas.length === 1 ? 'not-allowed' : 'pointer',
+                          fontSize: '1rem',
+                        }}
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  ))}
+
+                  {/* Botones de acción */}
+                  <div style={{
+                    display: 'flex',
+                    gap: '1rem',
+                    marginTop: '1rem',
+                    padding: '1rem',
+                    background: '#f8f9fa',
+                    borderRadius: '0 0 8px 8px',
+                  }}>
+                    <button
+                      onClick={agregarSubPartida}
+                      style={{
+                        padding: '0.75rem 1.5rem',
+                        background: 'white',
+                        color: '#667eea',
+                        border: '2px solid #667eea',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontWeight: 'bold',
+                        fontSize: '0.95rem',
+                        transition: 'all 0.2s',
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.background = '#667eea';
+                        e.currentTarget.style.color = 'white';
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.background = 'white';
+                        e.currentTarget.style.color = '#667eea';
+                      }}
+                    >
+                      ➕ Agregar otra talla
+                    </button>
+
+                    <button
+                      onClick={guardarTodasSubPartidas}
+                      disabled={
+                        !tipoPrecio ||
+                        !prendaSeleccionada ||
+                        subPartidas.every(sp => !sp.costo_id || sp.cantidad <= 0 || !sp.color.trim())
                       }
-                    }}
-                    disabled={!prendaSeleccionada || costosDisponibles.length === 0}
-                    style={{ 
-                      width: '100%', 
-                      padding: '0.5rem', 
-                      borderRadius: '4px', 
-                      border: '1px solid #ddd', 
-                      backgroundColor: (!prendaSeleccionada || costosDisponibles.length === 0) ? '#f5f5f5' : 'white',
-                      cursor: (!prendaSeleccionada || costosDisponibles.length === 0) ? 'not-allowed' : 'pointer',
-                    }}
-                  >
-                    <option value="">
-                      {!prendaSeleccionada 
-                        ? 'Primero selecciona una prenda' 
-                        : costosDisponibles.length === 0 
-                          ? 'No hay tallas disponibles' 
-                          : 'Selecciona una talla...'}
-                    </option>
-                    {costosDisponibles
-                      .filter(costo => costo.activo !== false) // Filtrar costos activos
-                      .map(costo => (
-                        <option key={costo.id} value={costo.id}>
-                          {costo.talla?.nombre || 'Sin talla'} - ${tipoPrecio === 'mayoreo' ? costo.precio_mayoreo : costo.precio_menudeo}
-                        </option>
-                      ))}
-                  </select>
+                      style={{
+                        padding: '0.75rem 2rem',
+                        background: (
+                          !tipoPrecio ||
+                          !prendaSeleccionada ||
+                          subPartidas.every(sp => !sp.costo_id || sp.cantidad <= 0 || !sp.color.trim())
+                        ) ? '#9ca3af' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        cursor: (
+                          !tipoPrecio ||
+                          !prendaSeleccionada ||
+                          subPartidas.every(sp => !sp.costo_id || sp.cantidad <= 0 || !sp.color.trim())
+                        ) ? 'not-allowed' : 'pointer',
+                        fontWeight: 'bold',
+                        fontSize: '1rem',
+                        boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                      }}
+                    >
+                      💾 Guardar Todo ({subPartidas.filter(sp => sp.costo_id && sp.cantidad > 0 && sp.color.trim()).length} {subPartidas.filter(sp => sp.costo_id && sp.cantidad > 0 && sp.color.trim()).length === 1 ? 'partida' : 'partidas'})
+                    </button>
+                  </div>
                 </div>
+              )}
 
-                <div>
-                  <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem' }}>
-                    Color
-                  </label>
-                  <input
-                    type="text"
-                    value={partidaActual.color || ''}
-                    onChange={(e) => setPartidaActual({ ...partidaActual, color: e.target.value })}
-                    placeholder="Ej: Azul marino"
-                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
-                  />
+              {/* Mensaje si no hay prenda seleccionada */}
+              {!prendaSeleccionada && (
+                <div style={{
+                  padding: '2rem',
+                  textAlign: 'center',
+                  color: '#9ca3af',
+                  fontSize: '0.95rem',
+                }}>
+                  👆 Selecciona una prenda para comenzar a agregar tallas
                 </div>
+              )}
 
-                <div>
-                  <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem' }}>
-                    Cantidad *
-                  </label>
-                  <input
-                    type="number"
-                    value={partidaActual.cantidad || 1}
-                    onChange={(e) => setPartidaActual({ ...partidaActual, cantidad: parseInt(e.target.value) || 1 })}
-                    min="1"
-                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem' }}>
-                    Precio {tipoPrecio ? `(${tipoPrecio === 'mayoreo' ? 'Mayoreo' : 'Menudeo'})` : 'Unitario'} *
-                  </label>
-                  <input
-                    type="number"
-                    value={partidaActual.precio_unitario || 0}
-                    readOnly
-                    disabled
-                    style={{ 
-                      width: '100%', 
-                      padding: '0.5rem', 
-                      borderRadius: '4px', 
-                      border: '1px solid #ddd',
-                      backgroundColor: '#f5f5f5',
-                      color: '#333',
-                      fontWeight: 'bold',
-                      cursor: 'not-allowed',
-                    }}
-                  />
-                  {!tipoPrecio && (
-                    <div style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '0.25rem' }}>
-                      ⚠️ Selecciona tipo de precio primero
-                    </div>
-                  )}
-                  {tipoPrecio && !costoSeleccionado && (
-                    <div style={{ fontSize: '0.75rem', color: '#f59e0b', marginTop: '0.25rem' }}>
-                      ℹ️ Selecciona prenda y talla para ver el precio
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div style={{ marginTop: '1rem' }}>
-                <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem' }}>
-                  Especificaciones (bordados, logos, etc.)
-                </label>
-                <textarea
-                  value={partidaActual.especificaciones || ''}
-                  onChange={(e) => setPartidaActual({ ...partidaActual, especificaciones: e.target.value })}
-                  placeholder="Ej: Bordado del logo en el pecho..."
-                  style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd', minHeight: '60px' }}
-                />
-              </div>
-
-              <button
-                onClick={agregarPartida}
-                style={{
-                  marginTop: '1rem',
-                  padding: '0.75rem 2rem',
-                  background: '#667eea',
-                  color: 'white',
-                  border: 'none',
+              {/* Mensaje si prenda no tiene costos */}
+              {prendaSeleccionada && costosDisponibles.length === 0 && (
+                <div style={{
+                  padding: '1.5rem',
+                  background: '#fef3c7',
+                  border: '2px solid #f59e0b',
                   borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontWeight: 'bold',
-                  fontSize: '1rem',
-                }}
-              >
-                ➕ Agregar Partida
-              </button>
+                  color: '#92400e',
+                  textAlign: 'center',
+                  fontWeight: '500',
+                }}>
+                  ⚠️ Esta prenda no tiene tallas/costos configurados. Por favor, agrega tallas en el módulo de Costos primero.
+                </div>
+              )}
             </div>
 
             {/* Lista de partidas */}

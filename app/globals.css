@@ -573,6 +573,36 @@ body {
     padding: 0.5rem !important;
     min-width: auto !important;
   }
+  
+  /* Sub-partidas multi-talla responsive */
+  .subpartidas-grid-header {
+    display: none !important; /* Ocultar header en móvil */
+  }
+  
+  .subpartidas-grid-row {
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem !important;
+    padding: 1rem !important;
+    border: 2px solid #667eea !important;
+    border-radius: 8px !important;
+    margin-bottom: 1rem !important;
+    background: #f8f9fa !important;
+  }
+  
+  .subpartidas-grid-row select,
+  .subpartidas-grid-row input {
+    width: 100% !important;
+  }
+  
+  /* Agregar labels antes de cada campo en móvil */
+  .subpartidas-grid-row select::before,
+  .subpartidas-grid-row input::before {
+    content: attr(placeholder);
+    display: block;
+    font-weight: bold;
+    margin-bottom: 0.25rem;
+    color: #667eea;
+  }
 
   /* Tarjetas VIP en móviles */
   .modulos-vip-grid {
