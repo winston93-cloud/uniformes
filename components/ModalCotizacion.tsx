@@ -114,6 +114,24 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     }
   }, [resultadosBusqueda, clienteSeleccionado]);
 
+  // Cerrar dropdown de clientes al hacer scroll o resize (UX estándar)
+  useEffect(() => {
+    if (resultadosBusqueda.length > 0 && !clienteSeleccionado) {
+      const handleScrollOrResize = () => {
+        setResultadosBusqueda([]);
+        setIndiceSeleccionadoCliente(-1);
+      };
+
+      window.addEventListener('scroll', handleScrollOrResize, true); // Capture phase
+      window.addEventListener('resize', handleScrollOrResize);
+
+      return () => {
+        window.removeEventListener('scroll', handleScrollOrResize, true);
+        window.removeEventListener('resize', handleScrollOrResize);
+      };
+    }
+  }, [resultadosBusqueda, clienteSeleccionado]);
+
   // Calcular posición del dropdown de prendas cuando se muestra
   useEffect(() => {
     if (dropdownPrendaVisible && inputPrendaRef.current) {
@@ -125,6 +143,24 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       });
     } else {
       setDropdownPrendaPos(null);
+    }
+  }, [dropdownPrendaVisible]);
+
+  // Cerrar dropdown de prendas al hacer scroll o resize (UX estándar)
+  useEffect(() => {
+    if (dropdownPrendaVisible) {
+      const handleScrollOrResize = () => {
+        setDropdownPrendaVisible(false);
+        setIndiceSeleccionadoPrenda(-1);
+      };
+
+      window.addEventListener('scroll', handleScrollOrResize, true); // Capture phase
+      window.addEventListener('resize', handleScrollOrResize);
+
+      return () => {
+        window.removeEventListener('scroll', handleScrollOrResize, true);
+        window.removeEventListener('resize', handleScrollOrResize);
+      };
     }
   }, [dropdownPrendaVisible]);
 
