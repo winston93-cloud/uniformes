@@ -43,6 +43,10 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   // Estados para autocomplete de prenda
   const [busquedaPrenda, setBusquedaPrenda] = useState('');
   const [dropdownPrendaVisible, setDropdownPrendaVisible] = useState(false);
+  const [indiceSeleccionado, setIndiceSeleccionado] = useState(-1);
+  
+  // Estados para modal de ayuda
+  const [mostrarAyuda, setMostrarAyuda] = useState(false);
 
   // Información adicional
   const [observaciones, setObservaciones] = useState('');
@@ -436,18 +440,39 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
           <h2 style={{ margin: 0, fontSize: '2rem', color: '#667eea' }}>
             📄 Sistema de Cotizaciones
           </h2>
-          <button 
-            onClick={onClose}
-            style={{
-              background: 'none',
-              border: 'none',
-              fontSize: '2rem',
-              cursor: 'pointer',
-              color: '#999',
-            }}
-          >
-            ✕
-          </button>
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <button 
+              onClick={() => setMostrarAyuda(true)}
+              style={{
+                background: '#667eea',
+                color: 'white',
+                border: 'none',
+                borderRadius: '50%',
+                width: '40px',
+                height: '40px',
+                fontSize: '1.5rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              title="Atajos de teclado"
+            >
+              ?
+            </button>
+            <button 
+              onClick={onClose}
+              style={{
+                background: 'none',
+                border: 'none',
+                fontSize: '2rem',
+                cursor: 'pointer',
+                color: '#999',
+              }}
+            >
+              ✕
+            </button>
+          </div>
         </div>
 
         {/* Tabs */}
@@ -726,11 +751,62 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                     onChange={(e) => {
                       setBusquedaPrenda(e.target.value);
                       setDropdownPrendaVisible(true);
+                      setIndiceSeleccionado(-1); // Reset índice al escribir
                     }}
-                    onFocus={() => setDropdownPrendaVisible(true)}
+                    onFocus={() => {
+                      setDropdownPrendaVisible(true);
+                      setIndiceSeleccionado(-1);
+                    }}
                     onBlur={() => {
                       // Delay para permitir click en dropdown
-                      setTimeout(() => setDropdownPrendaVisible(false), 200);
+                      setTimeout(() => {
+                        setDropdownPrendaVisible(false);
+                        setIndiceSeleccionado(-1);
+                      }, 200);
+                    }}
+                    onKeyDown={(e) => {
+                      // Soporte de teclado para el dropdown
+                      const prendasActivas = prendas
+                        .filter(p => p.activo)
+                        .sort((a, b) => a.nombre.localeCompare(b.nombre));
+                      
+                      const prendasFiltradas = busquedaPrenda.trim()
+                        ? prendasActivas.filter(p => 
+                            p.nombre.toLowerCase().includes(busquedaPrenda.toLowerCase())
+                          )
+                        : prendasActivas;
+                      
+                      const prendasMostrar = prendasFiltradas.slice(0, 10);
+
+                      if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        setIndiceSeleccionado(prev => 
+                          prev < prendasMostrar.length - 1 ? prev + 1 : prev
+                        );
+                      } else if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        setIndiceSeleccionado(prev => prev > 0 ? prev - 1 : -1);
+                      } else if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (indiceSeleccionado >= 0 && prendasMostrar[indiceSeleccionado]) {
+                          const prenda = prendasMostrar[indiceSeleccionado];
+                          setPrendaSeleccionada(prenda.id);
+                          setBusquedaPrenda(prenda.nombre);
+                          setPartidaActual({ 
+                            ...partidaActual, 
+                            prenda_nombre: prenda.nombre,
+                            talla: '',
+                            precio_unitario: 0,
+                          });
+                          setCostoSeleccionado(null);
+                          setDropdownPrendaVisible(false);
+                          setIndiceSeleccionado(-1);
+                        }
+                      } else if (e.key === 'Escape') {
+                        e.preventDefault();
+                        setDropdownPrendaVisible(false);
+                        setIndiceSeleccionado(-1);
+                      }
                     }}
                     placeholder="Buscar prenda..."
                     style={{ 
@@ -771,7 +847,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                         boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
                         zIndex: 1000,
                       }}>
-                        {prendasMostrar.map(prenda => (
+                        {prendasMostrar.map((prenda, index) => (
                           <div
                             key={prenda.id}
                             onMouseDown={(e) => {
@@ -786,18 +862,16 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                               });
                               setCostoSeleccionado(null);
                               setDropdownPrendaVisible(false);
+                              setIndiceSeleccionado(-1);
                             }}
+                            onMouseEnter={() => setIndiceSeleccionado(index)}
                             style={{
                               padding: '0.75rem',
                               cursor: 'pointer',
                               borderBottom: '1px solid #f0f0f0',
                               transition: 'background 0.15s',
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.background = '#f8f9fa';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.background = 'white';
+                              background: indiceSeleccionado === index ? '#667eea' : 'white',
+                              color: indiceSeleccionado === index ? 'white' : 'black',
                             }}
                           >
                             {prenda.nombre}
@@ -1235,6 +1309,128 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                 </table>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Modal de Ayuda */}
+        {mostrarAyuda && (
+          <div 
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.8)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 10000,
+            }}
+            onClick={() => setMostrarAyuda(false)}
+          >
+            <div 
+              style={{
+                backgroundColor: 'white',
+                borderRadius: '16px',
+                maxWidth: '600px',
+                width: '90%',
+                padding: '2rem',
+                boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                <h3 style={{ margin: 0, color: '#667eea', fontSize: '1.5rem' }}>⌨️ Atajos de Teclado</h3>
+                <button 
+                  onClick={() => setMostrarAyuda(false)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    fontSize: '1.5rem',
+                    cursor: 'pointer',
+                    color: '#999',
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div style={{ borderBottom: '2px solid #eee', paddingBottom: '1rem' }}>
+                  <h4 style={{ color: '#667eea', marginTop: 0 }}>🔍 Búsqueda de Prenda</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginLeft: '1rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Navegar opciones:</span>
+                      <kbd style={{ padding: '0.25rem 0.5rem', background: '#f0f0f0', borderRadius: '4px', border: '1px solid #ccc' }}>↑ / ↓</kbd>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Seleccionar prenda:</span>
+                      <kbd style={{ padding: '0.25rem 0.5rem', background: '#f0f0f0', borderRadius: '4px', border: '1px solid #ccc' }}>Enter</kbd>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Cerrar dropdown:</span>
+                      <kbd style={{ padding: '0.25rem 0.5rem', background: '#f0f0f0', borderRadius: '4px', border: '1px solid #ccc' }}>Esc</kbd>
+                    </div>
+                  </div>
+                </div>
+                
+                <div style={{ borderBottom: '2px solid #eee', paddingBottom: '1rem' }}>
+                  <h4 style={{ color: '#667eea', marginTop: 0 }}>🎯 Navegación General</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginLeft: '1rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Siguiente campo:</span>
+                      <kbd style={{ padding: '0.25rem 0.5rem', background: '#f0f0f0', borderRadius: '4px', border: '1px solid #ccc' }}>Tab</kbd>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Campo anterior:</span>
+                      <kbd style={{ padding: '0.25rem 0.5rem', background: '#f0f0f0', borderRadius: '4px', border: '1px solid #ccc' }}>Shift + Tab</kbd>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Activar botón:</span>
+                      <kbd style={{ padding: '0.25rem 0.5rem', background: '#f0f0f0', borderRadius: '4px', border: '1px solid #ccc' }}>Enter / Espacio</kbd>
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <h4 style={{ color: '#667eea', marginTop: 0 }}>📝 Flujo Recomendado</h4>
+                  <ol style={{ marginLeft: '1rem', lineHeight: '1.8' }}>
+                    <li>Selecciona <strong>Tipo de Precio</strong> (Mayoreo/Menudeo)</li>
+                    <li>Busca y selecciona un <strong>Cliente</strong> (Externo/Alumno)</li>
+                    <li>Ingresa datos de la partida:
+                      <ul style={{ marginTop: '0.5rem' }}>
+                        <li>Prenda (usa ↑/↓ + Enter)</li>
+                        <li>Especificación</li>
+                        <li>Talla</li>
+                        <li>Cantidad</li>
+                      </ul>
+                    </li>
+                    <li>Presiona <strong>Agregar Partida</strong></li>
+                    <li>Repite para más partidas</li>
+                    <li>Presiona <strong>Generar Cotización</strong></li>
+                  </ol>
+                </div>
+              </div>
+              
+              <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
+                <button 
+                  onClick={() => setMostrarAyuda(false)}
+                  style={{
+                    padding: '0.75rem 2rem',
+                    background: '#667eea',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontWeight: 'bold',
+                    fontSize: '1rem',
+                  }}
+                >
+                  Entendido
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
