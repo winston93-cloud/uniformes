@@ -40,17 +40,6 @@ CREATE INDEX IF NOT EXISTS idx_externos_busqueda_nombre
 ON externos 
 USING GIN (nombre gin_trgm_ops);
 
--- Índice para búsqueda por referencia
--- Usado en: searchExternos() - busca en referencia
-CREATE INDEX IF NOT EXISTS idx_externos_busqueda_ref
-ON externos 
-USING GIN (referencia gin_trgm_ops);
-
--- Índice compuesto para filtrar externos activos (común en WHERE)
-CREATE INDEX IF NOT EXISTS idx_externos_activo
-ON externos (activo)
-WHERE activo = true;
-
 -- ============================================================
 -- 4. ÍNDICES PARA TABLA: costos
 -- ============================================================
@@ -76,9 +65,19 @@ USING GIN (nombre gin_trgm_ops);
 -- ============================================================
 -- ANÁLISIS DE IMPACTO ESPERADO:
 -- ============================================================
+-- ÍNDICES CRÍTICOS CREADOS (versión simplificada):
+-- 1. idx_alumno_busqueda_nombre (GIN) - Búsqueda en nombre completo
+-- 2. idx_alumno_busqueda_ref (GIN) - Búsqueda en referencia
+-- 3. idx_alumno_activo - Filtro de activos (usando alumno_status)
+-- 4. idx_externos_busqueda_nombre (GIN) - Búsqueda en nombre
+-- 5. idx_costos_prenda_id - FK costos → prendas (crítico para tallas)
+-- 6. idx_costos_prenda_talla - Compuesto prenda + talla
+-- 7. idx_prendas_busqueda_nombre (GIN) - Búsqueda de prendas
+--
+-- TOTAL: 7 índices críticos (removidos índices problemáticos)
+--
 -- ANTES (Sin índices):
 -- - Búsqueda "laura" en 10,000 alumnos: ~30-60 segundos (Full Table Scan)
--- - Race conditions: Respuestas llegan en desorden
 -- - Sistema inutilizable
 --
 -- DESPUÉS (Con índices GIN + pg_trgm):
