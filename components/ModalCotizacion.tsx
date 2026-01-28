@@ -1331,6 +1331,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                         <th style={{ padding: '0.75rem', textAlign: 'left' }}>Prenda</th>
                         <th style={{ padding: '0.75rem', textAlign: 'left' }}>Talla</th>
                         <th style={{ padding: '0.75rem', textAlign: 'left' }}>Color</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left' }}>Especificaciones</th>
                         <th style={{ padding: '0.75rem', textAlign: 'right' }}>Cant.</th>
                         <th style={{ padding: '0.75rem', textAlign: 'right' }}>P. Unit.</th>
                         <th style={{ padding: '0.75rem', textAlign: 'right' }}>Subtotal</th>
@@ -1341,16 +1342,14 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                       {partidas.map((partida, index) => (
                         <tr key={index} style={{ borderBottom: '1px solid #eee' }}>
                           <td style={{ padding: '0.75rem' }}>{index + 1}</td>
-                          <td style={{ padding: '0.75rem' }}>
-                            <div style={{ fontWeight: 'bold' }}>{partida.prenda_nombre}</div>
-                            {partida.especificaciones && (
-                              <div style={{ fontSize: '0.85rem', color: '#666' }}>
-                                {partida.especificaciones}
-                              </div>
-                            )}
+                          <td style={{ padding: '0.75rem', fontWeight: 'bold' }}>
+                            {partida.prenda_nombre}
                           </td>
                           <td style={{ padding: '0.75rem' }}>{partida.talla}</td>
                           <td style={{ padding: '0.75rem' }}>{partida.color || '-'}</td>
+                          <td style={{ padding: '0.75rem', fontSize: '0.9rem', color: '#555' }}>
+                            {partida.especificaciones || '-'}
+                          </td>
                           <td style={{ padding: '0.75rem', textAlign: 'right' }}>{partida.cantidad}</td>
                           <td style={{ padding: '0.75rem', textAlign: 'right' }}>
                             ${partida.precio_unitario.toFixed(2)}
