@@ -20,10 +20,17 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   const [vista, setVista] = useState<'nueva' | 'historial'>('nueva');
   const [tipoPrecio, setTipoPrecio] = useState<'mayoreo' | 'menudeo' | null>(null);
   const [tipoCliente, setTipoCliente] = useState<'alumno' | 'externo'>('externo');
+  const [cotizacionDirecta, setCotizacionDirecta] = useState(false);
   const [busquedaCliente, setBusquedaCliente] = useState('');
   const [clienteSeleccionado, setClienteSeleccionado] = useState<any>(null);
   const [resultadosBusqueda, setResultadosBusqueda] = useState<any[]>([]);
   const [indiceSeleccionadoCliente, setIndiceSeleccionadoCliente] = useState(-1);
+  
+  // Estados para modo Cotización Directa (manual)
+  const [prendaManual, setPrendaManual] = useState('');
+  const [tallaManual, setTallaManual] = useState('');
+  const [precioManual, setPrecioManual] = useState('');
+  const [cantidadManual, setCantidadManual] = useState('1');
   
   // Partidas
   const [partidas, setPartidas] = useState<PartidaCotizacion[]>([]);
@@ -767,33 +774,68 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                   ⚡ Acción Rápida:
                 </label>
                 <button
-                  onClick={() => alert('🚧 Cotización Directa - Próximamente\n\nEsta función permitirá crear cotizaciones sin agregar partidas individuales.')}
+                  onClick={() => {
+                    const nuevoModo = !cotizacionDirecta;
+                    setCotizacionDirecta(nuevoModo);
+                    // Limpiar campos al cambiar de modo
+                    if (nuevoModo) {
+                      // Activando modo manual
+                      setPrendaSeleccionada(null);
+                      setBusquedaPrenda('');
+                      setCostosDisponibles([]);
+                      setSubPartidas([{ id: crypto.randomUUID(), costo_id: '', talla: '', cantidad: 0, precio_unitario: 0 }]);
+                    } else {
+                      // Desactivando modo manual
+                      setPrendaManual('');
+                      setTallaManual('');
+                      setPrecioManual('');
+                      setCantidadManual('1');
+                    }
+                    setColorGlobal('');
+                    setEspecificacionesGlobales('');
+                  }}
                   style={{
                     padding: '1rem 1.5rem',
-                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                    background: cotizacionDirecta 
+                      ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' 
+                      : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                     color: 'white',
-                    border: '2px solid #047857',
+                    border: cotizacionDirecta ? '2px solid #b45309' : '2px solid #047857',
                     borderRadius: '8px',
                     cursor: 'pointer',
                     fontWeight: 'bold',
                     fontSize: '0.95rem',
                     width: '100%',
-                    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+                    boxShadow: cotizacionDirecta 
+                      ? '0 4px 12px rgba(245, 158, 11, 0.3)' 
+                      : '0 4px 12px rgba(16, 185, 129, 0.3)',
                     transition: 'all 0.2s',
                   }}
                   onMouseOver={(e) => {
                     e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.boxShadow = '0 6px 16px rgba(16, 185, 129, 0.4)';
+                    e.currentTarget.style.boxShadow = cotizacionDirecta 
+                      ? '0 6px 16px rgba(245, 158, 11, 0.4)' 
+                      : '0 6px 16px rgba(16, 185, 129, 0.4)';
                   }}
                   onMouseOut={(e) => {
                     e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.3)';
+                    e.currentTarget.style.boxShadow = cotizacionDirecta 
+                      ? '0 4px 12px rgba(245, 158, 11, 0.3)' 
+                      : '0 4px 12px rgba(16, 185, 129, 0.3)';
                   }}
                 >
-                  📋 Cotización Directa
+                  {cotizacionDirecta ? '✏️ Modo Manual' : '📋 Cotización Directa'}
                 </button>
-                <div style={{ marginTop: '0.5rem', padding: '0.5rem', backgroundColor: 'rgba(16, 185, 129, 0.1)', borderRadius: '6px', fontSize: '0.75rem', color: '#059669', textAlign: 'center' }}>
-                  Sin partidas
+                <div style={{ 
+                  marginTop: '0.5rem', 
+                  padding: '0.5rem', 
+                  backgroundColor: cotizacionDirecta ? 'rgba(245, 158, 11, 0.1)' : 'rgba(16, 185, 129, 0.1)', 
+                  borderRadius: '6px', 
+                  fontSize: '0.75rem', 
+                  color: cotizacionDirecta ? '#d97706' : '#059669', 
+                  textAlign: 'center' 
+                }}>
+                  {cotizacionDirecta ? 'Prenda NO en sistema' : 'Prenda en sistema'}
                 </div>
               </div>
             </div>
@@ -912,164 +954,389 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
               )}
             </div>
 
+            {/* Banner de aviso para Cotización Directa */}
+            {cotizacionDirecta && (
+              <div style={{
+                padding: '1rem',
+                background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                color: 'white',
+                borderRadius: '12px',
+                marginBottom: '1rem',
+                boxShadow: '0 4px 12px rgba(245, 158, 11, 0.3)',
+                border: '2px solid #b45309',
+              }}>
+                <div style={{ fontWeight: 'bold', fontSize: '1.1rem', marginBottom: '0.5rem' }}>
+                  ⚡ MODO COTIZACIÓN DIRECTA ACTIVO
+                </div>
+                <div style={{ fontSize: '0.9rem', opacity: 0.95 }}>
+                  Esta prenda NO existe en el sistema. Ingresa todos los datos manualmente.
+                </div>
+              </div>
+            )}
+
             {/* NUEVO: Agregar partida (Multi-talla) */}
             <div style={{
               marginBottom: '1.5rem',
               padding: '1.5rem',
               background: '#f8f9fa',
               borderRadius: '12px',
-              border: '2px dashed #667eea',
+              border: cotizacionDirecta ? '2px dashed #f59e0b' : '2px dashed #667eea',
             }}>
-              <h3 style={{ marginTop: 0, color: '#667eea' }}>➕ Agregar Partida (Multi-talla)</h3>
+              <h3 style={{ marginTop: 0, color: cotizacionDirecta ? '#d97706' : '#667eea' }}>
+                {cotizacionDirecta ? '✏️ Agregar Partida (Manual)' : '➕ Agregar Partida (Multi-talla)'}
+              </h3>
               
-              {/* NIVEL 1: Selección de Prenda + Color + Especificaciones */}
-              <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.75rem', fontSize: '1rem', color: '#667eea' }}>
-                  1. Selecciona la Prenda, Color y Especificaciones *
-                </label>
-                
-                {/* Grid horizontal: Prenda | Color | Especificaciones */}
-                <div style={{ 
-                  display: 'grid',
-                  gridTemplateColumns: '2fr 1fr 1.5fr',
-                  gap: '1rem',
-                  alignItems: 'end'
-                }}>
-                  {/* Búsqueda de Prenda */}
-                  <div>
-                    <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#667eea' }}>
-                      👕 Prenda:
-                    </label>
-                    <div style={{ position: 'relative' }}>
+              {/* NIVEL 1: Datos de la prenda */}
+              {cotizacionDirecta ? (
+                /* MODO MANUAL: Inputs simples */
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.75rem', fontSize: '1rem', color: '#d97706' }}>
+                    Datos de la Prenda *
+                  </label>
+                  
+                  <div style={{ 
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                    gap: '1rem',
+                  }}>
+                    {/* Nombre Prenda */}
+                    <div>
+                      <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#d97706' }}>
+                        👕 Nombre Prenda: *
+                      </label>
                       <input
-                        ref={inputPrendaRef}
                         type="text"
-                        value={busquedaPrenda}
-                        onChange={(e) => {
-                          const nuevaBusqueda = e.target.value;
-                          // Si hay sub-partidas llenas y cambia la prenda, confirmar
-                          if (prendaSeleccionada && (subPartidas.some(sp => sp.cantidad > 0) || colorGlobal.trim())) {
-                            if (confirm('⚠️ Cambiar de prenda limpiará las tallas y datos ingresados. ¿Continuar?')) {
-                              setBusquedaPrenda(nuevaBusqueda);
-                              setPrendaSeleccionada(null);
-                              setColorGlobal('');
-                              setEspecificacionesGlobales('');
-                            }
-                          } else {
-                            setBusquedaPrenda(nuevaBusqueda);
-                          }
-                          setDropdownPrendaVisible(true);
-                          setIndiceSeleccionadoPrenda(-1);
-                        }}
-                        onFocus={() => {
-                          setDropdownPrendaVisible(true);
-                          setIndiceSeleccionadoPrenda(-1);
-                        }}
-                        onBlur={() => {
-                          setTimeout(() => {
-                            setDropdownPrendaVisible(false);
-                            setIndiceSeleccionadoPrenda(-1);
-                          }, 200);
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'ArrowDown') {
-                            e.preventDefault();
-                            setIndiceSeleccionadoPrenda(prev => 
-                              prev < prendasMostrar.length - 1 ? prev + 1 : prev
-                            );
-                          } else if (e.key === 'ArrowUp') {
-                            e.preventDefault();
-                            setIndiceSeleccionadoPrenda(prev => prev > 0 ? prev - 1 : -1);
-                          } else if (e.key === 'Enter') {
-                            e.preventDefault();
-                            if (indiceSeleccionadoPrenda >= 0 && prendasMostrar[indiceSeleccionadoPrenda]) {
-                              const prenda = prendasMostrar[indiceSeleccionadoPrenda];
-                              setPrendaSeleccionada(prenda.id);
-                              setBusquedaPrenda(prenda.nombre);
-                              setDropdownPrendaVisible(false);
-                              setIndiceSeleccionadoPrenda(-1);
-                            }
-                          } else if (e.key === 'Escape') {
-                            e.preventDefault();
-                            setDropdownPrendaVisible(false);
-                            setIndiceSeleccionadoPrenda(-1);
-                          }
-                        }}
-                        placeholder="Buscar prenda..."
-                        style={{ 
-                          width: '100%', 
-                          padding: '0.75rem', 
-                          borderRadius: '8px', 
-                          border: '2px solid #667eea', 
-                          backgroundColor: 'white',
+                        value={prendaManual}
+                        onChange={(e) => setPrendaManual(e.target.value)}
+                        placeholder="Ej: Camisa polo"
+                        style={{
+                          width: '100%',
+                          padding: '0.75rem',
+                          borderRadius: '8px',
+                          border: '2px solid #f59e0b',
                           fontSize: '1rem',
                         }}
                       />
-                      {/* Dropdown de prendas se renderiza en Portal (ver final del componente) */}
+                    </div>
+
+                    {/* Talla */}
+                    <div>
+                      <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#d97706' }}>
+                        📏 Talla: *
+                      </label>
+                      <input
+                        type="text"
+                        value={tallaManual}
+                        onChange={(e) => setTallaManual(e.target.value)}
+                        placeholder="Ej: M"
+                        style={{
+                          width: '100%',
+                          padding: '0.75rem',
+                          borderRadius: '8px',
+                          border: '2px solid #f59e0b',
+                          fontSize: '1rem',
+                        }}
+                      />
+                    </div>
+
+                    {/* Color */}
+                    <div>
+                      <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#d97706' }}>
+                        🎨 Color: *
+                      </label>
+                      <input
+                        type="text"
+                        value={colorGlobal}
+                        onChange={(e) => setColorGlobal(e.target.value)}
+                        placeholder="Ej: Azul marino"
+                        style={{
+                          width: '100%',
+                          padding: '0.75rem',
+                          borderRadius: '8px',
+                          border: '2px solid #f59e0b',
+                          fontSize: '1rem',
+                        }}
+                      />
+                    </div>
+
+                    {/* Especificaciones */}
+                    <div>
+                      <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#d97706' }}>
+                        📝 Especificaciones:
+                      </label>
+                      <input
+                        type="text"
+                        value={especificacionesGlobales}
+                        onChange={(e) => setEspecificacionesGlobales(e.target.value)}
+                        placeholder="Ej: Logo bordado"
+                        style={{
+                          width: '100%',
+                          padding: '0.75rem',
+                          borderRadius: '8px',
+                          border: '2px solid #f59e0b',
+                          fontSize: '1rem',
+                        }}
+                      />
+                    </div>
+
+                    {/* Cantidad */}
+                    <div>
+                      <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#d97706' }}>
+                        🔢 Cantidad: *
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={cantidadManual}
+                        onChange={(e) => setCantidadManual(e.target.value)}
+                        placeholder="1"
+                        style={{
+                          width: '100%',
+                          padding: '0.75rem',
+                          borderRadius: '8px',
+                          border: '2px solid #f59e0b',
+                          fontSize: '1rem',
+                        }}
+                      />
+                    </div>
+
+                    {/* Precio Unitario */}
+                    <div>
+                      <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#d97706' }}>
+                        💲 Precio Unitario: *
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={precioManual}
+                        onChange={(e) => setPrecioManual(e.target.value)}
+                        placeholder="0.00"
+                        style={{
+                          width: '100%',
+                          padding: '0.75rem',
+                          borderRadius: '8px',
+                          border: '2px solid #f59e0b',
+                          fontSize: '1rem',
+                        }}
+                      />
                     </div>
                   </div>
 
-                  {/* Color */}
-                  <div>
-                    <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#667eea' }}>
-                      🎨 Color: *
-                    </label>
-                    <input
-                      type="text"
-                      value={colorGlobal}
-                      onChange={(e) => setColorGlobal(e.target.value)}
-                      placeholder="Ej: Azul marino"
-                      style={{
-                        width: '100%',
-                        padding: '0.75rem',
-                        borderRadius: '8px',
-                        border: '2px solid #667eea',
-                        fontSize: '1rem',
-                      }}
-                    />
-                  </div>
+                  <button
+                    onClick={() => {
+                      // Validaciones
+                      if (!prendaManual.trim()) {
+                        alert('⚠️ Debes ingresar el nombre de la prenda');
+                        return;
+                      }
+                      if (!tallaManual.trim()) {
+                        alert('⚠️ Debes ingresar la talla');
+                        return;
+                      }
+                      if (!colorGlobal.trim()) {
+                        alert('⚠️ Debes ingresar el color');
+                        return;
+                      }
+                      const cantidad = parseInt(cantidadManual);
+                      if (isNaN(cantidad) || cantidad <= 0) {
+                        alert('⚠️ La cantidad debe ser mayor a 0');
+                        return;
+                      }
+                      const precio = parseFloat(precioManual);
+                      if (isNaN(precio) || precio < 0) {
+                        alert('⚠️ El precio debe ser un número válido');
+                        return;
+                      }
 
-                  {/* Especificaciones */}
-                  <div>
-                    <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#667eea' }}>
-                      📝 Especificaciones:
-                    </label>
-                    <input
-                      type="text"
-                      value={especificacionesGlobales}
-                      onChange={(e) => setEspecificacionesGlobales(e.target.value)}
-                      placeholder="Ej: Logo bordado, etc."
-                      style={{
-                        width: '100%',
-                        padding: '0.75rem',
-                        borderRadius: '8px',
-                        border: '2px solid #667eea',
-                        fontSize: '1rem',
-                      }}
-                    />
-                  </div>
+                      // Agregar partida manual
+                      const nuevaPartida: PartidaCotizacion = {
+                        prenda_nombre: prendaManual,
+                        talla: tallaManual,
+                        color: colorGlobal,
+                        especificaciones: especificacionesGlobales,
+                        cantidad: cantidad,
+                        precio_unitario: precio,
+                        subtotal: cantidad * precio,
+                        orden: partidas.length + 1,
+                      };
+
+                      setPartidas([...partidas, nuevaPartida]);
+                      
+                      // Limpiar campos
+                      setPrendaManual('');
+                      setTallaManual('');
+                      setColorGlobal('');
+                      setEspecificacionesGlobales('');
+                      setCantidadManual('1');
+                      setPrecioManual('');
+                    }}
+                    disabled={!tipoPrecio}
+                    style={{
+                      marginTop: '1rem',
+                      padding: '0.75rem 1.5rem',
+                      background: !tipoPrecio ? '#ccc' : 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      cursor: !tipoPrecio ? 'not-allowed' : 'pointer',
+                      fontWeight: 'bold',
+                      fontSize: '1rem',
+                    }}
+                  >
+                    ➕ Agregar Partida Manual
+                  </button>
                 </div>
-                
-                {/* Badge de prenda seleccionada */}
-                {prendaSeleccionada && (
-                  <div style={{
-                    marginTop: '0.75rem',
-                    padding: '0.75rem 1rem',
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    color: 'white',
-                    borderRadius: '8px',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    fontWeight: 'bold',
+              ) : (
+                /* MODO NORMAL: Sistema de autocomplete y multi-talla */
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.75rem', fontSize: '1rem', color: '#667eea' }}>
+                    1. Selecciona la Prenda, Color y Especificaciones *
+                  </label>
+                  
+                  {/* Grid horizontal: Prenda | Color | Especificaciones */}
+                  <div style={{ 
+                    display: 'grid',
+                    gridTemplateColumns: '2fr 1fr 1.5fr',
+                    gap: '1rem',
+                    alignItems: 'end'
                   }}>
-                    ✓ {busquedaPrenda}
-                  </div>
-                )}
-              </div>
+                    {/* Búsqueda de Prenda */}
+                    <div>
+                      <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#667eea' }}>
+                        👕 Prenda:
+                      </label>
+                      <div style={{ position: 'relative' }}>
+                        <input
+                          ref={inputPrendaRef}
+                          type="text"
+                          value={busquedaPrenda}
+                          onChange={(e) => {
+                            const nuevaBusqueda = e.target.value;
+                            // Si hay sub-partidas llenas y cambia la prenda, confirmar
+                            if (prendaSeleccionada && (subPartidas.some(sp => sp.cantidad > 0) || colorGlobal.trim())) {
+                              if (confirm('⚠️ Cambiar de prenda limpiará las tallas y datos ingresados. ¿Continuar?')) {
+                                setBusquedaPrenda(nuevaBusqueda);
+                                setPrendaSeleccionada(null);
+                                setColorGlobal('');
+                                setEspecificacionesGlobales('');
+                              }
+                            } else {
+                              setBusquedaPrenda(nuevaBusqueda);
+                            }
+                            setDropdownPrendaVisible(true);
+                            setIndiceSeleccionadoPrenda(-1);
+                          }}
+                          onFocus={() => {
+                            setDropdownPrendaVisible(true);
+                            setIndiceSeleccionadoPrenda(-1);
+                          }}
+                          onBlur={() => {
+                            setTimeout(() => {
+                              setDropdownPrendaVisible(false);
+                              setIndiceSeleccionadoPrenda(-1);
+                            }, 200);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'ArrowDown') {
+                              e.preventDefault();
+                              setIndiceSeleccionadoPrenda(prev => 
+                                prev < prendasMostrar.length - 1 ? prev + 1 : prev
+                              );
+                            } else if (e.key === 'ArrowUp') {
+                              e.preventDefault();
+                              setIndiceSeleccionadoPrenda(prev => prev > 0 ? prev - 1 : -1);
+                            } else if (e.key === 'Enter') {
+                              e.preventDefault();
+                              if (indiceSeleccionadoPrenda >= 0 && prendasMostrar[indiceSeleccionadoPrenda]) {
+                                const prenda = prendasMostrar[indiceSeleccionadoPrenda];
+                                setPrendaSeleccionada(prenda.id);
+                                setBusquedaPrenda(prenda.nombre);
+                                setDropdownPrendaVisible(false);
+                                setIndiceSeleccionadoPrenda(-1);
+                              }
+                            } else if (e.key === 'Escape') {
+                              e.preventDefault();
+                              setDropdownPrendaVisible(false);
+                              setIndiceSeleccionadoPrenda(-1);
+                            }
+                          }}
+                          placeholder="Buscar prenda..."
+                          style={{ 
+                            width: '100%', 
+                            padding: '0.75rem', 
+                            borderRadius: '8px', 
+                            border: '2px solid #667eea', 
+                            backgroundColor: 'white',
+                            fontSize: '1rem',
+                          }}
+                        />
+                        {/* Dropdown de prendas se renderiza en Portal (ver final del componente) */}
+                      </div>
+                    </div>
 
-              {/* NIVEL 2: Sub-partidas (Tallas) */}
-              {prendaSeleccionada && costosDisponibles.length > 0 && (
+                    {/* Color */}
+                    <div>
+                      <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#667eea' }}>
+                        🎨 Color: *
+                      </label>
+                      <input
+                        type="text"
+                        value={colorGlobal}
+                        onChange={(e) => setColorGlobal(e.target.value)}
+                        placeholder="Ej: Azul marino"
+                        style={{
+                          width: '100%',
+                          padding: '0.75rem',
+                          borderRadius: '8px',
+                          border: '2px solid #667eea',
+                          fontSize: '1rem',
+                        }}
+                      />
+                    </div>
+
+                    {/* Especificaciones */}
+                    <div>
+                      <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#667eea' }}>
+                        📝 Especificaciones:
+                      </label>
+                      <input
+                        type="text"
+                        value={especificacionesGlobales}
+                        onChange={(e) => setEspecificacionesGlobales(e.target.value)}
+                        placeholder="Ej: Logo bordado, etc."
+                        style={{
+                          width: '100%',
+                          padding: '0.75rem',
+                          borderRadius: '8px',
+                          border: '2px solid #667eea',
+                          fontSize: '1rem',
+                        }}
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Badge de prenda seleccionada */}
+                  {prendaSeleccionada && (
+                    <div style={{
+                      marginTop: '0.75rem',
+                      padding: '0.75rem 1rem',
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      color: 'white',
+                      borderRadius: '8px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      fontWeight: 'bold',
+                    }}>
+                      ✓ {busquedaPrenda}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* NIVEL 2: Sub-partidas (Tallas) - Solo en modo normal */}
+              {!cotizacionDirecta && prendaSeleccionada && costosDisponibles.length > 0 && (
                 <div>
                   <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.75rem', fontSize: '1rem', color: '#667eea' }}>
                     2. Agrega las Tallas y Cantidades *
@@ -1253,8 +1520,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                 </div>
               )}
 
-              {/* Mensaje si no hay prenda seleccionada */}
-              {!prendaSeleccionada && (
+              {/* Mensaje si no hay prenda seleccionada - Solo en modo normal */}
+              {!cotizacionDirecta && !prendaSeleccionada && (
                 <div style={{
                   padding: '2rem',
                   textAlign: 'center',
@@ -1265,8 +1532,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                 </div>
               )}
 
-              {/* Mensaje de error al cargar costos */}
-              {prendaSeleccionada && errorCargaCostos && (
+              {/* Mensaje de error al cargar costos - Solo en modo normal */}
+              {!cotizacionDirecta && prendaSeleccionada && errorCargaCostos && (
                 <div style={{
                   padding: '1.5rem',
                   background: '#fee2e2',
