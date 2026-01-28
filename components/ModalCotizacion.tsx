@@ -1944,9 +1944,9 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
         <div 
           style={{
             position: 'fixed',
-            top: dropdownClientePos.top,
-            left: dropdownClientePos.left,
-            width: dropdownClientePos.width,
+            top: dropdownClientePos!.top,
+            left: dropdownClientePos!.left,
+            width: dropdownClientePos!.width,
             maxHeight: '250px',
             overflow: 'auto',
             zIndex: 10000,
