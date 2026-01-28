@@ -715,55 +715,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
               <h3 style={{ marginTop: 0, color: '#667eea' }}>➕ Agregar Partida</h3>
               
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-                {/* PRIMERO: Cantidad (sin spinner, solo > 0) */}
-                <div>
-                  <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem' }}>
-                    Cantidad *
-                  </label>
-                  <input
-                    type="number"
-                    value={partidaActual.cantidad || ''}
-                    onChange={(e) => {
-                      const valor = parseInt(e.target.value);
-                      // Solo permitir números > 0
-                      if (isNaN(valor) || valor < 1) {
-                        setPartidaActual({ ...partidaActual, cantidad: undefined });
-                      } else {
-                        setPartidaActual({ ...partidaActual, cantidad: valor });
-                      }
-                    }}
-                    min="1"
-                    placeholder="0"
-                    style={{ 
-                      width: '100%', 
-                      padding: '0.5rem', 
-                      borderRadius: '4px', 
-                      border: '1px solid #ddd',
-                      // Quitar spinners
-                      MozAppearance: 'textfield',
-                      WebkitAppearance: 'none',
-                      appearance: 'textfield',
-                    }}
-                    onKeyDown={(e) => {
-                      // Bloquear signos negativos y punto decimal
-                      if (e.key === '-' || e.key === '.' || e.key === 'e' || e.key === 'E') {
-                        e.preventDefault();
-                      }
-                    }}
-                  />
-                  <style jsx>{`
-                    input[type="number"]::-webkit-outer-spin-button,
-                    input[type="number"]::-webkit-inner-spin-button {
-                      -webkit-appearance: none;
-                      margin: 0;
-                    }
-                    input[type="number"] {
-                      -moz-appearance: textfield;
-                    }
-                  `}</style>
-                </div>
-
-                {/* SEGUNDO: Prenda (con autocomplete) */}
+                {/* PRIMERO: Prenda (con autocomplete) */}
                 <div style={{ position: 'relative' }}>
                   <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem' }}>
                     Prenda *
@@ -873,6 +825,20 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                   })()}
                 </div>
 
+                {/* SEGUNDO: Especificación */}
+                <div>
+                  <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem' }}>
+                    Especificación
+                  </label>
+                  <textarea
+                    value={partidaActual.especificaciones || ''}
+                    onChange={(e) => setPartidaActual({ ...partidaActual, especificaciones: e.target.value })}
+                    placeholder="Ej: Bordado del logo en el pecho..."
+                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd', minHeight: '60px', resize: 'vertical' }}
+                  />
+                </div>
+
+                {/* TERCERO: Talla */}
                 <div>
                   <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem' }}>
                     Talla *
@@ -923,6 +889,55 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                   </select>
                 </div>
 
+                {/* CUARTO: Cantidad (sin spinner, solo > 0) */}
+                <div>
+                  <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem' }}>
+                    Cantidad *
+                  </label>
+                  <input
+                    type="number"
+                    value={partidaActual.cantidad || ''}
+                    onChange={(e) => {
+                      const valor = parseInt(e.target.value);
+                      // Solo permitir números > 0
+                      if (isNaN(valor) || valor < 1) {
+                        setPartidaActual({ ...partidaActual, cantidad: undefined });
+                      } else {
+                        setPartidaActual({ ...partidaActual, cantidad: valor });
+                      }
+                    }}
+                    min="1"
+                    placeholder="0"
+                    style={{ 
+                      width: '100%', 
+                      padding: '0.5rem', 
+                      borderRadius: '4px', 
+                      border: '1px solid #ddd',
+                      // Quitar spinners
+                      MozAppearance: 'textfield',
+                      WebkitAppearance: 'none',
+                      appearance: 'textfield',
+                    }}
+                    onKeyDown={(e) => {
+                      // Bloquear signos negativos y punto decimal
+                      if (e.key === '-' || e.key === '.' || e.key === 'e' || e.key === 'E') {
+                        e.preventDefault();
+                      }
+                    }}
+                  />
+                  <style jsx>{`
+                    input[type="number"]::-webkit-outer-spin-button,
+                    input[type="number"]::-webkit-inner-spin-button {
+                      -webkit-appearance: none;
+                      margin: 0;
+                    }
+                    input[type="number"] {
+                      -moz-appearance: textfield;
+                    }
+                  `}</style>
+                </div>
+
+                {/* QUINTO: Color */}
                 <div>
                   <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem' }}>
                     Color
@@ -936,6 +951,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                   />
                 </div>
 
+                {/* SEXTO: Precio (readonly) */}
                 <div>
                   <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem' }}>
                     Precio {tipoPrecio ? `(${tipoPrecio === 'mayoreo' ? 'Mayoreo' : 'Menudeo'})` : 'Unitario'} *
@@ -967,18 +983,6 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                     </div>
                   )}
                 </div>
-              </div>
-
-              <div style={{ marginTop: '1rem' }}>
-                <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem' }}>
-                  Especificaciones (bordados, logos, etc.)
-                </label>
-                <textarea
-                  value={partidaActual.especificaciones || ''}
-                  onChange={(e) => setPartidaActual({ ...partidaActual, especificaciones: e.target.value })}
-                  placeholder="Ej: Bordado del logo en el pecho..."
-                  style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd', minHeight: '60px' }}
-                />
               </div>
 
               <button
