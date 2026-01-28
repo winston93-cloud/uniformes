@@ -679,7 +679,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
             </div>
 
             {/* Búsqueda de cliente */}
-            <div style={{ marginBottom: '1.5rem' }}>
+            <div style={{ marginBottom: '1.5rem', position: 'relative' }}>
               <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem' }}>
                 Buscar {tipoCliente === 'alumno' ? 'Alumno' : 'Cliente'}:
               </label>
@@ -733,15 +733,18 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
               {/* Resultados búsqueda */}
               {resultadosBusqueda.length > 0 && !clienteSeleccionado && (
                 <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  right: 0,
                   marginTop: '0.5rem',
-                  border: '1px solid #ddd',
+                  border: '2px solid #667eea',
                   borderRadius: '8px',
-                  maxHeight: '200px',
+                  maxHeight: '250px',
                   overflow: 'auto',
                   zIndex: 1000,
-                  position: 'relative',
                   background: 'white',
-                  boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                  boxShadow: '0 8px 16px rgba(102, 126, 234, 0.3)',
                 }}>
                   {resultadosBusqueda.map((cliente, index) => {
                     const nombreCliente = cliente.nombre || cliente.alumno_nombre || 'Sin nombre';
