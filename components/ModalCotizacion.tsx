@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useCotizaciones, type PartidaCotizacion } from '@/lib/hooks/useCotizaciones';
 import { useAlumnos } from '@/lib/hooks/useAlumnos';
 import { useExternos } from '@/lib/hooks/useExternos';
@@ -44,6 +44,12 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   const [busquedaPrenda, setBusquedaPrenda] = useState('');
   const [dropdownPrendaVisible, setDropdownPrendaVisible] = useState(false);
   const [indiceSeleccionadoPrenda, setIndiceSeleccionadoPrenda] = useState(-1);
+  
+  // Estados para accesibilidad
+  const [mostrarAyuda, setMostrarAyuda] = useState(false);
+  
+  // Refs para manejo de foco
+  const inputTallaRef = useRef<HTMLInputElement>(null);
 
   // Información adicional
   const [observaciones, setObservaciones] = useState('');
@@ -58,6 +64,21 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   const { searchExternos } = useExternos();
   const { prendas } = usePrendas();
   const { getCostosByPrenda } = useCostos();
+
+  // Optimización: Memoizar filtrado de prendas para evitar recálculos
+  const prendasMostrar = useMemo(() => {
+    const prendasActivas = prendas
+      .filter(p => p.activo)
+      .sort((a, b) => a.nombre.localeCompare(b.nombre));
+    
+    const prendasFiltradas = busquedaPrenda.trim()
+      ? prendasActivas.filter(p => 
+          p.nombre.toLowerCase().includes(busquedaPrenda.toLowerCase())
+        )
+      : prendasActivas;
+    
+    return prendasFiltradas.slice(0, 10);
+  }, [prendas, busquedaPrenda]);
 
   // Buscar clientes
   useEffect(() => {
@@ -428,18 +449,48 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
           <h2 style={{ margin: 0, fontSize: '2rem', color: '#667eea' }}>
             📄 Sistema de Cotizaciones
           </h2>
-          <button 
-            onClick={onClose}
-            style={{
-              background: 'none',
-              border: 'none',
-              fontSize: '2rem',
-              cursor: 'pointer',
-              color: '#999',
-            }}
-          >
-            ✕
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            {/* Botón de Accesibilidad */}
+            <button 
+              onClick={() => setMostrarAyuda(!mostrarAyuda)}
+              style={{
+                background: '#667eea',
+                border: 'none',
+                borderRadius: '50%',
+                width: '40px',
+                height: '40px',
+                fontSize: '1.2rem',
+                cursor: 'pointer',
+                color: 'white',
+                fontWeight: 'bold',
+                boxShadow: '0 2px 8px rgba(102, 126, 234, 0.3)',
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'scale(1.1)';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.5)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1)';
+                e.currentTarget.style.boxShadow = '0 2px 8px rgba(102, 126, 234, 0.3)';
+              }}
+              title="Atajos de teclado"
+            >
+              ?
+            </button>
+            <button 
+              onClick={onClose}
+              style={{
+                background: 'none',
+                border: 'none',
+                fontSize: '2rem',
+                cursor: 'pointer',
+                color: '#999',
+              }}
+            >
+              ✕
+            </button>
+          </div>
         </div>
 
         {/* Tabs */}
@@ -764,18 +815,6 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                       }, 200);
                     }}
                     onKeyDown={(e) => {
-                      const prendasActivas = prendas
-                        .filter(p => p.activo)
-                        .sort((a, b) => a.nombre.localeCompare(b.nombre));
-                      
-                      const prendasFiltradas = busquedaPrenda.trim()
-                        ? prendasActivas.filter(p => 
-                            p.nombre.toLowerCase().includes(busquedaPrenda.toLowerCase())
-                          )
-                        : prendasActivas;
-                      
-                      const prendasMostrar = prendasFiltradas.slice(0, 10);
-
                       if (e.key === 'ArrowDown') {
                         e.preventDefault();
                         setIndiceSeleccionadoPrenda(prev => 
@@ -799,6 +838,10 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                           setCostoSeleccionado(null);
                           setDropdownPrendaVisible(false);
                           setIndiceSeleccionadoPrenda(-1);
+                          // Mover foco al campo de talla
+                          setTimeout(() => {
+                            inputTallaRef.current?.focus();
+                          }, 100);
                         }
                       } else if (e.key === 'Escape') {
                         e.preventDefault();
@@ -817,20 +860,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                   />
                   
                   {/* Dropdown de prendas */}
-                  {dropdownPrendaVisible && (() => {
-                    const prendasActivas = prendas
-                      .filter(p => p.activo)
-                      .sort((a, b) => a.nombre.localeCompare(b.nombre));
-                    
-                    const prendasFiltradas = busquedaPrenda.trim()
-                      ? prendasActivas.filter(p => 
-                          p.nombre.toLowerCase().includes(busquedaPrenda.toLowerCase())
-                        )
-                      : prendasActivas;
-                    
-                    const prendasMostrar = prendasFiltradas.slice(0, 10);
-                    
-                    return prendasMostrar.length > 0 ? (
+                  {dropdownPrendaVisible && (
+                    prendasMostrar.length > 0 ? (
                       <div style={{
                         position: 'absolute',
                         top: '100%',
@@ -861,6 +892,10 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                               setCostoSeleccionado(null);
                               setDropdownPrendaVisible(false);
                               setIndiceSeleccionadoPrenda(-1);
+                              // Mover foco al campo de talla
+                              setTimeout(() => {
+                                inputTallaRef.current?.focus();
+                              }, 100);
                             }}
                             onMouseEnter={() => setIndiceSeleccionadoPrenda(index)}
                             style={{
@@ -893,8 +928,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                       }}>
                         No se encontraron prendas
                       </div>
-                    );
-                  })()}
+                    )
+                  )}
                 </div>
 
                 <div>
@@ -902,6 +937,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                     Talla *
                   </label>
                   <select
+                    ref={inputTallaRef as any}
                     value={costoSeleccionado?.id || ''}
                     onChange={(e) => {
                       const costo_id = e.target.value;
@@ -1268,6 +1304,118 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                 </table>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Modal de Ayuda - Atajos de Teclado */}
+        {mostrarAyuda && (
+          <div 
+            style={{
+              position: 'fixed',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              background: 'white',
+              padding: '2rem',
+              borderRadius: '12px',
+              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.4)',
+              zIndex: 2000,
+              minWidth: '400px',
+              maxWidth: '600px',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h3 style={{ margin: 0, color: '#667eea', fontSize: '1.5rem' }}>
+                ⌨️ Atajos de Teclado
+              </h3>
+              <button 
+                onClick={() => setMostrarAyuda(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '1.5rem',
+                  cursor: 'pointer',
+                  color: '#999',
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ fontSize: '1rem', lineHeight: '1.8' }}>
+              <div style={{ marginBottom: '1.5rem' }}>
+                <h4 style={{ color: '#667eea', marginBottom: '0.75rem' }}>🔍 Búsqueda de Clientes y Prendas:</h4>
+                <div style={{ paddingLeft: '1rem' }}>
+                  <div style={{ marginBottom: '0.5rem' }}>
+                    <kbd style={{ 
+                      padding: '0.4rem 0.8rem',
+                      background: '#667eea',
+                      color: 'white',
+                      borderRadius: '6px',
+                      fontSize: '0.95rem',
+                      fontWeight: 'bold',
+                      border: '2px solid #4c51bf',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                    }}>↑</kbd> / <kbd style={{ 
+                      padding: '0.4rem 0.8rem',
+                      background: '#667eea',
+                      color: 'white',
+                      borderRadius: '6px',
+                      fontSize: '0.95rem',
+                      fontWeight: 'bold',
+                      border: '2px solid #4c51bf',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                    }}>↓</kbd> : Navegar entre opciones
+                  </div>
+                  <div style={{ marginBottom: '0.5rem' }}>
+                    <kbd style={{ 
+                      padding: '0.4rem 0.8rem',
+                      background: '#667eea',
+                      color: 'white',
+                      borderRadius: '6px',
+                      fontSize: '0.95rem',
+                      fontWeight: 'bold',
+                      border: '2px solid #4c51bf',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                    }}>Enter</kbd> : Seleccionar opción destacada
+                  </div>
+                  <div>
+                    <kbd style={{ 
+                      padding: '0.4rem 0.8rem',
+                      background: '#667eea',
+                      color: 'white',
+                      borderRadius: '6px',
+                      fontSize: '0.95rem',
+                      fontWeight: 'bold',
+                      border: '2px solid #4c51bf',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                    }}>Esc</kbd> : Cerrar lista de opciones
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '1.5rem' }}>
+                <h4 style={{ color: '#667eea', marginBottom: '0.75rem' }}>💡 Flujo Recomendado:</h4>
+                <div style={{ paddingLeft: '1rem', color: '#555' }}>
+                  <p style={{ margin: '0.5rem 0' }}>1. Selecciona <strong>Tipo de Precio</strong> (Mayoreo/Menudeo)</p>
+                  <p style={{ margin: '0.5rem 0' }}>2. Elige <strong>Tipo de Cliente</strong> (Externo/Alumno)</p>
+                  <p style={{ margin: '0.5rem 0' }}>3. Busca y selecciona al <strong>Cliente</strong></p>
+                  <p style={{ margin: '0.5rem 0' }}>4. Agrega <strong>Partidas</strong> (Prenda → Talla → Cantidad → Color)</p>
+                  <p style={{ margin: '0.5rem 0' }}>5. Genera la <strong>Cotización</strong></p>
+                </div>
+              </div>
+
+              <div style={{ 
+                padding: '1rem',
+                background: '#f0f9ff',
+                borderRadius: '8px',
+                border: '2px solid #667eea',
+              }}>
+                <p style={{ margin: 0, color: '#1e40af', fontSize: '0.95rem' }}>
+                  <strong>💡 Tip:</strong> Puedes usar el mouse o el teclado de forma independiente. El resaltado visual te indica la opción activa.
+                </p>
+              </div>
+            </div>
           </div>
         )}
       </div>
