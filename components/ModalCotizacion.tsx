@@ -112,6 +112,12 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   // Montar componente (necesario para portales)
   useEffect(() => {
     setMounted(true);
+    // Auto-focus a búsqueda de cliente al abrir el modal
+    setTimeout(() => {
+      if (inputClienteRef.current) {
+        inputClienteRef.current.focus();
+      }
+    }, 150);
   }, []);
 
   // Calcular posición del dropdown de clientes cuando se muestra
