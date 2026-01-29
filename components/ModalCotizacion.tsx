@@ -70,6 +70,10 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   const [miniModalPrecioAbierto, setMiniModalPrecioAbierto] = useState<number | null>(null);
   const [miniModalPrecioPos, setMiniModalPrecioPos] = useState<{ top: number; left: number; width: number } | null>(null);
   
+  // Estados para filtros de historial
+  const [filtroCliente, setFiltroCliente] = useState('');
+  const [filtroFecha, setFiltroFecha] = useState('');
+  
   // Refs para manejo de foco y posicionamiento de dropdowns
   const inputTallaRef = useRef<HTMLInputElement>(null);
   const inputClienteRef = useRef<HTMLInputElement>(null);
@@ -113,6 +117,21 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     
     return prendasFiltradas.slice(0, 10);
   }, [prendas, busquedaPrenda]);
+
+  // Filtrar cotizaciones por cliente y fecha
+  const cotizacionesFiltradas = useMemo(() => {
+    return cotizaciones.filter(cot => {
+      // Filtro por cliente
+      const nombreCliente = (cot.alumno?.nombre || cot.externo?.nombre || '').toLowerCase();
+      const cumpleFiltroCliente = !filtroCliente.trim() || nombreCliente.includes(filtroCliente.toLowerCase());
+      
+      // Filtro por fecha
+      const fechaCotizacion = new Date(cot.fecha_cotizacion).toISOString().split('T')[0];
+      const cumpleFiltroFecha = !filtroFecha || fechaCotizacion === filtroFecha;
+      
+      return cumpleFiltroCliente && cumpleFiltroFecha;
+    });
+  }, [cotizaciones, filtroCliente, filtroFecha]);
 
   // Montar componente (necesario para portales)
   useEffect(() => {
@@ -2055,8 +2074,59 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
           /* Historial */
           <div>
             <h3 style={{ color: '#667eea', marginBottom: '1rem' }}>
-              Cotizaciones Generadas ({cotizaciones.length})
+              Cotizaciones Generadas ({cotizacionesFiltradas.length}{cotizacionesFiltradas.length !== cotizaciones.length ? ` de ${cotizaciones.length}` : ''})
             </h3>
+
+            {/* Filtros de búsqueda */}
+            <div style={{ 
+              marginBottom: '1.5rem',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+              gap: '1rem',
+            }}>
+              <div>
+                <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
+                  🔍 Buscar por Cliente:
+                </label>
+                <input
+                  type="text"
+                  value={filtroCliente}
+                  onChange={(e) => setFiltroCliente(e.target.value)}
+                  placeholder="Nombre del cliente..."
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    borderRadius: '8px',
+                    border: '2px solid #667eea',
+                    fontSize: '1rem',
+                    transition: 'all 0.2s',
+                  }}
+                  onFocus={(e) => e.currentTarget.style.borderColor = '#764ba2'}
+                  onBlur={(e) => e.currentTarget.style.borderColor = '#667eea'}
+                />
+              </div>
+              
+              <div>
+                <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
+                  📅 Buscar por Fecha:
+                </label>
+                <input
+                  type="date"
+                  value={filtroFecha}
+                  onChange={(e) => setFiltroFecha(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    borderRadius: '8px',
+                    border: '2px solid #667eea',
+                    fontSize: '1rem',
+                    transition: 'all 0.2s',
+                  }}
+                  onFocus={(e) => e.currentTarget.style.borderColor = '#764ba2'}
+                  onBlur={(e) => e.currentTarget.style.borderColor = '#667eea'}
+                />
+              </div>
+            </div>
 
             {cargando ? (
               <div style={{ textAlign: 'center', padding: '3rem' }}>
@@ -2068,44 +2138,63 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                 <div style={{ fontSize: '4rem' }}>📄</div>
                 <div>No hay cotizaciones generadas aún</div>
               </div>
+            ) : cotizacionesFiltradas.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '3rem', color: '#999' }}>
+                <div style={{ fontSize: '3rem' }}>🔍</div>
+                <div>No se encontraron cotizaciones con los filtros aplicados</div>
+                <button
+                  onClick={() => { setFiltroCliente(''); setFiltroFecha(''); }}
+                  style={{
+                    marginTop: '1rem',
+                    padding: '0.5rem 1rem',
+                    background: '#667eea',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Limpiar filtros
+                </button>
+              </div>
             ) : (
               <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
                   <thead>
                     <tr style={{ background: '#667eea', color: 'white' }}>
-                      <th style={{ padding: '1rem', textAlign: 'left' }}>Folio</th>
-                      <th style={{ padding: '1rem', textAlign: 'left' }}>Cliente</th>
-                      <th style={{ padding: '1rem', textAlign: 'left' }}>Fecha</th>
-                      <th style={{ padding: '1rem', textAlign: 'right' }}>Total</th>
-                      <th style={{ padding: '1rem', textAlign: 'center' }}>Estado</th>
-                      <th style={{ padding: '1rem', textAlign: 'center' }}>Acciones</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.9rem' }}>Folio</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.9rem' }}>Cliente</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.9rem' }}>Fecha</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.9rem' }}>Total</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'center', fontSize: '0.9rem' }}>Estado</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'center', fontSize: '0.9rem' }}>Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {cotizaciones.map((cot) => (
+                    {cotizacionesFiltradas.map((cot) => (
                       <tr key={cot.id} style={{ borderBottom: '1px solid #eee' }}>
-                        <td style={{ padding: '1rem', fontWeight: 'bold', color: '#667eea' }}>
+                        <td style={{ padding: '0.75rem', fontWeight: 'bold', color: '#667eea', fontSize: '0.9rem' }}>
                           {cot.folio}
                         </td>
-                        <td style={{ padding: '1rem' }}>
+                        <td style={{ padding: '0.75rem', fontSize: '0.9rem' }}>
                           {cot.alumno?.nombre || cot.externo?.nombre || 'Cliente General'}
                         </td>
-                        <td style={{ padding: '1rem' }}>
+                        <td style={{ padding: '0.75rem', fontSize: '0.9rem', whiteSpace: 'nowrap' }}>
                           {new Date(cot.fecha_cotizacion).toLocaleDateString('es-MX')}
                         </td>
-                        <td style={{ padding: '1rem', textAlign: 'right', fontWeight: 'bold' }}>
+                        <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 'bold', fontSize: '0.9rem' }}>
                           ${cot.total.toFixed(2)}
                         </td>
-                        <td style={{ padding: '1rem', textAlign: 'center' }}>
+                        <td style={{ padding: '0.75rem', textAlign: 'center' }}>
                           <span style={{
-                            padding: '0.5rem 1rem',
+                            padding: '0.4rem 0.8rem',
                             borderRadius: '20px',
                             background: 
                               cot.estado === 'vigente' ? '#10b981' :
                               cot.estado === 'aceptada' ? '#3b82f6' :
                               cot.estado === 'rechazada' ? '#ef4444' : '#1e40af',
                             color: 'white',
-                            fontSize: '0.85rem',
+                            fontSize: '0.8rem',
                             fontWeight: 'bold',
                           }}>
                             {cot.estado.toUpperCase()}
