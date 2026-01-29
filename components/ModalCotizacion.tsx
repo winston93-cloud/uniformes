@@ -68,6 +68,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   
   // Estado para mini-modal de cambio de precio
   const [miniModalPrecioAbierto, setMiniModalPrecioAbierto] = useState<number | null>(null);
+  const [miniModalPrecioPos, setMiniModalPrecioPos] = useState<{ top: number; left: number; width: number } | null>(null);
   
   // Refs para manejo de foco y posicionamiento de dropdowns
   const inputTallaRef = useRef<HTMLInputElement>(null);
@@ -199,8 +200,14 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   // Cerrar mini-modal de precio al hacer clic fuera o scroll
   useEffect(() => {
     if (miniModalPrecioAbierto !== null) {
-      const handleClickOutside = () => setMiniModalPrecioAbierto(null);
-      const handleScroll = () => setMiniModalPrecioAbierto(null);
+      const handleClickOutside = () => {
+        setMiniModalPrecioAbierto(null);
+        setMiniModalPrecioPos(null);
+      };
+      const handleScroll = () => {
+        setMiniModalPrecioAbierto(null);
+        setMiniModalPrecioPos(null);
+      };
       
       setTimeout(() => {
         document.addEventListener('click', handleClickOutside);
@@ -1883,123 +1890,43 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                           <td style={{ padding: '0.75rem', textAlign: 'right' }}>
                             ${partida.precio_unitario.toFixed(2)}
                           </td>
-                          <td style={{ padding: '0.75rem', textAlign: 'center', position: 'relative' }}>
+                          <td style={{ padding: '0.75rem', textAlign: 'center' }}>
                             {!partida.es_manual && partida.prenda_id && partida.costo_id ? (
-                              <>
-                                <button
-                                  onClick={() => setMiniModalPrecioAbierto(miniModalPrecioAbierto === index ? null : index)}
-                                  title="Cambiar tipo de precio"
-                                  style={{
-                                    background: partida.tipo_precio_usado === 'mayoreo' 
-                                      ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-                                      : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                                    color: 'white',
-                                    border: 'none',
-                                    padding: '0.4rem 0.8rem',
-                                    borderRadius: '6px',
-                                    cursor: 'pointer',
-                                    fontSize: '0.85rem',
-                                    fontWeight: 'bold',
-                                    transition: 'all 0.2s',
-                                  }}
-                                  onMouseOver={(e) => {
-                                    e.currentTarget.style.transform = 'scale(1.05)';
-                                    e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
-                                  }}
-                                  onMouseOut={(e) => {
-                                    e.currentTarget.style.transform = 'scale(1)';
-                                    e.currentTarget.style.boxShadow = 'none';
-                                  }}
-                                >
-                                  {partida.tipo_precio_usado === 'mayoreo' ? '📦' : '🛍️'}
-                                </button>
-                                
-                                {/* Mini-modal de selección */}
-                                {miniModalPrecioAbierto === index && (
-                                  <div
-                                    style={{
-                                      position: 'absolute',
-                                      top: '100%',
-                                      left: '50%',
-                                      transform: 'translateX(-50%)',
-                                      marginTop: '0.5rem',
-                                      background: 'white',
-                                      border: '2px solid #667eea',
-                                      borderRadius: '8px',
-                                      boxShadow: '0 8px 16px rgba(0,0,0,0.2)',
-                                      zIndex: 1000,
-                                      minWidth: '150px',
-                                      overflow: 'hidden',
-                                    }}
-                                  >
-                                    <button
-                                      onClick={() => {
-                                        if (partida.tipo_precio_usado !== 'mayoreo') {
-                                          cambiarTipoPrecioPartida(index, 'mayoreo');
-                                        }
-                                        setMiniModalPrecioAbierto(null);
-                                      }}
-                                      style={{
-                                        width: '100%',
-                                        padding: '0.75rem 1rem',
-                                        background: partida.tipo_precio_usado === 'mayoreo' ? '#667eea' : 'white',
-                                        color: partida.tipo_precio_usado === 'mayoreo' ? 'white' : '#333',
-                                        border: 'none',
-                                        borderBottom: '1px solid #eee',
-                                        cursor: 'pointer',
-                                        fontSize: '0.9rem',
-                                        fontWeight: partida.tipo_precio_usado === 'mayoreo' ? 'bold' : 'normal',
-                                        textAlign: 'left',
-                                        transition: 'all 0.2s',
-                                      }}
-                                      onMouseOver={(e) => {
-                                        if (partida.tipo_precio_usado !== 'mayoreo') {
-                                          e.currentTarget.style.background = '#f0f0f0';
-                                        }
-                                      }}
-                                      onMouseOut={(e) => {
-                                        if (partida.tipo_precio_usado !== 'mayoreo') {
-                                          e.currentTarget.style.background = 'white';
-                                        }
-                                      }}
-                                    >
-                                      📦 Mayoreo
-                                    </button>
-                                    <button
-                                      onClick={() => {
-                                        if (partida.tipo_precio_usado !== 'menudeo') {
-                                          cambiarTipoPrecioPartida(index, 'menudeo');
-                                        }
-                                        setMiniModalPrecioAbierto(null);
-                                      }}
-                                      style={{
-                                        width: '100%',
-                                        padding: '0.75rem 1rem',
-                                        background: partida.tipo_precio_usado === 'menudeo' ? '#10b981' : 'white',
-                                        color: partida.tipo_precio_usado === 'menudeo' ? 'white' : '#333',
-                                        border: 'none',
-                                        cursor: 'pointer',
-                                        fontSize: '0.9rem',
-                                        fontWeight: partida.tipo_precio_usado === 'menudeo' ? 'bold' : 'normal',
-                                        textAlign: 'left',
-                                        transition: 'all 0.2s',
-                                      }}
-                                      onMouseOver={(e) => {
-                                        if (partida.tipo_precio_usado !== 'menudeo') {
-                                          e.currentTarget.style.background = '#f0f0f0';
-                                        }
-                                      }}
-                                      onMouseOut={(e) => {
-                                        if (partida.tipo_precio_usado !== 'menudeo') {
-                                          e.currentTarget.style.background = 'white';
-                                        }
-                                      }}
-                                    >
-                                      🛍️ Menudeo
-                                    </button>
-                                  </div>
-                                )}
-                              </>
+                              <button
+                                onClick={(e) => {
+                                  const rect = e.currentTarget.getBoundingClientRect();
+                                  setMiniModalPrecioPos({
+                                    top: rect.bottom + window.scrollY + 5,
+                                    left: rect.left + window.scrollX,
+                                    width: 150,
+                                  });
+                                  setMiniModalPrecioAbierto(miniModalPrecioAbierto === index ? null : index);
+                                }}
+                                title="Cambiar tipo de precio"
+                                style={{
+                                  background: partida.tipo_precio_usado === 'mayoreo' 
+                                    ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                                    : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                  color: 'white',
+                                  border: 'none',
+                                  padding: '0.4rem 0.8rem',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  fontSize: '0.85rem',
+                                  fontWeight: 'bold',
+                                  transition: 'all 0.2s',
+                                }}
+                                onMouseOver={(e) => {
+                                  e.currentTarget.style.transform = 'scale(1.05)';
+                                  e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
+                                }}
+                                onMouseOut={(e) => {
+                                  e.currentTarget.style.transform = 'scale(1)';
+                                  e.currentTarget.style.boxShadow = 'none';
+                                }}
+                              >
+                                {partida.tipo_precio_usado === 'mayoreo' ? '📦' : '🛍️'}
+                              </button>
                             ) : (
                               <span style={{ fontSize: '0.85rem', color: '#999' }}>-</span>
                             )}
@@ -2451,6 +2378,95 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
             No se encontraron prendas
           </div>
         ),
+        document.body
+      )}
+
+      {/* Portal: Mini-modal de cambio de tipo de precio */}
+      {mounted && miniModalPrecioAbierto !== null && miniModalPrecioPos && createPortal(
+        <div
+          style={{
+            position: 'fixed',
+            top: miniModalPrecioPos.top,
+            left: miniModalPrecioPos.left,
+            width: miniModalPrecioPos.width,
+            background: 'white',
+            border: '2px solid #667eea',
+            borderRadius: '8px',
+            boxShadow: '0 8px 16px rgba(0,0,0,0.2)',
+            zIndex: 10000,
+            overflow: 'hidden',
+          }}
+        >
+          <button
+            onClick={() => {
+              const partida = partidas[miniModalPrecioAbierto];
+              if (partida.tipo_precio_usado !== 'mayoreo') {
+                cambiarTipoPrecioPartida(miniModalPrecioAbierto, 'mayoreo');
+              }
+              setMiniModalPrecioAbierto(null);
+              setMiniModalPrecioPos(null);
+            }}
+            style={{
+              width: '100%',
+              padding: '0.75rem 1rem',
+              background: partidas[miniModalPrecioAbierto].tipo_precio_usado === 'mayoreo' ? '#667eea' : 'white',
+              color: partidas[miniModalPrecioAbierto].tipo_precio_usado === 'mayoreo' ? 'white' : '#333',
+              border: 'none',
+              borderBottom: '1px solid #eee',
+              cursor: 'pointer',
+              fontSize: '0.9rem',
+              fontWeight: partidas[miniModalPrecioAbierto].tipo_precio_usado === 'mayoreo' ? 'bold' : 'normal',
+              textAlign: 'left',
+              transition: 'all 0.2s',
+            }}
+            onMouseOver={(e) => {
+              if (partidas[miniModalPrecioAbierto].tipo_precio_usado !== 'mayoreo') {
+                e.currentTarget.style.background = '#f0f0f0';
+              }
+            }}
+            onMouseOut={(e) => {
+              if (partidas[miniModalPrecioAbierto].tipo_precio_usado !== 'mayoreo') {
+                e.currentTarget.style.background = 'white';
+              }
+            }}
+          >
+            📦 Mayoreo
+          </button>
+          <button
+            onClick={() => {
+              const partida = partidas[miniModalPrecioAbierto];
+              if (partida.tipo_precio_usado !== 'menudeo') {
+                cambiarTipoPrecioPartida(miniModalPrecioAbierto, 'menudeo');
+              }
+              setMiniModalPrecioAbierto(null);
+              setMiniModalPrecioPos(null);
+            }}
+            style={{
+              width: '100%',
+              padding: '0.75rem 1rem',
+              background: partidas[miniModalPrecioAbierto].tipo_precio_usado === 'menudeo' ? '#10b981' : 'white',
+              color: partidas[miniModalPrecioAbierto].tipo_precio_usado === 'menudeo' ? 'white' : '#333',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '0.9rem',
+              fontWeight: partidas[miniModalPrecioAbierto].tipo_precio_usado === 'menudeo' ? 'bold' : 'normal',
+              textAlign: 'left',
+              transition: 'all 0.2s',
+            }}
+            onMouseOver={(e) => {
+              if (partidas[miniModalPrecioAbierto].tipo_precio_usado !== 'menudeo') {
+                e.currentTarget.style.background = '#f0f0f0';
+              }
+            }}
+            onMouseOut={(e) => {
+              if (partidas[miniModalPrecioAbierto].tipo_precio_usado !== 'menudeo') {
+                e.currentTarget.style.background = 'white';
+              }
+            }}
+          >
+            🛍️ Menudeo
+          </button>
+        </div>,
         document.body
       )}
     </div>
