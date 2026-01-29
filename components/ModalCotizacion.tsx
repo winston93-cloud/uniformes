@@ -998,10 +998,10 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                   style={{
                     padding: '1rem 1.5rem',
                     background: cotizacionDirecta 
-                      ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' 
+                      ? 'linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%)' 
                       : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                     color: 'white',
-                    border: cotizacionDirecta ? '2px solid #b45309' : '2px solid #047857',
+                    border: cotizacionDirecta ? '2px solid #1e3a8a' : '2px solid #047857',
                     borderRadius: '8px',
                     cursor: 'pointer',
                     fontWeight: 'bold',
@@ -1033,7 +1033,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                   backgroundColor: cotizacionDirecta ? 'rgba(245, 158, 11, 0.1)' : 'rgba(16, 185, 129, 0.1)', 
                   borderRadius: '6px', 
                   fontSize: '0.75rem', 
-                  color: cotizacionDirecta ? '#d97706' : '#059669', 
+                  color: cotizacionDirecta ? '#1e3a8a' : '#059669', 
                   textAlign: 'center' 
                 }}>
                   {cotizacionDirecta ? 'Prenda NO en sistema' : 'Prenda en sistema'}
@@ -1164,12 +1164,12 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
             {cotizacionDirecta && (
               <div style={{
                 padding: '1rem',
-                background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                background: 'linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%)',
                 color: 'white',
                 borderRadius: '12px',
                 marginBottom: '1rem',
-                boxShadow: '0 4px 12px rgba(245, 158, 11, 0.3)',
-                border: '2px solid #b45309',
+                boxShadow: '0 4px 12px rgba(30, 64, 175, 0.3)',
+                border: '2px solid #1e3a8a',
               }}>
                 <div style={{ fontWeight: 'bold', fontSize: '1.1rem', marginBottom: '0.5rem' }}>
                   ⚡ MODO COTIZACIÓN DIRECTA ACTIVO
@@ -1186,9 +1186,9 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
               padding: '1.5rem',
               background: '#f8f9fa',
               borderRadius: '12px',
-              border: cotizacionDirecta ? '2px dashed #f59e0b' : '2px dashed #667eea',
+              border: cotizacionDirecta ? '2px dashed #1e40af' : '2px dashed #667eea',
             }}>
-              <h3 style={{ marginTop: 0, color: cotizacionDirecta ? '#d97706' : '#667eea' }}>
+              <h3 style={{ marginTop: 0, color: cotizacionDirecta ? '#1e3a8a' : '#667eea' }}>
                 {cotizacionDirecta ? '✏️ Agregar Partida (Manual)' : '➕ Agregar Partida (Multi-talla)'}
               </h3>
               
@@ -1196,7 +1196,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
               {cotizacionDirecta ? (
                 /* MODO MANUAL: Multi-partidas con prenda manual */
                 <div style={{ marginBottom: '1.5rem' }}>
-                  <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.75rem', fontSize: '1rem', color: '#d97706' }}>
+                  <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.75rem', fontSize: '1rem', color: '#1e3a8a' }}>
                     1. Ingresa el Nombre de la Prenda, Color y Especificaciones *
                   </label>
                   
@@ -1209,7 +1209,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                   }}>
                     {/* Nombre de Prenda Manual */}
                     <div>
-                      <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#d97706' }}>
+                      <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#1e3a8a' }}>
                         👕 Nombre Prenda:
                       </label>
                       <input
@@ -1243,7 +1243,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                           width: '100%', 
                           padding: '0.75rem', 
                           borderRadius: '8px', 
-                          border: '2px solid #f59e0b', 
+                          border: '2px solid #1e40af', 
                           backgroundColor: 'white',
                           fontSize: '1rem',
                         }}
@@ -1252,7 +1252,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
 
                     {/* Color */}
                     <div>
-                      <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#d97706' }}>
+                      <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#1e3a8a' }}>
                         🎨 Color: *
                       </label>
                       <input
@@ -1273,7 +1273,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                           width: '100%',
                           padding: '0.75rem',
                           borderRadius: '8px',
-                          border: '2px solid #f59e0b',
+                          border: '2px solid #1e40af',
                           fontSize: '1rem',
                         }}
                       />
@@ -1281,7 +1281,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
 
                     {/* Especificaciones */}
                     <div>
-                      <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#d97706' }}>
+                      <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#1e3a8a' }}>
                         📝 Especificaciones:
                       </label>
                       <input
@@ -1305,7 +1305,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                           width: '100%',
                           padding: '0.75rem',
                           borderRadius: '8px',
-                          border: '2px solid #f59e0b',
+                          border: '2px solid #1e40af',
                           fontSize: '1rem',
                         }}
                       />
@@ -1317,7 +1317,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                     <div style={{
                       marginTop: '0.75rem',
                       padding: '0.75rem 1rem',
-                      background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                      background: 'linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%)',
                       color: 'white',
                       borderRadius: '8px',
                       display: 'inline-flex',
@@ -1507,7 +1507,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
               {/* NIVEL 2: Sub-partidas (Tallas) */}
               {((cotizacionDirecta && prendaManual.trim()) || (!cotizacionDirecta && prendaSeleccionada && costosDisponibles.length > 0)) && (
                 <div>
-                  <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.75rem', fontSize: '1rem', color: cotizacionDirecta ? '#d97706' : '#667eea' }}>
+                  <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.75rem', fontSize: '1rem', color: cotizacionDirecta ? '#1e3a8a' : '#667eea' }}>
                     2. Agrega las Tallas, Cantidades y Precios *
                   </label>
                   
@@ -1517,7 +1517,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                     gridTemplateColumns: '1fr 80px 100px 40px',
                     gap: '0.5rem',
                     padding: '0.5rem',
-                    background: cotizacionDirecta ? '#f59e0b' : '#667eea',
+                    background: cotizacionDirecta ? '#1e40af' : '#667eea',
                     color: 'white',
                     borderRadius: '8px 8px 0 0',
                     fontWeight: 'bold',
@@ -1571,7 +1571,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                           style={{
                             padding: '0.5rem',
                             borderRadius: '4px',
-                            border: '1px solid #f59e0b',
+                            border: '1px solid #1e40af',
                             fontSize: '0.9rem',
                           }}
                         />
@@ -1641,7 +1641,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                         style={{
                           padding: '0.5rem',
                           borderRadius: '4px',
-                          border: cotizacionDirecta ? '1px solid #f59e0b' : '1px solid #ddd',
+                          border: cotizacionDirecta ? '1px solid #1e40af' : '1px solid #ddd',
                           fontSize: '0.9rem',
                           textAlign: 'center',
                         }}
@@ -1660,7 +1660,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                           style={{
                             padding: '0.5rem',
                             borderRadius: '4px',
-                            border: '1px solid #f59e0b',
+                            border: '1px solid #1e40af',
                             fontSize: '0.9rem',
                             textAlign: 'right',
                           }}
@@ -1719,8 +1719,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                       style={{
                         padding: '0.75rem 1.5rem',
                         background: 'white',
-                        color: cotizacionDirecta ? '#f59e0b' : '#667eea',
-                        border: cotizacionDirecta ? '2px solid #f59e0b' : '2px solid #667eea',
+                        color: cotizacionDirecta ? '#1e40af' : '#667eea',
+                        border: cotizacionDirecta ? '2px solid #1e40af' : '2px solid #667eea',
                         borderRadius: '8px',
                         cursor: 'pointer',
                         fontWeight: 'bold',
@@ -1728,12 +1728,12 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                         transition: 'all 0.2s',
                       }}
                       onMouseOver={(e) => {
-                        e.currentTarget.style.background = cotizacionDirecta ? '#f59e0b' : '#667eea';
+                        e.currentTarget.style.background = cotizacionDirecta ? '#1e40af' : '#667eea';
                         e.currentTarget.style.color = 'white';
                       }}
                       onMouseOut={(e) => {
                         e.currentTarget.style.background = 'white';
-                        e.currentTarget.style.color = cotizacionDirecta ? '#f59e0b' : '#667eea';
+                        e.currentTarget.style.color = cotizacionDirecta ? '#1e40af' : '#667eea';
                       }}
                     >
                       ➕ Agregar otra talla
@@ -1762,7 +1762,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                           )
                         ) ? '#9ca3af' : (
                           cotizacionDirecta 
-                            ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
+                            ? 'linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%)'
                             : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
                         ),
                         color: 'white',
@@ -1843,7 +1843,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                 <div style={{
                   padding: '1.5rem',
                   background: '#fef3c7',
-                  border: '2px solid #f59e0b',
+                  border: '2px solid #1e40af',
                   borderRadius: '8px',
                   color: '#92400e',
                   textAlign: 'center',
@@ -1907,16 +1907,17 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                                 title="Cambiar tipo de precio"
                                 style={{
                                   background: partida.tipo_precio_usado === 'mayoreo' 
-                                    ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-                                    : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                    ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'
+                                    : 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
                                   color: 'white',
                                   border: 'none',
-                                  padding: '0.4rem 0.8rem',
+                                  padding: '0.5rem 1rem',
                                   borderRadius: '6px',
                                   cursor: 'pointer',
                                   fontSize: '0.85rem',
                                   fontWeight: 'bold',
                                   transition: 'all 0.2s',
+                                  whiteSpace: 'nowrap',
                                 }}
                                 onMouseOver={(e) => {
                                   e.currentTarget.style.transform = 'scale(1.05)';
@@ -1927,7 +1928,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                                   e.currentTarget.style.boxShadow = 'none';
                                 }}
                               >
-                                {partida.tipo_precio_usado === 'mayoreo' ? '📦' : '🛍️'}
+                                {partida.tipo_precio_usado === 'mayoreo' ? '📦 Mayoreo' : '🛍️ Menudeo'}
                               </button>
                             ) : (
                               <span style={{ fontSize: '0.85rem', color: '#999' }}>-</span>
@@ -2099,7 +2100,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                             background: 
                               cot.estado === 'vigente' ? '#10b981' :
                               cot.estado === 'aceptada' ? '#3b82f6' :
-                              cot.estado === 'rechazada' ? '#ef4444' : '#f59e0b',
+                              cot.estado === 'rechazada' ? '#ef4444' : '#1e40af',
                             color: 'white',
                             fontSize: '0.85rem',
                             fontWeight: 'bold',
@@ -2414,7 +2415,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
             style={{
               width: '100%',
               padding: '0.75rem 1rem',
-              background: partidas[miniModalPrecioAbierto].tipo_precio_usado === 'mayoreo' ? '#667eea' : 'white',
+              background: partidas[miniModalPrecioAbierto].tipo_precio_usado === 'mayoreo' ? '#3b82f6' : 'white',
               color: partidas[miniModalPrecioAbierto].tipo_precio_usado === 'mayoreo' ? 'white' : '#333',
               border: 'none',
               borderBottom: '1px solid #eee',
@@ -2451,7 +2452,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
             style={{
               width: '100%',
               padding: '0.75rem 1rem',
-              background: partidas[miniModalPrecioAbierto].tipo_precio_usado === 'menudeo' ? '#10b981' : 'white',
+              background: partidas[miniModalPrecioAbierto].tipo_precio_usado === 'menudeo' ? '#f97316' : 'white',
               color: partidas[miniModalPrecioAbierto].tipo_precio_usado === 'menudeo' ? 'white' : '#333',
               border: 'none',
               cursor: 'pointer',
