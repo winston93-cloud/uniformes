@@ -803,6 +803,12 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                       setTipoCliente('externo');
                       setClienteSeleccionado(null);
                       setBusquedaCliente('');
+                      // Auto-focus a búsqueda de cliente
+                      setTimeout(() => {
+                        if (inputClienteRef.current) {
+                          inputClienteRef.current.focus();
+                        }
+                      }, 100);
                     }}
                     style={{
                       padding: '0.75rem 1.5rem',
@@ -825,6 +831,12 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                       setTipoCliente('alumno');
                       setClienteSeleccionado(null);
                       setBusquedaCliente('');
+                      // Auto-focus a búsqueda de cliente
+                      setTimeout(() => {
+                        if (inputClienteRef.current) {
+                          inputClienteRef.current.focus();
+                        }
+                      }, 100);
                     }}
                     style={{
                       padding: '0.75rem 1.5rem',
