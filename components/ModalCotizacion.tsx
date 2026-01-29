@@ -602,9 +602,10 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
         throw new Error(error || 'Error al crear cotización');
       }
 
-      // Generar PDF
+      // Generar y mostrar PDF en pantalla
       const pdf = generarPDF(data.folio);
-      pdf.save(`Cotizacion-${data.folio}.pdf`);
+      const pdfUrl = pdf.output('bloburl');
+      window.open(pdfUrl, '_blank');
 
       alert(`✅ Cotización ${data.folio} generada exitosamente`);
 
@@ -686,7 +687,9 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       doc.setFont('helvetica', 'bold');
       doc.text(`TOTAL: $${cotizacion.total.toFixed(2)}`, 140, finalY + 20);
 
-      doc.save(`Cotizacion-${cotizacion.folio}.pdf`);
+      // Abrir PDF en nueva ventana en lugar de descargar
+      const pdfUrl = doc.output('bloburl');
+      window.open(pdfUrl, '_blank');
     } catch (err) {
       console.error('Error al generar PDF:', err);
       alert('Error al generar PDF');
@@ -2045,7 +2048,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                 boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
               }}
             >
-              {generando ? '⏳ Generando...' : '📄 Generar Cotización y Descargar PDF'}
+              {generando ? '⏳ Generando...' : '📄 Generar Cotización'}
             </button>
           </div>
         ) : (
