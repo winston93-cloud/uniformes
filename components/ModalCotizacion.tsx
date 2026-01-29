@@ -612,6 +612,10 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
         precio_unitario: d.precio_unitario,
         subtotal: d.subtotal,
         orden: d.orden,
+        tipo_precio_usado: d.tipo_precio_usado || 'menudeo', // Default para cotizaciones viejas
+        prenda_id: d.prenda_id || null,
+        costo_id: d.costo_id || null,
+        es_manual: d.es_manual || false,
       }));
 
       // Generar PDF temporal
