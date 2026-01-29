@@ -1894,6 +1894,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                             {!partida.es_manual && partida.prenda_id && partida.costo_id ? (
                               <button
                                 onClick={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
                                   const rect = e.currentTarget.getBoundingClientRect();
                                   setMiniModalPrecioPos({
                                     top: rect.bottom + window.scrollY + 5,
@@ -2384,6 +2386,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       {/* Portal: Mini-modal de cambio de tipo de precio */}
       {mounted && miniModalPrecioAbierto !== null && miniModalPrecioPos && createPortal(
         <div
+          onClick={(e) => e.stopPropagation()}
           style={{
             position: 'fixed',
             top: miniModalPrecioPos.top,
@@ -2398,7 +2401,9 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
           }}
         >
           <button
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
               const partida = partidas[miniModalPrecioAbierto];
               if (partida.tipo_precio_usado !== 'mayoreo') {
                 cambiarTipoPrecioPartida(miniModalPrecioAbierto, 'mayoreo');
@@ -2433,7 +2438,9 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
             📦 Mayoreo
           </button>
           <button
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
               const partida = partidas[miniModalPrecioAbierto];
               if (partida.tipo_precio_usado !== 'menudeo') {
                 cambiarTipoPrecioPartida(miniModalPrecioAbierto, 'menudeo');
