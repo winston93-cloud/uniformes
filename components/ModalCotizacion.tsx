@@ -643,78 +643,6 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     }
   };
 
-  // Ver PDF de cotización
-  const verPDF = async (cotizacion: any) => {
-    try {
-      const { detalle } = await obtenerCotizacion(cotizacion.id);
-      
-      const partidasFormateadas: PartidaCotizacion[] = detalle.map((d: any) => ({
-        prenda_nombre: d.prenda_nombre,
-        talla: d.talla,
-        color: d.color || '',
-        especificaciones: d.especificaciones || '',
-        cantidad: d.cantidad,
-        precio_unitario: d.precio_unitario,
-        subtotal: d.subtotal,
-        orden: d.orden,
-        tipo_precio_usado: d.tipo_precio_usado || 'menudeo', // Default para cotizaciones viejas
-        prenda_id: d.prenda_id || null,
-        costo_id: d.costo_id || null,
-        es_manual: d.es_manual || false,
-      }));
-
-      // Generar PDF temporal
-      const doc = new jsPDF();
-      const fechaCotizacion = new Date(cotizacion.fecha_cotizacion).toLocaleDateString('es-MX');
-
-      doc.setFontSize(20);
-      doc.setFont('helvetica', 'bold');
-      doc.text('COTIZACIÓN', 105, 20, { align: 'center' });
-
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      doc.text('Sistema de Uniformes Winston Churchill', 105, 28, { align: 'center' });
-
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'bold');
-      doc.text(`Folio: ${cotizacion.folio}`, 14, 45);
-      doc.text(`Fecha: ${fechaCotizacion}`, 14, 52);
-
-      doc.setFont('helvetica', 'bold');
-      doc.text('Cliente:', 14, 70);
-      doc.setFont('helvetica', 'normal');
-      const nombreCliente = cotizacion.alumno?.nombre || cotizacion.externo?.nombre || 'Cliente General';
-      doc.text(nombreCliente, 14, 77);
-
-      autoTable(doc, {
-        startY: 95,
-        head: [['#', 'Descripción', 'Talla', 'Color', 'Cantidad', 'P. Unit.', 'Subtotal']],
-        body: partidasFormateadas.map((p, i) => [
-          i + 1,
-          p.prenda_nombre + (p.especificaciones ? `\n${p.especificaciones}` : ''),
-          p.talla,
-          p.color || '-',
-          p.cantidad,
-          `$${p.precio_unitario.toFixed(2)}`,
-          `$${p.subtotal.toFixed(2)}`,
-        ]),
-        theme: 'grid',
-        headStyles: { fillColor: [102, 126, 234] },
-      });
-
-      const finalY = (doc as any).lastAutoTable.finalY || 95;
-      doc.setFont('helvetica', 'bold');
-      doc.text(`TOTAL: $${cotizacion.total.toFixed(2)}`, 140, finalY + 20);
-
-      // Abrir PDF en nueva ventana en lugar de descargar
-      const pdfUrl = doc.output('bloburl');
-      window.open(pdfUrl, '_blank');
-    } catch (err) {
-      console.error('Error al generar PDF:', err);
-      alert('Error al generar PDF');
-    }
-  };
-
   return (
     <div 
       style={{
@@ -2167,7 +2095,6 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                       <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.9rem' }}>Fecha</th>
                       <th style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.9rem' }}>Total</th>
                       <th style={{ padding: '0.75rem', textAlign: 'center', fontSize: '0.9rem' }}>Estado</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'center', fontSize: '0.9rem' }}>Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -2199,22 +2126,6 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                           }}>
                             {cot.estado.toUpperCase()}
                           </span>
-                        </td>
-                        <td style={{ padding: '1rem', textAlign: 'center' }}>
-                          <button
-                            onClick={() => verPDF(cot)}
-                            style={{
-                              background: '#667eea',
-                              color: 'white',
-                              border: 'none',
-                              padding: '0.5rem 1rem',
-                              borderRadius: '4px',
-                              cursor: 'pointer',
-                              fontWeight: 'bold',
-                            }}
-                          >
-                            📄 Ver PDF
-                          </button>
                         </td>
                       </tr>
                     ))}
