@@ -72,7 +72,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   const inputPrendaManualRef = useRef<HTMLInputElement>(null);
   const inputColorRef = useRef<HTMLInputElement>(null);
   const inputEspecificacionesRef = useRef<HTMLInputElement>(null);
-  const primeraSubPartidaRef = useRef<HTMLSelectElement | HTMLInputElement>(null);
+  const primeraSubPartidaInputRef = useRef<HTMLInputElement>(null);
+  const primeraSubPartidaSelectRef = useRef<HTMLSelectElement>(null);
   
   // Estados para posicionamiento de dropdowns en portal
   const [dropdownClientePos, setDropdownClientePos] = useState<{ top: number; left: number; width: number } | null>(null);
@@ -1163,8 +1164,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                             e.preventDefault();
                             // Auto-focus a primera talla
                             setTimeout(() => {
-                              if (primeraSubPartidaRef.current) {
-                                primeraSubPartidaRef.current.focus();
+                              if (primeraSubPartidaInputRef.current) {
+                                primeraSubPartidaInputRef.current.focus();
                               }
                             }, 50);
                           }
@@ -1336,8 +1337,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                             e.preventDefault();
                             // Auto-focus a primera talla
                             setTimeout(() => {
-                              if (primeraSubPartidaRef.current) {
-                                primeraSubPartidaRef.current.focus();
+                              if (primeraSubPartidaSelectRef.current) {
+                                primeraSubPartidaSelectRef.current.focus();
                               }
                             }, 50);
                           }
@@ -1417,7 +1418,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                       {cotizacionDirecta ? (
                         /* Modo manual: Input de texto */
                         <input
-                          ref={index === 0 ? primeraSubPartidaRef : null}
+                          ref={index === 0 ? primeraSubPartidaInputRef : null}
                           type="text"
                           value={sp.talla}
                           onChange={(e) => actualizarSubPartida(sp.id, 'talla', e.target.value)}
@@ -1447,7 +1448,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                       ) : (
                         /* Modo normal: Select del sistema */
                         <select
-                          ref={index === 0 ? primeraSubPartidaRef : null}
+                          ref={index === 0 ? primeraSubPartidaSelectRef : null}
                           value={sp.costo_id}
                           onChange={(e) => {
                             actualizarSubPartida(sp.id, 'costo_id', e.target.value);
