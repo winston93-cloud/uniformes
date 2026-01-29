@@ -618,8 +618,15 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       >
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-          <h2 style={{ margin: 0, fontSize: '2rem', color: '#667eea' }}>
-            📄 Sistema de Cotizaciones
+          <h2 style={{ 
+            margin: 0, 
+            fontSize: '2.5rem', 
+            color: '#667eea',
+            fontWeight: '900',
+            textShadow: '2px 2px 4px rgba(102, 126, 234, 0.2)',
+            letterSpacing: '-0.5px'
+          }}>
+            📄 Módulo de Cotizaciones
           </h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             {/* Botón de Accesibilidad */}
