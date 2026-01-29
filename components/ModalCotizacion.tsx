@@ -8,6 +8,7 @@ import { useExternos } from '@/lib/hooks/useExternos';
 import { usePrendas } from '@/lib/hooks/usePrendas';
 import { useCostos } from '@/lib/hooks/useCostos';
 import type { Costo } from '@/lib/types';
+import { supabase } from '@/lib/supabase';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -367,6 +368,10 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       precio_unitario: sp.precio_unitario,
       subtotal: sp.cantidad * sp.precio_unitario,
       orden: partidas.length + index + 1,
+      tipo_precio_usado: tipoPrecio!,
+      prenda_id: cotizacionDirecta ? null : prendaSeleccionada,
+      costo_id: cotizacionDirecta ? null : sp.costo_id,
+      es_manual: cotizacionDirecta,
     }));
 
     setPartidas([...partidas, ...nuevasPartidas]);
@@ -398,6 +403,47 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   // Eliminar partida
   const eliminarPartida = (index: number) => {
     setPartidas(partidas.filter((_, i) => i !== index));
+  };
+
+  // Cambiar tipo de precio de una partida
+  const cambiarTipoPrecioPartida = async (index: number) => {
+    const partida = partidas[index];
+    
+    // Solo permitir cambio en partidas del sistema (no manuales)
+    if (partida.es_manual || !partida.prenda_id || !partida.costo_id) {
+      return;
+    }
+
+    // Determinar el nuevo tipo de precio (toggle)
+    const nuevoTipoPrecio = partida.tipo_precio_usado === 'mayoreo' ? 'menudeo' : 'mayoreo';
+
+    // Buscar el costo correspondiente
+    const { data: costo, error } = await supabase
+      .from('costos')
+      .select('precio_mayoreo, precio_menudeo')
+      .eq('id', partida.costo_id)
+      .single();
+
+    if (error || !costo) {
+      alert('Error al obtener precios alternativos');
+      return;
+    }
+
+    // Obtener el nuevo precio según el tipo
+    const nuevoPrecioUnitario = nuevoTipoPrecio === 'mayoreo' 
+      ? costo.precio_mayoreo 
+      : costo.precio_menudeo;
+
+    // Actualizar la partida
+    const partidasActualizadas = [...partidas];
+    partidasActualizadas[index] = {
+      ...partida,
+      tipo_precio_usado: nuevoTipoPrecio,
+      precio_unitario: nuevoPrecioUnitario,
+      subtotal: partida.cantidad * nuevoPrecioUnitario,
+    };
+
+    setPartidas(partidasActualizadas);
   };
 
   // Calcular totales
@@ -1794,6 +1840,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                         <th style={{ padding: '0.75rem', textAlign: 'left' }}>Especificaciones</th>
                         <th style={{ padding: '0.75rem', textAlign: 'right' }}>Cant.</th>
                         <th style={{ padding: '0.75rem', textAlign: 'right' }}>P. Unit.</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'center' }}>Tipo</th>
                         <th style={{ padding: '0.75rem', textAlign: 'right' }}>Subtotal</th>
                         <th style={{ padding: '0.75rem', textAlign: 'center' }}>Acción</th>
                       </tr>
@@ -1813,6 +1860,39 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                           <td style={{ padding: '0.75rem', textAlign: 'right' }}>{partida.cantidad}</td>
                           <td style={{ padding: '0.75rem', textAlign: 'right' }}>
                             ${partida.precio_unitario.toFixed(2)}
+                          </td>
+                          <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                            {!partida.es_manual && partida.prenda_id && partida.costo_id ? (
+                              <button
+                                onClick={() => cambiarTipoPrecioPartida(index)}
+                                title={`Cambiar a ${partida.tipo_precio_usado === 'mayoreo' ? 'Menudeo' : 'Mayoreo'}`}
+                                style={{
+                                  background: partida.tipo_precio_usado === 'mayoreo' 
+                                    ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                                    : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                  color: 'white',
+                                  border: 'none',
+                                  padding: '0.4rem 0.8rem',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  fontSize: '0.85rem',
+                                  fontWeight: 'bold',
+                                  transition: 'all 0.2s',
+                                }}
+                                onMouseOver={(e) => {
+                                  e.currentTarget.style.transform = 'scale(1.05)';
+                                  e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
+                                }}
+                                onMouseOut={(e) => {
+                                  e.currentTarget.style.transform = 'scale(1)';
+                                  e.currentTarget.style.boxShadow = 'none';
+                                }}
+                              >
+                                {partida.tipo_precio_usado === 'mayoreo' ? '📦' : '🛍️'}
+                              </button>
+                            ) : (
+                              <span style={{ fontSize: '0.85rem', color: '#999' }}>-</span>
+                            )}
                           </td>
                           <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 'bold' }}>
                             ${partida.subtotal.toFixed(2)}

@@ -13,6 +13,10 @@ export interface PartidaCotizacion {
   precio_unitario: number;
   subtotal: number;
   orden: number;
+  tipo_precio_usado: 'mayoreo' | 'menudeo';
+  prenda_id?: string | null;
+  costo_id?: string | null;
+  es_manual: boolean;
 }
 
 export interface NuevaCotizacion {
