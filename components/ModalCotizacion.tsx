@@ -69,6 +69,10 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   const inputTallaRef = useRef<HTMLInputElement>(null);
   const inputClienteRef = useRef<HTMLInputElement>(null);
   const inputPrendaRef = useRef<HTMLInputElement>(null);
+  const inputPrendaManualRef = useRef<HTMLInputElement>(null);
+  const inputColorRef = useRef<HTMLInputElement>(null);
+  const inputEspecificacionesRef = useRef<HTMLInputElement>(null);
+  const primeraSubPartidaRef = useRef<HTMLSelectElement | HTMLInputElement>(null);
   
   // Estados para posicionamiento de dropdowns en portal
   const [dropdownClientePos, setDropdownClientePos] = useState<{ top: number; left: number; width: number } | null>(null);
@@ -245,13 +249,26 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
 
   // NUEVO: Funciones para manejar sub-partidas
   const agregarSubPartida = () => {
-    setSubPartidas([...subPartidas, {
+    const nuevasSubPartidas = [...subPartidas, {
       id: crypto.randomUUID(),
       costo_id: '',
       talla: '',
       cantidad: 0,
       precio_unitario: 0
-    }]);
+    }];
+    setSubPartidas(nuevasSubPartidas);
+    
+    // Auto-focus a la nueva talla agregada (última fila)
+    setTimeout(() => {
+      const filas = document.querySelectorAll('.subpartidas-grid-row');
+      if (filas.length > 0) {
+        const ultimaFila = filas[filas.length - 1];
+        const inputTalla = ultimaFila.querySelector('input[type="text"], select') as HTMLElement;
+        if (inputTalla) {
+          inputTalla.focus();
+        }
+      }
+    }, 50);
   };
 
   const eliminarSubPartida = (id: string) => {
@@ -940,9 +957,14 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                       setBusquedaCliente(cliente.nombre || cliente.alumno_nombre || '');
                       setResultadosBusqueda([]);
                       setIndiceSeleccionadoCliente(-1);
-                      // Mantener foco en input
-                      e.currentTarget.blur();
-                      setTimeout(() => e.currentTarget.focus(), 0);
+                      // Auto-focus al siguiente input (prenda)
+                      setTimeout(() => {
+                        if (cotizacionDirecta && inputPrendaManualRef.current) {
+                          inputPrendaManualRef.current.focus();
+                        } else if (inputPrendaRef.current) {
+                          inputPrendaRef.current.focus();
+                        }
+                      }, 100);
                     }
                   } else if (e.key === 'Escape') {
                     e.preventDefault();
@@ -1060,6 +1082,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                         👕 Nombre Prenda:
                       </label>
                       <input
+                        ref={inputPrendaManualRef}
                         type="text"
                         value={prendaManual}
                         onChange={(e) => {
@@ -1074,6 +1097,14 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                             }
                           } else {
                             setPrendaManual(nuevoNombre);
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && prendaManual.trim()) {
+                            e.preventDefault();
+                            if (inputColorRef.current) {
+                              inputColorRef.current.focus();
+                            }
                           }
                         }}
                         placeholder="Ej: Camisa polo"
@@ -1094,9 +1125,18 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                         🎨 Color: *
                       </label>
                       <input
+                        ref={inputColorRef}
                         type="text"
                         value={colorGlobal}
                         onChange={(e) => setColorGlobal(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            if (inputEspecificacionesRef.current) {
+                              inputEspecificacionesRef.current.focus();
+                            }
+                          }
+                        }}
                         placeholder="Ej: Azul marino"
                         style={{
                           width: '100%',
@@ -1114,9 +1154,21 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                         📝 Especificaciones:
                       </label>
                       <input
+                        ref={inputEspecificacionesRef}
                         type="text"
                         value={especificacionesGlobales}
                         onChange={(e) => setEspecificacionesGlobales(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            // Auto-focus a primera talla
+                            setTimeout(() => {
+                              if (primeraSubPartidaRef.current) {
+                                primeraSubPartidaRef.current.focus();
+                              }
+                            }, 50);
+                          }
+                        }}
                         placeholder="Ej: Logo bordado, etc."
                         style={{
                           width: '100%',
@@ -1213,6 +1265,12 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                                 setBusquedaPrenda(prenda.nombre);
                                 setDropdownPrendaVisible(false);
                                 setIndiceSeleccionadoPrenda(-1);
+                                // Auto-focus a color
+                                setTimeout(() => {
+                                  if (inputColorRef.current) {
+                                    inputColorRef.current.focus();
+                                  }
+                                }, 100);
                               }
                             } else if (e.key === 'Escape') {
                               e.preventDefault();
@@ -1240,9 +1298,18 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                         🎨 Color: *
                       </label>
                       <input
+                        ref={cotizacionDirecta ? null : inputColorRef}
                         type="text"
                         value={colorGlobal}
                         onChange={(e) => setColorGlobal(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            if (inputEspecificacionesRef.current) {
+                              inputEspecificacionesRef.current.focus();
+                            }
+                          }
+                        }}
                         placeholder="Ej: Azul marino"
                         style={{
                           width: '100%',
@@ -1260,9 +1327,21 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                         📝 Especificaciones:
                       </label>
                       <input
+                        ref={cotizacionDirecta ? null : inputEspecificacionesRef}
                         type="text"
                         value={especificacionesGlobales}
                         onChange={(e) => setEspecificacionesGlobales(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            // Auto-focus a primera talla
+                            setTimeout(() => {
+                              if (primeraSubPartidaRef.current) {
+                                primeraSubPartidaRef.current.focus();
+                              }
+                            }, 50);
+                          }
+                        }}
                         placeholder="Ej: Logo bordado, etc."
                         style={{
                           width: '100%',
@@ -1320,7 +1399,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                   </div>
 
                   {/* Filas de sub-partidas */}
-                  {subPartidas.map((sp) => (
+                  {subPartidas.map((sp, index) => (
                     <div 
                       key={sp.id}
                       className="subpartidas-grid-row"
@@ -1338,9 +1417,25 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                       {cotizacionDirecta ? (
                         /* Modo manual: Input de texto */
                         <input
+                          ref={index === 0 ? primeraSubPartidaRef : null}
                           type="text"
                           value={sp.talla}
                           onChange={(e) => actualizarSubPartida(sp.id, 'talla', e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && sp.talla.trim()) {
+                              e.preventDefault();
+                              // Auto-focus a cantidad
+                              const inputElement = e.target as HTMLInputElement;
+                              const fila = inputElement.closest('.subpartidas-grid-row');
+                              if (fila) {
+                                const inputCantidad = fila.querySelector('input[type="number"]') as HTMLInputElement;
+                                if (inputCantidad) {
+                                  inputCantidad.focus();
+                                  inputCantidad.select();
+                                }
+                              }
+                            }
+                          }}
                           placeholder="Ej: M"
                           style={{
                             padding: '0.5rem',
@@ -1352,8 +1447,25 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                       ) : (
                         /* Modo normal: Select del sistema */
                         <select
+                          ref={index === 0 ? primeraSubPartidaRef : null}
                           value={sp.costo_id}
-                          onChange={(e) => actualizarSubPartida(sp.id, 'costo_id', e.target.value)}
+                          onChange={(e) => {
+                            actualizarSubPartida(sp.id, 'costo_id', e.target.value);
+                            // Auto-focus a cantidad después de seleccionar talla
+                            if (e.target.value) {
+                              setTimeout(() => {
+                                const selectElement = e.target as HTMLSelectElement;
+                                const fila = selectElement.closest('.subpartidas-grid-row');
+                                if (fila) {
+                                  const inputCantidad = fila.querySelector('input[type="number"]') as HTMLInputElement;
+                                  if (inputCantidad) {
+                                    inputCantidad.focus();
+                                    inputCantidad.select();
+                                  }
+                                }
+                              }, 50);
+                            }
+                          }}
                           style={{
                             padding: '0.5rem',
                             borderRadius: '4px',
@@ -1377,6 +1489,22 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                         type="number"
                         value={sp.cantidad || ''}
                         onChange={(e) => actualizarSubPartida(sp.id, 'cantidad', parseInt(e.target.value) || 0)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && cotizacionDirecta) {
+                            e.preventDefault();
+                            // En modo manual, saltar a precio
+                            const inputElement = e.target as HTMLInputElement;
+                            const fila = inputElement.closest('.subpartidas-grid-row');
+                            if (fila) {
+                              const inputs = fila.querySelectorAll('input[type="number"]');
+                              if (inputs.length >= 2) {
+                                const inputPrecio = inputs[1] as HTMLInputElement;
+                                inputPrecio.focus();
+                                inputPrecio.select();
+                              }
+                            }
+                          }
+                        }}
                         min="0"
                         placeholder="0"
                         style={{
@@ -1976,6 +2104,14 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                   setBusquedaCliente(nombreCliente);
                   setResultadosBusqueda([]);
                   setIndiceSeleccionadoCliente(-1);
+                  // Auto-focus al siguiente input (prenda)
+                  setTimeout(() => {
+                    if (cotizacionDirecta && inputPrendaManualRef.current) {
+                      inputPrendaManualRef.current.focus();
+                    } else if (inputPrendaRef.current) {
+                      inputPrendaRef.current.focus();
+                    }
+                  }, 100);
                 }}
                 onMouseEnter={() => setIndiceSeleccionadoCliente(index)}
                 style={{
@@ -2029,6 +2165,12 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                   setBusquedaPrenda(prenda.nombre);
                   setDropdownPrendaVisible(false);
                   setIndiceSeleccionadoPrenda(-1);
+                  // Auto-focus a color
+                  setTimeout(() => {
+                    if (inputColorRef.current) {
+                      inputColorRef.current.focus();
+                    }
+                  }, 100);
                 }}
                 onMouseEnter={() => setIndiceSeleccionadoPrenda(index)}
                 style={{
