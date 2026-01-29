@@ -751,7 +751,15 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                 </label>
                 <div style={{ display: 'flex', gap: '0.75rem', flexDirection: 'column' }}>
                   <button
-                    onClick={() => setTipoPrecio('mayoreo')}
+                    onClick={() => {
+                      setTipoPrecio('mayoreo');
+                      // Auto-focus a búsqueda de cliente
+                      setTimeout(() => {
+                        if (inputClienteRef.current) {
+                          inputClienteRef.current.focus();
+                        }
+                      }, 100);
+                    }}
                     style={{
                       padding: '0.75rem 1.5rem',
                       background: tipoPrecio === 'mayoreo' 
@@ -769,7 +777,15 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                     📦 Mayoreo
                   </button>
                   <button
-                    onClick={() => setTipoPrecio('menudeo')}
+                    onClick={() => {
+                      setTipoPrecio('menudeo');
+                      // Auto-focus a búsqueda de cliente
+                      setTimeout(() => {
+                        if (inputClienteRef.current) {
+                          inputClienteRef.current.focus();
+                        }
+                      }, 100);
+                    }}
                     style={{
                       padding: '0.75rem 1.5rem',
                       background: tipoPrecio === 'menudeo' 
