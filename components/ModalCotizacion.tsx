@@ -864,12 +864,24 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                       setBusquedaPrenda('');
                       setCostosDisponibles([]);
                       setSubPartidas([{ id: crypto.randomUUID(), costo_id: '', talla: '', cantidad: 0, precio_unitario: 0 }]);
+                      // Auto-focus a prenda manual
+                      setTimeout(() => {
+                        if (inputPrendaManualRef.current) {
+                          inputPrendaManualRef.current.focus();
+                        }
+                      }, 100);
                     } else {
                       // Desactivando modo manual
                       setPrendaManual('');
                       setTallaManual('');
                       setPrecioManual('');
                       setCantidadManual('1');
+                      // Auto-focus a búsqueda de prenda normal
+                      setTimeout(() => {
+                        if (inputPrendaRef.current) {
+                          inputPrendaRef.current.focus();
+                        }
+                      }, 100);
                     }
                     setColorGlobal('');
                     setEspecificacionesGlobales('');
