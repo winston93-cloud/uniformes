@@ -378,6 +378,15 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     setSubPartidas([
       { id: crypto.randomUUID(), costo_id: '', talla: '', cantidad: 0, precio_unitario: 0 }
     ]);
+    
+    // Auto-focus al input de prenda para agregar otra partida
+    setTimeout(() => {
+      if (cotizacionDirecta && inputPrendaManualRef.current) {
+        inputPrendaManualRef.current.focus();
+      } else if (inputPrendaRef.current) {
+        inputPrendaRef.current.focus();
+      }
+    }, 100);
   };
 
   // Eliminar partida
