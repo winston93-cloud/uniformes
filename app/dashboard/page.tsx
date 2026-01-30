@@ -45,14 +45,14 @@ export default function Dashboard() {
           {/* Insumos Necesarios para Producción */}
           <div style={{ 
             flex: tarjetaExpandida === 'insumos' ? '1 1 100%' : 
-                  tarjetaExpandida !== null && tarjetaExpandida !== 'insumos' ? '0 0 auto' :
+                  tarjetaExpandida ? '0 0 auto' :
                   '1 1 calc(33.333% - 1rem)',
-            minWidth: tarjetaExpandida !== null && tarjetaExpandida !== 'insumos' ? '100px' : '320px',
+            minWidth: (tarjetaExpandida && tarjetaExpandida !== 'insumos') ? '100px' : '320px',
             transition: 'all 0.3s ease',
           }}>
             <TarjetaInsumosFaltantes 
               expandido={tarjetaExpandida === 'insumos'}
-              minimizado={tarjetaExpandida !== null && tarjetaExpandida !== 'insumos'}
+              minimizado={!!tarjetaExpandida && tarjetaExpandida !== 'insumos'}
               onToggle={handleToggleInsumos}
             />
           </div>
@@ -60,14 +60,14 @@ export default function Dashboard() {
           {/* Alertas de Stock Mínimo - Insumos */}
           <div style={{ 
             flex: tarjetaExpandida === 'alertas' ? '1 1 100%' : 
-                  tarjetaExpandida !== null && tarjetaExpandida !== 'alertas' ? '0 0 auto' :
+                  tarjetaExpandida ? '0 0 auto' :
                   '1 1 calc(33.333% - 1rem)',
-            minWidth: tarjetaExpandida !== null && tarjetaExpandida !== 'alertas' ? '100px' : '320px',
+            minWidth: (tarjetaExpandida && tarjetaExpandida !== 'alertas') ? '100px' : '320px',
             transition: 'all 0.3s ease',
           }}>
             <TarjetaAlertasStock 
               expandido={tarjetaExpandida === 'alertas'}
-              minimizado={tarjetaExpandida !== null && tarjetaExpandida !== 'alertas'}
+              minimizado={!!tarjetaExpandida && tarjetaExpandida !== 'alertas'}
               onToggle={handleToggleAlertas}
             />
           </div>
@@ -75,14 +75,14 @@ export default function Dashboard() {
           {/* Alertas de Stock Mínimo - Prendas */}
           <div style={{ 
             flex: tarjetaExpandida === 'prendas' ? '1 1 100%' : 
-                  tarjetaExpandida !== null && tarjetaExpandida !== 'prendas' ? '0 0 auto' :
+                  tarjetaExpandida ? '0 0 auto' :
                   '1 1 calc(33.333% - 1rem)',
-            minWidth: tarjetaExpandida !== null && tarjetaExpandida !== 'prendas' ? '100px' : '320px',
+            minWidth: (tarjetaExpandida && tarjetaExpandida !== 'prendas') ? '100px' : '320px',
             transition: 'all 0.3s ease',
           }}>
             <TarjetaAlertasStockPrendas 
               expandido={tarjetaExpandida === 'prendas'}
-              minimizado={tarjetaExpandida !== null && tarjetaExpandida !== 'prendas'}
+              minimizado={!!tarjetaExpandida && tarjetaExpandida !== 'prendas'}
               onToggle={handleTogglePrendas}
             />
           </div>
