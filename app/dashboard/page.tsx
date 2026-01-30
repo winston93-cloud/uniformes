@@ -260,6 +260,17 @@ export default function Dashboard() {
             </p>
           </Link>
 
+          {/* Transferencias */}
+          <Link href="/transferencias" className="card">
+            <div className="card-icon green">
+              🚚
+            </div>
+            <h3 className="card-title">Transferencias</h3>
+            <p className="card-description">
+              Traspaso de mercancía entre sucursales
+            </p>
+          </Link>
+
           {/* Cortes de Caja */}
           <Link href="/cortes" className="card">
             <div className="card-icon green">
