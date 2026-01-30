@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import { useCostos } from '@/lib/hooks/useCostos';
 import { usePrendas } from '@/lib/hooks/usePrendas';
@@ -11,8 +12,9 @@ import type { Costo } from '@/lib/types';
 export const dynamic = 'force-dynamic';
 
 export default function CostosPage() {
+  const { sesion } = useAuth();
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
-  const { costos, loading: costosLoading, error, createCosto, createMultipleCostos, getCostosByPrenda, updateCosto } = useCostos();
+  const { costos, loading: costosLoading, error, createCosto, createMultipleCostos, getCostosByPrenda, updateCosto } = useCostos(sesion?.sucursal_id);
   const { prendas } = usePrendas();
   const { tallas } = useTallas();
   

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import { supabase } from '@/lib/supabase';
 import { useCostos } from '@/lib/hooks/useCostos';
@@ -58,15 +59,16 @@ function SearchParamsDetector({ setMostrarFormulario }: { setMostrarFormulario: 
 
 function PedidosPageContent() {
   const router = useRouter();
+  const { sesion } = useAuth();
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [mostrarModal, setMostrarModal] = useState(false);
   const [pedidoSeleccionado, setPedidoSeleccionado] = useState<any>(null);
-  const { costos, getCostosByPrenda } = useCostos();
+  const { costos, getCostosByPrenda } = useCostos(sesion?.sucursal_id);
   const { alumnos, searchAlumnos } = useAlumnos();
   const { externos } = useExternos();
   const { prendas } = usePrendas();
   const { tallas } = useTallas();
-  const { pedidos: pedidosDB, loading: loadingPedidos, crearPedido, actualizarEstadoPedido } = usePedidos();
+  const { pedidos: pedidosDB, loading: loadingPedidos, crearPedido, actualizarEstadoPedido } = usePedidos(sesion?.sucursal_id);
 
   // Estados para filtro de mes/año
   const fechaActual = new Date();

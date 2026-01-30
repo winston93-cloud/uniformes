@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import { useCostos } from '@/lib/hooks/useCostos';
 
@@ -18,8 +19,9 @@ interface Movimiento {
 export const dynamic = 'force-dynamic';
 
 export default function InventarioPage() {
+  const { sesion } = useAuth();
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
-  const { costos } = useCostos();
+  const { costos } = useCostos(sesion?.sucursal_id);
   
   const [movimientos, setMovimientos] = useState<Movimiento[]>([
     { id: 1, fecha: '2024-11-19', tipo: 'ENTRADA', prenda: 'Camisa Blanca', talla: 'M', cantidad: 50, usuario: 'Admin', observaciones: 'Compra proveedor ABC' },
