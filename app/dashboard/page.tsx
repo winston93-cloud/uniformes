@@ -35,11 +35,11 @@ export default function Dashboard() {
           className="modulos-vip-grid"
           style={{
             display: 'flex',
-            flexWrap: 'wrap',
+            flexWrap: 'nowrap', // No envolver, mantener en una fila
             gap: '1.5rem',
             marginBottom: '2rem',
             width: '100%',
-            alignItems: 'stretch', // Importante: mantiene la misma altura
+            alignItems: 'stretch',
           }}
         >
           {/* Insumos Necesarios para Producción */}
@@ -91,6 +91,9 @@ export default function Dashboard() {
         {/* Media Query para móvil */}
         <style jsx>{`
           @media (max-width: 1024px) {
+            .modulos-vip-grid {
+              flex-wrap: wrap !important;
+            }
             .modulos-vip-grid > div {
               flex: 1 1 100% !important;
               min-width: 100% !important;
