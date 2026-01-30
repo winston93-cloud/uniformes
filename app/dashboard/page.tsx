@@ -73,7 +73,7 @@ export default function Dashboard() {
             marginBottom: '2rem',
             width: '100%',
             alignItems: 'stretch',
-            minHeight: '280px', // Altura mínima uniforme
+            height: tarjetaExpandida ? 'auto' : '280px', // Altura fija cuando no expandido
           }}
         >
           {/* Insumos Necesarios para Producción */}

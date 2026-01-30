@@ -127,8 +127,7 @@ export default function TarjetaAlertasStockPrendas({ expandido, minimizado = fal
             ? '0 20px 25px -5px rgba(0, 0, 0, 0.3)' 
             : '0 10px 15px -3px rgba(0, 0, 0, 0.2)',
           transform: expandido ? 'scale(1.02)' : 'scale(1)',
-          height: '100%',
-          minHeight: '200px',
+          height: expandido ? 'auto' : '100%',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
