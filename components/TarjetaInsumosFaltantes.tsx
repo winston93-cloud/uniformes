@@ -134,7 +134,13 @@ export default function TarjetaInsumosFaltantes({ expandido, minimizado = false,
           background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
           color: 'white',
           border: '4px solid rgba(255, 255, 255, 0.6)',
-          boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1) inset',
+          borderRadius: '16px',
+          padding: '1.5rem',
+          boxShadow: expandido 
+            ? '0 20px 25px -5px rgba(0, 0, 0, 0.3)' 
+            : '0 10px 15px -3px rgba(0, 0, 0, 0.2)',
+          transform: expandido ? 'scale(1.02)' : 'scale(1)',
+          transition: 'all 0.3s ease',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
@@ -146,7 +152,6 @@ export default function TarjetaInsumosFaltantes({ expandido, minimizado = false,
           onClick={onToggle}
           style={{
             cursor: 'pointer',
-            padding: '1.5rem',
           }}
         >
           {/* Ícono y Badge */}
@@ -215,7 +220,6 @@ export default function TarjetaInsumosFaltantes({ expandido, minimizado = false,
         {/* Botón Actualizar abajo centrado */}
         {!expandido && (
           <div style={{ 
-            padding: '0 1.5rem 1.5rem 1.5rem',
             display: 'flex',
             justifyContent: 'center',
           }}>

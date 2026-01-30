@@ -107,19 +107,19 @@ export default function Dashboard() {
             href="/pedidos" 
             className="card"
             style={{
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              color: 'white',
+              background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
+              color: '#1f2937',
               transform: 'scale(1.15)',
               transformOrigin: 'center',
-              boxShadow: '0 10px 30px rgba(102, 126, 234, 0.4)',
-              border: '3px solid rgba(255, 255, 255, 0.3)',
+              boxShadow: '0 10px 30px rgba(251, 191, 36, 0.5)',
+              border: '3px solid rgba(255, 255, 255, 0.5)',
               zIndex: 1,
             }}
           >
             <div 
               style={{
                 fontSize: '3rem',
-                background: 'rgba(255, 255, 255, 0.2)',
+                background: 'rgba(255, 255, 255, 0.4)',
                 borderRadius: '12px',
                 width: '80px',
                 height: '80px',
@@ -135,14 +135,16 @@ export default function Dashboard() {
               margin: '0 0 0.5rem 0',
               fontSize: '1.5rem',
               fontWeight: 'bold',
-              textShadow: '2px 2px 4px rgba(0, 0, 0, 0.3)',
+              textShadow: '1px 1px 2px rgba(255, 255, 255, 0.5)',
+              color: '#1f2937',
             }}>
               Pedidos
             </h3>
             <p style={{ 
               margin: 0,
               fontSize: '1rem',
-              opacity: 0.95,
+              color: '#374151',
+              fontWeight: '500',
             }}>
               Gestión de pedidos de alumnos y clientes externos
             </p>
