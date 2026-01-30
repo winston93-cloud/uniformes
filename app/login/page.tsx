@@ -47,8 +47,8 @@ export default function LoginPage() {
       const { data: usuario, error: errorUsuario } = await supabase
         .from('usuarios')
         .select('*')
-        .eq('usuario', username)
-        .eq('password', password)
+        .eq('usuario_username', username)
+        .eq('usuario_password', password)
         .eq('activo', true)
         .single();
 
@@ -73,9 +73,9 @@ export default function LoginPage() {
 
       // Crear sesión
       setSesion({
-        usuario_id: usuario.id,
-        usuario_username: usuario.usuario,
-        usuario_email: usuario.email || '',
+        usuario_id: usuario.usuario_id,
+        usuario_username: usuario.usuario_username,
+        usuario_email: usuario.usuario_email || '',
         sucursal_id: sucursal.id,
         sucursal_codigo: sucursal.codigo,
         sucursal_nombre: sucursal.nombre,

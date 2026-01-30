@@ -186,11 +186,10 @@ export interface DetalleCotizacion {
 
 // Usuarios del sistema
 export interface Usuario {
-  id: string;
-  usuario: string;
-  password: string;
-  nombre: string | null;
-  email: string | null;
+  usuario_id: string;
+  usuario_username: string;
+  usuario_password: string;
+  usuario_email: string | null;
   activo: boolean;
   created_at?: string;
   updated_at?: string;
