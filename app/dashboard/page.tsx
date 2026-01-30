@@ -34,22 +34,21 @@ export default function Dashboard() {
         <div 
           className="modulos-vip-grid"
           style={{
-            display: 'grid',
-            gridTemplateColumns: 
-              tarjetaExpandida === 'insumos' ? '1fr auto auto' :
-              tarjetaExpandida === 'alertas' ? 'auto 1fr auto' :
-              tarjetaExpandida === 'prendas' ? 'auto auto 1fr' :
-              'repeat(auto-fit, minmax(min(100%, 380px), 1fr))',
+            display: 'flex',
+            flexWrap: 'wrap',
             gap: '1.5rem',
             marginBottom: '2rem',
             width: '100%',
-            transition: 'all 0.3s ease',
+            alignItems: 'stretch', // Importante: mantiene la misma altura
           }}
         >
           {/* Insumos Necesarios para Producción */}
           <div style={{ 
-            width: '100%', 
-            minWidth: (tarjetaExpandida && tarjetaExpandida !== 'insumos') ? 'auto' : 0,
+            flex: tarjetaExpandida === 'insumos' ? '1 1 100%' : 
+                  tarjetaExpandida !== null && tarjetaExpandida !== 'insumos' ? '0 0 auto' :
+                  '1 1 calc(33.333% - 1rem)',
+            minWidth: tarjetaExpandida !== null && tarjetaExpandida !== 'insumos' ? '100px' : '320px',
+            transition: 'all 0.3s ease',
           }}>
             <TarjetaInsumosFaltantes 
               expandido={tarjetaExpandida === 'insumos'}
@@ -60,8 +59,11 @@ export default function Dashboard() {
           
           {/* Alertas de Stock Mínimo - Insumos */}
           <div style={{ 
-            width: '100%', 
-            minWidth: (tarjetaExpandida && tarjetaExpandida !== 'alertas') ? 'auto' : 0,
+            flex: tarjetaExpandida === 'alertas' ? '1 1 100%' : 
+                  tarjetaExpandida !== null && tarjetaExpandida !== 'alertas' ? '0 0 auto' :
+                  '1 1 calc(33.333% - 1rem)',
+            minWidth: tarjetaExpandida !== null && tarjetaExpandida !== 'alertas' ? '100px' : '320px',
+            transition: 'all 0.3s ease',
           }}>
             <TarjetaAlertasStock 
               expandido={tarjetaExpandida === 'alertas'}
@@ -72,8 +74,11 @@ export default function Dashboard() {
 
           {/* Alertas de Stock Mínimo - Prendas */}
           <div style={{ 
-            width: '100%', 
-            minWidth: (tarjetaExpandida && tarjetaExpandida !== 'prendas') ? 'auto' : 0,
+            flex: tarjetaExpandida === 'prendas' ? '1 1 100%' : 
+                  tarjetaExpandida !== null && tarjetaExpandida !== 'prendas' ? '0 0 auto' :
+                  '1 1 calc(33.333% - 1rem)',
+            minWidth: tarjetaExpandida !== null && tarjetaExpandida !== 'prendas' ? '100px' : '320px',
+            transition: 'all 0.3s ease',
           }}>
             <TarjetaAlertasStockPrendas 
               expandido={tarjetaExpandida === 'prendas'}
@@ -82,6 +87,16 @@ export default function Dashboard() {
             />
           </div>
         </div>
+
+        {/* Media Query para móvil */}
+        <style jsx>{`
+          @media (max-width: 1024px) {
+            .modulos-vip-grid > div {
+              flex: 1 1 100% !important;
+              min-width: 100% !important;
+            }
+          }
+        `}</style>
 
         <div className="cards-grid">
           {/* Presentaciones */}
