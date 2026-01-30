@@ -144,6 +144,7 @@ export default function TarjetaInsumosFaltantes({ expandido, minimizado = false,
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
+          height: '100%',
           minHeight: '200px',
         }}
       >

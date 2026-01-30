@@ -114,8 +114,9 @@ export default function Header({ onMenuClick }: HeaderProps) {
         {/* Fila inferior: Mensaje de bienvenida y sucursal */}
         <div style={{ 
           display: 'flex', 
-          justifyContent: 'space-between',
-          alignItems: 'center',
+          flexDirection: 'column',
+          alignItems: 'flex-start',
+          gap: '0.5rem',
           paddingLeft: '3.5rem',
           paddingRight: '1rem',
         }}>
@@ -128,9 +129,9 @@ export default function Header({ onMenuClick }: HeaderProps) {
                 ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
                 : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
               color: 'white',
-              padding: '0.5rem 1rem',
-              borderRadius: '20px',
-              fontSize: '0.9rem',
+              padding: '0.4rem 1rem',
+              borderRadius: '15px',
+              fontSize: '0.85rem',
               fontWeight: 'bold',
               boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
               display: 'flex',
