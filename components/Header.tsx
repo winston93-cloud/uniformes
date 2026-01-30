@@ -114,8 +114,9 @@ export default function Header({ onMenuClick }: HeaderProps) {
         {/* Fila inferior: Mensaje de bienvenida y sucursal */}
         <div style={{ 
           display: 'flex', 
-          justifyContent: 'space-between',
+          justifyContent: 'flex-start',
           alignItems: 'center',
+          gap: '1rem',
           paddingLeft: '3.5rem',
           paddingRight: '1rem',
         }}>
