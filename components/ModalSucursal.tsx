@@ -38,6 +38,33 @@ export default function ModalSucursal({ sucursal, onClose }: ModalSucursalProps)
     }
   }, [sucursal]);
 
+  // Generar código automáticamente basado en el nombre
+  const generarCodigo = (nombre: string): string => {
+    if (!nombre.trim()) return '';
+    
+    const palabras = nombre.trim().toUpperCase().split(/\s+/);
+    
+    if (palabras.length === 1) {
+      // Si es una sola palabra, tomar primeras 3 letras
+      return palabras[0].substring(0, 3);
+    } else if (palabras.length === 2) {
+      // Si son dos palabras, tomar primeras 3 de cada una con guión
+      return `${palabras[0].substring(0, 3)}-${palabras[1].substring(0, 3)}`;
+    } else {
+      // Si son más de dos palabras, tomar primeras 2 letras de cada palabra
+      return palabras.map(p => p.substring(0, 2)).join('-');
+    }
+  };
+
+  const handleNombreChange = (nombre: string) => {
+    setFormData({ 
+      ...formData, 
+      nombre,
+      // Solo generar código si es una sucursal nueva (no en edición)
+      codigo: sucursal ? formData.codigo : generarCodigo(nombre)
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -101,18 +128,31 @@ export default function ModalSucursal({ sucursal, onClose }: ModalSucursalProps)
               <div className="form-group">
                 <label className="form-label">
                   Código <span style={{ color: 'red' }}>*</span>
+                  {!sucursal && formData.codigo && (
+                    <span style={{ 
+                      marginLeft: '0.5rem',
+                      fontSize: '0.75rem',
+                      color: '#10b981',
+                      fontWeight: 'normal',
+                    }}>
+                      ✨ Generado automáticamente
+                    </span>
+                  )}
                 </label>
                 <input
                   type="text"
                   className="form-input"
                   value={formData.codigo}
                   onChange={(e) => setFormData({ ...formData, codigo: e.target.value.toUpperCase() })}
-                  placeholder="MAT-MAD, MAT-CEN, PV-WIN"
+                  placeholder="Escribe el nombre primero..."
                   required
                   maxLength={20}
+                  style={{
+                    background: !sucursal && formData.codigo ? '#f0fdf4' : 'white',
+                  }}
                 />
                 <small style={{ color: '#6b7280', fontSize: '0.85rem' }}>
-                  Código único de la sucursal
+                  {!sucursal ? '💡 Se genera automáticamente del nombre (puedes editarlo)' : 'Código único de la sucursal'}
                 </small>
               </div>
 
@@ -125,7 +165,7 @@ export default function ModalSucursal({ sucursal, onClose }: ModalSucursalProps)
                   type="text"
                   className="form-input"
                   value={formData.nombre}
-                  onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                  onChange={(e) => handleNombreChange(e.target.value)}
                   placeholder="Matriz Madero, Matriz Centro, etc."
                   required
                   maxLength={100}
