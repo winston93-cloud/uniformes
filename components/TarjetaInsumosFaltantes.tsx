@@ -135,21 +135,27 @@ export default function TarjetaInsumosFaltantes({ expandido, minimizado = false,
           color: 'white',
           border: '4px solid rgba(255, 255, 255, 0.6)',
           boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1) inset',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          minHeight: '200px',
         }}
       >
-        {/* Header de la tarjeta */}
+        {/* Header con ícono y badge arriba */}
         <div 
-          className="card-header-insumos"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            cursor: 'pointer',
-            padding: '1rem',
-          }}
           onClick={onToggle}
+          style={{
+            cursor: 'pointer',
+            padding: '1.5rem',
+          }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          {/* Ícono y Badge */}
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between',
+            marginBottom: '1rem',
+          }}>
             <div 
               className="card-icon"
               style={{
@@ -157,36 +163,22 @@ export default function TarjetaInsumosFaltantes({ expandido, minimizado = false,
                 background: 'rgba(255, 255, 255, 0.2)',
                 borderRadius: '12px',
                 padding: '0.5rem',
+                width: '60px',
+                height: '60px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
               }}
             >
               📋
             </div>
-            <div>
-              <h2 style={{ 
-                margin: 0, 
-                fontSize: '1.8rem',
-                fontWeight: 'bold',
-                textShadow: '2px 2px 4px rgba(0, 0, 0, 0.3)',
-              }}>
-                Insumos Necesarios para Producción
-              </h2>
-              <p style={{ 
-                margin: '0.5rem 0 0 0', 
-                fontSize: '1rem',
-                opacity: 0.9,
-              }}>
-                Basado en pedidos pendientes de entrega
-              </p>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            
             <div 
               className={`badge badge-${colorEstado}`}
               style={{
-                padding: '0.75rem 1.5rem',
+                padding: '0.5rem 1rem',
                 borderRadius: '20px',
-                fontSize: '1.1rem',
+                fontSize: '0.9rem',
                 fontWeight: 'bold',
                 background: 'rgba(255, 255, 255, 0.25)',
                 backdropFilter: 'blur(10px)',
@@ -195,6 +187,38 @@ export default function TarjetaInsumosFaltantes({ expandido, minimizado = false,
               {getMensajeEstado()}
             </div>
 
+            <div style={{ fontSize: '1.5rem' }}>
+              {expandido ? '⬆️' : '⬇️'}
+            </div>
+          </div>
+
+          {/* Título y descripción */}
+          <div>
+            <h2 style={{ 
+              margin: 0, 
+              fontSize: '1.6rem',
+              fontWeight: 'bold',
+              textShadow: '2px 2px 4px rgba(0, 0, 0, 0.3)',
+            }}>
+              Insumos Necesarios para Producción
+            </h2>
+            <p style={{ 
+              margin: '0.5rem 0 0 0', 
+              fontSize: '0.95rem',
+              opacity: 0.9,
+            }}>
+              Basado en pedidos pendientes de entrega
+            </p>
+          </div>
+        </div>
+
+        {/* Botón Actualizar abajo centrado */}
+        {!expandido && (
+          <div style={{ 
+            padding: '0 1.5rem 1.5rem 1.5rem',
+            display: 'flex',
+            justifyContent: 'center',
+          }}>
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -205,7 +229,7 @@ export default function TarjetaInsumosFaltantes({ expandido, minimizado = false,
                 background: 'rgba(255, 255, 255, 0.2)',
                 border: '2px solid rgba(255, 255, 255, 0.3)',
                 color: 'white',
-                padding: '0.5rem 1rem',
+                padding: '0.75rem 2rem',
                 borderRadius: '8px',
                 cursor: 'pointer',
                 fontSize: '1rem',
@@ -221,14 +245,10 @@ export default function TarjetaInsumosFaltantes({ expandido, minimizado = false,
               title="Actualizar"
             >
               <span className="btn-icon">🔄</span>
-              <span className="btn-text">Actualizar</span>
+              <span className="btn-text"> Actualizar</span>
             </button>
-
-            <span style={{ fontSize: '1.5rem' }}>
-              {expandido ? '▲' : '▼'}
-            </span>
           </div>
-        </div>
+        )}
 
         {/* Contenido expandible */}
         {expandido && (

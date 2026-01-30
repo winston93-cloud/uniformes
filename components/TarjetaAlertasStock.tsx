@@ -148,24 +148,26 @@ export default function TarjetaAlertasStock({ expandido, minimizado = false, onT
             ? '0 20px 25px -5px rgba(0, 0, 0, 0.3)' 
             : '0 10px 15px -3px rgba(0, 0, 0, 0.2)',
           transform: expandido ? 'scale(1.02)' : 'scale(1)',
-          height: '100%',
-          minHeight: expandido ? 'auto' : '200px',
+          minHeight: '200px',
           display: 'flex',
           flexDirection: 'column',
+          justifyContent: 'space-between',
         }}
       >
-        {/* Header */}
+        {/* Header con ícono y badge arriba */}
         <div 
           onClick={onToggle}
           style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'flex-start',
-            marginBottom: '1rem',
             cursor: 'pointer',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          {/* Ícono y Badge */}
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between',
+            marginBottom: '1rem',
+          }}>
             <div style={{
               fontSize: '2.5rem',
               background: 'rgba(255, 255, 255, 0.2)',
@@ -178,32 +180,13 @@ export default function TarjetaAlertasStock({ expandido, minimizado = false, onT
             }}>
               📦
             </div>
-            <div>
-              <h2 style={{ 
-                margin: 0, 
-                fontSize: '1.8rem',
-                fontWeight: 'bold',
-                textShadow: '2px 2px 4px rgba(0, 0, 0, 0.3)',
-              }}>
-                Alertas de Stock Mínimo
-              </h2>
-              <p style={{ 
-                margin: '0.5rem 0 0 0', 
-                fontSize: '1rem',
-                opacity: 0.9,
-              }}>
-                Control de stock de insumos en tiempo real
-              </p>
-            </div>
-          </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <div 
               className={`badge badge-${badgeInfo.color}`}
               style={{
-                padding: '0.75rem 1.5rem',
+                padding: '0.5rem 1rem',
                 borderRadius: '20px',
-                fontSize: '1.1rem',
+                fontSize: '0.9rem',
                 fontWeight: 'bold',
                 background: 'rgba(255, 255, 255, 0.25)',
                 backdropFilter: 'blur(10px)',
@@ -212,6 +195,37 @@ export default function TarjetaAlertasStock({ expandido, minimizado = false, onT
               {badgeInfo.emoji} {badgeInfo.texto}
             </div>
 
+            <div style={{ fontSize: '1.5rem' }}>
+              {expandido ? '⬆️' : '⬇️'}
+            </div>
+          </div>
+
+          {/* Título y descripción */}
+          <div>
+            <h2 style={{ 
+              margin: 0, 
+              fontSize: '1.6rem',
+              fontWeight: 'bold',
+              textShadow: '2px 2px 4px rgba(0, 0, 0, 0.3)',
+            }}>
+              Alertas de Stock Mínimo
+            </h2>
+            <p style={{ 
+              margin: '0.5rem 0 0 0', 
+              fontSize: '0.95rem',
+              opacity: 0.9,
+            }}>
+              Control de stock de insumos en tiempo real
+            </p>
+          </div>
+        </div>
+
+        {/* Botón Actualizar abajo centrado */}
+        {!expandido && (
+          <div style={{ 
+            display: 'flex',
+            justifyContent: 'center',
+          }}>
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -222,7 +236,7 @@ export default function TarjetaAlertasStock({ expandido, minimizado = false, onT
                 background: 'rgba(255, 255, 255, 0.2)',
                 border: '2px solid rgba(255, 255, 255, 0.3)',
                 color: 'white',
-                padding: '0.5rem 1rem',
+                padding: '0.75rem 2rem',
                 borderRadius: '8px',
                 cursor: 'pointer',
                 fontSize: '1rem',
@@ -238,18 +252,10 @@ export default function TarjetaAlertasStock({ expandido, minimizado = false, onT
               title="Actualizar"
             >
               <span className="btn-icon">🔄</span>
-              <span className="btn-text">Actualizar</span>
+              <span className="btn-text"> Actualizar</span>
             </button>
-
-            <div style={{
-              fontSize: '1.5rem',
-              transition: 'transform 0.3s ease',
-              transform: expandido ? 'rotate(180deg)' : 'rotate(0deg)',
-            }}>
-              ⬇️
-            </div>
           </div>
-        </div>
+        )}
 
         {/* Contenido expandible */}
         {expandido && (
