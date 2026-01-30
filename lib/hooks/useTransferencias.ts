@@ -20,7 +20,7 @@ export function useTransferencias(sucursalId?: string) {
           *,
           sucursal_origen:sucursales!transferencias_sucursal_origen_id_fkey(id, codigo, nombre, es_matriz),
           sucursal_destino:sucursales!transferencias_sucursal_destino_id_fkey(id, codigo, nombre, es_matriz),
-          usuario:usuarios(id, usuario, nombre)
+          usuario:usuario(usuario_id, usuario_username, usuario_nombre)
         `)
         .order('created_at', { ascending: false });
 
@@ -60,7 +60,7 @@ export function useTransferencias(sucursalId?: string) {
 export async function crearTransferencia(
   sucursal_origen_id: string,
   sucursal_destino_id: string,
-  usuario_id: string,
+  usuario_id: number,
   detalles: Array<{ prenda_id: string; talla_id: string; cantidad: number; costo_id: string }>,
   observaciones?: string
 ) {

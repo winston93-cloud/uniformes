@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS transferencias (
   folio VARCHAR(20) UNIQUE NOT NULL,
   sucursal_origen_id UUID NOT NULL REFERENCES sucursales(id),
   sucursal_destino_id UUID NOT NULL REFERENCES sucursales(id),
-  usuario_id UUID REFERENCES usuarios(id),
+  usuario_id SMALLINT REFERENCES usuario(usuario_id),
   fecha_transferencia TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   estado VARCHAR(20) DEFAULT 'PENDIENTE' CHECK (estado IN ('PENDIENTE', 'EN_TRANSITO', 'RECIBIDA', 'CANCELADA')),
   observaciones TEXT,

@@ -186,13 +186,17 @@ export interface DetalleCotizacion {
 
 // Usuarios del sistema
 export interface Usuario {
-  usuario_id: string;
-  usuario_username: string;
-  usuario_password: string;
+  usuario_id: number;
+  perfil_id: number;
+  usuario_app: string | null;
+  usuario_apm: string | null;
+  usuario_nombre: string | null;
+  usuario_username: string | null;
+  usuario_password: string | null;
   usuario_email: string | null;
-  activo: boolean;
-  created_at?: string;
-  updated_at?: string;
+  usuario_status: number;
+  usuario_alta: string | null;
+  nivel: number;
 }
 
 // Sucursales
@@ -214,7 +218,7 @@ export interface Transferencia {
   folio: string;
   sucursal_origen_id: string;
   sucursal_destino_id: string;
-  usuario_id: string | null;
+  usuario_id: number | null;
   fecha_transferencia: string;
   estado: 'PENDIENTE' | 'EN_TRANSITO' | 'RECIBIDA' | 'CANCELADA';
   observaciones: string | null;
@@ -240,7 +244,7 @@ export interface DetalleTransferencia {
 
 // Contexto de sesión del usuario
 export interface SesionUsuario {
-  usuario_id: string;
+  usuario_id: number;
   usuario_username: string;
   usuario_email: string;
   sucursal_id: string;

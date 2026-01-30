@@ -45,11 +45,11 @@ export default function LoginPage() {
     try {
       // Buscar usuario
       const { data: usuario, error: errorUsuario } = await supabase
-        .from('usuarios')
+        .from('usuario')
         .select('*')
         .eq('usuario_username', username)
         .eq('usuario_password', password)
-        .eq('activo', true)
+        .eq('usuario_status', 1)
         .single();
 
       if (errorUsuario || !usuario) {
