@@ -42,7 +42,7 @@ export interface ReporteGanancias {
   }[];
 }
 
-export function useReportes() {
+export function useReportes(sucursal_id?: string) {
   const [loading, setLoading] = useState(false);
 
   const ventasPorPeriodo = async (fechaInicio: string, fechaFin: string): Promise<ReporteVentas[]> => {
@@ -56,11 +56,18 @@ export function useReportes() {
       const fechaFinObj = new Date(yearFin, mesFin - 1, diaFin, 23, 59, 59, 999);
 
       // Obtener todos los pedidos liquidados con el nombre del cliente
-      const { data, error } = await supabase
+      let query = supabase
         .from('pedidos')
         .select('id, created_at, total, fecha_liquidacion, tipo_cliente, cliente_nombre')
         .eq('estado', 'LIQUIDADO')
         .order('created_at', { ascending: true });
+
+      // Filtrar por sucursal si se proporciona
+      if (sucursal_id) {
+        query = query.eq('sucursal_id', sucursal_id);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         console.error('❌ Error obteniendo pedidos:', error);

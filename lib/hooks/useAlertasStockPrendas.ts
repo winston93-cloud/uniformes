@@ -17,7 +17,7 @@ export interface AlertaStockPrenda {
   precio_menudeo: number;
 }
 
-export function useAlertasStockPrendas() {
+export function useAlertasStockPrendas(sucursal_id?: string) {
   const [alertas, setAlertas] = useState<AlertaStockPrenda[]>([]);
   const [cargando, setCargando] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -28,7 +28,7 @@ export function useAlertasStockPrendas() {
       setError(null);
 
       // Obtener todos los costos (prenda-talla) con stock mínimo definido
-      const { data: costosData, error: costosError } = await supabase
+      let query = supabase
         .from('costos')
         .select(`
           id,
@@ -47,6 +47,13 @@ export function useAlertasStockPrendas() {
         .gt('stock_minimo', 0) // Solo prendas con stock mínimo definido
         .eq('activo', true) // Solo prendas activas
         .order('stock', { ascending: true }); // Las más críticas primero
+
+      // Filtrar por sucursal si se proporciona
+      if (sucursal_id) {
+        query = query.eq('sucursal_id', sucursal_id);
+      }
+
+      const { data: costosData, error: costosError } = await query;
 
       if (costosError) throw costosError;
       if (!costosData || costosData.length === 0) {
@@ -112,7 +119,7 @@ export function useAlertasStockPrendas() {
     } finally {
       setCargando(false);
     }
-  }, []);
+  }, [sucursal_id]);
 
   useEffect(() => {
     cargarAlertas();
