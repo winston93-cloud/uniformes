@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import Link from 'next/link';
 import TarjetaInsumosFaltantes from '@/components/TarjetaInsumosFaltantes';
@@ -8,7 +10,16 @@ import TarjetaAlertasStock from '@/components/TarjetaAlertasStock';
 import TarjetaAlertasStockPrendas from '@/components/TarjetaAlertasStockPrendas';
 
 export default function Dashboard() {
+  const router = useRouter();
+  const { sesion } = useAuth();
   const [tarjetaExpandida, setTarjetaExpandida] = useState<'insumos' | 'alertas' | 'prendas' | null>(null);
+
+  // Protección de ruta: redirigir a login si no hay sesión
+  useEffect(() => {
+    if (!sesion) {
+      router.push('/login');
+    }
+  }, [sesion, router]);
 
   const handleToggleInsumos = () => {
     setTarjetaExpandida(prev => prev === 'insumos' ? null : 'insumos');
@@ -21,6 +32,28 @@ export default function Dashboard() {
   const handleTogglePrendas = () => {
     setTarjetaExpandida(prev => prev === 'prendas' ? null : 'prendas');
   };
+
+  // Mostrar loading mientras verifica sesión
+  if (!sesion) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      }}>
+        <div style={{
+          textAlign: 'center',
+          color: 'white',
+          fontSize: '1.5rem',
+        }}>
+          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🔐</div>
+          Verificando sesión...
+        </div>
+      </div>
+    );
+  }
 
   return (
     <LayoutWrapper>
@@ -40,6 +73,7 @@ export default function Dashboard() {
             marginBottom: '2rem',
             width: '100%',
             alignItems: 'stretch',
+            minHeight: '280px', // Altura mínima uniforme
           }}
         >
           {/* Insumos Necesarios para Producción */}
@@ -49,6 +83,7 @@ export default function Dashboard() {
                   '1 1 calc(33.333% - 1rem)',
             minWidth: (tarjetaExpandida && tarjetaExpandida !== 'insumos') ? '100px' : '320px',
             transition: 'all 0.3s ease',
+            height: '100%',
           }}>
             <TarjetaInsumosFaltantes 
               expandido={tarjetaExpandida === 'insumos'}
@@ -64,6 +99,7 @@ export default function Dashboard() {
                   '1 1 calc(33.333% - 1rem)',
             minWidth: (tarjetaExpandida && tarjetaExpandida !== 'alertas') ? '100px' : '320px',
             transition: 'all 0.3s ease',
+            height: '100%',
           }}>
             <TarjetaAlertasStock 
               expandido={tarjetaExpandida === 'alertas'}
@@ -79,6 +115,7 @@ export default function Dashboard() {
                   '1 1 calc(33.333% - 1rem)',
             minWidth: (tarjetaExpandida && tarjetaExpandida !== 'prendas') ? '100px' : '320px',
             transition: 'all 0.3s ease',
+            height: '100%',
           }}>
             <TarjetaAlertasStockPrendas 
               expandido={tarjetaExpandida === 'prendas'}
