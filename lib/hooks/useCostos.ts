@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
 import type { Costo } from '../types';
 
-export function useCostos() {
+export function useCostos(sucursal_id?: string) {
   const [costos, setCostos] = useState<Costo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -12,7 +12,7 @@ export function useCostos() {
   const fetchCostos = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      let query = supabase
         .from('costos')
         .select(`
           *,
@@ -20,6 +20,13 @@ export function useCostos() {
           prenda:prendas(*)
         `)
         .order('created_at', { ascending: false });
+
+      // Filtrar por sucursal si se proporciona
+      if (sucursal_id) {
+        query = query.eq('sucursal_id', sucursal_id);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setCostos(data || []);
@@ -33,7 +40,7 @@ export function useCostos() {
 
   useEffect(() => {
     fetchCostos();
-  }, []);
+  }, [sucursal_id]);
 
   const createCosto = async (costo: Omit<Costo, 'id' | 'created_at' | 'updated_at' | 'talla' | 'prenda'>) => {
     try {

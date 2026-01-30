@@ -30,17 +30,24 @@ interface DetallePedido {
   especificaciones?: string;
 }
 
-export function usePedidos() {
+export function usePedidos(sucursal_id?: string) {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchPedidos = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      let query = supabase
         .from('pedidos')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false});
+
+      // Filtrar por sucursal si se proporciona
+      if (sucursal_id) {
+        query = query.eq('sucursal_id', sucursal_id);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       
@@ -59,7 +66,7 @@ export function usePedidos() {
     }
   };
 
-  const crearPedido = async (pedido: Omit<Pedido, 'id' | 'created_at' | 'updated_at'>, detalles: Omit<DetallePedido, 'id' | 'pedido_id'>[]) => {
+  const crearPedido = async (pedido: Omit<Pedido, 'id' | 'created_at' | 'updated_at'>, detalles: Omit<DetallePedido, 'id' | 'pedido_id'>[], pedido_sucursal_id?: string) => {
     try {
       console.log('📦 Creando pedido...', pedido);
       
@@ -70,6 +77,7 @@ export function usePedidos() {
         subtotal: pedido.total,
         total: pedido.total,
         cliente_nombre: pedido.cliente_nombre,
+        sucursal_id: pedido_sucursal_id || sucursal_id, // Usar la sucursal del parámetro o la del hook
         // NO asignar alumno_id ni externo_id por ahora, solo usar tipo_cliente y cliente_nombre
         alumno_id: null,
         externo_id: null,
@@ -172,7 +180,7 @@ export function usePedidos() {
 
   useEffect(() => {
     fetchPedidos();
-  }, []);
+  }, [sucursal_id]);
 
   return {
     pedidos,
