@@ -43,19 +43,20 @@ export default function LoginPage() {
     setError('');
 
     try {
-      // Buscar usuario
-      const { data: usuario, error: errorUsuario } = await supabase
-        .from('usuario')
-        .select('*')
-        .eq('usuario_username', username)
-        .eq('usuario_password', password)
-        .single();
+      // Buscar usuario usando función RPC (bypasea RLS)
+      const { data: usuarios, error: errorUsuario } = await supabase
+        .rpc('login_usuario', {
+          p_username: username,
+          p_password: password
+        });
 
-      if (errorUsuario || !usuario) {
+      if (errorUsuario || !usuarios || usuarios.length === 0) {
         setError('Usuario o contraseña incorrectos');
         setLoading(false);
         return;
       }
+
+      const usuario = usuarios[0];
 
       // Buscar sucursal
       const { data: sucursal, error: errorSucursal } = await supabase
