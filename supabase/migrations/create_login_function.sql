@@ -6,11 +6,11 @@ CREATE OR REPLACE FUNCTION login_usuario(
 RETURNS TABLE (
   usuario_id SMALLINT,
   perfil_id SMALLINT,
-  usuario_app VARCHAR,
-  usuario_apm VARCHAR,
-  usuario_nombre VARCHAR,
-  usuario_username VARCHAR,
-  usuario_email VARCHAR,
+  usuario_app VARCHAR(50),
+  usuario_apm VARCHAR(50),
+  usuario_nombre VARCHAR(50),
+  usuario_username VARCHAR(20),
+  usuario_email VARCHAR(100),
   nivel INTEGER
 ) 
 SECURITY DEFINER
