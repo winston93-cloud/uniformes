@@ -6,10 +6,11 @@ interface TarjetaAlertasStockPrendasProps {
   expandido: boolean;
   minimizado?: boolean;
   onToggle: () => void;
+  sucursalId?: string;
 }
 
-export default function TarjetaAlertasStockPrendas({ expandido, minimizado = false, onToggle }: TarjetaAlertasStockPrendasProps) {
-  const { alertas, cargando, error, recargar, contadores } = useAlertasStockPrendas();
+export default function TarjetaAlertasStockPrendas({ expandido, minimizado = false, onToggle, sucursalId }: TarjetaAlertasStockPrendasProps) {
+  const { alertas, cargando, error, recargar, contadores } = useAlertasStockPrendas(sucursalId);
 
   // Determinar color y mensaje del badge principal
   const getBadgeInfo = () => {

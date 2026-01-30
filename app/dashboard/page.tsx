@@ -121,6 +121,7 @@ export default function Dashboard() {
               expandido={tarjetaExpandida === 'prendas'}
               minimizado={!!tarjetaExpandida && tarjetaExpandida !== 'prendas'}
               onToggle={handleTogglePrendas}
+              sucursalId={sesion?.sucursal_id}
             />
           </div>
         </div>
