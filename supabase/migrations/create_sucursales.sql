@@ -18,8 +18,8 @@ COMMENT ON COLUMN sucursales.nombre IS 'Nombre de la sucursal';
 COMMENT ON COLUMN sucursales.es_matriz IS 'Indica si es la sucursal matriz (donde están los insumos)';
 
 -- Índices
-CREATE INDEX idx_sucursales_activo ON sucursales(activo);
-CREATE INDEX idx_sucursales_es_matriz ON sucursales(es_matriz) WHERE es_matriz = true;
+CREATE INDEX IF NOT EXISTS idx_sucursales_activo ON sucursales(activo);
+CREATE INDEX IF NOT EXISTS idx_sucursales_es_matriz ON sucursales(es_matriz) WHERE es_matriz = true;
 
 -- Insertar sucursal matriz por defecto
 INSERT INTO sucursales (codigo, nombre, direccion, es_matriz, activo)

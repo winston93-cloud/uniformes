@@ -32,11 +32,11 @@ COMMENT ON TABLE detalle_transferencias IS 'Detalle de prendas transferidas';
 COMMENT ON COLUMN detalle_transferencias.cantidad IS 'Cantidad de prendas transferidas';
 
 -- Índices
-CREATE INDEX idx_transferencias_origen ON transferencias(sucursal_origen_id);
-CREATE INDEX idx_transferencias_destino ON transferencias(sucursal_destino_id);
-CREATE INDEX idx_transferencias_estado ON transferencias(estado);
-CREATE INDEX idx_transferencias_fecha ON transferencias(fecha_transferencia DESC);
-CREATE INDEX idx_detalle_transferencias_trans ON detalle_transferencias(transferencia_id);
+CREATE INDEX IF NOT EXISTS idx_transferencias_origen ON transferencias(sucursal_origen_id);
+CREATE INDEX IF NOT EXISTS idx_transferencias_destino ON transferencias(sucursal_destino_id);
+CREATE INDEX IF NOT EXISTS idx_transferencias_estado ON transferencias(estado);
+CREATE INDEX IF NOT EXISTS idx_transferencias_fecha ON transferencias(fecha_transferencia DESC);
+CREATE INDEX IF NOT EXISTS idx_detalle_transferencias_trans ON detalle_transferencias(transferencia_id);
 
 -- Restricción: no se puede transferir a la misma sucursal
 ALTER TABLE transferencias 
@@ -69,6 +69,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Trigger para generar folio automáticamente
+DROP TRIGGER IF EXISTS trigger_generate_folio_transferencia ON transferencias;
 CREATE TRIGGER trigger_generate_folio_transferencia
 BEFORE INSERT ON transferencias
 FOR EACH ROW
