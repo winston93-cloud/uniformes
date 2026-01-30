@@ -184,3 +184,57 @@ export interface DetalleCotizacion {
   created_at?: string;
 }
 
+// Sucursales
+export interface Sucursal {
+  id: string;
+  codigo: string;
+  nombre: string;
+  direccion: string | null;
+  telefono: string | null;
+  es_matriz: boolean;
+  activo: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// Transferencias entre sucursales
+export interface Transferencia {
+  id: string;
+  folio: string;
+  sucursal_origen_id: string;
+  sucursal_destino_id: string;
+  usuario_id: string | null;
+  fecha_transferencia: string;
+  estado: 'PENDIENTE' | 'EN_TRANSITO' | 'RECIBIDA' | 'CANCELADA';
+  observaciones: string | null;
+  created_at?: string;
+  updated_at?: string;
+  sucursal_origen?: Sucursal;
+  sucursal_destino?: Sucursal;
+  usuario?: Usuario;
+  detalles?: DetalleTransferencia[];
+}
+
+export interface DetalleTransferencia {
+  id: string;
+  transferencia_id: string;
+  prenda_id: string;
+  talla_id: string;
+  cantidad: number;
+  costo_id: string | null;
+  created_at?: string;
+  prenda?: Prenda;
+  talla?: Talla;
+}
+
+// Contexto de sesión del usuario
+export interface SesionUsuario {
+  usuario_id: string;
+  usuario_username: string;
+  usuario_email: string;
+  sucursal_id: string;
+  sucursal_codigo: string;
+  sucursal_nombre: string;
+  es_matriz: boolean;
+}
+
