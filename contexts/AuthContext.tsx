@@ -5,6 +5,7 @@ import { SesionUsuario } from '@/lib/types';
 
 interface AuthContextType {
   sesion: SesionUsuario | null;
+  loading: boolean;
   setSesion: (sesion: SesionUsuario | null) => void;
   cerrarSesion: () => void;
 }
@@ -13,6 +14,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [sesion, setSesionState] = useState<SesionUsuario | null>(null);
+  const [loading, setLoading] = useState(true);
 
   // Cargar sesión del localStorage al iniciar
   useEffect(() => {
@@ -25,6 +27,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.removeItem('sesion_uniformes');
       }
     }
+    setLoading(false);
   }, []);
 
   const setSesion = (nuevaSesion: SesionUsuario | null) => {
@@ -43,7 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ sesion, setSesion, cerrarSesion }}>
+    <AuthContext.Provider value={{ sesion, loading, setSesion, cerrarSesion }}>
       {children}
     </AuthContext.Provider>
   );

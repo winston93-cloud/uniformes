@@ -6,16 +6,18 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export default function Home() {
   const router = useRouter();
-  const { sesion } = useAuth();
+  const { sesion, loading } = useAuth();
 
   useEffect(() => {
-    // Si hay sesión, ir al dashboard; si no, ir al login
-    if (sesion) {
-      router.push('/dashboard');
-    } else {
-      router.push('/login');
+    if (!loading) {
+      // Si hay sesión, ir al dashboard; si no, ir al login
+      if (sesion) {
+        router.push('/dashboard');
+      } else {
+        router.push('/login');
+      }
     }
-  }, [sesion, router]);
+  }, [sesion, loading, router]);
 
   return (
     <div style={{

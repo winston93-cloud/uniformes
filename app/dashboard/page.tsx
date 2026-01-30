@@ -11,15 +11,15 @@ import TarjetaAlertasStockPrendas from '@/components/TarjetaAlertasStockPrendas'
 
 export default function Dashboard() {
   const router = useRouter();
-  const { sesion } = useAuth();
+  const { sesion, loading } = useAuth();
   const [tarjetaExpandida, setTarjetaExpandida] = useState<'insumos' | 'alertas' | 'prendas' | null>(null);
 
   // Protección de ruta: redirigir a login si no hay sesión
   useEffect(() => {
-    if (!sesion) {
+    if (!loading && !sesion) {
       router.push('/login');
     }
-  }, [sesion, router]);
+  }, [sesion, loading, router]);
 
   const handleToggleInsumos = () => {
     setTarjetaExpandida(prev => prev === 'insumos' ? null : 'insumos');
@@ -34,7 +34,7 @@ export default function Dashboard() {
   };
 
   // Mostrar loading mientras verifica sesión
-  if (!sesion) {
+  if (loading) {
     return (
       <div style={{
         minHeight: '100vh',
