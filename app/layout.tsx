@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import ThemeToggler from "@/components/ThemeToggler";
+import { AuthProvider } from "@/contexts/AuthContext";
 
 export const metadata: Metadata = {
   title: "Sistema de Gestión de Uniformes",
@@ -15,8 +16,10 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body>
-        <ThemeToggler />
-        {children}
+        <AuthProvider>
+          <ThemeToggler />
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );

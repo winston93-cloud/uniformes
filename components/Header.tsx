@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 import ModalCotizacion from './ModalCotizacion';
 
 interface HeaderProps {
@@ -11,6 +12,7 @@ interface HeaderProps {
 
 export default function Header({ onMenuClick }: HeaderProps) {
   const router = useRouter();
+  const { sesion, cerrarSesion } = useAuth();
   const [modalCotizacionAbierto, setModalCotizacionAbierto] = useState(false);
 
   const handleIrAlPanel = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -99,22 +101,45 @@ export default function Header({ onMenuClick }: HeaderProps) {
               <span className="btn-text">Cotizaciones</span>
             </button>
 
-            <button className="logout-button header-btn">
+            <button 
+              className="logout-button header-btn"
+              onClick={cerrarSesion}
+            >
               <span className="btn-icon">🚪</span>
               <span className="btn-text">Cerrar Sesión</span>
             </button>
           </div>
         </div>
 
-        {/* Fila inferior: Mensaje de bienvenida */}
+        {/* Fila inferior: Mensaje de bienvenida y sucursal */}
         <div style={{ 
           display: 'flex', 
-          justifyContent: 'flex-start',
-          paddingLeft: '3.5rem', // Alineado con el texto "Sistema de Uniformes"
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          paddingLeft: '3.5rem',
+          paddingRight: '1rem',
         }}>
           <div className="welcome-badge" style={{ margin: 0 }}>
-            ⭐ Bienvenido, Administrador del Sistema ⭐
+            ⭐ Bienvenido, {sesion?.usuario_username || 'Usuario'} ⭐
           </div>
+          {sesion && (
+            <div style={{
+              background: sesion.es_matriz 
+                ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              color: 'white',
+              padding: '0.5rem 1rem',
+              borderRadius: '20px',
+              fontSize: '0.9rem',
+              fontWeight: 'bold',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+            }}>
+              {sesion.es_matriz ? '🏛️' : '📍'} {sesion.sucursal_nombre}
+            </div>
+          )}
         </div>
       </header>
 
