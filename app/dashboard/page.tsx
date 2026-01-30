@@ -249,6 +249,17 @@ export default function Dashboard() {
             </p>
           </Link>
 
+          {/* Sucursales */}
+          <Link href="/sucursales" className="card">
+            <div className="card-icon purple">
+              🏢
+            </div>
+            <h3 className="card-title">Sucursales</h3>
+            <p className="card-description">
+              Catálogo y gestión de sucursales del sistema
+            </p>
+          </Link>
+
           {/* Cortes de Caja */}
           <Link href="/cortes" className="card">
             <div className="card-icon green">
