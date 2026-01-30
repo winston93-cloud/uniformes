@@ -5,9 +5,10 @@ import LayoutWrapper from '@/components/LayoutWrapper';
 import Link from 'next/link';
 import TarjetaInsumosFaltantes from '@/components/TarjetaInsumosFaltantes';
 import TarjetaAlertasStock from '@/components/TarjetaAlertasStock';
+import TarjetaAlertasStockPrendas from '@/components/TarjetaAlertasStockPrendas';
 
 export default function Dashboard() {
-  const [tarjetaExpandida, setTarjetaExpandida] = useState<'insumos' | 'alertas' | null>(null);
+  const [tarjetaExpandida, setTarjetaExpandida] = useState<'insumos' | 'alertas' | 'prendas' | null>(null);
 
   const handleToggleInsumos = () => {
     setTarjetaExpandida(prev => prev === 'insumos' ? null : 'insumos');
@@ -15,6 +16,10 @@ export default function Dashboard() {
 
   const handleToggleAlertas = () => {
     setTarjetaExpandida(prev => prev === 'alertas' ? null : 'alertas');
+  };
+
+  const handleTogglePrendas = () => {
+    setTarjetaExpandida(prev => prev === 'prendas' ? null : 'prendas');
   };
 
   return (
@@ -25,15 +30,16 @@ export default function Dashboard() {
           <span className="title-icon">✨</span>
         </h1>
 
-        {/* ⭐ MÓDULOS PRINCIPALES VIP - Layout Dinámico ⭐ */}
+        {/* ⭐ MÓDULOS PRINCIPALES VIP - Layout Dinámico con 3 Tarjetas ⭐ */}
         <div 
           className="modulos-vip-grid"
           style={{
             display: 'grid',
             gridTemplateColumns: 
-              tarjetaExpandida === 'insumos' ? '1fr auto' :
-              tarjetaExpandida === 'alertas' ? 'auto 1fr' :
-              'repeat(auto-fit, minmax(min(100%, 450px), 1fr))',
+              tarjetaExpandida === 'insumos' ? '1fr auto auto' :
+              tarjetaExpandida === 'alertas' ? 'auto 1fr auto' :
+              tarjetaExpandida === 'prendas' ? 'auto auto 1fr' :
+              'repeat(auto-fit, minmax(min(100%, 380px), 1fr))',
             gap: '1.5rem',
             marginBottom: '2rem',
             width: '100%',
@@ -43,24 +49,36 @@ export default function Dashboard() {
           {/* Insumos Necesarios para Producción */}
           <div style={{ 
             width: '100%', 
-            minWidth: tarjetaExpandida === 'alertas' ? 'auto' : 0,
+            minWidth: (tarjetaExpandida && tarjetaExpandida !== 'insumos') ? 'auto' : 0,
           }}>
             <TarjetaInsumosFaltantes 
               expandido={tarjetaExpandida === 'insumos'}
-              minimizado={tarjetaExpandida === 'alertas'}
+              minimizado={tarjetaExpandida !== null && tarjetaExpandida !== 'insumos'}
               onToggle={handleToggleInsumos}
             />
           </div>
           
-          {/* Alertas de Stock Mínimo */}
+          {/* Alertas de Stock Mínimo - Insumos */}
           <div style={{ 
             width: '100%', 
-            minWidth: tarjetaExpandida === 'insumos' ? 'auto' : 0,
+            minWidth: (tarjetaExpandida && tarjetaExpandida !== 'alertas') ? 'auto' : 0,
           }}>
             <TarjetaAlertasStock 
               expandido={tarjetaExpandida === 'alertas'}
-              minimizado={tarjetaExpandida === 'insumos'}
+              minimizado={tarjetaExpandida !== null && tarjetaExpandida !== 'alertas'}
               onToggle={handleToggleAlertas}
+            />
+          </div>
+
+          {/* Alertas de Stock Mínimo - Prendas */}
+          <div style={{ 
+            width: '100%', 
+            minWidth: (tarjetaExpandida && tarjetaExpandida !== 'prendas') ? 'auto' : 0,
+          }}>
+            <TarjetaAlertasStockPrendas 
+              expandido={tarjetaExpandida === 'prendas'}
+              minimizado={tarjetaExpandida !== null && tarjetaExpandida !== 'prendas'}
+              onToggle={handleTogglePrendas}
             />
           </div>
         </div>
