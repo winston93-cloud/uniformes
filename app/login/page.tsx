@@ -49,7 +49,6 @@ export default function LoginPage() {
         .select('*')
         .eq('usuario_username', username)
         .eq('usuario_password', password)
-        .eq('usuario_status', 1)
         .single();
 
       if (errorUsuario || !usuario) {
