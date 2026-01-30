@@ -102,6 +102,52 @@ export default function Dashboard() {
         `}</style>
 
         <div className="cards-grid">
+          {/* Pedidos - Tarjeta Destacada */}
+          <Link 
+            href="/pedidos" 
+            className="card"
+            style={{
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: 'white',
+              transform: 'scale(1.15)',
+              transformOrigin: 'center',
+              boxShadow: '0 10px 30px rgba(102, 126, 234, 0.4)',
+              border: '3px solid rgba(255, 255, 255, 0.3)',
+              zIndex: 1,
+            }}
+          >
+            <div 
+              style={{
+                fontSize: '3rem',
+                background: 'rgba(255, 255, 255, 0.2)',
+                borderRadius: '12px',
+                width: '80px',
+                height: '80px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 1rem',
+              }}
+            >
+              🛒
+            </div>
+            <h3 style={{ 
+              margin: '0 0 0.5rem 0',
+              fontSize: '1.5rem',
+              fontWeight: 'bold',
+              textShadow: '2px 2px 4px rgba(0, 0, 0, 0.3)',
+            }}>
+              Pedidos
+            </h3>
+            <p style={{ 
+              margin: 0,
+              fontSize: '1rem',
+              opacity: 0.95,
+            }}>
+              Gestión de pedidos de alumnos y clientes externos
+            </p>
+          </Link>
+
           {/* Presentaciones */}
           <Link href="/presentaciones" className="card">
             <div className="card-icon blue">
@@ -165,17 +211,6 @@ export default function Dashboard() {
             <h3 className="card-title">Stock</h3>
             <p className="card-description">
               Asignación y gestión de stock inicial por prenda y talla
-            </p>
-          </Link>
-
-          {/* Pedidos */}
-          <Link href="/pedidos" className="card">
-            <div className="card-icon blue">
-              🛒
-            </div>
-            <h3 className="card-title">Pedidos</h3>
-            <p className="card-description">
-              Gestión de pedidos de alumnos y clientes externos
             </p>
           </Link>
 
