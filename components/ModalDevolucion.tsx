@@ -174,7 +174,7 @@ export default function ModalDevolucion({ isOpen, onClose, pedido, onSuccess }: 
             <div style={{ background: '#f8f9fa', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem' }}>
               <h3 style={{ marginBottom: '0.5rem', fontSize: '1rem' }}>📦 Pedido: {pedido?.cliente || pedido?.cliente_nombre}</h3>
               <p style={{ fontSize: '0.9rem', color: '#666', margin: 0 }}>
-                Total: ${pedido?.total?.toFixed(2)} | Fecha: {new Date(pedido?.created_at || pedido?.fecha).toLocaleDateString('es-MX')}
+                Total: ${(pedido?.total || 0).toFixed(2)} | Fecha: {new Date(pedido?.created_at || pedido?.fecha).toLocaleDateString('es-MX')}
               </p>
             </div>
 
@@ -252,7 +252,7 @@ export default function ModalDevolucion({ isOpen, onClose, pedido, onSuccess }: 
                       <div style={{ flex: 1 }}>
                         <strong>{det.prenda_nombre}</strong> - Talla: {det.talla_nombre}
                         <div style={{ fontSize: '0.9rem', color: '#666' }}>
-                          Precio: ${det.precio_unitario.toFixed(2)} | Cantidad original: {det.cantidad_original}
+                          Precio: ${(det.precio_unitario || 0).toFixed(2)} | Cantidad original: {det.cantidad_original}
                         </div>
                       </div>
                     </div>
@@ -362,7 +362,7 @@ export default function ModalDevolucion({ isOpen, onClose, pedido, onSuccess }: 
                     style={{ width: '150px', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd', marginLeft: '0.5rem' }}
                   />
                   <span style={{ marginLeft: '0.5rem', fontSize: '0.9rem', color: '#666' }}>
-                    (Máximo: ${totalDevolucion.toFixed(2)})
+                    (Máximo: ${(totalDevolucion || 0).toFixed(2)})
                   </span>
                 </div>
               )}
@@ -371,7 +371,7 @@ export default function ModalDevolucion({ isOpen, onClose, pedido, onSuccess }: 
             {/* Total */}
             <div style={{ background: '#e7f3ff', padding: '1rem', borderRadius: '8px', textAlign: 'right' }}>
               <div style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>
-                Total devolución: ${totalDevolucion.toFixed(2)}
+                Total devolución: ${(totalDevolucion || 0).toFixed(2)}
               </div>
             </div>
           </div>

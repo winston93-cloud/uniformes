@@ -1433,6 +1433,8 @@ function PedidosPageContent() {
                                   ...det,
                                   prenda: prenda?.nombre || 'N/A',
                                   talla: talla?.nombre || 'N/A',
+                                  precio: det.precio_unitario || det.precio || 0,
+                                  cantidad: det.cantidad || 1,
                                 };
                               })
                             );
