@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import LayoutWrapper from '@/components/LayoutWrapper';
+import ModalDevolucion from '@/components/ModalDevolucion';
 import { supabase } from '@/lib/supabase';
 import { useCostos } from '@/lib/hooks/useCostos';
 import { useAlumnos } from '@/lib/hooks/useAlumnos';
@@ -62,6 +63,7 @@ function PedidosPageContent() {
   const { sesion } = useAuth();
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [mostrarModal, setMostrarModal] = useState(false);
+  const [mostrarModalDevolucion, setMostrarModalDevolucion] = useState(false);
   const [pedidoSeleccionado, setPedidoSeleccionado] = useState<any>(null);
   const { costos, getCostosByPrenda } = useCostos(sesion?.sucursal_id);
   const { alumnos, searchAlumnos } = useAlumnos();
@@ -1409,6 +1411,42 @@ function PedidosPageContent() {
                     >
                       👁️ Ver
                     </button>
+                    {/* Botón de devoluciones - solo para pedidos ENTREGADOS o LIQUIDADOS */}
+                    {(pedido.estado === 'ENTREGADO' || pedido.estado === 'LIQUIDADO') && (
+                      <button 
+                        className="btn btn-warning" 
+                        style={{ padding: '0.5rem 1rem', marginLeft: '0.5rem' }}
+                        onClick={async () => {
+                          // Cargar detalles del pedido antes de abrir modal
+                          const { data: detalles, error } = await supabase
+                            .from('detalle_pedidos')
+                            .select('*')
+                            .eq('pedido_id', pedido.id);
+
+                          if (!error && detalles) {
+                            // Enriquecer con nombres de prendas y tallas
+                            const detallesEnriquecidos = await Promise.all(
+                              detalles.map(async (det: any) => {
+                                const prenda = prendas.find((p: any) => p.id === det.prenda_id);
+                                const talla = tallas.find((t: any) => t.id === det.talla_id);
+                                return {
+                                  ...det,
+                                  prenda: prenda?.nombre || 'N/A',
+                                  talla: talla?.nombre || 'N/A',
+                                };
+                              })
+                            );
+
+                            setPedidoSeleccionado({ ...pedido, detalles: detallesEnriquecidos });
+                            setMostrarModalDevolucion(true);
+                          } else {
+                            alert('Error al cargar detalles del pedido');
+                          }
+                        }}
+                      >
+                        🔄 Devolución
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -1588,6 +1626,20 @@ function PedidosPageContent() {
           </div>
         </div>
       )}
+
+      {/* Modal de Devoluciones */}
+      <ModalDevolucion
+        isOpen={mostrarModalDevolucion}
+        onClose={() => {
+          setMostrarModalDevolucion(false);
+          setPedidoSeleccionado(null);
+        }}
+        pedido={pedidoSeleccionado}
+        onSuccess={() => {
+          // Recargar pedidos después de registrar la devolución
+          window.location.reload();
+        }}
+      />
     </LayoutWrapper>
   );
 }
