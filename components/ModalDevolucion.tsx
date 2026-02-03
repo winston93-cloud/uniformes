@@ -250,9 +250,26 @@ export default function ModalDevolucion({ isOpen, onClose, pedido, onSuccess }: 
                         style={{ width: '18px', height: '18px' }}
                       />
                       <div style={{ flex: 1 }}>
-                        <strong>{det.prenda_nombre}</strong> - Talla: {det.talla_nombre}
-                        <div style={{ fontSize: '0.9rem', color: '#666' }}>
-                          Precio: ${(det.precio_unitario || 0).toFixed(2)} | Cantidad original: {det.cantidad_original}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                          <strong style={{ fontSize: '1rem' }}>{det.prenda_nombre}</strong>
+                          {det.prenda_codigo && (
+                            <span style={{ fontSize: '0.85rem', color: '#666', background: '#f0f0f0', padding: '2px 6px', borderRadius: '4px' }}>
+                              {det.prenda_codigo}
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ fontSize: '0.9rem', color: '#555', marginBottom: '0.25rem' }}>
+                          <span style={{ fontWeight: 'bold' }}>Talla:</span> {det.talla_nombre}
+                          {det.especificaciones && (
+                            <>
+                              {' '} | <span style={{ fontWeight: 'bold' }}>Especificaciones:</span> {det.especificaciones}
+                            </>
+                          )}
+                        </div>
+                        <div style={{ fontSize: '0.85rem', color: '#666' }}>
+                          💰 Precio unitario: ${(det.precio_unitario || 0).toFixed(2)} | 
+                          📦 Cantidad: {det.cantidad_original} | 
+                          💵 Subtotal: ${((det.precio_unitario || 0) * (det.cantidad_original || 0)).toFixed(2)}
                         </div>
                       </div>
                     </div>

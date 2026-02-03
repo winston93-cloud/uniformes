@@ -1417,32 +1417,57 @@ function PedidosPageContent() {
                         className="btn btn-warning" 
                         style={{ padding: '0.5rem 1rem', marginLeft: '0.5rem' }}
                         onClick={async () => {
-                          // Cargar detalles del pedido antes de abrir modal
+                          // Cargar detalles del pedido con JOIN de prendas y tallas
                           const { data: detalles, error } = await supabase
                             .from('detalle_pedidos')
-                            .select('*')
+                            .select(`
+                              *,
+                              prenda:prendas(id, nombre, codigo),
+                              talla:tallas(id, nombre)
+                            `)
                             .eq('pedido_id', pedido.id);
 
                           if (!error && detalles) {
-                            // Enriquecer con nombres de prendas y tallas
-                            const detallesEnriquecidos = await Promise.all(
-                              detalles.map(async (det: any) => {
-                                const prenda = prendas.find((p: any) => p.id === det.prenda_id);
-                                const talla = tallas.find((t: any) => t.id === det.talla_id);
-                                return {
-                                  ...det,
-                                  prenda: prenda?.nombre || 'N/A',
-                                  talla: talla?.nombre || 'N/A',
-                                  precio: det.precio_unitario || det.precio || 0,
-                                  cantidad: det.cantidad || 1,
-                                };
-                              })
-                            );
+                            console.log('📦 Detalles cargados:', detalles);
+                            
+                            // Mapear detalles con nombres correctos
+                            const detallesEnriquecidos = detalles.map((det: any) => {
+                              const prendaObj = Array.isArray(det.prenda) ? det.prenda[0] : det.prenda;
+                              const tallaObj = Array.isArray(det.talla) ? det.talla[0] : det.talla;
+                              
+                              const prendaNombre = prendaObj?.nombre || 'Sin nombre';
+                              const prendaCodigo = prendaObj?.codigo || '';
+                              const tallaNombre = tallaObj?.nombre || 'N/A';
+                              const precioUnitario = det.precio_unitario || det.precio || 0;
+                              const cantidad = det.cantidad || 1;
+                              
+                              // Descripción completa y detallada
+                              const descripcionCompleta = `${prendaNombre}${prendaCodigo ? ` (${prendaCodigo})` : ''} - Talla: ${tallaNombre}${det.especificaciones ? ` - ${det.especificaciones}` : ''}`;
+                              
+                              return {
+                                id: det.id,
+                                detalle_pedido_id: det.id,
+                                prenda_id: det.prenda_id,
+                                talla_id: det.talla_id,
+                                prenda_nombre: prendaNombre,
+                                prenda_codigo: prendaCodigo,
+                                talla_nombre: tallaNombre,
+                                descripcion: descripcionCompleta,
+                                precio: precioUnitario,
+                                precio_unitario: precioUnitario,
+                                cantidad: cantidad,
+                                cantidad_original: cantidad,
+                                subtotal: det.subtotal || (precioUnitario * cantidad),
+                                especificaciones: det.especificaciones || '',
+                              };
+                            });
 
+                            console.log('✅ Detalles enriquecidos:', detallesEnriquecidos);
                             setPedidoSeleccionado({ ...pedido, detalles: detallesEnriquecidos });
                             setMostrarModalDevolucion(true);
                           } else {
-                            alert('Error al cargar detalles del pedido');
+                            console.error('❌ Error al cargar detalles:', error);
+                            alert('Error al cargar detalles del pedido: ' + (error?.message || 'Desconocido'));
                           }
                         }}
                       >
