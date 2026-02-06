@@ -175,7 +175,15 @@ export default function Header({ onMenuClick }: HeaderProps) {
               }}
             >
               {ciclosDisponibles.map(ciclo => (
-                <option key={ciclo.id} value={ciclo.valor}>
+                <option 
+                  key={ciclo.id} 
+                  value={ciclo.valor}
+                  style={{
+                    background: 'white',
+                    color: '#1f2937',
+                    fontWeight: 'bold',
+                  }}
+                >
                   {ciclo.nombre}
                 </option>
               ))}

@@ -626,14 +626,16 @@ export default function Dashboard() {
               margin: '0 0 0.5rem 0',
               fontSize: '1.3rem',
               fontWeight: '600',
-              color: 'white',
+              color: '#1f2937',
+              textShadow: '0 1px 2px rgba(255, 255, 255, 0.5)',
             }}>
               Ciclos Escolares
             </h3>
             <p style={{ 
               margin: 0,
               fontSize: '0.95rem',
-              color: 'rgba(255, 255, 255, 0.9)',
+              color: '#374151',
+              fontWeight: '500',
             }}>
               Catálogo y gestión de ciclos escolares
             </p>
