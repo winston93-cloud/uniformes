@@ -12,6 +12,7 @@ export interface AlumnoFromDB {
   alumno_nivel: number | null;
   alumno_grado: number | null;
   alumno_grupo: number | null;
+  alumno_ciclo_escolar: number | null;
   alumno_nombre_completo: string | null;
   alumno_status: number | null;
 }
@@ -65,7 +66,7 @@ export const mapAlumnoFromDB = (db: AlumnoFromDB): Alumno => {
   };
 };
 
-export function useAlumnos() {
+export function useAlumnos(cicloEscolar?: number) {
   const [alumnos, setAlumnos] = useState<Alumno[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -73,9 +74,16 @@ export function useAlumnos() {
   const fetchAlumnos = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      let query = supabase
         .from('alumno')
-        .select('*')
+        .select('*');
+      
+      // Filtrar por ciclo escolar si se proporciona
+      if (cicloEscolar !== undefined) {
+        query = query.eq('alumno_ciclo_escolar', cicloEscolar);
+      }
+      
+      const { data, error } = await query
         .order('alumno_ref', { ascending: true })
         .limit(1000); // Limitar para performance
 
@@ -91,7 +99,7 @@ export function useAlumnos() {
 
   useEffect(() => {
     fetchAlumnos();
-  }, []);
+  }, [cicloEscolar]); // Recargar cuando cambia el ciclo escolar
 
   const escaparWildcards = (valor: string) => {
     return valor.replace(/[%_\\]/g, '\\$&');
@@ -102,11 +110,17 @@ export function useAlumnos() {
       const consulta = escaparWildcards(query.trim());
       if (!consulta) return [];
 
-      const { data, error } = await supabase
+      let searchQuery = supabase
         .from('alumno')
         .select('*')
-        .or(`alumno_ref.ilike.%${consulta}%,alumno_nombre.ilike.%${consulta}%,alumno_app.ilike.%${consulta}%,alumno_apm.ilike.%${consulta}%`)
-        .limit(100);
+        .or(`alumno_ref.ilike.%${consulta}%,alumno_nombre.ilike.%${consulta}%,alumno_app.ilike.%${consulta}%,alumno_apm.ilike.%${consulta}%`);
+      
+      // Filtrar por ciclo escolar si se proporciona
+      if (cicloEscolar !== undefined) {
+        searchQuery = searchQuery.eq('alumno_ciclo_escolar', cicloEscolar);
+      }
+      
+      const { data, error } = await searchQuery.limit(100);
 
       if (error) throw error;
       
@@ -114,7 +128,7 @@ export function useAlumnos() {
     } catch (err: any) {
       throw err; // Propagar error para que el componente lo maneje
     }
-  }, []);
+  }, [cicloEscolar]);
 
   return {
     alumnos,

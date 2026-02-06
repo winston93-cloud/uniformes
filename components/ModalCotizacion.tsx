@@ -97,8 +97,9 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
 
   const [generando, setGenerando] = useState(false);
   
+  const { cicloEscolar } = useAuth();
   const { crearCotizacion, cotizaciones, obtenerCotizacion, cargando } = useCotizaciones();
-  const { searchAlumnos } = useAlumnos();
+  const { searchAlumnos } = useAlumnos(cicloEscolar);
   const { searchExternos } = useExternos();
   const { prendas } = usePrendas();
   const { getCostosByPrenda } = useCostos();

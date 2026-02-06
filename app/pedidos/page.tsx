@@ -60,13 +60,13 @@ function SearchParamsDetector({ setMostrarFormulario }: { setMostrarFormulario: 
 
 function PedidosPageContent() {
   const router = useRouter();
-  const { sesion } = useAuth();
+  const { sesion, cicloEscolar } = useAuth();
   const [mostrarFormulario, setMostrarFormulario] = useState(true); // Abrir automáticamente al entrar
   const [mostrarModal, setMostrarModal] = useState(false);
   const [mostrarModalDevolucion, setMostrarModalDevolucion] = useState(false);
   const [pedidoSeleccionado, setPedidoSeleccionado] = useState<any>(null);
   const { costos, getCostosByPrenda } = useCostos(sesion?.sucursal_id);
-  const { alumnos, searchAlumnos } = useAlumnos();
+  const { alumnos, searchAlumnos } = useAlumnos(cicloEscolar);
   const { externos } = useExternos();
   const { prendas } = usePrendas();
   const { tallas } = useTallas();
