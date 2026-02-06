@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import ModalCotizacion from './ModalCotizacion';
-import { getCiclosEscolaresDisponibles, cicloEscolarToString } from '@/lib/utils/cicloEscolar';
+import { useCiclosEscolares } from '@/lib/hooks/useCiclosEscolares';
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -15,7 +15,8 @@ export default function Header({ onMenuClick }: HeaderProps) {
   const router = useRouter();
   const { sesion, cerrarSesion, cicloEscolar, setCicloEscolar } = useAuth();
   const [modalCotizacionAbierto, setModalCotizacionAbierto] = useState(false);
-  const ciclosDisponibles = getCiclosEscolaresDisponibles();
+  const { getCiclosActivos } = useCiclosEscolares();
+  const ciclosDisponibles = getCiclosActivos();
 
   const handleIrAlPanel = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
@@ -174,8 +175,8 @@ export default function Header({ onMenuClick }: HeaderProps) {
               }}
             >
               {ciclosDisponibles.map(ciclo => (
-                <option key={ciclo.valor} value={ciclo.valor}>
-                  {ciclo.texto}
+                <option key={ciclo.id} value={ciclo.valor}>
+                  {ciclo.nombre}
                 </option>
               ))}
             </select>
