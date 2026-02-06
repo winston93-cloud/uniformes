@@ -208,7 +208,7 @@ export default function TarjetaAlertasStock({ expandido, minimizado = false, onT
               fontWeight: 'bold',
               textShadow: '2px 2px 4px rgba(0, 0, 0, 0.3)',
             }}>
-              Alertas de Stock Mínimo
+              Alertas de Stock Mínimo - Insumos
             </h2>
             <p style={{ 
               margin: '0.5rem 0 0 0', 
