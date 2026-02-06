@@ -455,19 +455,19 @@
                     },
                     {
                         id: "bd-3",
-                        title: "Verificar que no haya stock negativo en costos",
-                        description: "Query: SELECT * FROM costos WHERE stock < 0",
+                        title: "✅ Verificar que no haya stock negativo en costos",
+                        description: "✅ COMPLETADO - Constraint check_stock_no_negativo implementado. Ahora es IMPOSIBLE tener stock negativo.",
                         reason: "Stock negativo indica sobreventa o errores en actualización. Debe ser imposible por constraint CHECK.",
                         priority: "high",
-                        tags: ["inventario", "stock", "constraint"]
+                        tags: ["inventario", "stock", "constraint", "completado"]
                     },
                     {
                         id: "bd-4",
-                        title: "Validar que los totales de pedidos coincidan con sus detalles",
-                        description: "Query: SELECT p.id, p.total, SUM(dp.subtotal) as calc_total FROM pedidos p JOIN detalle_pedidos dp ON p.id = dp.pedido_id GROUP BY p.id HAVING p.total != SUM(dp.subtotal)",
+                        title: "✅ Validar que los totales de pedidos coincidan con sus detalles",
+                        description: "✅ COMPLETADO - Trigger validar_total_pedido() valida automáticamente. crear_pedido_atomico() calcula totales en BD (no frontend).",
                         reason: "Totales incorrectos afectan reportes financieros y cortes de caja. Puede indicar manipulación o errores de cálculo.",
                         priority: "high",
-                        tags: ["finanzas", "cálculos", "pedidos"]
+                        tags: ["finanzas", "cálculos", "pedidos", "completado"]
                     },
                     {
                         id: "bd-5",
@@ -525,27 +525,27 @@
                 checks: [
                     {
                         id: "tx-1",
-                        title: "Implementar transacción atómica para creación de pedidos",
-                        description: "Crear función PL/pgSQL que inserte pedido + detalles + actualice stock en una sola transacción",
+                        title: "✅ Implementar transacción atómica para creación de pedidos",
+                        description: "✅ COMPLETADO - Función crear_pedido_atomico() implementada. Valida stock, inserta pedido+detalles, actualiza inventario, guarda snapshot de insumos.",
                         reason: "Sin transacciones, si falla un paso (ej: insertar detalle), el pedido queda incompleto y el stock mal actualizado.",
                         priority: "high",
-                        tags: ["transacciones", "atomicidad", "pedidos"]
+                        tags: ["transacciones", "atomicidad", "pedidos", "completado"]
                     },
                     {
                         id: "tx-2",
-                        title: "Validar que actualización de stock sea atómica con operador -=",
-                        description: "Cambiar de: 1) SELECT stock, 2) Calcular, 3) UPDATE → A: UPDATE stock = stock - cantidad WHERE stock >= cantidad",
+                        title: "✅ Validar que actualización de stock sea atómica con operador -=",
+                        description: "✅ COMPLETADO - Implementado en crear_pedido_atomico(): UPDATE stock = stock - cantidad WHERE stock >= cantidad",
                         reason: "Lectura y escritura separadas permiten race conditions. Dos ventas simultáneas pueden causar sobreventa.",
                         priority: "high",
-                        tags: ["race-condition", "stock", "concurrencia"]
+                        tags: ["race-condition", "stock", "concurrencia", "completado"]
                     },
                     {
                         id: "tx-3",
-                        title: "Implementar rollback automático en caso de stock insuficiente",
-                        description: "Si al crear pedido no hay stock suficiente, debe hacer rollback de TODO (pedido + detalles)",
+                        title: "✅ Implementar rollback automático en caso de stock insuficiente",
+                        description: "✅ COMPLETADO - crear_pedido_atomico() valida stock ANTES de insertar. Si falla, rollback automático de toda la transacción.",
                         reason: "Pedido parcialmente creado sin stock es inválido. Cliente no puede recibir producto.",
                         priority: "high",
-                        tags: ["rollback", "validación", "stock"]
+                        tags: ["rollback", "validación", "stock", "completado"]
                     },
                     {
                         id: "tx-4",
@@ -557,19 +557,19 @@
                     },
                     {
                         id: "tx-5",
-                        title: "Implementar transacción para devoluciones con cambios",
-                        description: "Devolver stock del item A + Restar stock del item B debe ser atómico",
+                        title: "✅ Implementar transacción para devoluciones con cambios",
+                        description: "✅ COMPLETADO - procesar_devolucion_atomica() devuelve stock + resta cambios en una sola transacción. TODO-O-NADA.",
                         reason: "Si falla una operación, el stock queda inconsistente (suma sin resta o viceversa).",
                         priority: "high",
-                        tags: ["devoluciones", "transacciones", "stock"]
+                        tags: ["devoluciones", "transacciones", "stock", "completado"]
                     },
                     {
                         id: "tx-6",
-                        title: "Validar que movimientos de inventario se registren en la misma transacción",
-                        description: "Al actualizar costos.stock, el movimiento debe insertarse en la MISMA transacción",
+                        title: "✅ Validar que movimientos de inventario se registren en la misma transacción",
+                        description: "✅ COMPLETADO - crear_pedido_atomico() y procesar_devolucion_atomica() insertan movimientos en la misma transacción.",
                         reason: "Si falla el INSERT de movimiento, se pierde la trazabilidad. Stock real ≠ suma de movimientos.",
                         priority: "medium",
-                        tags: ["movimientos", "auditoría", "trazabilidad"]
+                        tags: ["movimientos", "auditoría", "trazabilidad", "completado"]
                     },
                     {
                         id: "tx-7",
@@ -681,11 +681,11 @@
                     },
                     {
                         id: "fe-2",
-                        title: "Verificar que mensajes de error sean claros y útiles",
-                        description: "En lugar de 'Error', mostrar 'Stock insuficiente para Camisa M: disponible 5, solicitado 10'",
+                        title: "✅ Verificar que mensajes de error sean claros y útiles",
+                        description: "✅ COMPLETADO - Alertas mejoradas en pedidos muestran: 'Stock disponible: X, Solicitado: Y'. Errores de BD se formatean claramente.",
                         reason: "Errores genéricos frustran al usuario. Mensajes claros ayudan a corregir el problema.",
                         priority: "medium",
-                        tags: ["errores", "ux", "mensajes"]
+                        tags: ["errores", "ux", "mensajes", "completado"]
                     },
                     {
                         id: "fe-3",
