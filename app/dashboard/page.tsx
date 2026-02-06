@@ -475,24 +475,84 @@ export default function Dashboard() {
             </p>
           </Link>
 
-          {/* Sucursales */}
-          <Link href="/sucursales" className="card">
-            <div className="card-icon purple">
+          {/* Sucursales - Módulo Multi-Sucursal */}
+          <Link 
+            href="/sucursales" 
+            className="card"
+            style={{
+              background: 'linear-gradient(135deg, #7dd3d3 0%, #5fbbbb 100%)',
+              border: '2px solid rgba(125, 211, 211, 0.4)',
+            }}
+          >
+            <div 
+              style={{
+                fontSize: '2.5rem',
+                background: 'rgba(255, 255, 255, 0.3)',
+                borderRadius: '12px',
+                width: '60px',
+                height: '60px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 1rem',
+              }}
+            >
               🏢
             </div>
-            <h3 className="card-title">Sucursales</h3>
-            <p className="card-description">
+            <h3 style={{ 
+              margin: '0 0 0.5rem 0',
+              fontSize: '1.3rem',
+              fontWeight: '600',
+              color: 'white',
+            }}>
+              Sucursales
+            </h3>
+            <p style={{ 
+              margin: 0,
+              fontSize: '0.95rem',
+              color: 'rgba(255, 255, 255, 0.9)',
+            }}>
               Catálogo y gestión de sucursales del sistema
             </p>
           </Link>
 
-          {/* Transferencias */}
-          <Link href="/transferencias" className="card">
-            <div className="card-icon green">
+          {/* Transferencias - Módulo Multi-Sucursal */}
+          <Link 
+            href="/transferencias" 
+            className="card"
+            style={{
+              background: 'linear-gradient(135deg, #7dd3d3 0%, #5fbbbb 100%)',
+              border: '2px solid rgba(125, 211, 211, 0.4)',
+            }}
+          >
+            <div 
+              style={{
+                fontSize: '2.5rem',
+                background: 'rgba(255, 255, 255, 0.3)',
+                borderRadius: '12px',
+                width: '60px',
+                height: '60px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 1rem',
+              }}
+            >
               🚚
             </div>
-            <h3 className="card-title">Transferencias</h3>
-            <p className="card-description">
+            <h3 style={{ 
+              margin: '0 0 0.5rem 0',
+              fontSize: '1.3rem',
+              fontWeight: '600',
+              color: 'white',
+            }}>
+              Transferencias
+            </h3>
+            <p style={{ 
+              margin: 0,
+              fontSize: '0.95rem',
+              color: 'rgba(255, 255, 255, 0.9)',
+            }}>
               Traspaso de mercancía entre sucursales
             </p>
           </Link>
