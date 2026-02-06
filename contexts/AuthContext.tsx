@@ -15,7 +15,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.NodeNode }) {
+export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [sesion, setSesionState] = useState<SesionUsuario | null>(null);
   const [loading, setLoading] = useState(true);
   const [cicloEscolar, setCicloEscolarState] = useState<number>(getCicloEscolarActual());
