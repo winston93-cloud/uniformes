@@ -61,7 +61,7 @@ function SearchParamsDetector({ setMostrarFormulario }: { setMostrarFormulario: 
 function PedidosPageContent() {
   const router = useRouter();
   const { sesion } = useAuth();
-  const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const [mostrarFormulario, setMostrarFormulario] = useState(true); // Abrir automáticamente al entrar
   const [mostrarModal, setMostrarModal] = useState(false);
   const [mostrarModalDevolucion, setMostrarModalDevolucion] = useState(false);
   const [pedidoSeleccionado, setPedidoSeleccionado] = useState<any>(null);
