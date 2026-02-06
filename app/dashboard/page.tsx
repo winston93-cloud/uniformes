@@ -598,13 +598,43 @@ export default function Dashboard() {
             </p>
           </Link>
 
-          {/* Ciclos Escolares */}
-          <Link href="/ciclos-escolares" className="card">
-            <div className="card-icon purple">
+          {/* Ciclos Escolares - Módulo de Configuración */}
+          <Link 
+            href="/ciclos-escolares" 
+            className="card"
+            style={{
+              background: 'linear-gradient(135deg, #fff59d 0%, #ffeb3b 100%)',
+              border: '2px solid rgba(255, 245, 157, 0.4)',
+            }}
+          >
+            <div 
+              style={{
+                fontSize: '2.5rem',
+                background: 'rgba(255, 255, 255, 0.3)',
+                borderRadius: '12px',
+                width: '60px',
+                height: '60px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 1rem',
+              }}
+            >
               📚
             </div>
-            <h3 className="card-title">Ciclos Escolares</h3>
-            <p className="card-description">
+            <h3 style={{ 
+              margin: '0 0 0.5rem 0',
+              fontSize: '1.3rem',
+              fontWeight: '600',
+              color: 'white',
+            }}>
+              Ciclos Escolares
+            </h3>
+            <p style={{ 
+              margin: 0,
+              fontSize: '0.95rem',
+              color: 'rgba(255, 255, 255, 0.9)',
+            }}>
               Catálogo y gestión de ciclos escolares
             </p>
           </Link>
