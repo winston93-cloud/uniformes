@@ -188,28 +188,6 @@ export default function Dashboard() {
             </p>
           </Link>
 
-          {/* Presentaciones */}
-          <Link href="/presentaciones" className="card">
-            <div className="card-icon blue">
-              📦
-            </div>
-            <h3 className="card-title">Presentaciones</h3>
-            <p className="card-description">
-              Unidades de medida y presentaciones para insumos
-            </p>
-          </Link>
-
-          {/* Insumos */}
-          <Link href="/insumos" className="card">
-            <div className="card-icon purple">
-              🧵
-            </div>
-            <h3 className="card-title">Insumos</h3>
-            <p className="card-description">
-              Catálogo de materiales e insumos para fabricación de prendas
-            </p>
-          </Link>
-
           {/* Tallas */}
           <Link href="/tallas" className="card">
             <div className="card-icon orange">
@@ -328,6 +306,88 @@ export default function Dashboard() {
             <h3 className="card-title">Reportes y Estadísticas</h3>
             <p className="card-description">
               Análisis de datos y reportes ejecutivos
+            </p>
+          </Link>
+
+          {/* Presentaciones - Módulo de Insumos */}
+          <Link 
+            href="/presentaciones" 
+            className="card"
+            style={{
+              background: 'linear-gradient(135deg, #7dd3c0 0%, #5fb8a6 100%)',
+              border: '2px solid rgba(127, 211, 192, 0.4)',
+            }}
+          >
+            <div 
+              style={{
+                fontSize: '2.5rem',
+                background: 'rgba(255, 255, 255, 0.3)',
+                borderRadius: '12px',
+                width: '60px',
+                height: '60px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 1rem',
+              }}
+            >
+              📦
+            </div>
+            <h3 style={{ 
+              margin: '0 0 0.5rem 0',
+              fontSize: '1.3rem',
+              fontWeight: '600',
+              color: 'white',
+            }}>
+              Presentaciones
+            </h3>
+            <p style={{ 
+              margin: 0,
+              fontSize: '0.95rem',
+              color: 'rgba(255, 255, 255, 0.9)',
+            }}>
+              Unidades de medida y presentaciones para insumos
+            </p>
+          </Link>
+
+          {/* Insumos - Módulo de Insumos */}
+          <Link 
+            href="/insumos" 
+            className="card"
+            style={{
+              background: 'linear-gradient(135deg, #7dd3c0 0%, #5fb8a6 100%)',
+              border: '2px solid rgba(127, 211, 192, 0.4)',
+            }}
+          >
+            <div 
+              style={{
+                fontSize: '2.5rem',
+                background: 'rgba(255, 255, 255, 0.3)',
+                borderRadius: '12px',
+                width: '60px',
+                height: '60px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 1rem',
+              }}
+            >
+              🧵
+            </div>
+            <h3 style={{ 
+              margin: '0 0 0.5rem 0',
+              fontSize: '1.3rem',
+              fontWeight: '600',
+              color: 'white',
+            }}>
+              Insumos
+            </h3>
+            <p style={{ 
+              margin: 0,
+              fontSize: '0.95rem',
+              color: 'rgba(255, 255, 255, 0.9)',
+            }}>
+              Catálogo de materiales e insumos para fabricación de prendas
             </p>
           </Link>
         </div>
