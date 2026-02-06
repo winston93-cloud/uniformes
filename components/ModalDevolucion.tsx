@@ -18,12 +18,14 @@ interface DetalleDevolucionForm {
   detalle_pedido_id: string;
   prenda_id: string;
   prenda_nombre: string;
+  prenda_codigo?: string;
   talla_id: string;
   talla_nombre: string;
   cantidad_original: number;
   cantidad_devuelta: number;
   precio_unitario: number;
   seleccionado: boolean;
+  especificaciones?: string;
   
   // Para cambios
   es_cambio: boolean;
