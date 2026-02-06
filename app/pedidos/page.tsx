@@ -533,7 +533,7 @@ function PedidosPageContent() {
     const resultado = await crearPedido(pedidoParaDB, detallesParaDB, sesion?.sucursal_id, sesion?.usuario_id);
     console.log('📦 Resultado:', resultado);
 
-    if (resultado.success) {
+    if (resultado.success && resultado.data) {
       console.log('✅ Pedido creado exitosamente, ID:', resultado.data.id);
       console.log('🔀 Navegando a /pedidos/' + resultado.data.id);
       // Navegar a la página de detalles del pedido
