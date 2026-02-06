@@ -2,12 +2,14 @@
 
 import { useState } from 'react';
 import LayoutWrapper from '@/components/LayoutWrapper';
+import { useAuth } from '@/contexts/AuthContext';
 import { useAlumnos } from '@/lib/hooks/useAlumnos';
 
 export const dynamic = 'force-dynamic';
 
 export default function AlumnosPage() {
-  const { alumnos, loading, error, searchAlumnos } = useAlumnos();
+  const { cicloEscolar } = useAuth();
+  const { alumnos, loading, error, searchAlumnos } = useAlumnos(cicloEscolar);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState(alumnos);
 
