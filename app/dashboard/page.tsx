@@ -557,13 +557,43 @@ export default function Dashboard() {
             </p>
           </Link>
 
-          {/* Cortes de Caja */}
-          <Link href="/cortes" className="card">
-            <div className="card-icon green">
+          {/* Cortes de Caja - Módulo Financiero */}
+          <Link 
+            href="/cortes" 
+            className="card"
+            style={{
+              background: 'linear-gradient(135deg, #66d9a6 0%, #50c878 100%)',
+              border: '2px solid rgba(102, 217, 166, 0.4)',
+            }}
+          >
+            <div 
+              style={{
+                fontSize: '2.5rem',
+                background: 'rgba(255, 255, 255, 0.3)',
+                borderRadius: '12px',
+                width: '60px',
+                height: '60px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 1rem',
+              }}
+            >
               💵
             </div>
-            <h3 className="card-title">Cortes de Caja</h3>
-            <p className="card-description">
+            <h3 style={{ 
+              margin: '0 0 0.5rem 0',
+              fontSize: '1.3rem',
+              fontWeight: '600',
+              color: 'white',
+            }}>
+              Cortes de Caja
+            </h3>
+            <p style={{ 
+              margin: 0,
+              fontSize: '0.95rem',
+              color: 'rgba(255, 255, 255, 0.9)',
+            }}>
               Control y registro de cortes de caja diarios
             </p>
           </Link>
