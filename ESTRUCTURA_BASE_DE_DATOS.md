@@ -5,7 +5,7 @@
 
 ## 📈 RESUMEN EJECUTIVO
 
-**Total de tablas:** 25 tablas principales
+**Total de tablas:** 29 tablas principales
 
 **Categorías:**
 - 👥 **Usuarios y Autenticación:** 2 tablas
@@ -16,6 +16,8 @@
 - 📋 **Cotizaciones:** 2 tablas
 - 🧵 **Insumos y Producción:** 4 tablas
 - 💰 **Finanzas:** 2 tablas
+- 🔒 **Auditoría e Integridad:** 3 tablas (NUEVO)
+- 📚 **Configuración:** 1 tabla (NUEVO)
 
 ---
 
@@ -58,6 +60,14 @@
 ### 7. FINANZAS (2)
 23. **cortes** - Cortes de caja
 24. **detalle_cortes** - Detalle de pedidos por corte
+
+### 8. AUDITORÍA E INTEGRIDAD (3) ✨ NUEVO
+25. **auditoria** - Registro de cambios críticos (INSERT/UPDATE/DELETE)
+26. **snapshot_insumos_pedido** - Historial de recetas por pedido (preserva receta original)
+27. **mv_ventas_por_sucursal** - Vista materializada para reportes rápidos por sucursal
+
+### 9. CONFIGURACIÓN (1) ✨ NUEVO
+28. **ciclos_escolares** - Catálogo de ciclos escolares (2003=0, 2025=22)
 
 ---
 
@@ -508,25 +518,39 @@ erDiagram
 
 ## 📊 ESTADÍSTICAS
 
-**Total de tablas:** 25
+**Total de tablas:** 29
 
 **Por tipo:**
-- **Catálogos:** 10 tablas
+- **Catálogos:** 11 tablas (+ ciclos_escolares)
 - **Transacciones:** 9 tablas
 - **Detalle/relaciones:** 6 tablas
+- **Auditoría:** 3 tablas (NUEVO)
 
-**Índices:** ~60+ índices para optimización
+**Índices:** ~65+ índices para optimización
 
-**Triggers:** 15+ triggers para:
+**Triggers:** 17+ triggers para:
 - `updated_at` automático
 - Generación de folios
 - Generación de referencias
+- Validación de totales (NUEVO)
+- Auditoría de cambios en stock (NUEVO)
+- Un solo ciclo actual (NUEVO)
+
+**Funciones PL/pgSQL:** (NUEVO)
+- `crear_pedido_atomico()` - Transacción atómica para pedidos
+- `procesar_devolucion_atomica()` - Transacción atómica para devoluciones
+- `validar_integridad_sistema()` - Checks de integridad
+- `refresh_reportes()` - Actualizar vistas materializadas
+- `login_usuario()` - Autenticación con RLS bypass
+
+**Vistas Materializadas:** (NUEVO)
+- `mv_ventas_por_sucursal` - Ventas precalculadas por sucursal y fecha
 
 **Constraints:**
-- PRIMARY KEY: 25
-- FOREIGN KEY: ~50
-- UNIQUE: 15+
-- CHECK: 20+
+- PRIMARY KEY: 29
+- FOREIGN KEY: ~55
+- UNIQUE: 20+
+- CHECK: 12+ (NUEVO: stock no negativo, totales positivos, cantidades positivas)
 
 ---
 
@@ -535,6 +559,11 @@ erDiagram
 1. **Multi-Sucursal:** Sistema completo para múltiples ubicaciones
 2. **Devoluciones:** Sistema robusto con cambios y reembolsos
 3. **Insumos:** Control de materiales y recetas de producción
+4. **Ciclos Escolares:** Filtrado automático por ciclo escolar (NUEVO)
+5. **Transacciones Atómicas:** Pedidos y devoluciones con validación de stock (NUEVO)
+6. **Auditoría Completa:** Trazabilidad de todos los cambios críticos (NUEVO)
+7. **Historial de Recetas:** Snapshot de insumos preserva receta original (NUEVO)
+8. **Validaciones Automáticas:** Triggers y constraints previenen datos inválidos (NUEVO)
 4. **Cotizaciones:** Presupuestos sin afectar inventario
 5. **Transferencias:** Movimiento de mercancía entre sucursales
 6. **Doble Cliente:** Alumnos y externos

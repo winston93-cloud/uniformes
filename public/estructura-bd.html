@@ -326,20 +326,28 @@
 
         <div class="stats">
             <div class="stat-card">
-                <div class="stat-number">25</div>
+                <div class="stat-number">29</div>
                 <div class="stat-label">Tablas Totales</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number">50+</div>
+                <div class="stat-number">55+</div>
                 <div class="stat-label">Foreign Keys</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number">60+</div>
+                <div class="stat-number">65+</div>
                 <div class="stat-label">Índices</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number">15+</div>
+                <div class="stat-number">17+</div>
                 <div class="stat-label">Triggers</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">5</div>
+                <div class="stat-label">Funciones PL/pgSQL</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">1</div>
+                <div class="stat-label">Vistas Materializadas</div>
             </div>
         </div>
 
@@ -417,6 +425,22 @@
                     <ul>
                         <li>cortes</li>
                         <li>detalle_cortes</li>
+                    </ul>
+                </div>
+                
+                <div class="card">
+                    <h4>🔒 Auditoría e Integridad (3) ✨ NUEVO</h4>
+                    <ul>
+                        <li>auditoria</li>
+                        <li>snapshot_insumos_pedido</li>
+                        <li>mv_ventas_por_sucursal</li>
+                    </ul>
+                </div>
+                
+                <div class="card">
+                    <h4>📚 Configuración (1) ✨ NUEVO</h4>
+                    <ul>
+                        <li>ciclos_escolares</li>
                     </ul>
                 </div>
             </div>
@@ -687,6 +711,38 @@ erDiagram
                         <td>corte_id, pedido_id</td>
                         <td>Pedidos por corte</td>
                     </tr>
+                    <tr>
+                        <td>24</td>
+                        <td><strong>auditoria</strong></td>
+                        <td><span class="badge badge-purple">Auditoría ✨</span></td>
+                        <td>id (UUID)</td>
+                        <td>usuario_id (opcional)</td>
+                        <td>Registro de cambios críticos</td>
+                    </tr>
+                    <tr>
+                        <td>25</td>
+                        <td><strong>snapshot_insumos_pedido</strong></td>
+                        <td><span class="badge badge-purple">Auditoría ✨</span></td>
+                        <td>id (UUID)</td>
+                        <td>pedido_id, prenda_id, talla_id, insumo_id</td>
+                        <td>Historial de recetas por pedido</td>
+                    </tr>
+                    <tr>
+                        <td>26</td>
+                        <td><strong>mv_ventas_por_sucursal</strong></td>
+                        <td><span class="badge badge-purple">Vista Mat. ✨</span></td>
+                        <td>-</td>
+                        <td>sucursal_id, fecha</td>
+                        <td>Ventas precalculadas por sucursal</td>
+                    </tr>
+                    <tr>
+                        <td>27</td>
+                        <td><strong>ciclos_escolares</strong></td>
+                        <td><span class="badge badge-info">Configuración ✨</span></td>
+                        <td>id (SERIAL)</td>
+                        <td>-</td>
+                        <td>Catálogo de ciclos escolares</td>
+                    </tr>
                 </tbody>
             </table>
         </section>
@@ -769,7 +825,7 @@ erDiagram
                 Todas las tablas tienen clave primaria definida
             </div>
             <ul class="checklist">
-                <li>25/25 tablas tienen PRIMARY KEY</li>
+                <li>29/29 tablas tienen PRIMARY KEY</li>
                 <li>Uso consistente de UUID (excepto <code>usuario</code> con SMALLSERIAL)</li>
                 <li>Constraints UNIQUE en códigos y folios</li>
             </ul>
@@ -777,7 +833,7 @@ erDiagram
             <h3>Integridad Referencial (Foreign Keys)</h3>
             <div class="alert alert-success">
                 <strong>✓ Muy buena</strong><br>
-                ~50 Foreign Keys implementadas correctamente
+                ~55 Foreign Keys implementadas correctamente
             </div>
 
             <table>
@@ -1118,7 +1174,7 @@ erDiagram
                 Generado: ${new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
             </p>
             <p style="color: #999; font-size: 0.9rem;">
-                PostgreSQL (Supabase) - 25 Tablas - 50+ Foreign Keys - 60+ Índices
+                PostgreSQL (Supabase) - 29 Tablas - 55+ Foreign Keys - 65+ Índices - 5 Funciones PL/pgSQL
             </p>
         </footer>
     </div>
