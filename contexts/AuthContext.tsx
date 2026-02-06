@@ -2,21 +2,25 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { SesionUsuario } from '@/lib/types';
+import { getCicloEscolarActual } from '@/lib/utils/cicloEscolar';
 
 interface AuthContextType {
   sesion: SesionUsuario | null;
   loading: boolean;
+  cicloEscolar: number;
+  setCicloEscolar: (ciclo: number) => void;
   setSesion: (sesion: SesionUsuario | null) => void;
   cerrarSesion: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children }: { children: React.NodeNode }) {
   const [sesion, setSesionState] = useState<SesionUsuario | null>(null);
   const [loading, setLoading] = useState(true);
+  const [cicloEscolar, setCicloEscolarState] = useState<number>(getCicloEscolarActual());
 
-  // Cargar sesión del localStorage al iniciar
+  // Cargar sesión y ciclo escolar del localStorage al iniciar
   useEffect(() => {
     const sesionGuardada = localStorage.getItem('sesion_uniformes');
     if (sesionGuardada) {
@@ -27,6 +31,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.removeItem('sesion_uniformes');
       }
     }
+    
+    const cicloGuardado = localStorage.getItem('ciclo_escolar_actual');
+    if (cicloGuardado) {
+      setCicloEscolarState(parseInt(cicloGuardado));
+    }
+    
     setLoading(false);
   }, []);
 
@@ -39,6 +49,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const setCicloEscolar = (nuevoCiclo: number) => {
+    setCicloEscolarState(nuevoCiclo);
+    localStorage.setItem('ciclo_escolar_actual', nuevoCiclo.toString());
+  };
+
   const cerrarSesion = () => {
     setSesionState(null);
     localStorage.removeItem('sesion_uniformes');
@@ -46,7 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ sesion, loading, setSesion, cerrarSesion }}>
+    <AuthContext.Provider value={{ sesion, loading, cicloEscolar, setCicloEscolar, setSesion, cerrarSesion }}>
       {children}
     </AuthContext.Provider>
   );

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import ModalCotizacion from './ModalCotizacion';
+import { getCiclosEscolaresDisponibles, cicloEscolarToString } from '@/lib/utils/cicloEscolar';
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -12,8 +13,9 @@ interface HeaderProps {
 
 export default function Header({ onMenuClick }: HeaderProps) {
   const router = useRouter();
-  const { sesion, cerrarSesion } = useAuth();
+  const { sesion, cerrarSesion, cicloEscolar, setCicloEscolar } = useAuth();
   const [modalCotizacionAbierto, setModalCotizacionAbierto] = useState(false);
+  const ciclosDisponibles = getCiclosEscolaresDisponibles();
 
   const handleIrAlPanel = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
@@ -141,6 +143,43 @@ export default function Header({ onMenuClick }: HeaderProps) {
               {sesion.es_matriz ? '🏛️' : '📍'} {sesion.sucursal_nombre}
             </div>
           )}
+          
+          {/* Selector de Ciclo Escolar */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+          }}>
+            <span style={{
+              fontSize: '0.85rem',
+              fontWeight: '600',
+              color: '#667eea',
+            }}>
+              📚 Ciclo Escolar:
+            </span>
+            <select
+              value={cicloEscolar}
+              onChange={(e) => setCicloEscolar(parseInt(e.target.value))}
+              style={{
+                background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
+                color: 'white',
+                padding: '0.4rem 0.8rem',
+                borderRadius: '12px',
+                border: '2px solid rgba(255, 255, 255, 0.3)',
+                fontSize: '0.85rem',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(251, 191, 36, 0.4)',
+                outline: 'none',
+              }}
+            >
+              {ciclosDisponibles.map(ciclo => (
+                <option key={ciclo.valor} value={ciclo.valor}>
+                  {ciclo.texto}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </header>
 
