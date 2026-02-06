@@ -598,6 +598,17 @@ export default function Dashboard() {
             </p>
           </Link>
 
+          {/* Ciclos Escolares */}
+          <Link href="/ciclos-escolares" className="card">
+            <div className="card-icon purple">
+              📚
+            </div>
+            <h3 className="card-title">Ciclos Escolares</h3>
+            <p className="card-description">
+              Catálogo y gestión de ciclos escolares
+            </p>
+          </Link>
+
           {/* Reportes y Estadísticas - Módulo de Análisis */}
           <Link 
             href="/reportes" 
