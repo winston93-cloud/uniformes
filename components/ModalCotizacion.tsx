@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import { useCotizaciones, type PartidaCotizacion } from '@/lib/hooks/useCotizaciones';
 import { useAlumnos } from '@/lib/hooks/useAlumnos';
 import { useExternos } from '@/lib/hooks/useExternos';
