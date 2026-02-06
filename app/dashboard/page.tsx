@@ -480,8 +480,8 @@ export default function Dashboard() {
             href="/sucursales" 
             className="card"
             style={{
-              background: 'linear-gradient(135deg, #7dd3d3 0%, #5fbbbb 100%)',
-              border: '2px solid rgba(125, 211, 211, 0.4)',
+              background: 'linear-gradient(135deg, #f09090 0%, #e57373 100%)',
+              border: '2px solid rgba(240, 144, 144, 0.4)',
             }}
           >
             <div 
@@ -521,8 +521,8 @@ export default function Dashboard() {
             href="/transferencias" 
             className="card"
             style={{
-              background: 'linear-gradient(135deg, #7dd3d3 0%, #5fbbbb 100%)',
-              border: '2px solid rgba(125, 211, 211, 0.4)',
+              background: 'linear-gradient(135deg, #f09090 0%, #e57373 100%)',
+              border: '2px solid rgba(240, 144, 144, 0.4)',
             }}
           >
             <div 
