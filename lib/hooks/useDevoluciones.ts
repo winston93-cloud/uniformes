@@ -248,15 +248,19 @@ export function useDevoluciones(sucursal_id?: string) {
 
   const procesarDevolucion = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('devoluciones')
-        .update({ estado: 'PROCESADA' })
-        .eq('id', id);
+      // Usar función atómica para procesar devolución
+      const { data, error } = await supabase.rpc('procesar_devolucion_atomica', {
+        p_devolucion_id: id
+      });
 
       if (error) throw error;
 
+      if (!data.success) {
+        throw new Error(data.error || 'Error al procesar devolución');
+      }
+
       await fetchDevoluciones();
-      return { success: true };
+      return { success: true, message: data.message };
     } catch (err: any) {
       console.error('Error al procesar devolución:', err);
       return { success: false, error: err.message };

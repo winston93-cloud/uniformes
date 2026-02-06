@@ -387,10 +387,20 @@ function PedidosPageContent() {
       return;
     }
 
-    if (costo.stock < parseFloat(detalleActual.cantidad)) {
+    const cantidadSolicitada = parseFloat(detalleActual.cantidad);
+    
+    // Validación de stock insuficiente
+    if (costo.stock < cantidadSolicitada) {
       console.log('❌ Stock insuficiente');
-      alert('Stock insuficiente');
+      alert(`⚠️ Stock insuficiente\n\nStock disponible: ${costo.stock}\nCantidad solicitada: ${cantidadSolicitada}\n\nNo se puede agregar este artículo.`);
       return;
+    }
+    
+    // Advertencia si el stock quedará bajo
+    if (costo.stock < cantidadSolicitada * 2) {
+      const quedarian = costo.stock - cantidadSolicitada;
+      const confirmar = confirm(`⚠️ Advertencia: Stock bajo\n\nStock actual: ${costo.stock}\nCantidad a agregar: ${cantidadSolicitada}\nQuedarían: ${quedarian} unidades\n\n¿Deseas continuar?`);
+      if (!confirmar) return;
     }
 
     const cantidad = parseFloat(detalleActual.cantidad);
@@ -520,7 +530,7 @@ function PedidosPageContent() {
 
     // Crear el pedido en la base de datos
     console.log('💾 Llamando a crearPedido...');
-    const resultado = await crearPedido(pedidoParaDB, detallesParaDB);
+    const resultado = await crearPedido(pedidoParaDB, detallesParaDB, sesion?.sucursal_id, sesion?.usuario_id);
     console.log('📦 Resultado:', resultado);
 
     if (resultado.success) {
@@ -530,8 +540,20 @@ function PedidosPageContent() {
       router.push(`/pedidos/${resultado.data.id}`);
     } else {
       console.error('❌ Error al crear pedido:', resultado.error);
-      alert('❌ Error al crear el pedido. Por favor intenta de nuevo.');
-      console.error('Error:', resultado.error);
+      
+      // Mostrar mensaje de error específico
+      const errorMsg = typeof resultado.error === 'string' 
+        ? resultado.error 
+        : resultado.error?.message || 'Error desconocido al crear el pedido';
+      
+      // Si el error es de stock, mostrar mensaje más claro
+      if (errorMsg.toLowerCase().includes('stock')) {
+        alert(`⚠️ Stock insuficiente\n\n${errorMsg}\n\nPor favor verifica el inventario disponible.`);
+      } else {
+        alert(`❌ Error al crear el pedido\n\n${errorMsg}`);
+      }
+      
+      console.error('Error completo:', resultado.error);
     }
   };
 

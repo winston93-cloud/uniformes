@@ -66,98 +66,55 @@ export function usePedidos(sucursal_id?: string) {
     }
   };
 
-  const crearPedido = async (pedido: Omit<Pedido, 'id' | 'created_at' | 'updated_at'>, detalles: Omit<DetallePedido, 'id' | 'pedido_id'>[], pedido_sucursal_id?: string) => {
+  const crearPedido = async (pedido: Omit<Pedido, 'id' | 'created_at' | 'updated_at'>, detalles: Omit<DetallePedido, 'id' | 'pedido_id'>[], pedido_sucursal_id?: string, usuario_id?: number) => {
     try {
-      console.log('📦 Creando pedido...', pedido);
+      console.log('📦 Creando pedido con función atómica...', pedido);
       
-      // Preparar datos del pedido
-      const pedidoData: any = {
-        tipo_cliente: pedido.cliente_tipo,
-        estado: pedido.estado,
-        subtotal: pedido.total,
-        total: pedido.total,
-        cliente_nombre: pedido.cliente_nombre,
-        sucursal_id: pedido_sucursal_id || sucursal_id, // Usar la sucursal del parámetro o la del hook
-        // NO asignar alumno_id ni externo_id por ahora, solo usar tipo_cliente y cliente_nombre
-        alumno_id: null,
-        externo_id: null,
-      };
-
-      // Agregar campos opcionales solo si existen en la tabla
-      if (pedido.observaciones) {
-        pedidoData.notas = pedido.observaciones;
-      }
-
-      console.log('📝 Datos a insertar:', pedidoData);
-
-      // Insertar el pedido
-      const { data: pedidoInsertado, error: pedidoError } = await supabase
-        .from('pedidos')
-        .insert(pedidoData)
-        .select()
-        .single();
-
-      if (pedidoError) {
-        console.error('❌ Error al insertar pedido:', pedidoError);
-        console.error('❌ Mensaje:', pedidoError.message);
-        console.error('❌ Detalles:', pedidoError.details);
-        console.error('❌ Hint:', pedidoError.hint);
-        throw pedidoError;
-      }
-
-      console.log('✅ Pedido insertado:', pedidoInsertado);
-
-      // Insertar los detalles
-      const detallesConPedidoId = detalles.map(detalle => ({
-        pedido_id: pedidoInsertado.id,
-        prenda_id: detalle.prenda_id,
-        talla_id: detalle.talla_id,
-        cantidad: detalle.cantidad,
-        precio_unitario: detalle.precio_unitario,
-        subtotal: detalle.subtotal,
-        pendiente: detalle.pendiente,
-        especificaciones: detalle.especificaciones,
+      // Preparar detalles en formato JSONB para la función
+      const detallesJsonb = detalles.map(det => ({
+        prenda_id: det.prenda_id,
+        talla_id: det.talla_id,
+        cantidad: det.cantidad,
+        especificaciones: det.especificaciones || ''
       }));
 
-      const { error: detallesError } = await supabase
-        .from('detalle_pedidos')
-        .insert(detallesConPedidoId);
+      // LLAMAR A LA FUNCIÓN ATÓMICA que hace TODO en una transacción
+      const { data, error } = await supabase.rpc('crear_pedido_atomico', {
+        p_tipo_cliente: pedido.cliente_tipo,
+        p_cliente_nombre: pedido.cliente_nombre,
+        p_sucursal_id: pedido_sucursal_id || sucursal_id,
+        p_usuario_id: usuario_id || 1, // TODO: obtener de sesión
+        p_alumno_id: null,
+        p_externo_id: null,
+        p_estado: pedido.estado,
+        p_notas: pedido.observaciones || null,
+        p_detalles: detallesJsonb
+      });
 
-      if (detallesError) throw detallesError;
+      if (error) {
+        console.error('❌ Error en función atómica:', error);
+        throw error;
+      }
 
-      // Actualizar stock de costos (restar la cantidad vendida)
-      for (const detalle of detalles) {
-        // Buscar el costo correspondiente
-        const { data: costoData, error: costoError } = await supabase
-          .from('costos')
-          .select('stock')
-          .eq('prenda_id', detalle.prenda_id)
-          .eq('talla_id', detalle.talla_id)
-          .single();
+      console.log('✅ Respuesta función atómica:', data);
 
-        if (costoError) {
-          console.error('Error al buscar costo:', costoError);
-          continue;
-        }
-
-        // Actualizar el stock
-        const nuevoStock = (costoData.stock || 0) - detalle.cantidad;
-        const { error: updateError } = await supabase
-          .from('costos')
-          .update({ stock: nuevoStock })
-          .eq('prenda_id', detalle.prenda_id)
-          .eq('talla_id', detalle.talla_id);
-
-        if (updateError) {
-          console.error('Error al actualizar stock:', updateError);
-        }
+      // Verificar respuesta
+      if (!data.success) {
+        throw new Error(data.error || data.message || 'Error desconocido');
       }
 
       await fetchPedidos();
-      return { success: true, data: pedidoInsertado };
-    } catch (error) {
-      console.error('Error al crear pedido:', error);
-      return { success: false, error };
+      return { 
+        success: true, 
+        data: { id: data.pedido_id },
+        message: data.message 
+      };
+    } catch (error: any) {
+      console.error('❌ Error al crear pedido:', error);
+      return { 
+        success: false, 
+        error: error.message || error 
+      };
     }
   };
 
