@@ -785,10 +785,10 @@ export default function PrendasPage() {
                       </span>
                     </td>
                     <td>
-                      <div style={{ display: 'flex', gap: '113px' }}>
+                      <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                         <button
                           className="btn btn-secondary"
-                          style={{ padding: '0.5rem 1rem' }}
+                          style={{ padding: '0.5rem 1rem', marginRight: '100px' }}
                           onClick={() => handleEditar(prenda)}
                         >
                           ✏️ Editar
