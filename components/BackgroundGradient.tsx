@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 
 export default function BackgroundGradient() {
   useEffect(() => {
-    // Cuatro gradientes disponibles
+    // Cinco gradientes disponibles
     const gradientes = [
       {
         // Rosa → Naranja → Amarillo
@@ -29,6 +29,12 @@ export default function BackgroundGradient() {
         start: '#fd79a8',
         middle: '#fdcb6e',
         end: '#55efc4'
+      },
+      {
+        // Océano Profundo: Azul oscuro → Turquesa → Cyan
+        start: '#1e3799',
+        middle: '#00d2d3',
+        end: '#48dbfb'
       }
     ];
 
@@ -55,12 +61,14 @@ export default function BackgroundGradient() {
     document.documentElement.style.setProperty('--gradient-middle', gradienteSeleccionado.middle);
     document.documentElement.style.setProperty('--gradient-end', gradienteSeleccionado.end);
 
-    const nombreGradiente = 
-      randomIndex === 0 ? 'Rosa-Naranja-Amarillo' : 
-      randomIndex === 1 ? 'Azul-Morado-Blanco' : 
-      randomIndex === 2 ? 'Verde-Aguamarina-Blanco' :
-      'Primavera (Rosa-Amarillo-Verde)';
-    console.log(`🎨 Gradiente ${randomIndex + 1}/4 aplicado: ${nombreGradiente}`);
+    const nombres = [
+      'Rosa-Naranja-Amarillo',
+      'Azul-Morado-Blanco',
+      'Verde-Aguamarina-Blanco',
+      'Primavera (Rosa-Amarillo-Verde)',
+      'Océano Profundo (Azul-Turquesa-Cyan)'
+    ];
+    console.log(`🎨 Gradiente ${randomIndex + 1}/5 aplicado: ${nombres[randomIndex]}`);
     console.log(`📊 Colores: ${gradienteSeleccionado.start} → ${gradienteSeleccionado.middle} → ${gradienteSeleccionado.end}`);
   }, []); // Solo se ejecuta una vez al montar
 
