@@ -473,7 +473,7 @@ export default function PrendasPage() {
                     cursor: prendaEditando ? 'not-allowed' : 'text',
                     color: prendaEditando ? '#666' : 'inherit'
                   }}
-                  readOnly={prendaEditando}
+                  readOnly={!!prendaEditando}
                 />
                 {prendaEditando && (
                   <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
