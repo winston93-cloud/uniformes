@@ -71,6 +71,7 @@ export default function PrendasPage() {
   const [prendaEditando, setPrendaEditando] = useState<Prenda | null>(null);
   const [busqueda, setBusqueda] = useState('');
   const [botonEstado, setBotonEstado] = useState<'normal' | 'exito' | 'error'>('normal');
+  const [mensajeError, setMensajeError] = useState<string>('');
   const inputBusquedaRef = useRef<HTMLInputElement>(null);
   const { prendas, loading, error, createPrenda, updatePrenda, deletePrenda } = usePrendas();
   const { categorias, loading: loadingCategorias, refetch: refetchCategorias } = useCategorias();
@@ -150,26 +151,58 @@ export default function PrendasPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setBotonEstado('normal');
+    setMensajeError('');
     
     // Validar que se haya seleccionado al menos una talla
     if (tallasSeleccionadas.length === 0) {
-      alert('Por favor selecciona al menos una talla para la prenda');
       setBotonEstado('error');
+      setMensajeError('❌ Por favor selecciona al menos una talla para la prenda');
       return;
     }
     
     const prendaData = {
-      nombre: formData.nombre,
-      codigo: formData.codigo || null,
-      descripcion: formData.descripcion || null,
+      nombre: formData.nombre.trim(),
+      codigo: formData.codigo?.trim() || null,
+      descripcion: formData.descripcion?.trim() || null,
       categoria_id: formData.categoria_id || null,
       activo: formData.activo,
     };
+
+    // Validar duplicados por nombre
+    const nombreExiste = prendas.some(p => 
+      p.nombre.toLowerCase() === prendaData.nombre.toLowerCase() && 
+      (!prendaEditando || p.id !== prendaEditando.id)
+    );
+
+    if (nombreExiste) {
+      setBotonEstado('error');
+      setMensajeError(`❌ Ya existe una prenda con el nombre "${prendaData.nombre}"`);
+      return;
+    }
+
+    // Validar duplicados por código (si hay código)
+    if (prendaData.codigo) {
+      const codigoExiste = prendas.some(p => 
+        p.codigo?.toLowerCase() === prendaData.codigo?.toLowerCase() && 
+        (!prendaEditando || p.id !== prendaEditando.id)
+      );
+
+      if (codigoExiste) {
+        setBotonEstado('error');
+        setMensajeError(`❌ Ya existe una prenda con el código "${prendaData.codigo}"`);
+        return;
+      }
+    }
 
     if (prendaEditando) {
       const { error } = await updatePrenda(prendaEditando.id, prendaData);
       if (error) {
         setBotonEstado('error');
+        if (error.includes('duplicate') || error.includes('unique')) {
+          setMensajeError(`❌ Ya existe una prenda con ese nombre o código`);
+        } else {
+          setMensajeError(`❌ Error al actualizar: ${error}`);
+        }
         return;
       }
       
@@ -218,6 +251,7 @@ export default function PrendasPage() {
         setMostrarFormulario(false);
         setPrendaEditando(null);
         setBotonEstado('normal');
+        setMensajeError('');
         setTimeout(() => {
           inputBusquedaRef.current?.focus();
         }, 100);
@@ -256,6 +290,7 @@ export default function PrendasPage() {
         setMostrarFormulario(false);
         setPrendaEditando(null);
         setBotonEstado('normal');
+        setMensajeError('');
         setTimeout(() => {
           inputBusquedaRef.current?.focus();
         }, 100);
@@ -404,6 +439,12 @@ export default function PrendasPage() {
             <h2 className="form-title">
               {prendaEditando ? 'Editar Prenda' : 'Nueva Prenda'}
             </h2>
+            
+            {mensajeError && (
+              <div className="alert alert-error" style={{ marginBottom: '1rem' }}>
+                {mensajeError}
+              </div>
+            )}
             
             <form onSubmit={handleSubmit}>
               <div className="form-group">
@@ -719,6 +760,7 @@ export default function PrendasPage() {
                     setFormData({ nombre: '', codigo: '', descripcion: '', categoria_id: '', activo: true });
                     setTallasSeleccionadas([]);
                     setTallasAsociadas([]);
+                    setMensajeError('');
                     // Volver a poner focus en el input de búsqueda
                     setTimeout(() => {
                       inputBusquedaRef.current?.focus();

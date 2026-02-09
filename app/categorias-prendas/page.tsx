@@ -12,6 +12,7 @@ export default function CategoriasPrendasPage() {
   const [categoriaEditando, setCategoriaEditando] = useState<CategoriaPrenda | null>(null);
   const [busqueda, setBusqueda] = useState('');
   const [botonEstado, setBotonEstado] = useState<'normal' | 'exito' | 'error'>('normal');
+  const [mensajeError, setMensajeError] = useState<string>('');
   const inputBusquedaRef = useRef<HTMLInputElement>(null);
   const { categorias, loading, error, createCategoria, updateCategoria, deleteCategoria } = useCategorias();
 
@@ -23,16 +24,34 @@ export default function CategoriasPrendasPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setBotonEstado('normal');
+    setMensajeError('');
     
     const categoriaData = {
-      nombre: formData.nombre,
+      nombre: formData.nombre.trim(),
       activo: formData.activo,
     };
+
+    // Validar duplicados antes de enviar
+    const nombreExiste = categorias.some(cat => 
+      cat.nombre.toLowerCase() === categoriaData.nombre.toLowerCase() && 
+      (!categoriaEditando || cat.id !== categoriaEditando.id)
+    );
+
+    if (nombreExiste) {
+      setBotonEstado('error');
+      setMensajeError(`❌ Ya existe una categoría con el nombre "${categoriaData.nombre}"`);
+      return;
+    }
 
     if (categoriaEditando) {
       const { error } = await updateCategoria(categoriaEditando.id, categoriaData);
       if (error) {
         setBotonEstado('error');
+        if (error.includes('duplicate') || error.includes('unique')) {
+          setMensajeError(`❌ Ya existe una categoría con el nombre "${categoriaData.nombre}"`);
+        } else {
+          setMensajeError(`❌ Error al actualizar: ${error}`);
+        }
         return;
       }
       setBotonEstado('exito');
@@ -41,6 +60,7 @@ export default function CategoriasPrendasPage() {
         setMostrarFormulario(false);
         setCategoriaEditando(null);
         setBotonEstado('normal');
+        setMensajeError('');
         setTimeout(() => {
           inputBusquedaRef.current?.focus();
         }, 100);
@@ -49,6 +69,11 @@ export default function CategoriasPrendasPage() {
       const { error } = await createCategoria(categoriaData);
       if (error) {
         setBotonEstado('error');
+        if (error.includes('duplicate') || error.includes('unique')) {
+          setMensajeError(`❌ Ya existe una categoría con el nombre "${categoriaData.nombre}"`);
+        } else {
+          setMensajeError(`❌ Error al crear: ${error}`);
+        }
         return;
       }
       setBotonEstado('exito');
@@ -57,6 +82,7 @@ export default function CategoriasPrendasPage() {
         setMostrarFormulario(false);
         setCategoriaEditando(null);
         setBotonEstado('normal');
+        setMensajeError('');
         setTimeout(() => {
           inputBusquedaRef.current?.focus();
         }, 100);
@@ -168,6 +194,12 @@ export default function CategoriasPrendasPage() {
               {categoriaEditando ? 'Editar Categoría' : 'Nueva Categoría'}
             </h2>
             
+            {mensajeError && (
+              <div className="alert alert-error" style={{ marginBottom: '1rem' }}>
+                {mensajeError}
+              </div>
+            )}
+            
             <form onSubmit={handleSubmit}>
               <div className="form-group">
                 <label className="form-label">Nombre de la Categoría *</label>
@@ -218,6 +250,7 @@ export default function CategoriasPrendasPage() {
                     setMostrarFormulario(false);
                     setCategoriaEditando(null);
                     setFormData({ nombre: '', activo: true });
+                    setMensajeError('');
                     // Volver a poner focus en el input de búsqueda
                     setTimeout(() => {
                       inputBusquedaRef.current?.focus();
