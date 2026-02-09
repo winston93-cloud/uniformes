@@ -792,6 +792,11 @@ export default function CostosPage() {
                       className="form-input"
                       value={formDataEdicion.precioMayoreo}
                       onChange={(e) => setFormDataEdicion({ ...formDataEdicion, precioMayoreo: e.target.value })}
+                      onFocus={(e) => {
+                        if (e.target.value === '0' || e.target.value === '0.00') {
+                          setFormDataEdicion({ ...formDataEdicion, precioMayoreo: '' });
+                        }
+                      }}
                       placeholder="$0.00"
                       required
                       style={{ fontSize: '1.1rem', padding: '0.75rem' }}
@@ -810,6 +815,11 @@ export default function CostosPage() {
                       className="form-input"
                       value={formDataEdicion.precioMenudeo}
                       onChange={(e) => setFormDataEdicion({ ...formDataEdicion, precioMenudeo: e.target.value })}
+                      onFocus={(e) => {
+                        if (e.target.value === '0' || e.target.value === '0.00') {
+                          setFormDataEdicion({ ...formDataEdicion, precioMenudeo: '' });
+                        }
+                      }}
                       placeholder="$0.00"
                       required
                       style={{ fontSize: '1.1rem', padding: '0.75rem' }}
