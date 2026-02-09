@@ -469,12 +469,17 @@ export default function PrendasPage() {
                   onChange={(e) => setFormData({ ...formData, codigo: e.target.value })}
                   placeholder="Se genera automáticamente basado en el nombre"
                   style={{
-                    backgroundColor: prendaEditando ? 'white' : '#f0f0f0',
-                    cursor: prendaEditando ? 'text' : 'not-allowed',
-                    color: prendaEditando ? 'inherit' : '#666'
+                    backgroundColor: prendaEditando ? '#f0f0f0' : 'white',
+                    cursor: prendaEditando ? 'not-allowed' : 'text',
+                    color: prendaEditando ? '#666' : 'inherit'
                   }}
-                  readOnly={!prendaEditando}
+                  readOnly={prendaEditando}
                 />
+                {prendaEditando && (
+                  <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
+                    ⚠️ El código no se puede modificar en modo edición
+                  </small>
+                )}
                 {!prendaEditando && (
                   <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
                     El código se genera automáticamente al escribir el nombre
