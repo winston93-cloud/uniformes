@@ -157,7 +157,6 @@ export default function PrendasPage() {
     
     // Validar que se haya seleccionado al menos una talla
     if (tallasSeleccionadas.length === 0) {
-      setBotonEstado('error');
       setMensajeError('❌ Por favor selecciona al menos una talla para la prenda');
       return;
     }
@@ -177,7 +176,6 @@ export default function PrendasPage() {
     );
 
     if (nombreExiste) {
-      setBotonEstado('error');
       setMensajeError(`❌ Ya existe una prenda con el nombre "${prendaData.nombre}"`);
       return;
     }
@@ -190,7 +188,6 @@ export default function PrendasPage() {
       );
 
       if (codigoExiste) {
-        setBotonEstado('error');
         setMensajeError(`❌ Ya existe una prenda con el código "${prendaData.codigo}"`);
         return;
       }
@@ -199,7 +196,6 @@ export default function PrendasPage() {
     if (prendaEditando) {
       const { error } = await updatePrenda(prendaEditando.id, prendaData);
       if (error) {
-        setBotonEstado('error');
         if (error.includes('duplicate') || error.includes('unique')) {
           setMensajeError(`❌ Ya existe una prenda con ese nombre o código`);
         } else {
@@ -229,9 +225,7 @@ export default function PrendasPage() {
       // Agregar costos para nuevas tallas (sin insumos por ahora)
       if (tallasAAgregar.length > 0) {
         if (!sesion?.sucursal_id) {
-          setBotonEstado('error');
           setMensajeError('❌ Error: No hay sucursal activa');
-          setTimeout(() => setBotonEstado('normal'), 2000);
           return;
         }
         
@@ -252,9 +246,7 @@ export default function PrendasPage() {
         
         const resultadoCreacion = await createMultipleCostos(costosData);
         if (resultadoCreacion.error) {
-          setBotonEstado('error');
           setMensajeError(`❌ Error al agregar tallas: ${resultadoCreacion.error}`);
-          setTimeout(() => setBotonEstado('normal'), 2000);
           return;
         }
       }
@@ -276,16 +268,14 @@ export default function PrendasPage() {
     } else {
       const { data: nuevaPrenda, error } = await createPrenda(prendaData);
       if (error) {
-        setBotonEstado('error');
+        setMensajeError(`❌ Error al crear prenda: ${error}`);
         return;
       }
       
       // Crear costos para cada talla seleccionada
       if (nuevaPrenda && tallasSeleccionadas.length > 0) {
         if (!sesion?.sucursal_id) {
-          setBotonEstado('error');
           setMensajeError('❌ Error: No hay sucursal activa');
-          setTimeout(() => setBotonEstado('normal'), 2000);
           return;
         }
         
@@ -787,15 +777,13 @@ export default function PrendasPage() {
                   type="submit" 
                   className="btn btn-primary"
                   style={{
-                    backgroundColor: botonEstado === 'exito' ? '#28a745' : botonEstado === 'error' ? '#dc3545' : undefined,
-                    color: botonEstado === 'exito' || botonEstado === 'error' ? 'white' : undefined,
-                    borderColor: botonEstado === 'exito' ? '#28a745' : botonEstado === 'error' ? '#dc3545' : undefined,
+                    backgroundColor: botonEstado === 'exito' ? '#28a745' : undefined,
+                    color: botonEstado === 'exito' ? 'white' : undefined,
+                    borderColor: botonEstado === 'exito' ? '#28a745' : undefined,
                   }}
                 >
                   {botonEstado === 'exito' 
                     ? '✓ Guardado' 
-                    : botonEstado === 'error' 
-                    ? '✗ Error' 
                     : prendaEditando 
                     ? '💾 Guardar Cambios' 
                     : '➕ Crear Prenda'}

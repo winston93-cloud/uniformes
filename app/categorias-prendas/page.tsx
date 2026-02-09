@@ -38,7 +38,6 @@ export default function CategoriasPrendasPage() {
     );
 
     if (nombreExiste) {
-      setBotonEstado('error');
       setMensajeError(`❌ Ya existe una categoría con el nombre "${categoriaData.nombre}"`);
       return;
     }
@@ -46,7 +45,6 @@ export default function CategoriasPrendasPage() {
     if (categoriaEditando) {
       const { error } = await updateCategoria(categoriaEditando.id, categoriaData);
       if (error) {
-        setBotonEstado('error');
         if (error.includes('duplicate') || error.includes('unique')) {
           setMensajeError(`❌ Ya existe una categoría con el nombre "${categoriaData.nombre}"`);
         } else {
@@ -68,7 +66,6 @@ export default function CategoriasPrendasPage() {
     } else {
       const { error } = await createCategoria(categoriaData);
       if (error) {
-        setBotonEstado('error');
         if (error.includes('duplicate') || error.includes('unique')) {
           setMensajeError(`❌ Ya existe una categoría con el nombre "${categoriaData.nombre}"`);
         } else {
@@ -228,15 +225,13 @@ export default function CategoriasPrendasPage() {
                   type="submit" 
                   className="btn btn-primary"
                   style={{
-                    backgroundColor: botonEstado === 'exito' ? '#28a745' : botonEstado === 'error' ? '#dc3545' : undefined,
-                    color: botonEstado === 'exito' || botonEstado === 'error' ? 'white' : undefined,
-                    borderColor: botonEstado === 'exito' ? '#28a745' : botonEstado === 'error' ? '#dc3545' : undefined,
+                    backgroundColor: botonEstado === 'exito' ? '#28a745' : undefined,
+                    color: botonEstado === 'exito' ? 'white' : undefined,
+                    borderColor: botonEstado === 'exito' ? '#28a745' : undefined,
                   }}
                 >
                   {botonEstado === 'exito' 
                     ? '✓ Guardado' 
-                    : botonEstado === 'error' 
-                    ? '✗ Error' 
                     : categoriaEditando 
                     ? '💾 Guardar Cambios' 
                     : '➕ Crear Categoría'}

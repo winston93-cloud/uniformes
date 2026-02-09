@@ -36,7 +36,6 @@ export default function TallasPage() {
     if (tallaEditando) {
       const { error } = await updateTalla(tallaEditando.id, tallaData);
       if (error) {
-        setBotonEstado('error');
         if (error.includes('duplicate') || error.includes('unique') || error.includes('already exists')) {
           setMensajeError(`❌ Ya existe una talla con el nombre "${tallaData.nombre}"`);
         } else {
@@ -58,7 +57,6 @@ export default function TallasPage() {
     } else {
       const { error } = await createTalla(tallaData);
       if (error) {
-        setBotonEstado('error');
         if (error.includes('duplicate') || error.includes('unique') || error.includes('already exists')) {
           setMensajeError(`❌ Ya existe una talla con el nombre "${tallaData.nombre}"`);
         } else {
@@ -239,15 +237,13 @@ export default function TallasPage() {
                   type="submit" 
                   className="btn btn-primary"
                   style={{
-                    backgroundColor: botonEstado === 'exito' ? '#28a745' : botonEstado === 'error' ? '#dc3545' : undefined,
-                    color: botonEstado === 'exito' || botonEstado === 'error' ? 'white' : undefined,
-                    borderColor: botonEstado === 'exito' ? '#28a745' : botonEstado === 'error' ? '#dc3545' : undefined,
+                    backgroundColor: botonEstado === 'exito' ? '#28a745' : undefined,
+                    color: botonEstado === 'exito' ? 'white' : undefined,
+                    borderColor: botonEstado === 'exito' ? '#28a745' : undefined,
                   }}
                 >
                   {botonEstado === 'exito' 
                     ? '✓ Guardado' 
-                    : botonEstado === 'error' 
-                    ? '✗ Error' 
                     : tallaEditando 
                     ? '💾 Guardar Cambios' 
                     : '➕ Crear Talla'}
