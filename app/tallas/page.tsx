@@ -278,7 +278,7 @@ export default function TallasPage() {
         {/* Tabla de Tallas */}
         <div className="table-container">
           {!mostrarFormulario && (
-            <div style={{ marginBottom: '1rem', textAlign: 'left', padding: '0 1rem' }}>
+            <div style={{ marginBottom: '1rem', textAlign: 'right', padding: '0 1rem' }}>
               <button className="btn btn-primary" onClick={handleNuevo} style={{ width: '200px' }}>
                 ➕ Nueva Talla
               </button>
