@@ -30,7 +30,11 @@ export default function BackgroundGradient() {
     const randomIndex = Math.floor(Math.random() * gradientes.length);
     const gradienteSeleccionado = gradientes[randomIndex];
 
-    // Aplicar el gradiente al body
+    // Aplicar el gradiente directamente al body
+    const body = document.body;
+    body.style.background = `linear-gradient(135deg, ${gradienteSeleccionado.start} 0%, ${gradienteSeleccionado.middle} 50%, ${gradienteSeleccionado.end} 100%)`;
+    
+    // También actualizar las variables CSS por si acaso
     document.documentElement.style.setProperty('--gradient-start', gradienteSeleccionado.start);
     document.documentElement.style.setProperty('--gradient-middle', gradienteSeleccionado.middle);
     document.documentElement.style.setProperty('--gradient-end', gradienteSeleccionado.end);
