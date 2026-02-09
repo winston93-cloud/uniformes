@@ -50,11 +50,14 @@ export default function CostosPage() {
   useEffect(() => {
     const cargarTallasDisponibles = async () => {
       if (formData.prenda_id) {
+        // Obtener TODOS los costos de esta prenda (con o sin precio)
+        // Esto nos da las tallas que fueron asociadas en el catálogo de prendas
         const { data } = await getCostosByPrenda(formData.prenda_id);
-        if (data) {
+        if (data && data.length > 0) {
           const tallasIds = data.map(c => c.talla_id);
           setTallasDisponibles(tallasIds);
         } else {
+          // Si no hay costos, significa que la prenda no tiene tallas asociadas
           setTallasDisponibles([]);
         }
       } else {
