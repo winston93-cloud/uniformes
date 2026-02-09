@@ -323,10 +323,11 @@ export default function PrendasPage() {
   };
 
   const handleEliminar = async (id: string) => {
-    if (confirm('¿Estás seguro de eliminar esta prenda?')) {
+    if (confirm('¿Estás seguro de eliminar esta prenda? Esta acción no se puede deshacer.')) {
       const { error } = await deletePrenda(id);
       if (error) {
-        // Error silencioso, solo se elimina de la lista
+        console.error('Error al eliminar prenda:', error);
+        alert(`❌ Error al eliminar: ${error}`);
       } else {
         // Volver a poner focus en el input de búsqueda
         setTimeout(() => {
