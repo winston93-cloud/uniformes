@@ -663,7 +663,6 @@ export default function CostosPage() {
               <tr>
                 <th>Prenda</th>
                 <th>Talla</th>
-                <th>💰 Compra</th>
                 <th>📦 Mayoreo</th>
                 <th>🛍️ Menudeo</th>
                 <th>Acciones</th>
@@ -681,9 +680,6 @@ export default function CostosPage() {
                   <tr key={costo.id}>
                     <td data-label="Prenda" style={{ fontWeight: '600' }}>{costo.prenda?.nombre || '-'}</td>
                     <td data-label="Talla"><span className="badge badge-info">{costo.talla?.nombre || '-'}</span></td>
-                    <td data-label="💰 Compra" style={{ fontWeight: '600', color: '#f59e0b' }}>
-                      ${(costo.precio_compra || 0).toFixed(2)}
-                    </td>
                     <td data-label="📦 Mayoreo" style={{ fontWeight: '600', color: '#3b82f6' }}>
                       ${(costo.precio_mayoreo || 0).toFixed(2)}
                     </td>
