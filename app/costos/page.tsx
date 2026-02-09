@@ -28,6 +28,8 @@ export default function CostosPage() {
   const [botonEstado, setBotonEstado] = useState<'normal' | 'exito' | 'error'>('normal');
   const [mensajeError, setMensajeError] = useState<string>('');
   const [modalErrorAbierto, setModalErrorAbierto] = useState(false);
+  const [mensajeExito, setMensajeExito] = useState<string>('');
+  const [modalExitoAbierto, setModalExitoAbierto] = useState(false);
   
   const [formData, setFormData] = useState({
     prenda_id: '',
@@ -199,12 +201,17 @@ export default function CostosPage() {
       }
     }
     
-    alert(`✓ ${creados} costo(s) creado(s), ${actualizados} actualizado(s)`);
+    setMensajeExito(`✓ ${creados} costo(s) creado(s), ${actualizados} actualizado(s)`);
+    setModalExitoAbierto(true);
     
-    setFormData({ prenda_id: '', tallas_seleccionadas: [], precioMayoreo: '', precioMenudeo: '' });
-    setBusquedaPrenda('');
-    setTallasDisponibles([]);
-    setMostrarFormulario(false);
+    setTimeout(() => {
+      setModalExitoAbierto(false);
+      setMensajeExito('');
+      setFormData({ prenda_id: '', tallas_seleccionadas: [], precioMayoreo: '', precioMenudeo: '' });
+      setBusquedaPrenda('');
+      setTallasDisponibles([]);
+      setMostrarFormulario(false);
+    }, 2000);
   };
 
   const handleEditarCosto = (costo: Costo) => {
@@ -904,6 +911,55 @@ export default function CostosPage() {
             >
               Cerrar
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Éxito */}
+      {modalExitoAbierto && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 2000,
+          padding: '1rem'
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            padding: '2rem',
+            maxWidth: '500px',
+            width: '100%',
+            boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
+            textAlign: 'center'
+          }}>
+            <div style={{
+              fontSize: '3rem',
+              marginBottom: '1rem'
+            }}>
+              ✓
+            </div>
+            <h3 style={{ 
+              color: '#28a745', 
+              marginBottom: '1rem',
+              fontSize: '1.5rem',
+              fontWeight: '700'
+            }}>
+              Éxito
+            </h3>
+            <p style={{ 
+              color: '#333', 
+              fontSize: '1.1rem',
+              lineHeight: '1.5'
+            }}>
+              {mensajeExito}
+            </p>
           </div>
         </div>
       )}
