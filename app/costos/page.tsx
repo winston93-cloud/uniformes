@@ -135,71 +135,71 @@ export default function CostosPage() {
       return;
     }
     
-    // Verificar qué costos ya existen para esta prenda
-    const { data: costosExistentes } = await getCostosByPrenda(formData.prenda_id);
-    const tallasConCosto = new Set(
-      (costosExistentes || []).map(c => c.talla_id)
-    );
-    
-    // Filtrar solo las tallas que NO tienen costo
-    const tallasSinCosto = formData.tallas_seleccionadas.filter(
-      talla_id => !tallasConCosto.has(talla_id)
-    );
-    
-    // Si todas las tallas ya tienen costo, mostrar mensaje y salir
-    if (tallasSinCosto.length === 0) {
-      const tallasExistentes = formData.tallas_seleccionadas
-        .map(id => tallas.find(t => t.id === id)?.nombre)
-        .filter(Boolean)
-        .join(', ');
-      setMensajeError(`❌ Todas las tallas seleccionadas (${tallasExistentes}) ya tienen costo registrado para esta prenda.`);
+    if (!sesion?.sucursal_id) {
+      setMensajeError('❌ Error: No hay sucursal activa');
       setModalErrorAbierto(true);
       return;
     }
     
-    // Si algunas tallas ya tienen costo, informar al usuario
-    if (tallasSinCosto.length < formData.tallas_seleccionadas.length) {
-      const tallasYaExistentes = formData.tallas_seleccionadas
-        .filter(id => tallasConCosto.has(id))
-        .map(id => tallas.find(t => t.id === id)?.nombre)
-        .filter(Boolean)
-        .join(', ');
-      const mensaje = `Las siguientes tallas ya tienen costo: ${tallasYaExistentes}. Se crearán costos solo para las tallas restantes.`;
-      if (!confirm(mensaje)) {
-        return;
+    // Obtener costos existentes para esta prenda EN ESTA SUCURSAL
+    const { data: costosExistentes } = await supabase
+      .from('costos')
+      .select('*')
+      .eq('prenda_id', formData.prenda_id)
+      .eq('sucursal_id', sesion.sucursal_id);
+    
+    const costosMap = new Map(
+      (costosExistentes || []).map(c => [c.talla_id, c])
+    );
+    
+    let actualizados = 0;
+    let creados = 0;
+    
+    // Para cada talla seleccionada, UPDATE o INSERT
+    for (const talla_id of formData.tallas_seleccionadas) {
+      const costoExistente = costosMap.get(talla_id);
+      
+      const datosPrecios = {
+        precio_venta: parseFloat(formData.precioMenudeo) || 0,
+        precio_compra: 0,
+        precio_mayoreo: parseFloat(formData.precioMayoreo) || 0,
+        precio_menudeo: parseFloat(formData.precioMenudeo) || 0,
+      };
+      
+      if (costoExistente) {
+        // UPDATE del costo existente
+        const { error } = await updateCosto(costoExistente.id, datosPrecios);
+        if (error) {
+          setMensajeError(`❌ Error al actualizar: ${error}`);
+          setModalErrorAbierto(true);
+          return;
+        }
+        actualizados++;
+      } else {
+        // INSERT de nuevo costo
+        const nuevoCosto = {
+          prenda_id: formData.prenda_id,
+          talla_id: talla_id,
+          sucursal_id: sesion.sucursal_id,
+          ...datosPrecios,
+          stock_inicial: 0,
+          stock: 0,
+          cantidad_venta: 0,
+          stock_minimo: 0,
+          activo: true,
+        };
+        
+        const { error } = await createCosto(nuevoCosto);
+        if (error) {
+          setMensajeError(`❌ Error al crear: ${error}`);
+          setModalErrorAbierto(true);
+          return;
+        }
+        creados++;
       }
     }
     
-    // Crear un costo solo para las tallas que no tienen costo
-    const costosData = tallasSinCosto.map(talla_id => ({
-      prenda_id: formData.prenda_id,
-      talla_id: talla_id,
-      precio_venta: parseFloat(formData.precioMenudeo) || 0, // Legacy: usar precio menudeo
-      precio_compra: 0,
-      precio_mayoreo: parseFloat(formData.precioMayoreo) || 0,
-      precio_menudeo: parseFloat(formData.precioMenudeo) || 0,
-      stock_inicial: 0,
-      stock: 0,
-      cantidad_venta: 0,
-      stock_minimo: 0,
-      activo: true,
-    }));
-
-    // Crear todos los costos de una vez usando createMultipleCostos
-    const { data, error: errorCrear } = await createMultipleCostos(costosData);
-    
-    if (errorCrear) {
-      setMensajeError(`❌ Error al crear costos: ${errorCrear}`);
-      setModalErrorAbierto(true);
-      return;
-    }
-    
-    const tallasCreadas = tallasSinCosto
-      .map(id => tallas.find(t => t.id === id)?.nombre)
-      .filter(Boolean)
-      .join(', ');
-    
-    alert(`${costosData.length} costo(s) creado(s) exitosamente para las tallas: ${tallasCreadas}`);
+    alert(`✓ ${creados} costo(s) creado(s), ${actualizados} actualizado(s)`);
     
     setFormData({ prenda_id: '', tallas_seleccionadas: [], precioMayoreo: '', precioMenudeo: '' });
     setBusquedaPrenda('');
