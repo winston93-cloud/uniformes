@@ -35,7 +35,9 @@ export default function BackgroundGradient() {
     document.documentElement.style.setProperty('--gradient-middle', gradienteSeleccionado.middle);
     document.documentElement.style.setProperty('--gradient-end', gradienteSeleccionado.end);
 
-    console.log(`🎨 Gradiente aplicado: ${randomIndex === 0 ? 'Rosa-Naranja' : randomIndex === 1 ? 'Azul-Morado' : 'Verde-Aguamarina'}`);
+    const nombreGradiente = randomIndex === 0 ? 'Rosa-Naranja-Amarillo' : randomIndex === 1 ? 'Azul-Morado-Blanco' : 'Verde-Aguamarina-Blanco';
+    console.log(`🎨 Gradiente ${randomIndex + 1}/3 aplicado: ${nombreGradiente}`);
+    console.log(`📊 Colores: ${gradienteSeleccionado.start} → ${gradienteSeleccionado.middle} → ${gradienteSeleccionado.end}`);
   }, []); // Solo se ejecuta una vez al montar
 
   return null; // No renderiza nada visible
