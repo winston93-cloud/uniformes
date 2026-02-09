@@ -13,6 +13,7 @@ export default function CategoriasPrendasPage() {
   const [busqueda, setBusqueda] = useState('');
   const [botonEstado, setBotonEstado] = useState<'normal' | 'exito' | 'error'>('normal');
   const [mensajeError, setMensajeError] = useState<string>('');
+  const [modalErrorAbierto, setModalErrorAbierto] = useState(false);
   const inputBusquedaRef = useRef<HTMLInputElement>(null);
   const { categorias, loading, error, createCategoria, updateCategoria, deleteCategoria } = useCategorias();
 
@@ -39,6 +40,7 @@ export default function CategoriasPrendasPage() {
 
     if (nombreExiste) {
       setMensajeError(`❌ Ya existe una categoría con el nombre "${categoriaData.nombre}"`);
+      setModalErrorAbierto(true);
       return;
     }
 
@@ -50,6 +52,7 @@ export default function CategoriasPrendasPage() {
         } else {
           setMensajeError(`❌ Error al actualizar: ${error}`);
         }
+        setModalErrorAbierto(true);
         return;
       }
       setBotonEstado('exito');
@@ -71,6 +74,7 @@ export default function CategoriasPrendasPage() {
         } else {
           setMensajeError(`❌ Error al crear: ${error}`);
         }
+        setModalErrorAbierto(true);
         return;
       }
       setBotonEstado('exito');
@@ -253,12 +257,6 @@ export default function CategoriasPrendasPage() {
                   ❌ Cancelar
                 </button>
               </div>
-              
-              {mensajeError && (
-                <div className="alert alert-error" style={{ marginTop: '1rem' }}>
-                  {mensajeError}
-                </div>
-              )}
             </form>
           </div>
         )}
@@ -322,6 +320,71 @@ export default function CategoriasPrendasPage() {
           </table>
         </div>
       </div>
+
+      {/* Modal de Error */}
+      {modalErrorAbierto && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 2000,
+          padding: '1rem'
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            padding: '2rem',
+            maxWidth: '500px',
+            width: '100%',
+            boxShadow: '0 10px 40px rgba(0,0,0,0.3)'
+          }}>
+            <h3 style={{ 
+              color: '#dc3545', 
+              marginBottom: '1rem',
+              fontSize: '1.5rem',
+              fontWeight: '700'
+            }}>
+              Error
+            </h3>
+            <p style={{ 
+              color: '#333', 
+              marginBottom: '2rem',
+              fontSize: '1.1rem',
+              lineHeight: '1.5'
+            }}>
+              {mensajeError}
+            </p>
+            <button 
+              className="btn btn-primary"
+              onClick={() => {
+                setModalErrorAbierto(false);
+                setMensajeError('');
+                setMostrarFormulario(false);
+                setCategoriaEditando(null);
+                setFormData({ nombre: '', activo: true });
+                setBotonEstado('normal');
+                setTimeout(() => {
+                  inputBusquedaRef.current?.focus();
+                }, 100);
+              }}
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                fontSize: '1rem',
+                fontWeight: '600'
+              }}
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+      )}
     </LayoutWrapper>
   );
 }
