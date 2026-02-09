@@ -351,9 +351,30 @@ export default function CostosPage() {
         </div>
 
         {mostrarFormulario && (
-          <div className="form-container">
-            <h2 className="form-title">Nuevo Costo de Prenda</h2>
-            
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 1000,
+            padding: '1rem',
+            overflowY: 'auto'
+          }}>
+            <div className="form-container" style={{
+              maxWidth: '900px',
+              width: '100%',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              margin: '2rem auto',
+              position: 'relative'
+            }}>
+              <h2 className="form-title">Nuevo Costo de Prenda</h2>
+              
               <form onSubmit={handleSubmit}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem' }}>
                 <div className="form-group">
@@ -636,6 +657,7 @@ export default function CostosPage() {
                 </button>
               </div>
             </form>
+            </div>
           </div>
         )}
 
@@ -723,17 +745,20 @@ export default function CostosPage() {
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 2000
+            zIndex: 2000,
+            padding: '1rem',
+            overflowY: 'auto'
           }}>
             <div className="form-container" style={{
               maxWidth: '600px',
-              width: '90%',
+              width: '100%',
               maxHeight: '90vh',
               overflowY: 'auto',
+              margin: '2rem auto',
               position: 'relative'
             }}>
               <h2 className="form-title">
@@ -784,11 +809,12 @@ export default function CostosPage() {
                     type="submit" 
                     className="btn btn-primary"
                     style={{
-                      backgroundColor: botonEstado === 'exito' ? '#10b981' : botonEstado === 'error' ? '#ef4444' : undefined,
-                      color: (botonEstado === 'exito' || botonEstado === 'error') ? 'white' : undefined
+                      backgroundColor: botonEstado === 'exito' ? '#28a745' : undefined,
+                      color: botonEstado === 'exito' ? 'white' : undefined,
+                      borderColor: botonEstado === 'exito' ? '#28a745' : undefined
                     }}
                   >
-                    {botonEstado === 'exito' ? '✓ Guardado' : botonEstado === 'error' ? '✕ Error' : '💾 Guardar Cambios'}
+                    {botonEstado === 'exito' ? '✓ Guardado' : '💾 Guardar Cambios'}
                   </button>
                   <button
                     type="button"
