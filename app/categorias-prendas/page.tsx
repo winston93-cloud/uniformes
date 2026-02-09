@@ -266,10 +266,10 @@ export default function CategoriasPrendasPage() {
                       </span>
                     </td>
                     <td>
-                      <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
                         <button
                           className="btn btn-secondary"
-                          style={{ padding: '0.5rem 1rem', marginRight: '100px' }}
+                          style={{ padding: '0.5rem 1rem' }}
                           onClick={() => handleEditar(categoria)}
                         >
                           ✏️ Editar
