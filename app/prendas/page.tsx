@@ -493,8 +493,8 @@ export default function PrendasPage() {
                   type="text"
                   className="form-input"
                   value={formData.nombre}
-                  onChange={(e) => handleNombreChange(e.target.value)}
-                  placeholder="Ej: Camisa Blanca, Pantalón Azul, etc."
+                  onChange={(e) => handleNombreChange(e.target.value.toUpperCase())}
+                  placeholder="Ej: CAMISA BLANCA, PANTALÓN AZUL, etc."
                   required
                 />
               </div>
