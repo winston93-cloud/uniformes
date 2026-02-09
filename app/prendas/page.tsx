@@ -227,27 +227,40 @@ export default function PrendasPage() {
         }
       }
       
-      // Agregar costos para nuevas tallas (sin insumos por ahora)
+      // Agregar costos para nuevas tallas en TODAS las sucursales
       if (tallasAAgregar.length > 0) {
-        if (!sesion?.sucursal_id) {
-          setMensajeError('❌ Error: No hay sucursal activa');
+        // Obtener todas las sucursales activas
+        const { data: sucursales, error: sucursalesError } = await supabase
+          .from('sucursales')
+          .select('id')
+          .eq('activo', true);
+        
+        if (sucursalesError || !sucursales || sucursales.length === 0) {
+          setMensajeError('❌ Error: No se pudieron cargar las sucursales');
+          setModalErrorAbierto(true);
           return;
         }
         
-        const costosData = tallasAAgregar.map(talla_id => ({
-          prenda_id: prendaEditando.id,
-          talla_id: talla_id,
-          sucursal_id: sesion.sucursal_id,
-          precio_venta: 0,
-          precio_compra: 0,
-          precio_mayoreo: 0,
-          precio_menudeo: 0,
-          stock_inicial: 0,
-          stock: 0,
-          cantidad_venta: 0,
-          stock_minimo: 0,
-          activo: true,
-        }));
+        // Crear costos para cada combinación de talla x sucursal
+        const costosData = [];
+        for (const sucursal of sucursales) {
+          for (const talla_id of tallasAAgregar) {
+            costosData.push({
+              prenda_id: prendaEditando.id,
+              talla_id: talla_id,
+              sucursal_id: sucursal.id,
+              precio_venta: 0,
+              precio_compra: 0,
+              precio_mayoreo: 0,
+              precio_menudeo: 0,
+              stock_inicial: 0,
+              stock: 0,
+              cantidad_venta: 0,
+              stock_minimo: 0,
+              activo: true,
+            });
+          }
+        }
         
         const resultadoCreacion = await createMultipleCostos(costosData);
         if (resultadoCreacion.error) {
