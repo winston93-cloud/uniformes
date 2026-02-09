@@ -22,7 +22,6 @@ export default function CostosPage() {
   const [costoEditando, setCostoEditando] = useState<Costo | null>(null);
   const [mostrarModalEdicion, setMostrarModalEdicion] = useState(false);
   const [formDataEdicion, setFormDataEdicion] = useState({
-    precioCompra: '',
     precioMayoreo: '',
     precioMenudeo: '',
   });
@@ -33,7 +32,6 @@ export default function CostosPage() {
   const [formData, setFormData] = useState({
     prenda_id: '',
     tallas_seleccionadas: [] as string[],
-    precioCompra: '',
     precioMayoreo: '',
     precioMenudeo: '',
   });
@@ -168,7 +166,7 @@ export default function CostosPage() {
       prenda_id: formData.prenda_id,
       talla_id: talla_id,
       precio_venta: parseFloat(formData.precioMenudeo) || 0, // Legacy: usar precio menudeo
-      precio_compra: parseFloat(formData.precioCompra) || 0,
+      precio_compra: 0,
       precio_mayoreo: parseFloat(formData.precioMayoreo) || 0,
       precio_menudeo: parseFloat(formData.precioMenudeo) || 0,
       stock_inicial: 0,
@@ -194,7 +192,7 @@ export default function CostosPage() {
     
     alert(`${costosData.length} costo(s) creado(s) exitosamente para las tallas: ${tallasCreadas}`);
     
-    setFormData({ prenda_id: '', tallas_seleccionadas: [], precioCompra: '', precioMayoreo: '', precioMenudeo: '' });
+    setFormData({ prenda_id: '', tallas_seleccionadas: [], precioMayoreo: '', precioMenudeo: '' });
     setBusquedaPrenda('');
     setTallasDisponibles([]);
     setMostrarFormulario(false);
@@ -203,7 +201,6 @@ export default function CostosPage() {
   const handleEditarCosto = (costo: Costo) => {
     setCostoEditando(costo);
     setFormDataEdicion({
-      precioCompra: (costo.precio_compra || 0).toString(),
       precioMayoreo: (costo.precio_mayoreo || 0).toString(),
       precioMenudeo: (costo.precio_menudeo || 0).toString(),
     });
@@ -220,7 +217,6 @@ export default function CostosPage() {
     
     const { error } = await updateCosto(costoEditando.id, {
       precio_venta: parseFloat(formDataEdicion.precioMenudeo) || 0, // Legacy: usar precio menudeo
-      precio_compra: parseFloat(formDataEdicion.precioCompra) || 0,
       precio_mayoreo: parseFloat(formDataEdicion.precioMayoreo) || 0,
       precio_menudeo: parseFloat(formDataEdicion.precioMenudeo) || 0,
     });
@@ -650,7 +646,7 @@ export default function CostosPage() {
               setBotonEstado('normal');
               setMensajeError('');
               if (!mostrarFormulario) {
-                setFormData({ prenda_id: '', tallas_seleccionadas: [], precioCompra: '', precioMayoreo: '', precioMenudeo: '' });
+                setFormData({ prenda_id: '', tallas_seleccionadas: [], precioMayoreo: '', precioMenudeo: '' });
                 setBusquedaPrenda('');
               }
             }} style={{ minWidth: '200px' }}>
@@ -859,8 +855,8 @@ export default function CostosPage() {
                 setMostrarFormulario(false);
                 setMostrarModalEdicion(false);
                 setCostoEditando(null);
-                setFormData({ prenda_id: '', tallas_seleccionadas: [], precioCompra: '', precioMayoreo: '', precioMenudeo: '' });
-                setFormDataEdicion({ precioCompra: '', precioMayoreo: '', precioMenudeo: '' });
+                setFormData({ prenda_id: '', tallas_seleccionadas: [], precioMayoreo: '', precioMenudeo: '' });
+                setFormDataEdicion({ precioMayoreo: '', precioMenudeo: '' });
                 setBusquedaPrenda('');
                 setBotonEstado('normal');
               }}
