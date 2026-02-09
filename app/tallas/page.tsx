@@ -314,7 +314,7 @@ export default function TallasPage() {
                     <td>
                       <button
                         className="btn btn-secondary"
-                        style={{ marginRight: '0.5rem', padding: '0.5rem 1rem' }}
+                        style={{ marginRight: '1rem', padding: '0.5rem 1rem' }}
                         onClick={() => handleEditar(talla)}
                       >
                         ✏️ Editar
