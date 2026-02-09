@@ -27,6 +27,8 @@ export default function CostosPage() {
     precioMenudeo: '',
   });
   const [botonEstado, setBotonEstado] = useState<'normal' | 'exito' | 'error'>('normal');
+  const [mensajeError, setMensajeError] = useState<string>('');
+  const [modalErrorAbierto, setModalErrorAbierto] = useState(false);
   
   const [formData, setFormData] = useState({
     prenda_id: '',
@@ -121,7 +123,8 @@ export default function CostosPage() {
     
     // Validar que se haya seleccionado al menos una talla
     if (formData.tallas_seleccionadas.length === 0) {
-      alert('Por favor selecciona al menos una talla');
+      setMensajeError('❌ Por favor selecciona al menos una talla');
+      setModalErrorAbierto(true);
       return;
     }
     
@@ -142,7 +145,8 @@ export default function CostosPage() {
         .map(id => tallas.find(t => t.id === id)?.nombre)
         .filter(Boolean)
         .join(', ');
-      alert(`Todas las tallas seleccionadas (${tallasExistentes}) ya tienen costo registrado para esta prenda.`);
+      setMensajeError(`❌ Todas las tallas seleccionadas (${tallasExistentes}) ya tienen costo registrado para esta prenda.`);
+      setModalErrorAbierto(true);
       return;
     }
     
@@ -178,7 +182,8 @@ export default function CostosPage() {
     const { data, error: errorCrear } = await createMultipleCostos(costosData);
     
     if (errorCrear) {
-      alert(`Error al crear costos: ${errorCrear}`);
+      setMensajeError(`❌ Error al crear costos: ${errorCrear}`);
+      setModalErrorAbierto(true);
       return;
     }
     
@@ -202,6 +207,8 @@ export default function CostosPage() {
       precioMayoreo: (costo.precio_mayoreo || 0).toString(),
       precioMenudeo: (costo.precio_menudeo || 0).toString(),
     });
+    setBotonEstado('normal');
+    setMensajeError('');
     setMostrarModalEdicion(true);
   };
 
@@ -219,8 +226,8 @@ export default function CostosPage() {
     });
 
     if (error) {
-      setBotonEstado('error');
-      setTimeout(() => setBotonEstado('normal'), 2000);
+      setMensajeError(`❌ Error al actualizar costo: ${error}`);
+      setModalErrorAbierto(true);
       return;
     }
 
@@ -248,10 +255,18 @@ export default function CostosPage() {
     <LayoutWrapper>
       <div className="main-container">
         <div style={{ marginBottom: '2rem' }}>
-          <h1 style={{ fontSize: '2.5rem', fontWeight: '700', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.2)', marginBottom: '1rem' }}>
+          <h1 style={{ fontSize: '2.5rem', fontWeight: '700', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.2)', marginBottom: '1rem', textAlign: 'center' }}>
             💰 Costos
           </h1>
-          <button className="btn btn-primary" onClick={() => setMostrarFormulario(!mostrarFormulario)} style={{ width: '100%', maxWidth: '300px' }}>
+          <button className="btn btn-primary" onClick={() => {
+            setMostrarFormulario(!mostrarFormulario);
+            setBotonEstado('normal');
+            setMensajeError('');
+            if (!mostrarFormulario) {
+              setFormData({ prenda_id: '', tallas_seleccionadas: [], precioCompra: '', precioMayoreo: '', precioMenudeo: '' });
+              setBusquedaPrenda('');
+            }
+          }} style={{ width: '100%', maxWidth: '300px' }}>
             ➕ Nuevo Costo
           </button>
         </div>
@@ -814,6 +829,71 @@ export default function CostosPage() {
           </div>
         )}
       </div>
+
+      {/* Modal de Error */}
+      {modalErrorAbierto && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 2000,
+          padding: '1rem'
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            padding: '2rem',
+            maxWidth: '500px',
+            width: '100%',
+            boxShadow: '0 10px 40px rgba(0,0,0,0.3)'
+          }}>
+            <h3 style={{ 
+              color: '#dc3545', 
+              marginBottom: '1rem',
+              fontSize: '1.5rem',
+              fontWeight: '700'
+            }}>
+              Error
+            </h3>
+            <p style={{ 
+              color: '#333', 
+              marginBottom: '2rem',
+              fontSize: '1.1rem',
+              lineHeight: '1.5'
+            }}>
+              {mensajeError}
+            </p>
+            <button 
+              className="btn btn-primary"
+              onClick={() => {
+                setModalErrorAbierto(false);
+                setMensajeError('');
+                setMostrarFormulario(false);
+                setMostrarModalEdicion(false);
+                setCostoEditando(null);
+                setFormData({ prenda_id: '', tallas_seleccionadas: [], precioCompra: '', precioMayoreo: '', precioMenudeo: '' });
+                setFormDataEdicion({ precioCompra: '', precioMayoreo: '', precioMenudeo: '' });
+                setBusquedaPrenda('');
+                setBotonEstado('normal');
+              }}
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                fontSize: '1rem',
+                fontWeight: '600'
+              }}
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+      )}
     </LayoutWrapper>
   );
 }
