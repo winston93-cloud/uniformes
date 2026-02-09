@@ -49,15 +49,19 @@ export default function CostosPage() {
   // Cargar tallas disponibles cuando se selecciona una prenda
   useEffect(() => {
     const cargarTallasDisponibles = async () => {
-      if (formData.prenda_id) {
-        // Obtener TODOS los costos de esta prenda (con o sin precio)
-        // Esto nos da las tallas que fueron asociadas en el catálogo de prendas
-        const { data } = await getCostosByPrenda(formData.prenda_id);
-        if (data && data.length > 0) {
+      if (formData.prenda_id && sesion?.sucursal_id) {
+        // Obtener SOLO los costos de esta prenda EN ESTA SUCURSAL
+        const { data, error } = await supabase
+          .from('costos')
+          .select('talla_id')
+          .eq('prenda_id', formData.prenda_id)
+          .eq('sucursal_id', sesion.sucursal_id);
+        
+        if (!error && data && data.length > 0) {
           const tallasIds = data.map(c => c.talla_id);
           setTallasDisponibles(tallasIds);
         } else {
-          // Si no hay costos, significa que la prenda no tiene tallas asociadas
+          // Si no hay costos, la prenda no tiene tallas en esta sucursal
           setTallasDisponibles([]);
         }
       } else {
@@ -67,7 +71,7 @@ export default function CostosPage() {
     };
     
     cargarTallasDisponibles();
-  }, [formData.prenda_id]);
+  }, [formData.prenda_id, sesion?.sucursal_id]);
 
   // Filtrar prendas para búsqueda del formulario
   const prendasFiltradas = prendas
