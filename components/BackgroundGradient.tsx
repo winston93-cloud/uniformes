@@ -26,8 +26,18 @@ export default function BackgroundGradient() {
       }
     ];
 
-    // Seleccionar un gradiente aleatorio
-    const randomIndex = Math.floor(Math.random() * gradientes.length);
+    // Obtener el último gradiente usado (para evitar repetir)
+    const ultimoIndex = parseInt(localStorage.getItem('ultimoGradiente') || '-1');
+    
+    // Seleccionar un gradiente aleatorio DIFERENTE al anterior
+    let randomIndex;
+    do {
+      randomIndex = Math.floor(Math.random() * gradientes.length);
+    } while (randomIndex === ultimoIndex && gradientes.length > 1);
+    
+    // Guardar el índice seleccionado para la próxima vez
+    localStorage.setItem('ultimoGradiente', randomIndex.toString());
+    
     const gradienteSeleccionado = gradientes[randomIndex];
 
     // Aplicar el gradiente directamente al body
