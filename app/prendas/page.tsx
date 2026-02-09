@@ -206,21 +206,9 @@ export default function PrendasPage() {
         return;
       }
       
-      // Gestionar tallas: eliminar las que se quitaron, NO permitir agregar nuevas sin insumos
+      // Gestionar tallas: eliminar las que se quitaron y agregar las nuevas
       const tallasAEliminar = tallasAsociadas.filter(t => !tallasSeleccionadas.includes(t));
       const tallasAAgregar = tallasSeleccionadas.filter(t => !tallasAsociadas.includes(t));
-      
-      // VALIDACIÓN CRÍTICA: No permitir agregar nuevas tallas desde edición sin configurar insumos
-      if (tallasAAgregar.length > 0) {
-        setBotonEstado('error');
-        const nombresNuevasTallas = tallas
-          .filter(t => tallasAAgregar.includes(t.id))
-          .map(t => t.nombre)
-          .join(', ');
-        setMensajeError(`❌ No puedes agregar nuevas tallas (${nombresNuevasTallas}) sin configurar sus insumos y precios. Para agregar tallas, ve al módulo de Stock/Insumos después de guardar.`);
-        setTimeout(() => setBotonEstado('normal'), 2000);
-        return;
-      }
       
       // Eliminar costos de tallas que se quitaron
       if (tallasAEliminar.length > 0) {
@@ -236,7 +224,33 @@ export default function PrendasPage() {
         }
       }
       
+      // Agregar costos para nuevas tallas (sin insumos por ahora)
+      if (tallasAAgregar.length > 0) {
+        const costosData = tallasAAgregar.map(talla_id => ({
+          prenda_id: prendaEditando.id,
+          talla_id: talla_id,
+          precio_venta: 0,
+          precio_compra: 0,
+          precio_mayoreo: 0,
+          precio_menudeo: 0,
+          stock_inicial: 0,
+          stock: 0,
+          cantidad_venta: 0,
+          stock_minimo: 0,
+          activo: true,
+        }));
+        
+        const resultadoCreacion = await createMultipleCostos(costosData);
+        if (resultadoCreacion.error) {
+          setBotonEstado('error');
+          setMensajeError(`❌ Error al agregar tallas: ${resultadoCreacion.error}`);
+          setTimeout(() => setBotonEstado('normal'), 2000);
+          return;
+        }
+      }
+      
       setBotonEstado('exito');
+      await refetchCategorias(); // Recargar lista de prendas
       setTimeout(() => {
         setFormData({ nombre: '', codigo: '', descripcion: '', categoria_id: '', activo: true });
         setTallasSeleccionadas([]);
