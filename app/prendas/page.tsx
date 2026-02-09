@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import LayoutWrapper from '@/components/LayoutWrapper';
+import { useAuth } from '@/contexts/AuthContext';
 import { usePrendas } from '@/lib/hooks/usePrendas';
 import { useCategorias } from '@/lib/hooks/useCategorias';
 import { useTallas } from '@/lib/hooks/useTallas';
@@ -67,6 +68,7 @@ const generarCodigo = (nombre: string): string => {
 };
 
 export default function PrendasPage() {
+  const { sucursalActiva } = useAuth();
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [prendaEditando, setPrendaEditando] = useState<Prenda | null>(null);
   const [busqueda, setBusqueda] = useState('');
@@ -226,9 +228,17 @@ export default function PrendasPage() {
       
       // Agregar costos para nuevas tallas (sin insumos por ahora)
       if (tallasAAgregar.length > 0) {
+        if (!sucursalActiva?.id) {
+          setBotonEstado('error');
+          setMensajeError('❌ Error: No hay sucursal activa');
+          setTimeout(() => setBotonEstado('normal'), 2000);
+          return;
+        }
+        
         const costosData = tallasAAgregar.map(talla_id => ({
           prenda_id: prendaEditando.id,
           talla_id: talla_id,
+          sucursal_id: sucursalActiva.id,
           precio_venta: 0,
           precio_compra: 0,
           precio_mayoreo: 0,
@@ -272,9 +282,17 @@ export default function PrendasPage() {
       
       // Crear costos para cada talla seleccionada
       if (nuevaPrenda && tallasSeleccionadas.length > 0) {
+        if (!sucursalActiva?.id) {
+          setBotonEstado('error');
+          setMensajeError('❌ Error: No hay sucursal activa');
+          setTimeout(() => setBotonEstado('normal'), 2000);
+          return;
+        }
+        
         const costosData = tallasSeleccionadas.map(talla_id => ({
           prenda_id: nuevaPrenda.id,
           talla_id: talla_id,
+          sucursal_id: sucursalActiva.id,
           precio_venta: 0,
           precio_compra: 0,
           precio_mayoreo: 0,
