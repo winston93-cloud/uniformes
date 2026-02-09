@@ -87,6 +87,8 @@ export default function TallasPage() {
       orden: talla.orden.toString(),
       activo: talla.activo,
     });
+    setBotonEstado('normal');
+    setMensajeError('');
     setMostrarFormulario(true);
   };
 
@@ -107,6 +109,8 @@ export default function TallasPage() {
     // Calcular el siguiente número de orden automáticamente
     const maxOrden = tallas.length > 0 ? Math.max(...tallas.map(t => t.orden)) : 0;
     setFormData({ nombre: '', orden: (maxOrden + 1).toString(), activo: true });
+    setBotonEstado('normal');
+    setMensajeError('');
     setMostrarFormulario(true);
   };
 

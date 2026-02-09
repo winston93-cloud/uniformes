@@ -96,6 +96,8 @@ export default function CategoriasPrendasPage() {
       nombre: categoria.nombre,
       activo: categoria.activo,
     });
+    setBotonEstado('normal');
+    setMensajeError('');
     setMostrarFormulario(true);
   };
 
@@ -114,6 +116,8 @@ export default function CategoriasPrendasPage() {
   const handleNuevo = () => {
     setCategoriaEditando(null);
     setFormData({ nombre: '', activo: true });
+    setBotonEstado('normal');
+    setMensajeError('');
     setMostrarFormulario(true);
   };
 
