@@ -274,17 +274,17 @@ export default function TallasPage() {
             </form>
           </div>
         )}
-        
-        {!mostrarFormulario && (
-          <div style={{ marginBottom: '1.5rem', textAlign: 'left', maxWidth: '800px', margin: '0 auto 1.5rem auto' }}>
-            <button className="btn btn-primary" onClick={handleNuevo} style={{ width: '200px' }}>
-              ➕ Nueva Talla
-            </button>
-          </div>
-        )}
 
         {/* Tabla de Tallas */}
         <div className="table-container">
+          {!mostrarFormulario && (
+            <div style={{ marginBottom: '1rem', textAlign: 'left', padding: '0 1rem' }}>
+              <button className="btn btn-primary" onClick={handleNuevo} style={{ width: '200px' }}>
+                ➕ Nueva Talla
+              </button>
+            </div>
+          )}
+          
           <table className="table">
             <thead>
               <tr>
