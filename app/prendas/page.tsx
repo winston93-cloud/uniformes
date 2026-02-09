@@ -395,7 +395,7 @@ export default function PrendasPage() {
     <LayoutWrapper>
       <div className="main-container">
         <div style={{ marginBottom: '2rem' }}>
-          <h1 style={{ fontSize: '2.5rem', fontWeight: '700', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.2)', marginBottom: '1rem' }}>
+          <h1 style={{ fontSize: '2.5rem', fontWeight: '700', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.2)', marginBottom: '1rem', textAlign: 'center' }}>
             👕 Gestión de Prendas
           </h1>
         </div>
@@ -439,12 +439,6 @@ export default function PrendasPage() {
             <h2 className="form-title">
               {prendaEditando ? 'Editar Prenda' : 'Nueva Prenda'}
             </h2>
-            
-            {mensajeError && (
-              <div className="alert alert-error" style={{ marginBottom: '1rem' }}>
-                {mensajeError}
-              </div>
-            )}
             
             <form onSubmit={handleSubmit}>
               <div className="form-group">
@@ -770,6 +764,12 @@ export default function PrendasPage() {
                   ❌ Cancelar
                 </button>
               </div>
+              
+              {mensajeError && (
+                <div className="alert alert-error" style={{ marginTop: '1rem' }}>
+                  {mensajeError}
+                </div>
+              )}
             </form>
           </div>
         )}
