@@ -312,20 +312,22 @@ export default function TallasPage() {
                       </span>
                     </td>
                     <td>
-                      <button
-                        className="btn btn-secondary"
-                        style={{ marginRight: '3rem', padding: '0.5rem 1rem' }}
-                        onClick={() => handleEditar(talla)}
-                      >
-                        ✏️ Editar
-                      </button>
-                      <button
-                        className="btn btn-danger"
-                        style={{ padding: '0.5rem 1rem' }}
-                        onClick={() => handleEliminar(talla.id)}
-                      >
-                        🗑️ Eliminar
-                      </button>
+                      <div style={{ display: 'flex', gap: '120px' }}>
+                        <button
+                          className="btn btn-secondary"
+                          style={{ padding: '0.5rem 1rem' }}
+                          onClick={() => handleEditar(talla)}
+                        >
+                          ✏️ Editar
+                        </button>
+                        <button
+                          className="btn btn-danger"
+                          style={{ padding: '0.5rem 1rem' }}
+                          onClick={() => handleEliminar(talla.id)}
+                        >
+                          🗑️ Eliminar
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
