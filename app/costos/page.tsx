@@ -14,7 +14,7 @@ export const dynamic = 'force-dynamic';
 export default function CostosPage() {
   const { sesion } = useAuth();
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
-  const { costos, loading: costosLoading, error, createCosto, createMultipleCostos, getCostosByPrenda, updateCosto } = useCostos(sesion?.sucursal_id);
+  const { costos, loading: costosLoading, error, createCosto, createMultipleCostos, getCostosByPrenda, updateCosto, deleteCosto } = useCostos(sesion?.sucursal_id);
   const { prendas } = usePrendas();
   const { tallas } = useTallas();
   
@@ -258,17 +258,6 @@ export default function CostosPage() {
           <h1 style={{ fontSize: '2.5rem', fontWeight: '700', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.2)', marginBottom: '1rem', textAlign: 'center' }}>
             💰 Costos
           </h1>
-          <button className="btn btn-primary" onClick={() => {
-            setMostrarFormulario(!mostrarFormulario);
-            setBotonEstado('normal');
-            setMensajeError('');
-            if (!mostrarFormulario) {
-              setFormData({ prenda_id: '', tallas_seleccionadas: [], precioCompra: '', precioMayoreo: '', precioMenudeo: '' });
-              setBusquedaPrenda('');
-            }
-          }} style={{ width: '100%', maxWidth: '300px' }}>
-            ➕ Nuevo Costo
-          </button>
         </div>
 
         {error && (
@@ -587,23 +576,6 @@ export default function CostosPage() {
                 {formData.tallas_seleccionadas.length > 0 && (
                   <>
                     <div className="form-group">
-                      <label className="form-label">💰 Precio de Compra</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        className="form-input"
-                        value={formData.precioCompra}
-                        onChange={(e) => setFormData({ ...formData, precioCompra: e.target.value })}
-                        placeholder="$0.00"
-                        style={{ fontSize: '1.1rem', padding: '0.75rem' }}
-                      />
-                      <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
-                        Costo de adquisición de la prenda
-                      </small>
-                    </div>
-
-                    <div className="form-group">
                       <label className="form-label">📦 Precio Mayoreo *</label>
                       <input
                         type="number"
@@ -672,6 +644,20 @@ export default function CostosPage() {
         )}
 
         <div className="table-container">
+          <div style={{ marginBottom: '1rem', textAlign: 'right', padding: '0 1rem' }}>
+            <button className="btn btn-primary" onClick={() => {
+              setMostrarFormulario(!mostrarFormulario);
+              setBotonEstado('normal');
+              setMensajeError('');
+              if (!mostrarFormulario) {
+                setFormData({ prenda_id: '', tallas_seleccionadas: [], precioCompra: '', precioMayoreo: '', precioMenudeo: '' });
+                setBusquedaPrenda('');
+              }
+            }} style={{ minWidth: '200px' }}>
+              ➕ Nuevo Costo
+            </button>
+          </div>
+          
           <table className="table">
             <thead>
               <tr>
@@ -705,13 +691,30 @@ export default function CostosPage() {
                       ${(costo.precio_menudeo || 0).toFixed(2)}
                     </td>
                     <td>
-                      <button 
-                        className="btn btn-secondary" 
-                        style={{ padding: '0.5rem 1rem' }}
-                        onClick={() => handleEditarCosto(costo)}
-                      >
-                        ✏️ Editar
-                      </button>
+                      <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
+                        <button 
+                          className="btn btn-secondary" 
+                          style={{ padding: '0.5rem 1rem' }}
+                          onClick={() => handleEditarCosto(costo)}
+                        >
+                          ✏️ Editar
+                        </button>
+                        <button
+                          className="btn btn-danger"
+                          style={{ padding: '0.5rem 1rem' }}
+                          onClick={async () => {
+                            if (confirm('⚠️ ¿Estás seguro de eliminar este costo? Esta acción NO se puede deshacer.')) {
+                              const { error } = await deleteCosto(costo.id);
+                              if (error) {
+                                setMensajeError(`❌ Error al eliminar: ${error}`);
+                                setModalErrorAbierto(true);
+                              }
+                            }
+                          }}
+                        >
+                          🗑️ Eliminar
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -747,23 +750,6 @@ export default function CostosPage() {
               
               <form onSubmit={handleGuardarEdicion}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem' }}>
-                  <div className="form-group">
-                    <label className="form-label">💰 Precio de Compra</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      className="form-input"
-                      value={formDataEdicion.precioCompra}
-                      onChange={(e) => setFormDataEdicion({ ...formDataEdicion, precioCompra: e.target.value })}
-                      placeholder="$0.00"
-                      style={{ fontSize: '1.1rem', padding: '0.75rem' }}
-                    />
-                    <small style={{ color: '#888', fontSize: '0.875rem', marginTop: '0.25rem', display: 'block' }}>
-                      Costo de adquisición de la prenda
-                    </small>
-                  </div>
-                  
                   <div className="form-group">
                     <label className="form-label">📦 Precio Mayoreo *</label>
                     <input
