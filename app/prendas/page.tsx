@@ -279,27 +279,40 @@ export default function PrendasPage() {
         return;
       }
       
-      // Crear costos para cada talla seleccionada
+      // Crear costos para cada talla seleccionada en TODAS las sucursales
       if (nuevaPrenda && tallasSeleccionadas.length > 0) {
-        if (!sesion?.sucursal_id) {
-          setMensajeError('❌ Error: No hay sucursal activa');
+        // Obtener todas las sucursales
+        const { data: sucursales, error: sucursalesError } = await supabase
+          .from('sucursales')
+          .select('id')
+          .eq('activo', true);
+        
+        if (sucursalesError || !sucursales || sucursales.length === 0) {
+          setMensajeError('❌ Error: No se pudieron cargar las sucursales');
+          setModalErrorAbierto(true);
           return;
         }
         
-        const costosData = tallasSeleccionadas.map(talla_id => ({
-          prenda_id: nuevaPrenda.id,
-          talla_id: talla_id,
-          sucursal_id: sesion.sucursal_id,
-          precio_venta: 0,
-          precio_compra: 0,
-          precio_mayoreo: 0,
-          precio_menudeo: 0,
-          stock_inicial: 0,
-          stock: 0,
-          cantidad_venta: 0,
-          stock_minimo: 0,
-          activo: true,
-        }));
+        // Crear costos para cada combinación de talla x sucursal
+        const costosData = [];
+        for (const sucursal of sucursales) {
+          for (const talla_id of tallasSeleccionadas) {
+            costosData.push({
+              prenda_id: nuevaPrenda.id,
+              talla_id: talla_id,
+              sucursal_id: sucursal.id,
+              precio_venta: 0,
+              precio_compra: 0,
+              precio_mayoreo: 0,
+              precio_menudeo: 0,
+              stock_inicial: 0,
+              stock: 0,
+              cantidad_venta: 0,
+              stock_minimo: 0,
+              activo: true,
+            });
+          }
+        }
         
         await createMultipleCostos(costosData);
       }
