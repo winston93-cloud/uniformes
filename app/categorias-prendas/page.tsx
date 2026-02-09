@@ -125,9 +125,6 @@ export default function CategoriasPrendasPage() {
           <h1 style={{ fontSize: '2.5rem', fontWeight: '700', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.2)', marginBottom: '1rem' }}>
             🏷️ Gestión de Categorías de Prendas
           </h1>
-          <button className="btn btn-primary" onClick={handleNuevo} style={{ width: '100%', maxWidth: '300px' }}>
-            ➕ Nueva Categoría
-          </button>
         </div>
 
         {/* Input de búsqueda */}
@@ -236,6 +233,14 @@ export default function CategoriasPrendasPage() {
 
         {/* Tabla de Categorías */}
         <div className="table-container">
+          {!mostrarFormulario && (
+            <div style={{ marginBottom: '1rem', textAlign: 'right', padding: '0 1rem' }}>
+              <button className="btn btn-primary" onClick={handleNuevo} style={{ width: '200px' }}>
+                ➕ Nueva Categoría
+              </button>
+            </div>
+          )}
+          
           <table className="table">
             <thead>
               <tr>
@@ -261,20 +266,22 @@ export default function CategoriasPrendasPage() {
                       </span>
                     </td>
                     <td>
-                      <button
-                        className="btn btn-secondary"
-                        style={{ marginRight: '0.5rem', padding: '0.5rem 1rem' }}
-                        onClick={() => handleEditar(categoria)}
-                      >
-                        ✏️ Editar
-                      </button>
-                      <button
-                        className="btn btn-danger"
-                        style={{ padding: '0.5rem 1rem' }}
-                        onClick={() => handleEliminar(categoria.id)}
-                      >
-                        🗑️ Eliminar
-                      </button>
+                      <div style={{ display: 'flex', gap: '113px' }}>
+                        <button
+                          className="btn btn-secondary"
+                          style={{ padding: '0.5rem 1rem' }}
+                          onClick={() => handleEditar(categoria)}
+                        >
+                          ✏️ Editar
+                        </button>
+                        <button
+                          className="btn btn-danger"
+                          style={{ padding: '0.5rem 1rem' }}
+                          onClick={() => handleEliminar(categoria.id)}
+                        >
+                          🗑️ Eliminar
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
