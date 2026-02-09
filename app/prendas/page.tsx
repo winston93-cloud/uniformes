@@ -363,24 +363,6 @@ export default function PrendasPage() {
           <h1 style={{ fontSize: '2.5rem', fontWeight: '700', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.2)', marginBottom: '1rem' }}>
             👕 Gestión de Prendas
           </h1>
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-            <button 
-              className="btn btn-secondary" 
-              onClick={() => window.location.href = '/categorias-prendas'}
-              style={{ backgroundColor: '#6c757d', borderColor: '#6c757d', flex: '1', minWidth: '200px' }}
-            >
-              🏷️ Gestionar Categorías
-            </button>
-            <button className="btn btn-primary" onClick={() => {
-              setPrendaEditando(null);
-              setFormData({ nombre: '', codigo: '', descripcion: '', categoria_id: '', activo: true });
-              setTallasSeleccionadas([]);
-              setTallasAsociadas([]);
-              setMostrarFormulario(true);
-            }} style={{ flex: '1', minWidth: '200px' }}>
-              ➕ Nueva Prenda
-            </button>
-          </div>
         </div>
 
         {/* Input de búsqueda */}
@@ -751,6 +733,27 @@ export default function PrendasPage() {
         )}
 
         <div className="table-container">
+          {!mostrarFormulario && (
+            <div style={{ marginBottom: '1rem', textAlign: 'right', padding: '0 1rem', display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+              <button 
+                className="btn btn-secondary" 
+                onClick={() => window.location.href = '/categorias-prendas'}
+                style={{ backgroundColor: '#6c757d', borderColor: '#6c757d', minWidth: '200px' }}
+              >
+                🏷️ Gestionar Categorías
+              </button>
+              <button className="btn btn-primary" onClick={() => {
+                setPrendaEditando(null);
+                setFormData({ nombre: '', codigo: '', descripcion: '', categoria_id: '', activo: true });
+                setTallasSeleccionadas([]);
+                setTallasAsociadas([]);
+                setMostrarFormulario(true);
+              }} style={{ minWidth: '200px' }}>
+                ➕ Nueva Prenda
+              </button>
+            </div>
+          )}
+          
           <table className="table">
             <thead>
               <tr>
@@ -782,20 +785,22 @@ export default function PrendasPage() {
                       </span>
                     </td>
                     <td>
-                      <button
-                        className="btn btn-secondary"
-                        style={{ marginRight: '0.5rem', padding: '0.5rem 1rem' }}
-                        onClick={() => handleEditar(prenda)}
-                      >
-                        ✏️ Editar
-                      </button>
-                      <button
-                        className="btn btn-danger"
-                        style={{ padding: '0.5rem 1rem' }}
-                        onClick={() => handleEliminar(prenda.id)}
-                      >
-                        🗑️ Eliminar
-                      </button>
+                      <div style={{ display: 'flex', gap: '113px' }}>
+                        <button
+                          className="btn btn-secondary"
+                          style={{ padding: '0.5rem 1rem' }}
+                          onClick={() => handleEditar(prenda)}
+                        >
+                          ✏️ Editar
+                        </button>
+                        <button
+                          className="btn btn-danger"
+                          style={{ padding: '0.5rem 1rem' }}
+                          onClick={() => handleEliminar(prenda.id)}
+                        >
+                          🗑️ Eliminar
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
