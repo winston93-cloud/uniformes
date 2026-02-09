@@ -12,6 +12,7 @@ export default function TallasPage() {
   const [tallaEditando, setTallaEditando] = useState<Talla | null>(null);
   const [busqueda, setBusqueda] = useState('');
   const [botonEstado, setBotonEstado] = useState<'normal' | 'exito' | 'error'>('normal');
+  const [mensajeError, setMensajeError] = useState<string>('');
   const inputBusquedaRef = useRef<HTMLInputElement>(null);
   const { tallas, loading, error, createTalla, updateTalla, deleteTalla } = useTallas();
 
@@ -24,9 +25,10 @@ export default function TallasPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setBotonEstado('normal');
+    setMensajeError('');
     
     const tallaData = {
-      nombre: formData.nombre,
+      nombre: formData.nombre.trim(),
       orden: parseInt(formData.orden),
       activo: formData.activo,
     };
@@ -35,6 +37,11 @@ export default function TallasPage() {
       const { error } = await updateTalla(tallaEditando.id, tallaData);
       if (error) {
         setBotonEstado('error');
+        if (error.includes('duplicate') || error.includes('unique') || error.includes('already exists')) {
+          setMensajeError(`❌ Ya existe una talla con el nombre "${tallaData.nombre}"`);
+        } else {
+          setMensajeError(`❌ Error al actualizar: ${error}`);
+        }
         return;
       }
       setBotonEstado('exito');
@@ -43,6 +50,7 @@ export default function TallasPage() {
         setMostrarFormulario(false);
         setTallaEditando(null);
         setBotonEstado('normal');
+        setMensajeError('');
         setTimeout(() => {
           inputBusquedaRef.current?.focus();
         }, 100);
@@ -51,6 +59,11 @@ export default function TallasPage() {
       const { error } = await createTalla(tallaData);
       if (error) {
         setBotonEstado('error');
+        if (error.includes('duplicate') || error.includes('unique') || error.includes('already exists')) {
+          setMensajeError(`❌ Ya existe una talla con el nombre "${tallaData.nombre}"`);
+        } else {
+          setMensajeError(`❌ Error al crear: ${error}`);
+        }
         return;
       }
       setBotonEstado('exito');
@@ -59,6 +72,7 @@ export default function TallasPage() {
         setMostrarFormulario(false);
         setTallaEditando(null);
         setBotonEstado('normal');
+        setMensajeError('');
         setTimeout(() => {
           inputBusquedaRef.current?.focus();
         }, 100);
@@ -131,9 +145,6 @@ export default function TallasPage() {
           <h1 style={{ fontSize: '2.5rem', fontWeight: '700', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.2)', marginBottom: '1rem' }}>
             📏 Gestión de Tallas
           </h1>
-          <button className="btn btn-primary" onClick={handleNuevo} style={{ width: '100%', maxWidth: '300px' }}>
-            ➕ Nueva Talla
-          </button>
         </div>
 
         {/* Input de búsqueda */}
@@ -176,6 +187,12 @@ export default function TallasPage() {
             <h2 className="form-title">
               {tallaEditando ? 'Editar Talla' : 'Nueva Talla'}
             </h2>
+            
+            {mensajeError && (
+              <div className="alert alert-error" style={{ marginBottom: '1rem' }}>
+                {mensajeError}
+              </div>
+            )}
             
             <form onSubmit={handleSubmit}>
               <div className="form-group">
@@ -244,6 +261,7 @@ export default function TallasPage() {
                     setMostrarFormulario(false);
                     setTallaEditando(null);
                     setFormData({ nombre: '', orden: '', activo: true });
+                    setMensajeError('');
                     // Volver a poner focus en el input de búsqueda
                     setTimeout(() => {
                       inputBusquedaRef.current?.focus();
@@ -254,6 +272,14 @@ export default function TallasPage() {
                 </button>
               </div>
             </form>
+          </div>
+        )}
+        
+        {!mostrarFormulario && (
+          <div style={{ marginBottom: '1.5rem', textAlign: 'left', maxWidth: '800px', margin: '0 auto 1.5rem auto' }}>
+            <button className="btn btn-primary" onClick={handleNuevo} style={{ width: '200px' }}>
+              ➕ Nueva Talla
+            </button>
           </div>
         )}
 
