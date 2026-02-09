@@ -460,12 +460,33 @@ export default function PrendasPage() {
         )}
 
         {mostrarFormulario && (
-          <div className="form-container">
-            <h2 className="form-title">
-              {prendaEditando ? 'Editar Prenda' : 'Nueva Prenda'}
-            </h2>
-            
-            <form onSubmit={handleSubmit}>
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 1000,
+            padding: '1rem',
+            overflowY: 'auto'
+          }}>
+            <div className="form-container" style={{
+              maxWidth: '900px',
+              width: '100%',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              margin: '2rem auto',
+              position: 'relative'
+            }}>
+              <h2 className="form-title">
+                {prendaEditando ? 'Editar Prenda' : 'Nueva Prenda'}
+              </h2>
+              
+              <form onSubmit={handleSubmit}>
               <div className="form-group">
                 <label className="form-label">Nombre de la Prenda *</label>
                 <input
@@ -801,13 +822,13 @@ export default function PrendasPage() {
                 </div>
               )}
             </form>
+            </div>
           </div>
         )}
 
         <div className="table-container">
-          {!mostrarFormulario && (
-            <div style={{ marginBottom: '1rem', textAlign: 'right', padding: '0 1rem', display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-              <button 
+          <div style={{ marginBottom: '1rem', textAlign: 'right', padding: '0 1rem', display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+            <button 
                 className="btn btn-secondary" 
                 onClick={() => window.location.href = '/categorias-prendas'}
                 style={{ backgroundColor: '#6c757d', borderColor: '#6c757d', minWidth: '200px' }}
@@ -823,8 +844,7 @@ export default function PrendasPage() {
               }} style={{ minWidth: '200px' }}>
                 ➕ Nueva Prenda
               </button>
-            </div>
-          )}
+          </div>
           
           <table className="table">
             <thead>
