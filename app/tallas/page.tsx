@@ -195,7 +195,7 @@ export default function TallasPage() {
                   type="text"
                   className="form-input"
                   value={formData.nombre}
-                  onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, nombre: e.target.value.toUpperCase() })}
                   placeholder="Ej: XS, S, M, L, XL, 6, 8, 10, etc."
                   required
                 />

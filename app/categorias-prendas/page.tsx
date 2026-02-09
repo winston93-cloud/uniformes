@@ -201,8 +201,8 @@ export default function CategoriasPrendasPage() {
                   type="text"
                   className="form-input"
                   value={formData.nombre}
-                  onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                  placeholder="Ej: Camisas, Pantalones, Suéteres, etc."
+                  onChange={(e) => setFormData({ ...formData, nombre: e.target.value.toUpperCase() })}
+                  placeholder="Ej: CAMISAS, PANTALONES, SUÉTERES, etc."
                   required
                 />
               </div>
