@@ -69,6 +69,34 @@ export function usePrendas() {
 
   const deletePrenda = async (id: string) => {
     try {
+      // 1. Obtener todos los costos de la prenda
+      const { data: costos, error: costosError } = await supabase
+        .from('costos')
+        .select('id')
+        .eq('prenda_id', id);
+
+      if (costosError) throw costosError;
+
+      // 2. Si hay costos, eliminar todos los detalle_pedidos asociados
+      if (costos && costos.length > 0) {
+        const costosIds = costos.map(c => c.id);
+        const { error: detalleError } = await supabase
+          .from('detalle_pedidos')
+          .delete()
+          .in('costo_id', costosIds);
+
+        if (detalleError) throw detalleError;
+      }
+
+      // 3. Eliminar los costos de la prenda
+      const { error: costosDelError } = await supabase
+        .from('costos')
+        .delete()
+        .eq('prenda_id', id);
+
+      if (costosDelError) throw costosDelError;
+
+      // 4. Finalmente eliminar la prenda
       const { error } = await supabase
         .from('prendas')
         .delete()

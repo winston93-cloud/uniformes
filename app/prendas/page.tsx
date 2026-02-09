@@ -323,14 +323,12 @@ export default function PrendasPage() {
   };
 
   const handleEliminar = async (id: string) => {
-    if (confirm('¿Deseas desactivar esta prenda? Se ocultará pero mantendrá el historial de pedidos.')) {
-      // Soft delete: marcar como inactiva en lugar de eliminar
-      const { error } = await updatePrenda(id, { activo: false });
+    if (confirm('⚠️ ¿Estás seguro de eliminar esta prenda? Se eliminará TODA su información incluyendo historial de pedidos. Esta acción NO se puede deshacer.')) {
+      const { error } = await deletePrenda(id);
       if (error) {
-        console.error('Error al desactivar prenda:', error);
-        alert(`❌ Error al desactivar: ${error}`);
+        console.error('Error al eliminar prenda:', error);
+        alert(`❌ Error al eliminar: ${error}`);
       } else {
-        // Volver a poner focus en el input de búsqueda
         setTimeout(() => {
           inputBusquedaRef.current?.focus();
         }, 100);
