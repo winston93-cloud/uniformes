@@ -38,19 +38,17 @@ export default function BackgroundGradient() {
       }
     ];
 
-    // Obtener el último gradiente usado (para evitar repetir)
+    // Obtener el último índice usado para el carrusel
     const ultimoIndex = parseInt(localStorage.getItem('ultimoGradiente') || '-1');
     
-    // Seleccionar un gradiente aleatorio DIFERENTE al anterior
-    let randomIndex;
-    do {
-      randomIndex = Math.floor(Math.random() * gradientes.length);
-    } while (randomIndex === ultimoIndex && gradientes.length > 1);
+    // Siguiente gradiente en el carrusel (secuencial)
+    const siguienteIndex = (ultimoIndex + 1) % gradientes.length;
     
-    // Guardar el índice seleccionado para la próxima vez
-    localStorage.setItem('ultimoGradiente', randomIndex.toString());
+    // Guardar el índice para la próxima recarga
+    localStorage.setItem('ultimoGradiente', siguienteIndex.toString());
     
-    const gradienteSeleccionado = gradientes[randomIndex];
+    const gradienteSeleccionado = gradientes[siguienteIndex];
+    const currentIndex = siguienteIndex;
 
     // Aplicar el gradiente directamente al body
     const body = document.body;
@@ -68,7 +66,7 @@ export default function BackgroundGradient() {
       'Primavera (Rosa-Amarillo-Verde)',
       'Océano Profundo (Azul-Turquesa-Cyan)'
     ];
-    console.log(`🎨 Gradiente ${randomIndex + 1}/5 aplicado: ${nombres[randomIndex]}`);
+    console.log(`🎨 Carrusel ${currentIndex + 1}/5: ${nombres[currentIndex]}`);
     console.log(`📊 Colores: ${gradienteSeleccionado.start} → ${gradienteSeleccionado.middle} → ${gradienteSeleccionado.end}`);
   }, []); // Solo se ejecuta una vez al montar
 
