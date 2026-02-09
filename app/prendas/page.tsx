@@ -333,6 +333,10 @@ export default function PrendasPage() {
       activo: prenda.activo,
     });
     
+    // Resetear estados de UI
+    setBotonEstado('normal');
+    setMensajeError('');
+    
     // Cargar tallas asociadas
     const { data: costos } = await getCostosByPrenda(prenda.id);
     if (costos) {
@@ -840,6 +844,8 @@ export default function PrendasPage() {
                 setFormData({ nombre: '', codigo: '', descripcion: '', categoria_id: '', activo: true });
                 setTallasSeleccionadas([]);
                 setTallasAsociadas([]);
+                setBotonEstado('normal');
+                setMensajeError('');
                 setMostrarFormulario(true);
               }} style={{ minWidth: '200px' }}>
                 ➕ Nueva Prenda
