@@ -74,6 +74,7 @@ export default function PrendasPage() {
   const [busqueda, setBusqueda] = useState('');
   const [botonEstado, setBotonEstado] = useState<'normal' | 'exito' | 'error'>('normal');
   const [mensajeError, setMensajeError] = useState<string>('');
+  const [modalErrorAbierto, setModalErrorAbierto] = useState(false);
   const inputBusquedaRef = useRef<HTMLInputElement>(null);
   const { prendas, loading, error, createPrenda, updatePrenda, deletePrenda } = usePrendas();
   const { categorias, loading: loadingCategorias, refetch: refetchCategorias } = useCategorias();
@@ -158,6 +159,7 @@ export default function PrendasPage() {
     // Validar que se haya seleccionado al menos una talla
     if (tallasSeleccionadas.length === 0) {
       setMensajeError('❌ Por favor selecciona al menos una talla para la prenda');
+      setModalErrorAbierto(true);
       return;
     }
     
@@ -177,6 +179,7 @@ export default function PrendasPage() {
 
     if (nombreExiste) {
       setMensajeError(`❌ Ya existe una prenda con el nombre "${prendaData.nombre}"`);
+      setModalErrorAbierto(true);
       return;
     }
 
@@ -189,6 +192,7 @@ export default function PrendasPage() {
 
       if (codigoExiste) {
         setMensajeError(`❌ Ya existe una prenda con el código "${prendaData.codigo}"`);
+        setModalErrorAbierto(true);
         return;
       }
     }
@@ -201,6 +205,7 @@ export default function PrendasPage() {
         } else {
           setMensajeError(`❌ Error al actualizar: ${error}`);
         }
+        setModalErrorAbierto(true);
         return;
       }
       
@@ -247,6 +252,7 @@ export default function PrendasPage() {
         const resultadoCreacion = await createMultipleCostos(costosData);
         if (resultadoCreacion.error) {
           setMensajeError(`❌ Error al agregar tallas: ${resultadoCreacion.error}`);
+          setModalErrorAbierto(true);
           return;
         }
       }
@@ -269,6 +275,7 @@ export default function PrendasPage() {
       const { data: nuevaPrenda, error } = await createPrenda(prendaData);
       if (error) {
         setMensajeError(`❌ Error al crear prenda: ${error}`);
+        setModalErrorAbierto(true);
         return;
       }
       
@@ -807,12 +814,6 @@ export default function PrendasPage() {
                   ❌ Cancelar
                 </button>
               </div>
-              
-              {mensajeError && (
-                <div className="alert alert-error" style={{ marginTop: '1rem' }}>
-                  {mensajeError}
-                </div>
-              )}
             </form>
             </div>
           </div>
@@ -921,6 +922,73 @@ export default function PrendasPage() {
           tallaId={tallaSeleccionadaModal.id}
           tallaNombre={tallaSeleccionadaModal.nombre}
         />
+      )}
+
+      {/* Modal de Error */}
+      {modalErrorAbierto && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 2000,
+          padding: '1rem'
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            padding: '2rem',
+            maxWidth: '500px',
+            width: '100%',
+            boxShadow: '0 10px 40px rgba(0,0,0,0.3)'
+          }}>
+            <h3 style={{ 
+              color: '#dc3545', 
+              marginBottom: '1rem',
+              fontSize: '1.5rem',
+              fontWeight: '700'
+            }}>
+              Error
+            </h3>
+            <p style={{ 
+              color: '#333', 
+              marginBottom: '2rem',
+              fontSize: '1.1rem',
+              lineHeight: '1.5'
+            }}>
+              {mensajeError}
+            </p>
+            <button 
+              className="btn btn-primary"
+              onClick={() => {
+                setModalErrorAbierto(false);
+                setMensajeError('');
+                setMostrarFormulario(false);
+                setPrendaEditando(null);
+                setFormData({ nombre: '', codigo: '', descripcion: '', categoria_id: '', activo: true });
+                setTallasSeleccionadas([]);
+                setTallasAsociadas([]);
+                setBotonEstado('normal');
+                setTimeout(() => {
+                  inputBusquedaRef.current?.focus();
+                }, 100);
+              }}
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                fontSize: '1rem',
+                fontWeight: '600'
+              }}
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
       )}
     </LayoutWrapper>
   );
