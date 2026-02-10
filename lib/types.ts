@@ -141,6 +141,8 @@ export interface Insumo {
   descripcion: string | null;
   presentacion_id: string;
   cantidad_por_presentacion: number; // ej: 500 botones en una bolsa
+  stock_inicial?: number; // Stock inicial del insumo
+  stock?: number; // Stock actual del insumo
   stock_minimo?: number; // Cantidad mínima de stock para alertas
   activo: boolean;
   created_at?: string;

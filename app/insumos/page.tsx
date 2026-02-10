@@ -55,6 +55,7 @@ export default function InsumosPage() {
     descripcion: '',
     presentacion_id: '',
     cantidad_por_presentacion: '',
+    stock_inicial: '',
     stock_minimo: '',
     activo: true,
   });
@@ -69,6 +70,8 @@ export default function InsumosPage() {
       descripcion: formData.descripcion || null,
       presentacion_id: formData.presentacion_id,
       cantidad_por_presentacion: parseFloat(formData.cantidad_por_presentacion) || 0,
+      stock_inicial: parseFloat(formData.stock_inicial) || 0,
+      stock: parseFloat(formData.stock_inicial) || 0, // Stock actual = stock inicial
       stock_minimo: parseFloat(formData.stock_minimo) || 0,
       activo: formData.activo,
     };
@@ -85,7 +88,7 @@ export default function InsumosPage() {
       setTimeout(() => {
         setModalExitoAbierto(false);
         setMensajeExito('');
-        setFormData({ nombre: '', codigo: '', descripcion: '', presentacion_id: '', cantidad_por_presentacion: '', stock_minimo: '', activo: true });
+        setFormData({ nombre: '', codigo: '', descripcion: '', presentacion_id: '', cantidad_por_presentacion: '', stock_inicial: '', stock_minimo: '', activo: true });
         setMostrarFormulario(false);
         setInsumoEditando(null);
         setBotonEstado('normal');
@@ -105,7 +108,7 @@ export default function InsumosPage() {
       setTimeout(() => {
         setModalExitoAbierto(false);
         setMensajeExito('');
-        setFormData({ nombre: '', codigo: '', descripcion: '', presentacion_id: '', cantidad_por_presentacion: '', stock_minimo: '', activo: true });
+        setFormData({ nombre: '', codigo: '', descripcion: '', presentacion_id: '', cantidad_por_presentacion: '', stock_inicial: '', stock_minimo: '', activo: true });
         setMostrarFormulario(false);
         setInsumoEditando(null);
         setBotonEstado('normal');
@@ -124,6 +127,7 @@ export default function InsumosPage() {
       descripcion: insumo.descripcion || '',
       presentacion_id: insumo.presentacion_id,
       cantidad_por_presentacion: insumo.cantidad_por_presentacion.toString(),
+      stock_inicial: insumo.stock_inicial?.toString() || '0',
       stock_minimo: insumo.stock_minimo?.toString() || '0',
       activo: insumo.activo,
     });
@@ -341,7 +345,27 @@ export default function InsumosPage() {
               </div>
 
               <div className="form-group">
-                <label className="form-label">📦 Stock Mínimo *</label>
+                <label className="form-label">📦 Stock Inicial *</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  className="form-input"
+                  value={formData.stock_inicial}
+                  onChange={(e) => setFormData({ ...formData, stock_inicial: e.target.value })}
+                  placeholder="Ej: 100.00"
+                  required
+                  min="0"
+                  style={{
+                    borderLeft: '4px solid #3b82f6',
+                  }}
+                />
+                <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
+                  Cantidad inicial de insumo disponible (usado para calcular el stock actual)
+                </small>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">⚠️ Stock Mínimo *</label>
                 <input
                   type="number"
                   step="0.01"
@@ -356,7 +380,7 @@ export default function InsumosPage() {
                   }}
                 />
                 <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
-                  ⚠️ Cuando el stock actual caiga por debajo de este valor, se generará una <strong>alerta automática</strong> en el dashboard
+                  Cuando el stock actual caiga por debajo de este valor, se generará una <strong>alerta automática</strong> en el dashboard
                 </small>
               </div>
 
@@ -404,7 +428,7 @@ export default function InsumosPage() {
                   onClick={() => {
                     setMostrarFormulario(false);
                     setInsumoEditando(null);
-                    setFormData({ nombre: '', codigo: '', descripcion: '', presentacion_id: '', cantidad_por_presentacion: '', stock_minimo: '', activo: true });
+                    setFormData({ nombre: '', codigo: '', descripcion: '', presentacion_id: '', cantidad_por_presentacion: '', stock_inicial: '', stock_minimo: '', activo: true });
                     setTimeout(() => {
                       inputBusquedaRef.current?.focus();
                     }, 100);
@@ -516,7 +540,7 @@ export default function InsumosPage() {
                   setMensajeError('');
                   setMostrarFormulario(false);
                   setInsumoEditando(null);
-                  setFormData({ nombre: '', codigo: '', descripcion: '', presentacion_id: '', cantidad_por_presentacion: '', stock_minimo: '', activo: true });
+                  setFormData({ nombre: '', codigo: '', descripcion: '', presentacion_id: '', cantidad_por_presentacion: '', stock_inicial: '', stock_minimo: '', activo: true });
                   setBotonEstado('normal');
                 }}
               >
