@@ -101,6 +101,8 @@ export default function PrendasPage() {
     stock_inicial: '',
     stock_minimo: ''
   });
+  const [mensajeExitoStock, setMensajeExitoStock] = useState<string>('');
+  const [modalExitoStockAbierto, setModalExitoStockAbierto] = useState(false);
   
   useEffect(() => {
     const cargarTodasCategorias = async () => {
@@ -115,6 +117,39 @@ export default function PrendasPage() {
       refetchCategorias();
     }
   }, [mostrarFormulario]);
+
+  // Cargar valores de stock cuando se abre el modal
+  useEffect(() => {
+    const cargarStockExistente = async () => {
+      if (modalStockAbierto && prendaEditando && tallaSeleccionadaStock && sesion?.sucursal_id) {
+        try {
+          const { data: costoExistente } = await supabase
+            .from('costos')
+            .select('stock_inicial, stock_minimo')
+            .eq('prenda_id', prendaEditando.id)
+            .eq('talla_id', tallaSeleccionadaStock.id)
+            .eq('sucursal_id', sesion.sucursal_id)
+            .single();
+
+          if (costoExistente) {
+            setStockData({
+              stock_inicial: costoExistente.stock_inicial?.toString() || '',
+              stock_minimo: costoExistente.stock_minimo?.toString() || ''
+            });
+          } else {
+            setStockData({
+              stock_inicial: '',
+              stock_minimo: ''
+            });
+          }
+        } catch (err) {
+          console.error('Error cargando stock:', err);
+        }
+      }
+    };
+
+    cargarStockExistente();
+  }, [modalStockAbierto, prendaEditando, tallaSeleccionadaStock, sesion?.sucursal_id]);
 
   // Cargar conteo de insumos por talla cuando se edita una prenda
   useEffect(() => {
@@ -1073,12 +1108,18 @@ export default function PrendasPage() {
 
                 if (errorActualizacion) throw errorActualizacion;
 
-                // Cerrar modal y limpiar
-                setModalStockAbierto(false);
-                setTallaSeleccionadaStock(null);
-                setStockData({ stock_inicial: '', stock_minimo: '' });
+                // Mostrar modal de éxito
+                setMensajeExitoStock('✅ Stock configurado correctamente');
+                setModalExitoStockAbierto(true);
                 
-                alert('✅ Stock configurado correctamente');
+                // Cerrar después de 2 segundos
+                setTimeout(() => {
+                  setModalExitoStockAbierto(false);
+                  setMensajeExitoStock('');
+                  setModalStockAbierto(false);
+                  setTallaSeleccionadaStock(null);
+                  setStockData({ stock_inicial: '', stock_minimo: '' });
+                }, 2000);
               } catch (err: any) {
                 setMensajeError(`❌ Error al configurar stock: ${err.message}`);
                 setModalErrorAbierto(true);
@@ -1252,6 +1293,36 @@ export default function PrendasPage() {
             >
               Cerrar
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Éxito Stock */}
+      {modalExitoStockAbierto && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 3000
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: '2rem',
+            borderRadius: '8px',
+            maxWidth: '500px',
+            width: '90%',
+            textAlign: 'center'
+          }}>
+            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>✅</div>
+            <p style={{ marginBottom: '1.5rem', fontSize: '1.1rem', color: '#28a745', fontWeight: '600' }}>
+              {mensajeExitoStock}
+            </p>
           </div>
         </div>
       )}
