@@ -41,6 +41,8 @@ export default function InsumosPage() {
   const [insumoEditando, setInsumoEditando] = useState<Insumo | null>(null);
   const [busqueda, setBusqueda] = useState('');
   const [botonEstado, setBotonEstado] = useState<'normal' | 'exito' | 'error'>('normal');
+  const [mensajeError, setMensajeError] = useState<string>('');
+  const [modalErrorAbierto, setModalErrorAbierto] = useState(false);
   const inputBusquedaRef = useRef<HTMLInputElement>(null);
   const { insumos, loading, error, createInsumo, updateInsumo, deleteInsumo } = useInsumos();
   const { presentaciones, loading: loadingPresentaciones } = usePresentaciones();
@@ -72,7 +74,8 @@ export default function InsumosPage() {
     if (insumoEditando) {
       const { error } = await updateInsumo(insumoEditando.id, insumoData);
       if (error) {
-        setBotonEstado('error');
+        setMensajeError(`❌ Error al actualizar: ${error}`);
+        setModalErrorAbierto(true);
         return;
       }
       setBotonEstado('exito');
@@ -88,7 +91,8 @@ export default function InsumosPage() {
     } else {
       const { error } = await createInsumo(insumoData);
       if (error) {
-        setBotonEstado('error');
+        setMensajeError(`❌ Error al crear: ${error}`);
+        setModalErrorAbierto(true);
         return;
       }
       setBotonEstado('exito');
@@ -115,6 +119,8 @@ export default function InsumosPage() {
       stock_minimo: insumo.stock_minimo?.toString() || '0',
       activo: insumo.activo,
     });
+    setBotonEstado('normal');
+    setMensajeError('');
     setMostrarFormulario(true);
   };
 
@@ -132,16 +138,19 @@ export default function InsumosPage() {
   const handleNuevo = () => {
     setInsumoEditando(null);
     setFormData({ nombre: '', codigo: '', descripcion: '', presentacion_id: '', cantidad_por_presentacion: '', stock_minimo: '', activo: true });
+    setBotonEstado('normal');
+    setMensajeError('');
     setMostrarFormulario(true);
   };
 
   // Manejar cambio en el nombre para generar código automático
   const handleNombreChange = (nombre: string) => {
-    if (!insumoEditando && nombre) {
-      const codigoGenerado = generarCodigo(nombre, insumos);
-      setFormData({ ...formData, nombre, codigo: codigoGenerado });
+    const nombreMayusculas = nombre.toUpperCase();
+    if (!insumoEditando && nombreMayusculas) {
+      const codigoGenerado = generarCodigo(nombreMayusculas, insumos);
+      setFormData({ ...formData, nombre: nombreMayusculas, codigo: codigoGenerado });
     } else {
-      setFormData({ ...formData, nombre });
+      setFormData({ ...formData, nombre: nombreMayusculas });
     }
   };
 
@@ -179,12 +188,9 @@ export default function InsumosPage() {
     <LayoutWrapper>
       <div className="main-container">
         <div style={{ marginBottom: '2rem' }}>
-          <h1 style={{ fontSize: '2.5rem', fontWeight: '700', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.2)', marginBottom: '1rem' }}>
+          <h1 style={{ fontSize: '2.5rem', fontWeight: '700', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.2)', marginBottom: '1rem', textAlign: 'center' }}>
             🧵 Catálogo de Insumos
           </h1>
-          <button className="btn btn-primary" onClick={handleNuevo} style={{ width: '100%', maxWidth: '300px' }}>
-            ➕ Nuevo Insumo
-          </button>
         </div>
 
         {/* Input de búsqueda */}
@@ -221,14 +227,35 @@ export default function InsumosPage() {
           </div>
         )}
 
-        {/* Formulario */}
+        {/* Formulario Modal */}
         {mostrarFormulario && (
-          <div className="form-container">
-            <h2 className="form-title">
-              {insumoEditando ? 'Editar Insumo' : 'Nuevo Insumo'}
-            </h2>
-            
-            <form onSubmit={handleSubmit}>
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 1000,
+            padding: '1rem',
+            overflowY: 'auto'
+          }}>
+            <div className="form-container" style={{
+              maxWidth: '900px',
+              width: '100%',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              margin: '2rem auto',
+              position: 'relative'
+            }}>
+              <h2 className="form-title">
+                {insumoEditando ? 'Editar Insumo' : 'Nuevo Insumo'}
+              </h2>
+              
+              <form onSubmit={handleSubmit}>
               <div className="form-group">
                 <label className="form-label">Nombre del Insumo *</label>
                 <input
@@ -251,12 +278,17 @@ export default function InsumosPage() {
                   placeholder="Se genera automáticamente"
                   required
                   style={{
-                    backgroundColor: insumoEditando ? 'white' : '#f0f0f0',
-                    cursor: insumoEditando ? 'text' : 'not-allowed',
-                    color: insumoEditando ? 'inherit' : '#666'
+                    backgroundColor: insumoEditando ? '#f0f0f0' : 'white',
+                    cursor: insumoEditando ? 'not-allowed' : 'text',
+                    color: insumoEditando ? '#666' : 'inherit'
                   }}
-                  readOnly={!insumoEditando}
+                  readOnly={!!insumoEditando}
                 />
+                {insumoEditando && (
+                  <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
+                    ⚠️ El código no se puede modificar en modo edición
+                  </small>
+                )}
                 {!insumoEditando && (
                   <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
                     El código se genera automáticamente al escribir el nombre
@@ -347,15 +379,13 @@ export default function InsumosPage() {
                   type="submit" 
                   className="btn btn-primary"
                   style={{
-                    backgroundColor: botonEstado === 'exito' ? '#28a745' : botonEstado === 'error' ? '#dc3545' : undefined,
-                    color: botonEstado === 'exito' || botonEstado === 'error' ? 'white' : undefined,
-                    borderColor: botonEstado === 'exito' ? '#28a745' : botonEstado === 'error' ? '#dc3545' : undefined,
+                    backgroundColor: botonEstado === 'exito' ? '#28a745' : undefined,
+                    color: botonEstado === 'exito' ? 'white' : undefined,
+                    borderColor: botonEstado === 'exito' ? '#28a745' : undefined,
                   }}
                 >
                   {botonEstado === 'exito' 
                     ? '✓ Guardado' 
-                    : botonEstado === 'error' 
-                    ? '✗ Error' 
                     : insumoEditando 
                     ? '💾 Guardar Cambios' 
                     : '➕ Crear Insumo'}
@@ -376,11 +406,17 @@ export default function InsumosPage() {
                 </button>
               </div>
             </form>
+            </div>
           </div>
         )}
 
         {/* Tabla de Insumos */}
         <div className="table-container">
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+            <button className="btn btn-primary" onClick={handleNuevo}>
+              ➕ Nuevo Insumo
+            </button>
+          </div>
           <table className="table">
             <thead>
               <tr>
@@ -416,20 +452,22 @@ export default function InsumosPage() {
                       </span>
                     </td>
                     <td>
-                      <button
-                        className="btn btn-secondary"
-                        style={{ marginRight: '0.5rem', padding: '0.5rem 1rem' }}
-                        onClick={() => handleEditar(insumo)}
-                      >
-                        ✏️ Editar
-                      </button>
-                      <button
-                        className="btn btn-danger"
-                        style={{ padding: '0.5rem 1rem' }}
-                        onClick={() => handleEliminar(insumo.id)}
-                      >
-                        🗑️ Eliminar
-                      </button>
+                      <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
+                        <button
+                          className="btn btn-secondary"
+                          style={{ padding: '0.5rem 1rem' }}
+                          onClick={() => handleEditar(insumo)}
+                        >
+                          ✏️ Editar
+                        </button>
+                        <button
+                          className="btn btn-danger"
+                          style={{ padding: '0.5rem 1rem' }}
+                          onClick={() => handleEliminar(insumo.id)}
+                        >
+                          🗑️ Eliminar
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -437,6 +475,48 @@ export default function InsumosPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Modal de Error */}
+        {modalErrorAbierto && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 2000
+          }}>
+            <div style={{
+              backgroundColor: 'white',
+              padding: '2rem',
+              borderRadius: '8px',
+              maxWidth: '500px',
+              width: '90%',
+              textAlign: 'center'
+            }}>
+              <p style={{ marginBottom: '1.5rem', fontSize: '1.1rem', color: '#dc3545' }}>
+                {mensajeError}
+              </p>
+              <button
+                className="btn btn-primary"
+                onClick={() => {
+                  setModalErrorAbierto(false);
+                  setMensajeError('');
+                  setMostrarFormulario(false);
+                  setInsumoEditando(null);
+                  setFormData({ nombre: '', codigo: '', descripcion: '', presentacion_id: '', cantidad_por_presentacion: '', stock_minimo: '', activo: true });
+                  setBotonEstado('normal');
+                }}
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </LayoutWrapper>
   );

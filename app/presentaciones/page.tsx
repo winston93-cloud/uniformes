@@ -12,6 +12,8 @@ export default function PresentacionesPage() {
   const [presentacionEditando, setPresentacionEditando] = useState<Presentacion | null>(null);
   const [busqueda, setBusqueda] = useState('');
   const [botonEstado, setBotonEstado] = useState<'normal' | 'exito' | 'error'>('normal');
+  const [mensajeError, setMensajeError] = useState<string>('');
+  const [modalErrorAbierto, setModalErrorAbierto] = useState(false);
   const inputBusquedaRef = useRef<HTMLInputElement>(null);
   const { presentaciones, loading, error, createPresentacion, updatePresentacion, deletePresentacion } = usePresentaciones();
 
@@ -34,7 +36,8 @@ export default function PresentacionesPage() {
     if (presentacionEditando) {
       const { error } = await updatePresentacion(presentacionEditando.id, presentacionData);
       if (error) {
-        setBotonEstado('error');
+        setMensajeError(`❌ Error al actualizar: ${error}`);
+        setModalErrorAbierto(true);
         return;
       }
       setBotonEstado('exito');
@@ -50,7 +53,8 @@ export default function PresentacionesPage() {
     } else {
       const { error } = await createPresentacion(presentacionData);
       if (error) {
-        setBotonEstado('error');
+        setMensajeError(`❌ Error al crear: ${error}`);
+        setModalErrorAbierto(true);
         return;
       }
       setBotonEstado('exito');
@@ -73,6 +77,8 @@ export default function PresentacionesPage() {
       descripcion: presentacion.descripcion || '',
       activo: presentacion.activo,
     });
+    setBotonEstado('normal');
+    setMensajeError('');
     setMostrarFormulario(true);
   };
 
@@ -90,6 +96,8 @@ export default function PresentacionesPage() {
   const handleNuevo = () => {
     setPresentacionEditando(null);
     setFormData({ nombre: '', descripcion: '', activo: true });
+    setBotonEstado('normal');
+    setMensajeError('');
     setMostrarFormulario(true);
   };
 
@@ -125,12 +133,9 @@ export default function PresentacionesPage() {
     <LayoutWrapper>
       <div className="main-container">
         <div style={{ marginBottom: '2rem' }}>
-          <h1 style={{ fontSize: '2.5rem', fontWeight: '700', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.2)', marginBottom: '1rem' }}>
+          <h1 style={{ fontSize: '2.5rem', fontWeight: '700', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.2)', marginBottom: '1rem', textAlign: 'center' }}>
             📦 Catálogo de Presentaciones
           </h1>
-          <button className="btn btn-primary" onClick={handleNuevo} style={{ width: '100%', maxWidth: '300px' }}>
-            ➕ Nueva Presentación
-          </button>
         </div>
 
         {/* Input de búsqueda */}
@@ -167,21 +172,42 @@ export default function PresentacionesPage() {
           </div>
         )}
 
-        {/* Formulario */}
+        {/* Formulario Modal */}
         {mostrarFormulario && (
-          <div className="form-container">
-            <h2 className="form-title">
-              {presentacionEditando ? 'Editar Presentación' : 'Nueva Presentación'}
-            </h2>
-            
-            <form onSubmit={handleSubmit}>
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 1000,
+            padding: '1rem',
+            overflowY: 'auto'
+          }}>
+            <div className="form-container" style={{
+              maxWidth: '700px',
+              width: '100%',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              margin: '2rem auto',
+              position: 'relative'
+            }}>
+              <h2 className="form-title">
+                {presentacionEditando ? 'Editar Presentación' : 'Nueva Presentación'}
+              </h2>
+              
+              <form onSubmit={handleSubmit}>
               <div className="form-group">
                 <label className="form-label">Nombre de la Presentación *</label>
                 <input
                   type="text"
                   className="form-input"
                   value={formData.nombre}
-                  onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, nombre: e.target.value.toUpperCase() })}
                   placeholder="Ej: Kilo, Bolsa, Metro, Rollo, Caja, etc."
                   required
                 />
@@ -217,15 +243,13 @@ export default function PresentacionesPage() {
                   type="submit" 
                   className="btn btn-primary"
                   style={{
-                    backgroundColor: botonEstado === 'exito' ? '#28a745' : botonEstado === 'error' ? '#dc3545' : undefined,
-                    color: botonEstado === 'exito' || botonEstado === 'error' ? 'white' : undefined,
-                    borderColor: botonEstado === 'exito' ? '#28a745' : botonEstado === 'error' ? '#dc3545' : undefined,
+                    backgroundColor: botonEstado === 'exito' ? '#28a745' : undefined,
+                    color: botonEstado === 'exito' ? 'white' : undefined,
+                    borderColor: botonEstado === 'exito' ? '#28a745' : undefined,
                   }}
                 >
                   {botonEstado === 'exito' 
                     ? '✓ Guardado' 
-                    : botonEstado === 'error' 
-                    ? '✗ Error' 
                     : presentacionEditando 
                     ? '💾 Guardar Cambios' 
                     : '➕ Crear Presentación'}
@@ -246,11 +270,17 @@ export default function PresentacionesPage() {
                 </button>
               </div>
             </form>
+            </div>
           </div>
         )}
 
         {/* Tabla de Presentaciones */}
         <div className="table-container">
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+            <button className="btn btn-primary" onClick={handleNuevo}>
+              ➕ Nueva Presentación
+            </button>
+          </div>
           <table className="table">
             <thead>
               <tr>
@@ -278,20 +308,22 @@ export default function PresentacionesPage() {
                       </span>
                     </td>
                     <td>
-                      <button
-                        className="btn btn-secondary"
-                        style={{ marginRight: '0.5rem', padding: '0.5rem 1rem' }}
-                        onClick={() => handleEditar(presentacion)}
-                      >
-                        ✏️ Editar
-                      </button>
-                      <button
-                        className="btn btn-danger"
-                        style={{ padding: '0.5rem 1rem' }}
-                        onClick={() => handleEliminar(presentacion.id)}
-                      >
-                        🗑️ Eliminar
-                      </button>
+                      <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
+                        <button
+                          className="btn btn-secondary"
+                          style={{ padding: '0.5rem 1rem' }}
+                          onClick={() => handleEditar(presentacion)}
+                        >
+                          ✏️ Editar
+                        </button>
+                        <button
+                          className="btn btn-danger"
+                          style={{ padding: '0.5rem 1rem' }}
+                          onClick={() => handleEliminar(presentacion.id)}
+                        >
+                          🗑️ Eliminar
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -299,6 +331,48 @@ export default function PresentacionesPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Modal de Error */}
+        {modalErrorAbierto && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 2000
+          }}>
+            <div style={{
+              backgroundColor: 'white',
+              padding: '2rem',
+              borderRadius: '8px',
+              maxWidth: '500px',
+              width: '90%',
+              textAlign: 'center'
+            }}>
+              <p style={{ marginBottom: '1.5rem', fontSize: '1.1rem', color: '#dc3545' }}>
+                {mensajeError}
+              </p>
+              <button
+                className="btn btn-primary"
+                onClick={() => {
+                  setModalErrorAbierto(false);
+                  setMensajeError('');
+                  setMostrarFormulario(false);
+                  setPresentacionEditando(null);
+                  setFormData({ nombre: '', descripcion: '', activo: true });
+                  setBotonEstado('normal');
+                }}
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </LayoutWrapper>
   );
