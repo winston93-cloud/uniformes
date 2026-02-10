@@ -105,7 +105,7 @@ export function useInsumos() {
           .select('id')
           .ilike('codigo', insumoData.codigo)
           .neq('id', id)
-          .single();
+          .maybeSingle();
 
         if (existingByCode) {
           return { data: null, error: 'Ya existe un insumo con ese código' };
@@ -120,6 +120,7 @@ export function useInsumos() {
         .single();
 
       if (error) throw error;
+      await fetchInsumos();
       return { data, error: null };
     } catch (err: any) {
       return { data: null, error: err.message };
