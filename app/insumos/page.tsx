@@ -149,7 +149,7 @@ export default function InsumosPage() {
 
   const handleNuevo = () => {
     setInsumoEditando(null);
-    setFormData({ nombre: '', codigo: '', descripcion: '', presentacion_id: '', cantidad_por_presentacion: '', stock_minimo: '', activo: true });
+    setFormData({ nombre: '', codigo: '', descripcion: '', presentacion_id: '', cantidad_por_presentacion: '', stock_inicial: '', stock_minimo: '', activo: true });
     setBotonEstado('normal');
     setMensajeError('');
     setMostrarFormulario(true);
