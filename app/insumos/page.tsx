@@ -43,6 +43,8 @@ export default function InsumosPage() {
   const [botonEstado, setBotonEstado] = useState<'normal' | 'exito' | 'error'>('normal');
   const [mensajeError, setMensajeError] = useState<string>('');
   const [modalErrorAbierto, setModalErrorAbierto] = useState(false);
+  const [mensajeExito, setMensajeExito] = useState<string>('');
+  const [modalExitoAbierto, setModalExitoAbierto] = useState(false);
   const inputBusquedaRef = useRef<HTMLInputElement>(null);
   const { insumos, loading, error, createInsumo, updateInsumo, deleteInsumo } = useInsumos();
   const { presentaciones, loading: loadingPresentaciones } = usePresentaciones();
@@ -78,8 +80,11 @@ export default function InsumosPage() {
         setModalErrorAbierto(true);
         return;
       }
-      setBotonEstado('exito');
+      setMensajeExito('✅ Insumo actualizado correctamente');
+      setModalExitoAbierto(true);
       setTimeout(() => {
+        setModalExitoAbierto(false);
+        setMensajeExito('');
         setFormData({ nombre: '', codigo: '', descripcion: '', presentacion_id: '', cantidad_por_presentacion: '', stock_minimo: '', activo: true });
         setMostrarFormulario(false);
         setInsumoEditando(null);
@@ -87,7 +92,7 @@ export default function InsumosPage() {
         setTimeout(() => {
           inputBusquedaRef.current?.focus();
         }, 100);
-      }, 1500);
+      }, 2000);
     } else {
       const { error } = await createInsumo(insumoData);
       if (error) {
@@ -95,8 +100,11 @@ export default function InsumosPage() {
         setModalErrorAbierto(true);
         return;
       }
-      setBotonEstado('exito');
+      setMensajeExito('✅ Insumo creado correctamente');
+      setModalExitoAbierto(true);
       setTimeout(() => {
+        setModalExitoAbierto(false);
+        setMensajeExito('');
         setFormData({ nombre: '', codigo: '', descripcion: '', presentacion_id: '', cantidad_por_presentacion: '', stock_minimo: '', activo: true });
         setMostrarFormulario(false);
         setInsumoEditando(null);
@@ -104,7 +112,7 @@ export default function InsumosPage() {
         setTimeout(() => {
           inputBusquedaRef.current?.focus();
         }, 100);
-      }, 1500);
+      }, 2000);
     }
   };
 
@@ -514,6 +522,36 @@ export default function InsumosPage() {
               >
                 Cerrar
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de Éxito */}
+        {modalExitoAbierto && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 2000
+          }}>
+            <div style={{
+              backgroundColor: 'white',
+              padding: '2rem',
+              borderRadius: '8px',
+              maxWidth: '500px',
+              width: '90%',
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>✅</div>
+              <p style={{ marginBottom: '1.5rem', fontSize: '1.1rem', color: '#28a745', fontWeight: '600' }}>
+                {mensajeExito}
+              </p>
             </div>
           </div>
         )}
