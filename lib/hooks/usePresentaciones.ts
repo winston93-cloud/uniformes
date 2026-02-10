@@ -51,7 +51,7 @@ export function usePresentaciones() {
         .from('presentaciones')
         .select('id')
         .ilike('nombre', presentacionData.nombre)
-        .single();
+        .maybeSingle();
 
       if (existing) {
         return { data: null, error: 'Ya existe una presentación con ese nombre' };
@@ -79,7 +79,7 @@ export function usePresentaciones() {
           .select('id')
           .ilike('nombre', presentacionData.nombre)
           .neq('id', id)
-          .single();
+          .maybeSingle();
 
         if (existing) {
           return { data: null, error: 'Ya existe una presentación con ese nombre' };

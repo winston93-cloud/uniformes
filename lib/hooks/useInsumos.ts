@@ -51,7 +51,7 @@ export function useInsumos() {
         .from('insumos')
         .select('id')
         .ilike('nombre', insumoData.nombre)
-        .single();
+        .maybeSingle();
 
       if (existingByName) {
         return { data: null, error: 'Ya existe un insumo con ese nombre' };
@@ -62,7 +62,7 @@ export function useInsumos() {
         .from('insumos')
         .select('id')
         .ilike('codigo', insumoData.codigo)
-        .single();
+        .maybeSingle();
 
       if (existingByCode) {
         return { data: null, error: 'Ya existe un insumo con ese código' };
@@ -90,7 +90,7 @@ export function useInsumos() {
           .select('id')
           .ilike('nombre', insumoData.nombre)
           .neq('id', id)
-          .single();
+          .maybeSingle();
 
         if (existingByName) {
           return { data: null, error: 'Ya existe un insumo con ese nombre' };
