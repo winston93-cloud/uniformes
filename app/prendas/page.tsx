@@ -94,6 +94,14 @@ export default function PrendasPage() {
   const [conteoInsumosPorTalla, setConteoInsumosPorTalla] = useState<Record<string, number>>({});
   const { getInsumosByPrendaTalla } = usePrendaTallaInsumos();
   
+  // Estados para modal de stock
+  const [modalStockAbierto, setModalStockAbierto] = useState(false);
+  const [tallaSeleccionadaStock, setTallaSeleccionadaStock] = useState<{ id: string; nombre: string } | null>(null);
+  const [stockData, setStockData] = useState({
+    stock_inicial: '',
+    stock_minimo: ''
+  });
+  
   useEffect(() => {
     const cargarTodasCategorias = async () => {
       const { data } = await supabase
@@ -730,39 +738,74 @@ export default function PrendasPage() {
                                   </span>
                                 </label>
                                   {tallasSeleccionadas.includes(talla.id) && prendaEditando && (
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setTallaSeleccionadaModal({ id: talla.id, nombre: talla.nombre });
-                                        setModalInsumosAbierto(true);
-                                      }}
-                                      title="Gestionar insumos de esta talla"
-                                      style={{
-                                        padding: '0.25rem 0.5rem',
-                                        background: conteoInsumosPorTalla[talla.id] > 0 ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#e2e8f0',
-                                        color: conteoInsumosPorTalla[talla.id] > 0 ? 'white' : '#64748b',
-                                        border: 'none',
-                                        borderRadius: '6px',
-                                        cursor: 'pointer',
-                                        fontSize: '0.75rem',
-                                        fontWeight: '600',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '0.25rem',
-                                        transition: 'all 0.2s',
-                                        whiteSpace: 'nowrap'
-                                      }}
-                                      onMouseOver={(e) => {
-                                        e.currentTarget.style.transform = 'scale(1.05)';
-                                        e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
-                                      }}
-                                      onMouseOut={(e) => {
-                                        e.currentTarget.style.transform = 'scale(1)';
-                                        e.currentTarget.style.boxShadow = 'none';
-                                      }}
-                                    >
-                                      🧵 {conteoInsumosPorTalla[talla.id] || 0}
-                                    </button>
+                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setTallaSeleccionadaStock({ id: talla.id, nombre: talla.nombre });
+                                          setModalStockAbierto(true);
+                                        }}
+                                        title="Configurar stock de esta talla"
+                                        style={{
+                                          padding: '0.25rem 0.5rem',
+                                          background: 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)',
+                                          color: 'white',
+                                          border: 'none',
+                                          borderRadius: '6px',
+                                          cursor: 'pointer',
+                                          fontSize: '0.75rem',
+                                          fontWeight: '600',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: '0.25rem',
+                                          transition: 'all 0.2s',
+                                          whiteSpace: 'nowrap'
+                                        }}
+                                        onMouseOver={(e) => {
+                                          e.currentTarget.style.transform = 'scale(1.05)';
+                                          e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+                                        }}
+                                        onMouseOut={(e) => {
+                                          e.currentTarget.style.transform = 'scale(1)';
+                                          e.currentTarget.style.boxShadow = 'none';
+                                        }}
+                                      >
+                                        📦 Stock
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setTallaSeleccionadaModal({ id: talla.id, nombre: talla.nombre });
+                                          setModalInsumosAbierto(true);
+                                        }}
+                                        title="Gestionar insumos de esta talla"
+                                        style={{
+                                          padding: '0.25rem 0.5rem',
+                                          background: conteoInsumosPorTalla[talla.id] > 0 ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#e2e8f0',
+                                          color: conteoInsumosPorTalla[talla.id] > 0 ? 'white' : '#64748b',
+                                          border: 'none',
+                                          borderRadius: '6px',
+                                          cursor: 'pointer',
+                                          fontSize: '0.75rem',
+                                          fontWeight: '600',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: '0.25rem',
+                                          transition: 'all 0.2s',
+                                          whiteSpace: 'nowrap'
+                                        }}
+                                        onMouseOver={(e) => {
+                                          e.currentTarget.style.transform = 'scale(1.05)';
+                                          e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+                                        }}
+                                        onMouseOut={(e) => {
+                                          e.currentTarget.style.transform = 'scale(1)';
+                                          e.currentTarget.style.boxShadow = 'none';
+                                        }}
+                                      >
+                                        🧵 {conteoInsumosPorTalla[talla.id] || 0}
+                                      </button>
+                                    </div>
                                   )}
                                 </div>
                               </td>
@@ -948,6 +991,202 @@ export default function PrendasPage() {
           tallaId={tallaSeleccionadaModal.id}
           tallaNombre={tallaSeleccionadaModal.nombre}
         />
+      )}
+
+      {/* Modal de Stock */}
+      {modalStockAbierto && prendaEditando && tallaSeleccionadaStock && sesion?.sucursal_id && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 2000,
+          padding: '1rem'
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            padding: '2rem',
+            maxWidth: '600px',
+            width: '100%',
+            boxShadow: '0 10px 40px rgba(0,0,0,0.3)'
+          }}>
+            <h3 style={{ 
+              color: '#0891b2', 
+              marginBottom: '1rem',
+              fontSize: '1.5rem',
+              fontWeight: '700',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}>
+              📦 Configurar Stock
+            </h3>
+            <p style={{ marginBottom: '1.5rem', color: '#64748b' }}>
+              <strong>{prendaEditando.nombre}</strong> - Talla <strong>{tallaSeleccionadaStock.nombre}</strong>
+            </p>
+
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              
+              try {
+                // Buscar el costo existente para esta combinación prenda/talla/sucursal
+                const { data: costoExistente, error: errorBusqueda } = await supabase
+                  .from('costos')
+                  .select('id, stock_inicial, stock_minimo, stock')
+                  .eq('prenda_id', prendaEditando.id)
+                  .eq('talla_id', tallaSeleccionadaStock.id)
+                  .eq('sucursal_id', sesion.sucursal_id)
+                  .single();
+
+                if (errorBusqueda && errorBusqueda.code !== 'PGRST116') {
+                  throw errorBusqueda;
+                }
+
+                if (!costoExistente) {
+                  setMensajeError('❌ No se encontró el registro de costo para esta combinación. Asegúrate de que la talla esté asociada a la prenda.');
+                  setModalErrorAbierto(true);
+                  setModalStockAbierto(false);
+                  return;
+                }
+
+                // Actualizar el stock
+                const stockInicial = parseFloat(stockData.stock_inicial) || 0;
+                const stockMinimo = parseFloat(stockData.stock_minimo) || 0;
+                
+                // Si el stock inicial es diferente al existente, actualizar también el stock actual
+                const actualizarStock = costoExistente.stock_inicial !== stockInicial;
+
+                const { error: errorActualizacion } = await supabase
+                  .from('costos')
+                  .update({
+                    stock_inicial: stockInicial,
+                    stock_minimo: stockMinimo,
+                    ...(actualizarStock ? { stock: stockInicial } : {})
+                  })
+                  .eq('id', costoExistente.id);
+
+                if (errorActualizacion) throw errorActualizacion;
+
+                // Cerrar modal y limpiar
+                setModalStockAbierto(false);
+                setTallaSeleccionadaStock(null);
+                setStockData({ stock_inicial: '', stock_minimo: '' });
+                
+                alert('✅ Stock configurado correctamente');
+              } catch (err: any) {
+                setMensajeError(`❌ Error al configurar stock: ${err.message}`);
+                setModalErrorAbierto(true);
+                setModalStockAbierto(false);
+              }
+            }}>
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '0.5rem',
+                  fontWeight: '600',
+                  color: '#334155'
+                }}>
+                  Stock Inicial *
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  className="form-input"
+                  value={stockData.stock_inicial}
+                  onChange={(e) => setStockData({ ...stockData, stock_inicial: e.target.value })}
+                  placeholder="Ej: 50"
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '2px solid #e2e8f0',
+                    borderRadius: '8px',
+                    fontSize: '1rem'
+                  }}
+                />
+                <small style={{ color: '#64748b', fontSize: '0.85rem', display: 'block', marginTop: '0.25rem' }}>
+                  Cantidad inicial de unidades disponibles
+                </small>
+              </div>
+
+              <div style={{ marginBottom: '2rem' }}>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '0.5rem',
+                  fontWeight: '600',
+                  color: '#334155'
+                }}>
+                  Stock Mínimo *
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  className="form-input"
+                  value={stockData.stock_minimo}
+                  onChange={(e) => setStockData({ ...stockData, stock_minimo: e.target.value })}
+                  placeholder="Ej: 10"
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '2px solid #e2e8f0',
+                    borderRadius: '8px',
+                    fontSize: '1rem'
+                  }}
+                />
+                <small style={{ color: '#64748b', fontSize: '0.85rem', display: 'block', marginTop: '0.25rem' }}>
+                  Alerta cuando el stock llegue a esta cantidad
+                </small>
+              </div>
+
+              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setModalStockAbierto(false);
+                    setTallaSeleccionadaStock(null);
+                    setStockData({ stock_inicial: '', stock_minimo: '' });
+                  }}
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    backgroundColor: '#e2e8f0',
+                    color: '#64748b',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontWeight: '600',
+                    fontSize: '1rem'
+                  }}
+                >
+                  ❌ Cancelar
+                </button>
+                <button
+                  type="submit"
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    background: 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontWeight: '600',
+                    fontSize: '1rem'
+                  }}
+                >
+                  💾 Guardar Stock
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
       {/* Modal de Error */}
