@@ -641,50 +641,9 @@ export default function Dashboard() {
             </p>
           </Link>
 
-          {/* Presentaciones - Módulo de Insumos */}
+          {/* Módulo de Insumos */}
           <Link 
-            href="/presentaciones" 
-            className="card"
-            style={{
-              background: 'linear-gradient(135deg, #7dd3c0 0%, #5fb8a6 100%)',
-              border: '2px solid rgba(127, 211, 192, 0.4)',
-            }}
-          >
-            <div 
-              style={{
-                fontSize: '2.5rem',
-                background: 'rgba(255, 255, 255, 0.3)',
-                borderRadius: '12px',
-                width: '60px',
-                height: '60px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto 1rem',
-              }}
-            >
-              📦
-            </div>
-            <h3 style={{ 
-              margin: '0 0 0.5rem 0',
-              fontSize: '1.3rem',
-              fontWeight: '600',
-              color: 'white',
-            }}>
-              Presentaciones
-            </h3>
-            <p style={{ 
-              margin: 0,
-              fontSize: '0.95rem',
-              color: 'rgba(255, 255, 255, 0.9)',
-            }}>
-              Unidades de medida y presentaciones para insumos
-            </p>
-          </Link>
-
-          {/* Insumos - Módulo de Insumos */}
-          <Link 
-            href="/insumos" 
+            href="/modulo-insumos" 
             className="card"
             style={{
               background: 'linear-gradient(135deg, #7dd3c0 0%, #5fb8a6 100%)',
@@ -719,48 +678,7 @@ export default function Dashboard() {
               fontSize: '0.95rem',
               color: 'rgba(255, 255, 255, 0.9)',
             }}>
-              Catálogo de materiales e insumos para fabricación de prendas
-            </p>
-          </Link>
-
-          {/* Inventario de Insumos - Módulo de Insumos */}
-          <Link 
-            href="/inventario-insumos" 
-            className="card"
-            style={{
-              background: 'linear-gradient(135deg, #7dd3c0 0%, #5fb8a6 100%)',
-              border: '2px solid rgba(127, 211, 192, 0.4)',
-            }}
-          >
-            <div 
-              style={{
-                fontSize: '2.5rem',
-                background: 'rgba(255, 255, 255, 0.3)',
-                borderRadius: '12px',
-                width: '60px',
-                height: '60px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto 1rem',
-              }}
-            >
-              📦
-            </div>
-            <h3 style={{ 
-              margin: '0 0 0.5rem 0',
-              fontSize: '1.3rem',
-              fontWeight: '600',
-              color: 'white',
-            }}>
-              Inventario de Insumos
-            </h3>
-            <p style={{ 
-              margin: 0,
-              fontSize: '0.95rem',
-              color: 'rgba(255, 255, 255, 0.9)',
-            }}>
-              Control de stock y movimientos de materiales e insumos
+              Gestión completa de materiales, presentaciones e inventario
             </p>
           </Link>
         </div>
