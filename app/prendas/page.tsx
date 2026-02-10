@@ -772,33 +772,39 @@ export default function PrendasPage() {
                                     {talla.nombre}
                                   </span>
                                 </label>
-                                  {tallasSeleccionadas.includes(talla.id) && prendaEditando && (
+                                  {tallasSeleccionadas.includes(talla.id) && (
                                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                                       <button
                                         type="button"
                                         onClick={() => {
-                                          setTallaSeleccionadaStock({ id: talla.id, nombre: talla.nombre });
-                                          setModalStockAbierto(true);
+                                          if (prendaEditando) {
+                                            setTallaSeleccionadaStock({ id: talla.id, nombre: talla.nombre });
+                                            setModalStockAbierto(true);
+                                          }
                                         }}
-                                        title="Configurar stock de esta talla"
+                                        title={prendaEditando ? "Configurar stock de esta talla" : "Guarda la prenda primero para configurar stock"}
+                                        disabled={!prendaEditando}
                                         style={{
                                           padding: '0.25rem 0.5rem',
-                                          background: 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)',
-                                          color: 'white',
+                                          background: prendaEditando ? 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)' : '#cbd5e1',
+                                          color: prendaEditando ? 'white' : '#94a3b8',
                                           border: 'none',
                                           borderRadius: '6px',
-                                          cursor: 'pointer',
+                                          cursor: prendaEditando ? 'pointer' : 'not-allowed',
                                           fontSize: '0.75rem',
                                           fontWeight: '600',
                                           display: 'flex',
                                           alignItems: 'center',
                                           gap: '0.25rem',
                                           transition: 'all 0.2s',
-                                          whiteSpace: 'nowrap'
+                                          whiteSpace: 'nowrap',
+                                          opacity: prendaEditando ? 1 : 0.6
                                         }}
                                         onMouseOver={(e) => {
-                                          e.currentTarget.style.transform = 'scale(1.05)';
-                                          e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+                                          if (prendaEditando) {
+                                            e.currentTarget.style.transform = 'scale(1.05)';
+                                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+                                          }
                                         }}
                                         onMouseOut={(e) => {
                                           e.currentTarget.style.transform = 'scale(1)';
@@ -810,35 +816,49 @@ export default function PrendasPage() {
                                       <button
                                         type="button"
                                         onClick={() => {
-                                          setTallaSeleccionadaModal({ id: talla.id, nombre: talla.nombre });
-                                          setModalInsumosAbierto(true);
+                                          if (prendaEditando) {
+                                            setTallaSeleccionadaModal({ id: talla.id, nombre: talla.nombre });
+                                            setModalInsumosAbierto(true);
+                                          }
                                         }}
-                                        title="Gestionar insumos de esta talla"
+                                        title={prendaEditando ? "Gestionar insumos de esta talla" : "Guarda la prenda primero para gestionar insumos"}
+                                        disabled={!prendaEditando}
                                         style={{
                                           padding: '0.25rem 0.5rem',
-                                          background: conteoInsumosPorTalla[talla.id] > 0 ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#e2e8f0',
-                                          color: conteoInsumosPorTalla[talla.id] > 0 ? 'white' : '#64748b',
+                                          background: prendaEditando && conteoInsumosPorTalla[talla.id] > 0 
+                                            ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' 
+                                            : prendaEditando 
+                                            ? '#e2e8f0' 
+                                            : '#cbd5e1',
+                                          color: prendaEditando && conteoInsumosPorTalla[talla.id] > 0 
+                                            ? 'white' 
+                                            : prendaEditando 
+                                            ? '#64748b' 
+                                            : '#94a3b8',
                                           border: 'none',
                                           borderRadius: '6px',
-                                          cursor: 'pointer',
+                                          cursor: prendaEditando ? 'pointer' : 'not-allowed',
                                           fontSize: '0.75rem',
                                           fontWeight: '600',
                                           display: 'flex',
                                           alignItems: 'center',
                                           gap: '0.25rem',
                                           transition: 'all 0.2s',
-                                          whiteSpace: 'nowrap'
+                                          whiteSpace: 'nowrap',
+                                          opacity: prendaEditando ? 1 : 0.6
                                         }}
                                         onMouseOver={(e) => {
-                                          e.currentTarget.style.transform = 'scale(1.05)';
-                                          e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+                                          if (prendaEditando) {
+                                            e.currentTarget.style.transform = 'scale(1.05)';
+                                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+                                          }
                                         }}
                                         onMouseOut={(e) => {
                                           e.currentTarget.style.transform = 'scale(1)';
                                           e.currentTarget.style.boxShadow = 'none';
                                         }}
                                       >
-                                        🧵 {conteoInsumosPorTalla[talla.id] || 0}
+                                        🧵 {prendaEditando ? (conteoInsumosPorTalla[talla.id] || 0) : 0}
                                       </button>
                                     </div>
                                   )}
