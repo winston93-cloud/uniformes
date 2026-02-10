@@ -75,6 +75,7 @@ export function useInsumos() {
         .single();
 
       if (error) throw error;
+      await fetchInsumos();
       return { data, error: null };
     } catch (err: any) {
       return { data: null, error: err.message };

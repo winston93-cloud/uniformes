@@ -64,6 +64,7 @@ export function usePresentaciones() {
         .single();
 
       if (error) throw error;
+      await fetchPresentaciones();
       return { data, error: null };
     } catch (err: any) {
       return { data: null, error: err.message };
@@ -94,6 +95,7 @@ export function usePresentaciones() {
         .single();
 
       if (error) throw error;
+      await fetchPresentaciones();
       return { data, error: null };
     } catch (err: any) {
       return { data: null, error: err.message };
