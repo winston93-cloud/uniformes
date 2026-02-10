@@ -133,6 +133,7 @@ export function useInsumos() {
         .eq('id', id);
 
       if (error) throw error;
+      await fetchInsumos();
       return { error: null };
     } catch (err: any) {
       return { error: err.message };

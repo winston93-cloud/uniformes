@@ -108,6 +108,7 @@ export function usePresentaciones() {
         .eq('id', id);
 
       if (error) throw error;
+      await fetchPresentaciones();
       return { error: null };
     } catch (err: any) {
       return { error: err.message };
