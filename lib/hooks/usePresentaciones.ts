@@ -46,6 +46,17 @@ export function usePresentaciones() {
 
   const createPresentacion = async (presentacionData: Omit<Presentacion, 'id' | 'created_at' | 'updated_at'>) => {
     try {
+      // Validar duplicado por nombre
+      const { data: existing } = await supabase
+        .from('presentaciones')
+        .select('id')
+        .ilike('nombre', presentacionData.nombre)
+        .single();
+
+      if (existing) {
+        return { data: null, error: 'Ya existe una presentación con ese nombre' };
+      }
+
       const { data, error } = await supabase
         .from('presentaciones')
         .insert([presentacionData])
@@ -61,6 +72,20 @@ export function usePresentaciones() {
 
   const updatePresentacion = async (id: string, presentacionData: Partial<Presentacion>) => {
     try {
+      // Validar duplicado por nombre (excluyendo el registro actual)
+      if (presentacionData.nombre) {
+        const { data: existing } = await supabase
+          .from('presentaciones')
+          .select('id')
+          .ilike('nombre', presentacionData.nombre)
+          .neq('id', id)
+          .single();
+
+        if (existing) {
+          return { data: null, error: 'Ya existe una presentación con ese nombre' };
+        }
+      }
+
       const { data, error } = await supabase
         .from('presentaciones')
         .update(presentacionData)

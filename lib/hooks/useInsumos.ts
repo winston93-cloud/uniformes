@@ -46,6 +46,28 @@ export function useInsumos() {
 
   const createInsumo = async (insumoData: Omit<Insumo, 'id' | 'created_at' | 'updated_at'>) => {
     try {
+      // Validar duplicado por nombre
+      const { data: existingByName } = await supabase
+        .from('insumos')
+        .select('id')
+        .ilike('nombre', insumoData.nombre)
+        .single();
+
+      if (existingByName) {
+        return { data: null, error: 'Ya existe un insumo con ese nombre' };
+      }
+
+      // Validar duplicado por código
+      const { data: existingByCode } = await supabase
+        .from('insumos')
+        .select('id')
+        .ilike('codigo', insumoData.codigo)
+        .single();
+
+      if (existingByCode) {
+        return { data: null, error: 'Ya existe un insumo con ese código' };
+      }
+
       const { data, error } = await supabase
         .from('insumos')
         .insert([insumoData])
@@ -61,6 +83,34 @@ export function useInsumos() {
 
   const updateInsumo = async (id: string, insumoData: Partial<Insumo>) => {
     try {
+      // Validar duplicado por nombre (excluyendo el registro actual)
+      if (insumoData.nombre) {
+        const { data: existingByName } = await supabase
+          .from('insumos')
+          .select('id')
+          .ilike('nombre', insumoData.nombre)
+          .neq('id', id)
+          .single();
+
+        if (existingByName) {
+          return { data: null, error: 'Ya existe un insumo con ese nombre' };
+        }
+      }
+
+      // Validar duplicado por código (excluyendo el registro actual)
+      if (insumoData.codigo) {
+        const { data: existingByCode } = await supabase
+          .from('insumos')
+          .select('id')
+          .ilike('codigo', insumoData.codigo)
+          .neq('id', id)
+          .single();
+
+        if (existingByCode) {
+          return { data: null, error: 'Ya existe un insumo con ese código' };
+        }
+      }
+
       const { data, error } = await supabase
         .from('insumos')
         .update(insumoData)
