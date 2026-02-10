@@ -41,7 +41,13 @@ export default function ModuloInsumosPage() {
           </Link>
         </div>
 
-        <div className="grid-container">
+        <div className="grid-container" style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gap: '1.5rem',
+          maxWidth: '1400px',
+          margin: '0 auto'
+        }}>
           {/* Catálogo de Insumos */}
           <Link 
             href="/insumos" 
@@ -53,22 +59,22 @@ export default function ModuloInsumosPage() {
           >
             <div 
               style={{
-                fontSize: '3rem',
+                fontSize: '2.5rem',
                 background: 'rgba(255, 255, 255, 0.3)',
                 borderRadius: '12px',
-                width: '80px',
-                height: '80px',
+                width: '60px',
+                height: '60px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                margin: '0 auto 1.5rem',
+                margin: '0 auto 1rem',
               }}
             >
               🧵
             </div>
             <h3 style={{ 
-              margin: '0 0 0.75rem 0',
-              fontSize: '1.5rem',
+              margin: '0 0 0.5rem 0',
+              fontSize: '1.3rem',
               fontWeight: '600',
               color: 'white',
             }}>
@@ -76,11 +82,10 @@ export default function ModuloInsumosPage() {
             </h3>
             <p style={{ 
               margin: 0,
-              fontSize: '1rem',
+              fontSize: '0.95rem',
               color: 'rgba(255, 255, 255, 0.9)',
-              lineHeight: '1.5'
             }}>
-              Gestión de materiales e insumos para fabricación de prendas. Alta, baja, modificación y consulta.
+              Gestión de materiales e insumos para fabricación de prendas
             </p>
           </Link>
 
@@ -95,22 +100,22 @@ export default function ModuloInsumosPage() {
           >
             <div 
               style={{
-                fontSize: '3rem',
+                fontSize: '2.5rem',
                 background: 'rgba(255, 255, 255, 0.3)',
                 borderRadius: '12px',
-                width: '80px',
-                height: '80px',
+                width: '60px',
+                height: '60px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                margin: '0 auto 1.5rem',
+                margin: '0 auto 1rem',
               }}
             >
               📦
             </div>
             <h3 style={{ 
-              margin: '0 0 0.75rem 0',
-              fontSize: '1.5rem',
+              margin: '0 0 0.5rem 0',
+              fontSize: '1.3rem',
               fontWeight: '600',
               color: 'white',
             }}>
@@ -118,11 +123,10 @@ export default function ModuloInsumosPage() {
             </h3>
             <p style={{ 
               margin: 0,
-              fontSize: '1rem',
+              fontSize: '0.95rem',
               color: 'rgba(255, 255, 255, 0.9)',
-              lineHeight: '1.5'
             }}>
-              Unidades de medida y presentaciones para insumos (kilo, metro, bolsa, rollo, etc.)
+              Unidades de medida y presentaciones para insumos
             </p>
           </Link>
 
@@ -137,22 +141,22 @@ export default function ModuloInsumosPage() {
           >
             <div 
               style={{
-                fontSize: '3rem',
+                fontSize: '2.5rem',
                 background: 'rgba(255, 255, 255, 0.3)',
                 borderRadius: '12px',
-                width: '80px',
-                height: '80px',
+                width: '60px',
+                height: '60px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                margin: '0 auto 1.5rem',
+                margin: '0 auto 1rem',
               }}
             >
               📊
             </div>
             <h3 style={{ 
-              margin: '0 0 0.75rem 0',
-              fontSize: '1.5rem',
+              margin: '0 0 0.5rem 0',
+              fontSize: '1.3rem',
               fontWeight: '600',
               color: 'white',
             }}>
@@ -160,11 +164,10 @@ export default function ModuloInsumosPage() {
             </h3>
             <p style={{ 
               margin: 0,
-              fontSize: '1rem',
+              fontSize: '0.95rem',
               color: 'rgba(255, 255, 255, 0.9)',
-              lineHeight: '1.5'
             }}>
-              Control de stock y movimientos de materiales. Consulta de existencias y alertas.
+              Control de stock y movimientos de materiales
             </p>
           </Link>
         </div>
