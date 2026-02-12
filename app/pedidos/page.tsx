@@ -1089,7 +1089,8 @@ function PedidosPageContent() {
                         <th style={{ padding: '0.3rem', textAlign: 'left', fontWeight: '600', fontSize: '0.75rem' }}>ℹ️ Especif.</th>
                         <th style={{ padding: '0.3rem', textAlign: 'center', fontWeight: '600', fontSize: '0.75rem' }}>📦 Stock</th>
                         <th style={{ padding: '0.3rem', textAlign: 'center', fontWeight: '600', fontSize: '0.75rem' }}>🔢 Cant.</th>
-                        <th style={{ padding: '0.3rem', textAlign: 'center', fontWeight: '600', fontSize: '0.75rem' }}>⏰ Pend.</th>
+                        <th style={{ padding: '0.3rem', textAlign: 'center', fontWeight: '600', fontSize: '0.75rem' }}>✅ Entreg.</th>
+                        <th style={{ padding: '0.3rem', textAlign: 'center', fontWeight: '600', fontSize: '0.75rem' }}>⚠️ Pend.</th>
                         <th style={{ padding: '0.3rem', textAlign: 'right', fontWeight: '600', fontSize: '0.75rem' }}>$ Precio</th>
                         <th style={{ padding: '0.3rem', textAlign: 'right', fontWeight: '600', fontSize: '0.75rem' }}>Total</th>
                         <th style={{ padding: '0.3rem', textAlign: 'center', fontWeight: '600', fontSize: '0.75rem' }}>🗑️</th>
@@ -1282,14 +1283,11 @@ function PedidosPageContent() {
                             style={{ width: '80px', textAlign: 'center', fontSize: '0.85rem', padding: '0.3rem' }}
                           />
                         </td>
-                        <td style={{ padding: '0.5rem', textAlign: 'center' }}>
-                          <span style={{
-                            display: 'inline-block',
-                            width: '10px',
-                            height: '10px',
-                            borderRadius: '50%',
-                            backgroundColor: parseFloat(detalleActual.cantidad) > 0 ? '#f59e0b' : '#e0e0e0'
-                          }}></span>
+                        <td style={{ padding: '0.5rem', textAlign: 'center', color: '#6b7280', fontSize: '0.85rem' }}>
+                          -
+                        </td>
+                        <td style={{ padding: '0.5rem', textAlign: 'center', color: '#6b7280', fontSize: '0.85rem' }}>
+                          -
                         </td>
                         <td style={{ padding: '0.5rem', textAlign: 'right' }}>
                           <input
@@ -1385,25 +1383,33 @@ function PedidosPageContent() {
                             })()}
                           </td>
                           <td style={{ padding: '0.75rem', textAlign: 'center', fontWeight: '600' }}>
+                            {detalle.cantidad}
+                          </td>
+                          <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                            <span style={{
+                              display: 'inline-block',
+                              padding: '0.3rem 0.6rem',
+                              borderRadius: '6px',
+                              fontSize: '0.85rem',
+                              fontWeight: '700',
+                              backgroundColor: '#d1fae5',
+                              color: '#065f46'
+                            }}>
+                              {detalle.cantidad_con_stock || 0}
+                            </span>
+                          </td>
+                          <td style={{ padding: '0.75rem', textAlign: 'center' }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-                              <span>
-                                {detalle.cantidad_pendiente && detalle.cantidad_pendiente > 0 ? (
-                                  <>
-                                    <span style={{ color: '#10b981', fontWeight: '700' }}>{detalle.cantidad_con_stock || 0}</span>
-                                    <span style={{ color: '#94a3b8', margin: '0 0.2rem' }}>+</span>
-                                    <span style={{ 
-                                      color: '#dc2626', 
-                                      fontWeight: '700',
-                                      backgroundColor: '#fee2e2',
-                                      padding: '0.1rem 0.4rem',
-                                      borderRadius: '4px'
-                                    }}>
-                                      {detalle.cantidad_pendiente} ⚠️
-                                    </span>
-                                  </>
-                                ) : (
-                                  detalle.cantidad
-                                )}
+                              <span style={{
+                                display: 'inline-block',
+                                padding: '0.3rem 0.6rem',
+                                borderRadius: '6px',
+                                fontSize: '0.85rem',
+                                fontWeight: '700',
+                                backgroundColor: detalle.cantidad_pendiente && detalle.cantidad_pendiente > 0 ? '#fee2e2' : '#f3f4f6',
+                                color: detalle.cantidad_pendiente && detalle.cantidad_pendiente > 0 ? '#991b1b' : '#6b7280'
+                              }}>
+                                {detalle.cantidad_pendiente || 0}
                               </span>
                               {detalle.cantidad_pendiente && detalle.cantidad_pendiente > 0 && (
                                 <button
@@ -1443,15 +1449,6 @@ function PedidosPageContent() {
                                 </button>
                               )}
                             </div>
-                          </td>
-                          <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                            <span style={{
-                              display: 'inline-block',
-                              width: '12px',
-                              height: '12px',
-                              borderRadius: '50%',
-                              backgroundColor: detalle.cantidad_pendiente && detalle.cantidad_pendiente > 0 ? '#ef4444' : '#10b981'
-                            }}></span>
                           </td>
                           <td style={{ padding: '0.75rem', textAlign: 'right' }}>
                             ${detalle.precio.toFixed(2)}
