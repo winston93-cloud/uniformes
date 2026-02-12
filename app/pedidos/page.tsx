@@ -1333,12 +1333,12 @@ function PedidosPageContent() {
                           key={index} 
                           style={{ 
                             borderBottom: '1px solid #e0e0e0', 
-                            backgroundColor: detalle.cantidad_pendiente && detalle.cantidad_pendiente > 0 ? '#fef2f2' : '#fafafa',
-                            borderLeft: detalle.cantidad_pendiente && detalle.cantidad_pendiente > 0 ? '4px solid #ef4444' : 'none'
+                            backgroundColor: (detalle.cantidad_pendiente || 0) > 0 ? '#fef2f2' : '#fafafa',
+                            borderLeft: (detalle.cantidad_pendiente || 0) > 0 ? '4px solid #ef4444' : 'none'
                           }}
                         >
                           <td style={{ padding: '0.75rem', fontWeight: '600' }}>
-                            {detalle.cantidad_pendiente && detalle.cantidad_pendiente > 0 && (
+                            {(detalle.cantidad_pendiente || 0) > 0 && (
                               <span style={{ 
                                 display: 'inline-block',
                                 backgroundColor: '#fee2e2',
@@ -1465,7 +1465,7 @@ function PedidosPageContent() {
                           <td style={{ padding: '0.75rem', textAlign: 'right' }}>
                             ${detalle.precio.toFixed(2)}
                           </td>
-                          <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: '700', color: detalle.cantidad_pendiente && detalle.cantidad_pendiente > 0 ? '#f59e0b' : '#10b981' }}>
+                          <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: '700', color: (detalle.cantidad_pendiente || 0) > 0 ? '#f59e0b' : '#10b981' }}>
                             ${detalle.total.toFixed(2)}
                           </td>
                           <td style={{ padding: '0.75rem', textAlign: 'center' }}>
