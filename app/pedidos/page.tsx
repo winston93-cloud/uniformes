@@ -41,6 +41,7 @@ interface DetallePedido {
   precio: number;
   total: number;
   costoId?: string;
+  tiene_stock?: boolean; // Flag para indicar si tiene stock disponible
 }
 
 export const dynamic = 'force-dynamic';
@@ -424,15 +425,15 @@ function PedidosPageContent() {
 
     const cantidadSolicitada = parseFloat(detalleActual.cantidad);
     
-    // Validación de stock insuficiente
+    // Verificar stock y determinar si la partida será pendiente
+    let tieneStock = true;
     if (costo.stock < cantidadSolicitada) {
-      console.log('❌ Stock insuficiente');
-      alert(`⚠️ Stock insuficiente\n\nStock disponible: ${costo.stock}\nCantidad solicitada: ${cantidadSolicitada}\n\nNo se puede agregar este artículo.`);
-      return;
-    }
-    
-    // Advertencia si el stock quedará bajo
-    if (costo.stock < cantidadSolicitada * 2) {
+      console.log('⚠️ Stock insuficiente - Creando partida PENDIENTE');
+      const confirmar = confirm(`⚠️ Stock insuficiente\n\nStock disponible: ${costo.stock}\nCantidad solicitada: ${cantidadSolicitada}\n\nLa partida se creará como PENDIENTE y NO se descontará del inventario.\n\n¿Deseas continuar?`);
+      if (!confirmar) return;
+      tieneStock = false;
+    } else if (costo.stock < cantidadSolicitada * 2) {
+      // Advertencia si el stock quedará bajo
       const quedarian = costo.stock - cantidadSolicitada;
       const confirmar = confirm(`⚠️ Advertencia: Stock bajo\n\nStock actual: ${costo.stock}\nCantidad a agregar: ${cantidadSolicitada}\nQuedarían: ${quedarian} unidades\n\n¿Deseas continuar?`);
       if (!confirmar) return;
@@ -453,6 +454,7 @@ function PedidosPageContent() {
       precio: precio,
       total: total,
       costoId: costo.id,
+      tiene_stock: tieneStock, // Marcar si tiene stock disponible
     };
 
     console.log('✅ Agregando detalle:', nuevoDetalle);
@@ -561,6 +563,7 @@ function PedidosPageContent() {
       subtotal: detalle.total,
       pendiente: detalle.pendiente,
       especificaciones: detalle.especificaciones,
+      tiene_stock: detalle.tiene_stock !== false, // Pasar flag de stock
     }));
 
     // Crear el pedido en la base de datos
@@ -1196,8 +1199,31 @@ function PedidosPageContent() {
 
                       {/* Filas de detalles agregados */}
                       {formData.detalles.map((detalle, index) => (
-                        <tr key={index} style={{ borderBottom: '1px solid #e0e0e0', backgroundColor: '#fafafa' }}>
-                          <td style={{ padding: '0.75rem', fontWeight: '600' }}>{detalle.prenda}</td>
+                        <tr 
+                          key={index} 
+                          style={{ 
+                            borderBottom: '1px solid #e0e0e0', 
+                            backgroundColor: detalle.tiene_stock === false ? '#fef2f2' : '#fafafa',
+                            borderLeft: detalle.tiene_stock === false ? '4px solid #ef4444' : 'none'
+                          }}
+                        >
+                          <td style={{ padding: '0.75rem', fontWeight: '600' }}>
+                            {detalle.tiene_stock === false && (
+                              <span style={{ 
+                                display: 'inline-block',
+                                backgroundColor: '#fee2e2',
+                                color: '#991b1b',
+                                padding: '0.25rem 0.5rem',
+                                borderRadius: '4px',
+                                fontSize: '0.7rem',
+                                fontWeight: '700',
+                                marginRight: '0.5rem'
+                              }}>
+                                ⚠️ SIN STOCK
+                              </span>
+                            )}
+                            {detalle.prenda}
+                          </td>
                           <td style={{ padding: '0.75rem' }}>
                             <span className="badge badge-info">{detalle.talla}</span>
                           </td>
@@ -1213,13 +1239,14 @@ function PedidosPageContent() {
                               width: '12px',
                               height: '12px',
                               borderRadius: '50%',
-                              backgroundColor: detalle.pendiente > 0 ? '#f59e0b' : '#10b981'
+                              backgroundColor: detalle.tiene_stock === false ? '#ef4444' : 
+                                              detalle.pendiente > 0 ? '#f59e0b' : '#10b981'
                             }}></span>
                           </td>
                           <td style={{ padding: '0.75rem', textAlign: 'right' }}>
                             ${detalle.precio.toFixed(2)}
                           </td>
-                          <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: '700', color: '#10b981' }}>
+                          <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: '700', color: detalle.tiene_stock === false ? '#dc2626' : '#10b981' }}>
                             ${detalle.total.toFixed(2)}
                           </td>
                           <td style={{ padding: '0.75rem', textAlign: 'center' }}>
