@@ -75,6 +75,8 @@ function PedidosPageContent() {
   const [mostrarModalAgregarStock, setMostrarModalAgregarStock] = useState(false);
   const [cantidadAgregar, setCantidadAgregar] = useState('');
   const [stockActualDetalle, setStockActualDetalle] = useState(0);
+  const [mostrarExitoStock, setMostrarExitoStock] = useState(false);
+  const [mensajeExitoStock, setMensajeExitoStock] = useState('');
   const { costos, getCostosByPrenda } = useCostos(sesion?.sucursal_id);
   const { alumnos, searchAlumnos } = useAlumnos(cicloEscolar);
   const { externos } = useExternos();
@@ -609,12 +611,18 @@ function PedidosPageContent() {
       // Recargar costos para actualizar la información
       await getCostosByPrenda(detalleActual.prenda_id);
 
-      // Cerrar modal
+      // Cerrar modal de agregar stock
       setMostrarModalAgregarStock(false);
       setCantidadAgregar('');
 
-      // Mostrar mensaje de éxito
-      alert(`✅ Stock actualizado exitosamente\n\nStock anterior: ${costo.stock}\nCantidad agregada: ${nuevaCantidad}\nStock nuevo: ${nuevoStock}`);
+      // Mostrar modal de éxito
+      setMensajeExitoStock(`Stock actualizado: ${costo.stock} → ${nuevoStock} (+${nuevaCantidad})`);
+      setMostrarExitoStock(true);
+
+      // Auto-cerrar modal de éxito después de 2 segundos
+      setTimeout(() => {
+        setMostrarExitoStock(false);
+      }, 2000);
 
       // Enfocar en cantidad para continuar con el pedido
       setTimeout(() => {
@@ -2356,6 +2364,49 @@ function PedidosPageContent() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Éxito - Stock Actualizado */}
+      {mostrarExitoStock && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 10003,
+            animation: 'fadeIn 0.3s ease-out'
+          }}
+        >
+          <div 
+            style={{
+              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              color: 'white',
+              padding: '2rem 3rem',
+              borderRadius: '20px',
+              boxShadow: '0 20px 60px rgba(16, 185, 129, 0.5)',
+              textAlign: 'center',
+              minWidth: '400px'
+            }}
+          >
+            <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>✅</div>
+            <h3 style={{ 
+              margin: 0, 
+              fontSize: '1.5rem', 
+              fontWeight: '700',
+              marginBottom: '0.75rem'
+            }}>
+              Stock Actualizado
+            </h3>
+            <p style={{ 
+              margin: 0, 
+              fontSize: '1.1rem',
+              opacity: 0.95
+            }}>
+              {mensajeExitoStock}
+            </p>
           </div>
         </div>
       )}
