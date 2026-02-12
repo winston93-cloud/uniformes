@@ -10,7 +10,7 @@ interface Pedido {
   cliente_tipo: 'alumno' | 'externo';
   cliente_nombre: string;
   total: number;
-  estado: 'PEDIDO' | 'ENTREGADO' | 'CANCELADO';
+  estado: 'PENDIENTE' | 'ENTREGADO' | 'CANCELADO';
   observaciones?: string;
   modalidad_pago: 'TOTAL' | 'ANTICIPO';
   efectivo_recibido: number | string;

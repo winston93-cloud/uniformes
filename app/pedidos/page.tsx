@@ -21,7 +21,7 @@ interface Pedido {
   cliente_tipo: 'alumno' | 'externo';
   cliente_nombre: string;
   total: number;
-  estado: 'PEDIDO' | 'ENTREGADO' | 'CANCELADO';
+  estado: 'PENDIENTE' | 'ENTREGADO' | 'CANCELADO';
   tipo_cliente?: string;
   subtotal?: number;
   observaciones?: string;
@@ -645,7 +645,7 @@ function PedidosPageContent() {
     
     // Determinar estado automáticamente basado en pendientes
     const hayPendientes = formData.detalles.some(d => (d.cantidad_pendiente || 0) > 0);
-    const estadoPedido = hayPendientes ? 'PEDIDO' : 'ENTREGADO';
+    const estadoPedido = hayPendientes ? 'PENDIENTE' : 'ENTREGADO';
     
     console.log(`📊 Estado determinado: ${estadoPedido} (¿Hay pendientes? ${hayPendientes})`);
     
@@ -656,7 +656,7 @@ function PedidosPageContent() {
       cliente_tipo: formData.cliente_tipo,
       cliente_nombre: formData.cliente_nombre,
       total: calcularTotal(),
-      estado: estadoPedido as 'PEDIDO' | 'ENTREGADO',
+      estado: estadoPedido as 'PENDIENTE' | 'ENTREGADO',
       observaciones: formData.observaciones,
       modalidad_pago: formData.modalidad_pago,
       efectivo_recibido: parseFloat(formData.efectivo_recibido as string) || 0,
@@ -1788,15 +1788,15 @@ function PedidosPageContent() {
                   <td data-label="Total" style={{ fontWeight: '700', color: '#10b981' }}>${pedido.total.toFixed(2)}</td>
                   <td data-label="Estado">
                     <span className={`badge ${
-                      pedido.estado === 'PEDIDO' ? 'badge-warning' :
+                      pedido.estado === 'PENDIENTE' ? 'badge-warning' :
                       pedido.estado === 'ENTREGADO' ? 'badge-success' : 'badge-danger'
                     }`}>
                       {pedido.estado}
                     </span>
                   </td>
                   <td>
-                    {/* Botón Completado - Solo para pedidos con pendientes (PEDIDO) */}
-                    {pedido.estado === 'PEDIDO' && (
+                    {/* Botón Completado - Solo para pedidos pendientes */}
+                    {pedido.estado === 'PENDIENTE' && (
                       <button
                         className="btn btn-success"
                         style={{ padding: '0.5rem 1rem', marginRight: '0.5rem' }}
@@ -1974,9 +1974,9 @@ function PedidosPageContent() {
                       borderRadius: '6px',
                       fontSize: '0.9rem',
                       fontWeight: '600',
-                      backgroundColor: pedidoSeleccionado.estado === 'PEDIDO' ? '#fef3c7' :
+                      backgroundColor: pedidoSeleccionado.estado === 'PENDIENTE' ? '#fef3c7' :
                                        pedidoSeleccionado.estado === 'ENTREGADO' ? '#d1fae5' : '#fee2e2',
-                      color: pedidoSeleccionado.estado === 'PEDIDO' ? '#92400e' :
+                      color: pedidoSeleccionado.estado === 'PENDIENTE' ? '#92400e' :
                              pedidoSeleccionado.estado === 'ENTREGADO' ? '#065f46' : '#991b1b'
                     }}>
                       {pedidoSeleccionado.estado}

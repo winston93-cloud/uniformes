@@ -274,7 +274,7 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
               color: pedido.estado === 'ENTREGADO' ? '#065f46' : '#92400e',
               textAlign: 'center'
             }}>
-              {pedido.estado === 'ENTREGADO' ? '✅ PEDIDO ENTREGADO COMPLETO' : '⚠️ PEDIDO CON PENDIENTES'}
+              {pedido.estado === 'ENTREGADO' ? '✅ PEDIDO COMPLETADO' : '⚠️ PEDIDO PENDIENTE DE ENTREGA'}
             </div>
             
             <div style={{ 

@@ -77,7 +77,7 @@ export interface Pedido {
   alumno_id: string | null;
   externo_id: string | null;
   tipo_cliente: 'alumno' | 'externo';
-  estado: 'PEDIDO' | 'ENTREGADO' | 'CANCELADO';
+  estado: 'PENDIENTE' | 'ENTREGADO' | 'CANCELADO';
   subtotal: number;
   total: number;
   fecha_entrega: string | null;
