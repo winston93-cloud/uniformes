@@ -25,7 +25,7 @@ interface Pedido {
   tipo_cliente?: string;
   subtotal?: number;
   observaciones?: string;
-  modalidad_pago?: 'TOTAL' | 'ANTICIPO';
+  modalidad_pago?: 'TOTAL';
   efectivo_recibido?: number;
   cliente?: string; // Para compatibilidad con código existente
 }
@@ -127,7 +127,7 @@ function PedidosPageContent() {
     cliente_nombre: '',
     detalles: [] as DetallePedido[],
     observaciones: '',
-    modalidad_pago: 'TOTAL' as 'TOTAL' | 'ANTICIPO',
+    modalidad_pago: 'TOTAL' as const,
     efectivo_recibido: 0,
   });
 
@@ -1547,61 +1547,21 @@ function PedidosPageContent() {
                     </span>
                   </div>
 
-                  {/* Modalidad de Pago */}
+                  {/* Modalidad de Pago - Solo Pago Total */}
                   <div style={{ 
                     marginBottom: '1rem',
                     padding: '0.75rem',
-                    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
                     borderRadius: '8px',
-                    border: '1px solid rgba(59, 130, 246, 0.2)'
+                    border: '1px solid rgba(59, 130, 246, 0.3)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
                   }}>
-                    <label style={{ 
-                      display: 'block', 
-                      marginBottom: '0.6rem', 
-                      fontWeight: '700',
-                      color: '#1e40af',
-                      fontSize: '0.95rem'
-                    }}>
-                      💳 Modalidad de Pago:
-                    </label>
-                    <div style={{ display: 'flex', gap: '1.5rem' }}>
-                      <label style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: '0.5rem', 
-                        cursor: 'pointer',
-                        fontWeight: '600',
-                        color: '#374151'
-                      }}>
-                        <input
-                          type="radio"
-                          name="modalidad_pago"
-                          value="TOTAL"
-                          checked={formData.modalidad_pago === 'TOTAL'}
-                          onChange={(e) => setFormData({ ...formData, modalidad_pago: 'TOTAL' })}
-                          style={{ cursor: 'pointer', width: '18px', height: '18px' }}
-                        />
-                        Pago Total
-                      </label>
-                      <label style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: '0.5rem', 
-                        cursor: 'pointer',
-                        fontWeight: '600',
-                        color: '#374151'
-                      }}>
-                        <input
-                          type="radio"
-                          name="modalidad_pago"
-                          value="ANTICIPO"
-                          checked={formData.modalidad_pago === 'ANTICIPO'}
-                          onChange={(e) => setFormData({ ...formData, modalidad_pago: 'ANTICIPO' })}
-                          style={{ cursor: 'pointer', width: '18px', height: '18px' }}
-                        />
-                        Anticipo
-                      </label>
-                    </div>
+                    <span style={{ fontSize: '1.2rem' }}>💳</span>
+                    <span style={{ fontWeight: '700', color: '#1e40af', fontSize: '0.95rem' }}>
+                      Pago Total
+                    </span>
                   </div>
 
                   {/* Efectivo Recibido */}
