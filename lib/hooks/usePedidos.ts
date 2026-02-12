@@ -71,10 +71,14 @@ export function usePedidos(sucursal_id?: string) {
       console.log('📦 Creando pedido con función atómica...', pedido);
       
       // Preparar detalles en formato JSONB para la función
+      // CRÍTICO: Incluir cantidad_con_stock y cantidad_pendiente para división automática
       const detallesJsonb = detalles.map(det => ({
         prenda_id: det.prenda_id,
         talla_id: det.talla_id,
         cantidad: det.cantidad,
+        cantidad_con_stock: (det as any).cantidad_con_stock || det.cantidad, // Cuánto tiene stock
+        cantidad_pendiente: (det as any).cantidad_pendiente || 0, // Cuánto queda pendiente
+        tiene_stock: (det as any).tiene_stock !== false, // Flag de disponibilidad
         especificaciones: det.especificaciones || ''
       }));
 
