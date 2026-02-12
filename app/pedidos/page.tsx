@@ -643,6 +643,12 @@ function PedidosPageContent() {
     
     console.log('✅ Validaciones pasadas, preparando datos...');
     
+    // Determinar estado automáticamente basado en pendientes
+    const hayPendientes = formData.detalles.some(d => (d.cantidad_pendiente || 0) > 0);
+    const estadoPedido = hayPendientes ? 'PEDIDO' : 'ENTREGADO';
+    
+    console.log(`📊 Estado determinado: ${estadoPedido} (¿Hay pendientes? ${hayPendientes})`);
+    
     // Preparar datos del pedido para la base de datos
     const pedidoParaDB = {
       fecha: new Date().toISOString().split('T')[0],
@@ -650,7 +656,7 @@ function PedidosPageContent() {
       cliente_tipo: formData.cliente_tipo,
       cliente_nombre: formData.cliente_nombre,
       total: calcularTotal(),
-      estado: 'PEDIDO' as const,
+      estado: estadoPedido as 'PEDIDO' | 'ENTREGADO',
       observaciones: formData.observaciones,
       modalidad_pago: formData.modalidad_pago,
       efectivo_recibido: parseFloat(formData.efectivo_recibido as string) || 0,
