@@ -78,7 +78,7 @@ function PedidosPageContent() {
   const [stockActualDetalle, setStockActualDetalle] = useState(0);
   const [mostrarExitoStock, setMostrarExitoStock] = useState(false);
   const [mensajeExitoStock, setMensajeExitoStock] = useState('');
-  const { costos, getCostosByPrenda } = useCostos(sesion?.sucursal_id);
+  const { costos, getCostosByPrenda, refetch: refetchCostos } = useCostos(sesion?.sucursal_id);
   const { alumnos, searchAlumnos } = useAlumnos(cicloEscolar);
   const { externos } = useExternos();
   const { prendas } = usePrendas();
@@ -656,8 +656,8 @@ function PedidosPageContent() {
 
       if (error) throw error;
 
-      // Recargar costos para actualizar la información
-      await getCostosByPrenda(detalleActual.prenda_id);
+      // Recargar TODOS los costos para actualizar la información
+      await refetchCostos();
 
       // Cerrar modal de agregar stock
       setMostrarModalAgregarStock(false);
