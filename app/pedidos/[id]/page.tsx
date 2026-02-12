@@ -28,11 +28,17 @@ interface Pedido {
   total: number;
   notas: string | null;
   created_at: string;
+  alumno_id: string | null;
+  externo_id: string | null;
   sucursal: {
     nombre: string;
     direccion: string | null;
     telefono: string | null;
   };
+  alumno?: {
+    nivel: string | null;
+    grado: string | null;
+  } | null;
   detalles: DetallePedido[];
 }
 
@@ -53,12 +59,13 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
     try {
       setLoading(true);
       
-      // Obtener pedido con sucursal
+      // Obtener pedido con sucursal y datos del alumno si aplica
       const { data: pedidoData, error: pedidoError } = await supabase
         .from('pedidos')
         .select(`
           *,
-          sucursal:sucursales(nombre, direccion, telefono)
+          sucursal:sucursales(nombre, direccion, telefono),
+          alumno:alumnos(nivel, grado)
         `)
         .eq('id', resolvedParams.id)
         .single();
@@ -240,8 +247,15 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
               <span>{new Date(pedido.created_at).toLocaleString('es-MX')}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.2rem' }}>
-              <span><strong>Cliente:</strong></span>
-              <span>{pedido.cliente_nombre}</span>
+              <span><strong>Alumno/Externo:</strong></span>
+              <span>
+                {pedido.cliente_nombre}
+                {pedido.tipo_cliente === 'ALUMNO' && pedido.alumno && (
+                  <span style={{ marginLeft: '0.5rem', color: '#6b7280' }}>
+                    ({pedido.alumno.nivel || ''} {pedido.alumno.grado || ''})
+                  </span>
+                )}
+              </span>
             </div>
           </div>
 
