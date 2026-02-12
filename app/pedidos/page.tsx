@@ -983,7 +983,7 @@ function PedidosPageContent() {
                           />
                         </td>
                         <td style={{ padding: '0.5rem', textAlign: 'right', fontWeight: '600', fontSize: '0.85rem' }}>
-                          ${(parseFloat(detalleActual.cantidad) * parseFloat(detalleActual.precio)).toFixed(2)}
+                          ${((parseFloat(detalleActual.cantidad) || 0) * (parseFloat(detalleActual.precio) || 0)).toFixed(2)}
                         </td>
                         <td style={{ padding: '0.5rem', textAlign: 'center' }}>
                           <button
