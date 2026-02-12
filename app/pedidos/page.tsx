@@ -263,15 +263,10 @@ function PedidosPageContent() {
   const ejecutarBusquedaPrenda = (texto: string) => {
     console.log('🆕 Búsqueda nueva - texto:', texto);
     
-    // Si no hay texto, mostrar todas las prendas ordenadas alfabéticamente
+    // Si no hay texto, NO mostrar nada (cerrar dropdown)
     if (!texto || texto.trim().length === 0) {
-      const todasPrendas = prendas
-        .filter(prenda => prenda.activo)
-        .sort((a, b) => a.nombre.localeCompare(b.nombre))
-        .slice(0, 15);
-      
-      setPrendasEncontradas(todasPrendas);
-      setMostrarListaPrendas(todasPrendas.length > 0);
+      setPrendasEncontradas([]);
+      setMostrarListaPrendas(false);
       return;
     }
 
@@ -1107,10 +1102,6 @@ function PedidosPageContent() {
                               className="form-input"
                               value={textoPrendaBusqueda}
                               onChange={handleCambioBusquedaPrenda}
-                              onFocus={() => {
-                                // Mostrar todas las prendas ordenadas alfabéticamente al hacer focus
-                                ejecutarBusquedaPrenda(textoPrendaBusqueda);
-                              }}
                               onKeyDown={(e) => {
                                 if (!mostrarListaPrendas || prendasEncontradas.length === 0) {
                                   if (e.key === 'Enter' && !detalleActual.prenda_id && formData.detalles.length > 0) {
