@@ -69,6 +69,9 @@ function PedidosPageContent() {
   const [mostrarAyuda, setMostrarAyuda] = useState(false);
   const [indiceClienteSeleccionado, setIndiceClienteSeleccionado] = useState(-1);
   const [indicePrendaSeleccionada, setIndicePrendaSeleccionada] = useState(-1);
+  const [mostrarModalStock, setMostrarModalStock] = useState(false);
+  const [infoStock, setInfoStock] = useState({ disponible: 0, solicitado: 0 });
+  const [accionPendienteStock, setAccionPendienteStock] = useState<(() => void) | null>(null);
   const { costos, getCostosByPrenda } = useCostos(sesion?.sucursal_id);
   const { alumnos, searchAlumnos } = useAlumnos(cicloEscolar);
   const { externos } = useExternos();
@@ -429,9 +432,54 @@ function PedidosPageContent() {
     let tieneStock = true;
     if (costo.stock < cantidadSolicitada) {
       console.log('⚠️ Stock insuficiente - Creando partida PENDIENTE');
-      const confirmar = confirm(`⚠️ Stock insuficiente\n\nStock disponible: ${costo.stock}\nCantidad solicitada: ${cantidadSolicitada}\n\nLa partida se creará como PENDIENTE y NO se descontará del inventario.\n\n¿Deseas continuar?`);
-      if (!confirmar) return;
-      tieneStock = false;
+      
+      // Mostrar modal personalizada para confirmación
+      setInfoStock({ disponible: costo.stock, solicitado: cantidadSolicitada });
+      setMostrarModalStock(true);
+      
+      // Guardar acción para ejecutar si el usuario acepta
+      setAccionPendienteStock(() => () => {
+        const cantidad = parseFloat(detalleActual.cantidad);
+        const precio = parseFloat(detalleActual.precio);
+        const total = cantidad * precio;
+
+        const nuevoDetalle: DetallePedido = {
+          prenda: detalleActual.prenda_nombre,
+          prenda_id: detalleActual.prenda_id,
+          talla: detalleActual.talla_nombre,
+          talla_id: detalleActual.talla_id,
+          especificaciones: detalleActual.especificaciones,
+          cantidad: cantidad,
+          pendiente: cantidad,
+          precio: precio,
+          total: total,
+          costoId: costo.id,
+          tiene_stock: false, // Sin stock
+        };
+
+        setFormData({ 
+          ...formData, 
+          detalles: [...formData.detalles, nuevoDetalle] 
+        });
+        
+        setDetalleActual({ 
+          prenda_id: '', 
+          prenda_nombre: '',
+          talla_id: '', 
+          talla_nombre: '',
+          especificaciones: '',
+          cantidad: '', 
+          precio: '0' 
+        });
+        setTextoPrendaBusqueda('');
+        setTallasDisponibles([]);
+        
+        setTimeout(() => {
+          inputPrendaRef.current?.focus();
+        }, 100);
+      });
+      
+      return; // Salir y esperar confirmación del usuario
     } else if (costo.stock < cantidadSolicitada * 2) {
       // Advertencia si el stock quedará bajo
       const quedarian = costo.stock - cantidadSolicitada;
@@ -1908,6 +1956,152 @@ function PedidosPageContent() {
           window.location.reload();
         }}
       />
+
+      {/* Modal de Confirmación - Stock Insuficiente */}
+      {mostrarModalStock && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 10001,
+            padding: '1rem',
+            animation: 'fadeIn 0.2s ease-out'
+          }}
+        >
+          <div 
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '20px',
+              maxWidth: '500px',
+              width: '100%',
+              boxShadow: '0 25px 70px rgba(0,0,0,0.4)',
+              overflow: 'hidden',
+              animation: 'slideIn 0.3s ease-out'
+            }}
+          >
+            <div style={{
+              background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+              padding: '2rem',
+              textAlign: 'center',
+              color: 'white'
+            }}>
+              <div style={{ fontSize: '4rem', marginBottom: '0.5rem' }}>⚠️</div>
+              <h2 style={{ margin: 0, fontSize: '1.8rem', fontWeight: '700' }}>
+                Stock Insuficiente
+              </h2>
+            </div>
+
+            <div style={{ padding: '2rem' }}>
+              <div style={{ 
+                backgroundColor: '#fef2f2', 
+                borderRadius: '12px', 
+                padding: '1.5rem',
+                marginBottom: '1.5rem',
+                border: '2px solid #fecaca'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                  <span style={{ fontSize: '1.1rem', color: '#666' }}>Stock disponible:</span>
+                  <span style={{ fontSize: '1.3rem', fontWeight: '700', color: '#dc2626' }}>
+                    {infoStock.disponible}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '1.1rem', color: '#666' }}>Cantidad solicitada:</span>
+                  <span style={{ fontSize: '1.3rem', fontWeight: '700', color: '#dc2626' }}>
+                    {infoStock.solicitado}
+                  </span>
+                </div>
+              </div>
+
+              <div style={{ 
+                padding: '1.25rem', 
+                backgroundColor: '#dbeafe', 
+                borderRadius: '12px',
+                marginBottom: '2rem',
+                borderLeft: '4px solid #3b82f6'
+              }}>
+                <p style={{ margin: 0, fontSize: '1rem', color: '#1e40af', lineHeight: '1.6' }}>
+                  <strong>💡 La partida se creará como PENDIENTE</strong>
+                  <br />
+                  <span style={{ fontSize: '0.95rem' }}>
+                    NO se descontará del inventario hasta que haya stock disponible.
+                  </span>
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+                <button
+                  onClick={() => {
+                    setMostrarModalStock(false);
+                    setAccionPendienteStock(null);
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: '0.875rem 1.5rem',
+                    fontSize: '1.05rem',
+                    fontWeight: '600',
+                    borderRadius: '12px',
+                    border: '2px solid #d1d5db',
+                    backgroundColor: 'white',
+                    color: '#374151',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#f3f4f6';
+                    e.currentTarget.style.borderColor = '#9ca3af';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'white';
+                    e.currentTarget.style.borderColor = '#d1d5db';
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => {
+                    if (accionPendienteStock) {
+                      accionPendienteStock();
+                    }
+                    setMostrarModalStock(false);
+                    setAccionPendienteStock(null);
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: '0.875rem 1.5rem',
+                    fontSize: '1.05rem',
+                    fontWeight: '700',
+                    borderRadius: '12px',
+                    border: 'none',
+                    background: 'linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%)',
+                    color: 'white',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 12px rgba(236, 72, 153, 0.4)',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 6px 20px rgba(236, 72, 153, 0.5)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(236, 72, 153, 0.4)';
+                  }}
+                >
+                  Aceptar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal de Ayuda - Shortcuts de Teclado */}
       {mostrarAyuda && (
