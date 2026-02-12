@@ -1152,6 +1152,7 @@ function PedidosPageContent() {
                         <th style={{ padding: '0.3rem', textAlign: 'left', fontWeight: '600', fontSize: '0.75rem' }}>👕 Prenda</th>
                         <th style={{ padding: '0.3rem', textAlign: 'left', fontWeight: '600', fontSize: '0.75rem' }}>📏 Talla</th>
                         <th style={{ padding: '0.3rem', textAlign: 'left', fontWeight: '600', fontSize: '0.75rem' }}>ℹ️ Especif.</th>
+                        <th style={{ padding: '0.3rem', textAlign: 'center', fontWeight: '600', fontSize: '0.75rem' }}>📦 Stock</th>
                         <th style={{ padding: '0.3rem', textAlign: 'center', fontWeight: '600', fontSize: '0.75rem' }}>🔢 Cant.</th>
                         <th style={{ padding: '0.3rem', textAlign: 'center', fontWeight: '600', fontSize: '0.75rem' }}>⏰ Pend.</th>
                         <th style={{ padding: '0.3rem', textAlign: 'right', fontWeight: '600', fontSize: '0.75rem' }}>$ Precio</th>
@@ -1286,6 +1287,28 @@ function PedidosPageContent() {
                           />
                         </td>
                         <td style={{ padding: '0.5rem', textAlign: 'center' }}>
+                          {(() => {
+                            const costo = costos.find(c => 
+                              c.prenda_id === detalleActual.prenda_id && 
+                              c.talla_id === detalleActual.talla_id
+                            );
+                            const stock = costo?.stock || 0;
+                            return (
+                              <span style={{
+                                display: 'inline-block',
+                                padding: '0.3rem 0.6rem',
+                                borderRadius: '6px',
+                                fontSize: '0.85rem',
+                                fontWeight: '700',
+                                backgroundColor: stock === 0 ? '#fee2e2' : stock < 10 ? '#fef3c7' : '#d1fae5',
+                                color: stock === 0 ? '#991b1b' : stock < 10 ? '#92400e' : '#065f46'
+                              }}>
+                                {stock}
+                              </span>
+                            );
+                          })()}
+                        </td>
+                        <td style={{ padding: '0.5rem', textAlign: 'center' }}>
                           <input
                             ref={inputCantidadRef}
                             type="number"
@@ -1403,6 +1426,28 @@ function PedidosPageContent() {
                           </td>
                           <td style={{ padding: '0.75rem', fontSize: '0.9rem', color: '#666' }}>
                             {detalle.especificaciones || '-'}
+                          </td>
+                          <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                            {(() => {
+                              const costo = costos.find(c => 
+                                c.prenda_id === detalle.prenda_id && 
+                                c.talla_id === detalle.talla_id
+                              );
+                              const stock = costo?.stock || 0;
+                              return (
+                                <span style={{
+                                  display: 'inline-block',
+                                  padding: '0.3rem 0.6rem',
+                                  borderRadius: '6px',
+                                  fontSize: '0.85rem',
+                                  fontWeight: '700',
+                                  backgroundColor: stock === 0 ? '#fee2e2' : stock < 10 ? '#fef3c7' : '#d1fae5',
+                                  color: stock === 0 ? '#991b1b' : stock < 10 ? '#92400e' : '#065f46'
+                                }}>
+                                  {stock}
+                                </span>
+                              );
+                            })()}
                           </td>
                           <td style={{ padding: '0.75rem', textAlign: 'center', fontWeight: '600' }}>
                             {detalle.cantidad}
