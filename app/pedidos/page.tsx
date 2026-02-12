@@ -72,6 +72,9 @@ function PedidosPageContent() {
   const [mostrarModalStock, setMostrarModalStock] = useState(false);
   const [infoStock, setInfoStock] = useState({ disponible: 0, solicitado: 0 });
   const [accionPendienteStock, setAccionPendienteStock] = useState<(() => void) | null>(null);
+  const [mostrarModalAgregarStock, setMostrarModalAgregarStock] = useState(false);
+  const [cantidadAgregar, setCantidadAgregar] = useState('');
+  const [stockActualDetalle, setStockActualDetalle] = useState(0);
   const { costos, getCostosByPrenda } = useCostos(sesion?.sucursal_id);
   const { alumnos, searchAlumnos } = useAlumnos(cicloEscolar);
   const { externos } = useExternos();
@@ -554,6 +557,73 @@ function PedidosPageContent() {
       ...formData,
       detalles: formData.detalles.filter((_, i) => i !== index)
     });
+  };
+
+  const abrirModalAgregarStock = async () => {
+    if (!detalleActual.prenda_id || !detalleActual.talla_id) {
+      alert('Primero selecciona una prenda y talla');
+      return;
+    }
+
+    // Obtener stock actual
+    const costo = costos.find(c => 
+      c.prenda_id === detalleActual.prenda_id && 
+      c.talla_id === detalleActual.talla_id
+    );
+
+    if (costo) {
+      setStockActualDetalle(costo.stock || 0);
+      setCantidadAgregar('');
+      setMostrarModalAgregarStock(true);
+    }
+  };
+
+  const guardarStockAgregado = async () => {
+    if (!cantidadAgregar || parseFloat(cantidadAgregar) <= 0) {
+      alert('Ingresa una cantidad válida');
+      return;
+    }
+
+    try {
+      const costo = costos.find(c => 
+        c.prenda_id === detalleActual.prenda_id && 
+        c.talla_id === detalleActual.talla_id
+      );
+
+      if (!costo) {
+        alert('No se encontró el registro de costo');
+        return;
+      }
+
+      const nuevaCantidad = parseFloat(cantidadAgregar);
+      const nuevoStock = (costo.stock || 0) + nuevaCantidad;
+
+      // Actualizar stock en la base de datos
+      const { error } = await supabase
+        .from('costos')
+        .update({ stock: nuevoStock })
+        .eq('id', costo.id);
+
+      if (error) throw error;
+
+      // Recargar costos para actualizar la información
+      await getCostosByPrenda(detalleActual.prenda_id);
+
+      // Cerrar modal
+      setMostrarModalAgregarStock(false);
+      setCantidadAgregar('');
+
+      // Mostrar mensaje de éxito
+      alert(`✅ Stock actualizado exitosamente\n\nStock anterior: ${costo.stock}\nCantidad agregada: ${nuevaCantidad}\nStock nuevo: ${nuevoStock}`);
+
+      // Enfocar en cantidad para continuar con el pedido
+      setTimeout(() => {
+        inputCantidadRef.current?.focus();
+      }, 100);
+    } catch (error: any) {
+      console.error('Error al actualizar stock:', error);
+      alert('Error al actualizar el stock: ' + error.message);
+    }
   };
 
   const calcularTotal = () => {
@@ -1160,43 +1230,66 @@ function PedidosPageContent() {
                           />
                         </td>
                         <td style={{ padding: '0.5rem', textAlign: 'center' }}>
-                          <input
-                            ref={inputCantidadRef}
-                            type="number"
-                            className="form-input"
-                            value={detalleActual.cantidad}
-                            onChange={(e) => {
-                              const cantidad = e.target.value;
-                              setDetalleActual({ ...detalleActual, cantidad });
-                            }}
-                            onBlur={(e) => {
-                              const cantidad = e.target.value;
-                              // Agregar automáticamente cuando todos los campos están completos al salir del input
-                              if (detalleActual.prenda_id && detalleActual.talla_id && parseFloat(cantidad) > 0) {
-                                agregarDetalle();
-                              }
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault();
-                                const cantidad = (e.target as HTMLInputElement).value;
-                                // Agregar automáticamente al presionar Enter
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', justifyContent: 'center' }}>
+                            <input
+                              ref={inputCantidadRef}
+                              type="number"
+                              className="form-input"
+                              value={detalleActual.cantidad}
+                              onChange={(e) => {
+                                const cantidad = e.target.value;
+                                setDetalleActual({ ...detalleActual, cantidad });
+                              }}
+                              onBlur={(e) => {
+                                const cantidad = e.target.value;
+                                // Agregar automáticamente cuando todos los campos están completos al salir del input
                                 if (detalleActual.prenda_id && detalleActual.talla_id && parseFloat(cantidad) > 0) {
                                   agregarDetalle();
-                                  
-                                  // Si ya hay partidas agregadas, ir al input de efectivo
-                                  // (el detalle recién agregado aún no está en formData.detalles, por eso >= 0)
-                                  if (formData.detalles.length >= 0) {
-                                    setTimeout(() => {
-                                      inputEfectivoRef.current?.focus();
-                                    }, 200);
+                                }
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  const cantidad = (e.target as HTMLInputElement).value;
+                                  // Agregar automáticamente al presionar Enter
+                                  if (detalleActual.prenda_id && detalleActual.talla_id && parseFloat(cantidad) > 0) {
+                                    agregarDetalle();
+                                    
+                                    // Si ya hay partidas agregadas, ir al input de efectivo
+                                    // (el detalle recién agregado aún no está en formData.detalles, por eso >= 0)
+                                    if (formData.detalles.length >= 0) {
+                                      setTimeout(() => {
+                                        inputEfectivoRef.current?.focus();
+                                      }, 200);
+                                    }
                                   }
                                 }
-                              }
-                            }}
-                            min="0"
-                            style={{ width: '80px', textAlign: 'center', fontSize: '0.85rem', padding: '0.3rem' }}
-                          />
+                              }}
+                              min="0"
+                              style={{ width: '60px', textAlign: 'center', fontSize: '0.85rem', padding: '0.3rem' }}
+                            />
+                            <button
+                              type="button"
+                              onClick={abrirModalAgregarStock}
+                              disabled={!detalleActual.prenda_id || !detalleActual.talla_id}
+                              style={{
+                                padding: '0.3rem 0.5rem',
+                                fontSize: '0.75rem',
+                                borderRadius: '6px',
+                                border: 'none',
+                                background: detalleActual.prenda_id && detalleActual.talla_id 
+                                  ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                                  : '#d1d5db',
+                                color: 'white',
+                                cursor: detalleActual.prenda_id && detalleActual.talla_id ? 'pointer' : 'not-allowed',
+                                fontWeight: '700',
+                                whiteSpace: 'nowrap'
+                              }}
+                              title="Agregar stock"
+                            >
+                              📦+
+                            </button>
+                          </div>
                         </td>
                         <td style={{ padding: '0.5rem', textAlign: 'center' }}>
                           <span style={{
@@ -1956,6 +2049,170 @@ function PedidosPageContent() {
           window.location.reload();
         }}
       />
+
+      {/* Modal para Agregar Stock Rápido */}
+      {mostrarModalAgregarStock && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 10002,
+            padding: '1rem'
+          }}
+        >
+          <div 
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '20px',
+              maxWidth: '500px',
+              width: '100%',
+              boxShadow: '0 25px 70px rgba(0,0,0,0.4)',
+              overflow: 'hidden'
+            }}
+          >
+            <div style={{
+              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              padding: '2rem',
+              textAlign: 'center',
+              color: 'white'
+            }}>
+              <div style={{ fontSize: '4rem', marginBottom: '0.5rem' }}>📦</div>
+              <h2 style={{ margin: 0, fontSize: '1.8rem', fontWeight: '700' }}>
+                Agregar Stock
+              </h2>
+            </div>
+
+            <div style={{ padding: '2rem' }}>
+              <div style={{ marginBottom: '1.5rem' }}>
+                <div style={{ 
+                  backgroundColor: '#f0fdf4', 
+                  borderRadius: '12px', 
+                  padding: '1.25rem',
+                  marginBottom: '1rem',
+                  border: '2px solid #bbf7d0'
+                }}>
+                  <div style={{ marginBottom: '0.75rem' }}>
+                    <span style={{ fontSize: '0.9rem', color: '#666', display: 'block', marginBottom: '0.25rem' }}>Prenda:</span>
+                    <span style={{ fontSize: '1.1rem', fontWeight: '700', color: '#065f46' }}>
+                      {detalleActual.prenda_nombre}
+                    </span>
+                  </div>
+                  <div style={{ marginBottom: '0.75rem' }}>
+                    <span style={{ fontSize: '0.9rem', color: '#666', display: 'block', marginBottom: '0.25rem' }}>Talla:</span>
+                    <span style={{ fontSize: '1.1rem', fontWeight: '700', color: '#065f46' }}>
+                      {detalleActual.talla_nombre}
+                    </span>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '0.9rem', color: '#666', display: 'block', marginBottom: '0.25rem' }}>Stock actual:</span>
+                    <span style={{ fontSize: '1.3rem', fontWeight: '700', color: stockActualDetalle === 0 ? '#dc2626' : '#059669' }}>
+                      {stockActualDetalle} unidades
+                    </span>
+                  </div>
+                </div>
+
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '0.75rem', 
+                  fontWeight: '700',
+                  color: '#374151',
+                  fontSize: '1.05rem'
+                }}>
+                  Cantidad a agregar:
+                </label>
+                <input
+                  type="number"
+                  className="form-input"
+                  value={cantidadAgregar}
+                  onChange={(e) => setCantidadAgregar(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      guardarStockAgregado();
+                    }
+                  }}
+                  min="1"
+                  placeholder="Ingresa cantidad..."
+                  autoFocus
+                  style={{ 
+                    width: '100%', 
+                    padding: '0.875rem',
+                    fontSize: '1.2rem',
+                    fontWeight: '600',
+                    textAlign: 'center',
+                    border: '2px solid #10b981',
+                    borderRadius: '12px',
+                    marginBottom: '1rem'
+                  }}
+                />
+
+                {cantidadAgregar && parseFloat(cantidadAgregar) > 0 && (
+                  <div style={{ 
+                    padding: '1rem', 
+                    backgroundColor: '#dbeafe', 
+                    borderRadius: '12px',
+                    marginBottom: '1rem',
+                    borderLeft: '4px solid #3b82f6',
+                    textAlign: 'center'
+                  }}>
+                    <p style={{ margin: 0, fontSize: '0.95rem', color: '#1e40af' }}>
+                      Stock nuevo: <strong style={{ fontSize: '1.2rem' }}>
+                        {stockActualDetalle + parseFloat(cantidadAgregar)} unidades
+                      </strong>
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+                <button
+                  onClick={() => {
+                    setMostrarModalAgregarStock(false);
+                    setCantidadAgregar('');
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: '0.875rem 1.5rem',
+                    fontSize: '1.05rem',
+                    fontWeight: '600',
+                    borderRadius: '12px',
+                    border: '2px solid #d1d5db',
+                    backgroundColor: 'white',
+                    color: '#374151',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={guardarStockAgregado}
+                  style={{
+                    flex: 1,
+                    padding: '0.875rem 1.5rem',
+                    fontSize: '1.05rem',
+                    fontWeight: '700',
+                    borderRadius: '12px',
+                    border: 'none',
+                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                    color: 'white',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.4)'
+                  }}
+                >
+                  💾 Guardar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal de Confirmación - Stock Insuficiente */}
       {mostrarModalStock && (
