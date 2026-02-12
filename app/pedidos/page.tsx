@@ -1795,15 +1795,15 @@ function PedidosPageContent() {
                     </span>
                   </td>
                   <td>
-                    {/* Botón Entregado - Solo para pedidos con pendientes (PEDIDO) */}
+                    {/* Botón Completado - Solo para pedidos con pendientes (PEDIDO) */}
                     {pedido.estado === 'PEDIDO' && (
                       <button
                         className="btn btn-success"
                         style={{ padding: '0.5rem 1rem', marginRight: '0.5rem' }}
                         onClick={() => cambiarEstado(pedido.id, 'ENTREGADO')}
-                        title="Marcar como entregado cuando llegue el stock pendiente"
+                        title="Marcar como completado cuando se entreguen los artículos pendientes"
                       >
-                        ✓ Entregado
+                        ✓ Completado
                       </button>
                     )}
                     
