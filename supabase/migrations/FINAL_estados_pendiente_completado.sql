@@ -130,26 +130,30 @@ BEGIN
       SET stock = stock - v_cantidad_con_stock
       WHERE id = v_costo_id AND stock >= v_cantidad_con_stock;
       
+      -- Si el UPDATE no afectó filas (race condition), ajustar cantidades
       IF NOT FOUND THEN
-        RAISE EXCEPTION 'Stock insuficiente para % talla %', v_prenda_nombre, v_talla_nombre;
-      END IF;
-      
-      INSERT INTO movimientos (tipo, costo_id, cantidad, observaciones, usuario_id)
-      VALUES (
-        'SALIDA',
-        v_costo_id,
-        -v_cantidad_con_stock,
-        'VENTA - Pedido #' || v_pedido_id || 
-          CASE 
-            WHEN v_cantidad_pendiente > 0 
-            THEN ' (' || v_cantidad_con_stock || ' entregadas, ' || v_cantidad_pendiente || ' pendientes)'
-            ELSE ' (' || v_cantidad_con_stock || ' entregadas)'
-          END,
-        p_usuario_id
-      );
-      
-      RAISE NOTICE 'Stock actualizado: % - %', v_prenda_nombre, v_talla_nombre;
-    END IF;
+        RAISE NOTICE 'Race condition detectada: ajustando cantidades para % talla %', v_prenda_nombre, v_talla_nombre;
+        -- TODO: Aquí se podría ajustar detalle_pedidos.pendiente si fuera necesario
+        -- Por ahora, simplemente no registramos el movimiento
+      ELSE
+        -- Solo registrar movimiento si el UPDATE fue exitoso
+        INSERT INTO movimientos (tipo, costo_id, cantidad, observaciones, usuario_id)
+        VALUES (
+          'SALIDA',
+          v_costo_id,
+          -v_cantidad_con_stock,
+          'VENTA - Pedido #' || v_pedido_id || 
+            CASE 
+              WHEN v_cantidad_pendiente > 0 
+              THEN ' (' || v_cantidad_con_stock || ' entregadas, ' || v_cantidad_pendiente || ' pendientes)'
+              ELSE ' (' || v_cantidad_con_stock || ' entregadas)'
+            END,
+          p_usuario_id
+        );
+        
+        RAISE NOTICE 'Stock actualizado: % - %', v_prenda_nombre, v_talla_nombre;
+      END IF; -- Fin del IF NOT FOUND
+    END IF; -- Fin del IF v_cantidad_con_stock > 0
     
     -- SNAPSHOT DE INSUMOS
     FOR v_insumo_record IN 

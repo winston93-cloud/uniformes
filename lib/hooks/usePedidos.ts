@@ -76,9 +76,10 @@ export function usePedidos(sucursal_id?: string) {
         prenda_id: det.prenda_id,
         talla_id: det.talla_id,
         cantidad: det.cantidad,
-        cantidad_con_stock: (det as any).cantidad_con_stock || det.cantidad, // Cuánto tiene stock
-        cantidad_pendiente: (det as any).cantidad_pendiente || 0, // Cuánto queda pendiente
-        tiene_stock: (det as any).tiene_stock !== false, // Flag de disponibilidad
+        // IMPORTANTE: Usar !== undefined en vez de || porque 0 es un valor válido
+        cantidad_con_stock: (det as any).cantidad_con_stock !== undefined ? (det as any).cantidad_con_stock : det.cantidad,
+        cantidad_pendiente: (det as any).cantidad_pendiente !== undefined ? (det as any).cantidad_pendiente : 0,
+        tiene_stock: (det as any).tiene_stock !== false,
         especificaciones: det.especificaciones || ''
       }));
 
