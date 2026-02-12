@@ -1625,11 +1625,12 @@ function PedidosPageContent() {
                   }}>
                     <span>🔄 Cambio a Entregar:</span>
                     <span>
-                      ${(() => {
+                      $                      {(() => {
                         const totalDetalles = formData.detalles.reduce((sum, det) => sum + det.total, 0);
                         const totalActual = (parseFloat(detalleActual.cantidad) || 0) * (parseFloat(detalleActual.precio) || 0);
                         const totalGeneral = totalDetalles + totalActual;
-                        return Math.max(0, formData.efectivo_recibido - totalGeneral).toFixed(2);
+                        const efectivoRecibido = parseFloat(formData.efectivo_recibido as string) || 0;
+                        return Math.max(0, efectivoRecibido - totalGeneral).toFixed(2);
                       })()}
                     </span>
                   </div>
