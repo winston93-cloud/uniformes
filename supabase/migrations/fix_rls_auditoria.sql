@@ -7,17 +7,11 @@ DROP POLICY IF EXISTS "Usuarios autenticados pueden insertar en auditoria" ON pu
 -- Habilitar RLS en auditoria
 ALTER TABLE public.auditoria ENABLE ROW LEVEL SECURITY;
 
--- Permitir a usuarios autenticados leer su propia auditoría
-CREATE POLICY "Usuarios autenticados pueden leer auditoria" 
+-- Permitir a todos los usuarios autenticados acceder a auditoría
+CREATE POLICY "Acceso completo a auditoria para autenticados" 
 ON public.auditoria
-FOR SELECT 
-USING (auth.role() = 'authenticated');
-
--- Permitir a usuarios autenticados insertar en auditoría
-CREATE POLICY "Usuarios autenticados pueden insertar auditoria" 
-ON public.auditoria
-FOR INSERT 
-WITH CHECK (auth.role() = 'authenticated');
+FOR ALL 
+USING (auth.role() = 'authenticated' OR auth.role() = 'anon');
 
 -- Comentario
 COMMENT ON TABLE public.auditoria IS 'Tabla de auditoría con RLS habilitado para usuarios autenticados';
