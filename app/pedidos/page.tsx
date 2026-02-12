@@ -632,14 +632,9 @@ function PedidosPageContent() {
         <SearchParamsDetector setMostrarFormulario={setMostrarFormulario} />
       </Suspense>
       <div className="main-container" style={{ paddingTop: '1rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-          <h1 style={{ fontSize: '1.8rem', fontWeight: '700', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.2)' }}>
-            🛒 Gestión de Pedidos
-          </h1>
-          <button className="btn btn-primary" onClick={() => setMostrarFormulario(!mostrarFormulario)}>
-            ➕ Nuevo Pedido
-          </button>
-        </div>
+        <h1 style={{ fontSize: '1.8rem', fontWeight: '700', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.2)', textAlign: 'center', marginBottom: '1rem' }}>
+          🛒 Gestión de Pedidos
+        </h1>
 
         {mostrarFormulario && (
           <div className="form-container" style={{ maxWidth: '1600px', width: '95%', padding: '1rem', marginTop: '0.5rem' }}>
@@ -1286,6 +1281,17 @@ function PedidosPageContent() {
             </form>
           </div>
         )}
+
+        {/* Botón Nuevo Pedido */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+          <button 
+            className="btn btn-primary" 
+            onClick={() => setMostrarFormulario(!mostrarFormulario)}
+            style={{ fontSize: '1rem', padding: '0.75rem 1.5rem' }}
+          >
+            ➕ Nuevo Pedido
+          </button>
+        </div>
 
         {/* Filtro de mes y año */}
         <div style={{ 
