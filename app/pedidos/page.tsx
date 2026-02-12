@@ -1293,17 +1293,10 @@ function PedidosPageContent() {
                               if (e.key === 'Enter') {
                                 e.preventDefault();
                                 const cantidad = (e.target as HTMLInputElement).value;
-                                // Agregar automáticamente al presionar Enter
+                                // Agregar automáticamente al presionar Enter (mismo comportamiento que TAB)
                                 if (detalleActual.prenda_id && detalleActual.talla_id && parseFloat(cantidad) > 0) {
                                   agregarDetalle();
-                                  
-                                  // Si ya hay partidas agregadas, ir al input de efectivo
-                                  // (el detalle recién agregado aún no está en formData.detalles, por eso >= 0)
-                                  if (formData.detalles.length >= 0) {
-                                    setTimeout(() => {
-                                      inputEfectivoRef.current?.focus();
-                                    }, 200);
-                                  }
+                                  // agregarDetalle() ya enfoca inputPrendaRef automáticamente
                                 }
                               }
                             }}
