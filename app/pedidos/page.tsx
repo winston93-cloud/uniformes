@@ -65,6 +65,8 @@ function PedidosPageContent() {
   const [mostrarModal, setMostrarModal] = useState(false);
   const [mostrarModalDevolucion, setMostrarModalDevolucion] = useState(false);
   const [pedidoSeleccionado, setPedidoSeleccionado] = useState<any>(null);
+  const [mostrarAyuda, setMostrarAyuda] = useState(false);
+  const [indiceClienteSeleccionado, setIndiceClienteSeleccionado] = useState(-1);
   const { costos, getCostosByPrenda } = useCostos(sesion?.sucursal_id);
   const { alumnos, searchAlumnos } = useAlumnos(cicloEscolar);
   const { externos } = useExternos();
@@ -339,6 +341,28 @@ function PedidosPageContent() {
         inputClienteRef.current?.focus();
       }, 100);
     }
+  }, [mostrarFormulario]);
+
+  // Manejar teclas F1 para ayuda y Ctrl+S para guardar
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'F1' && mostrarFormulario) {
+        e.preventDefault();
+        setMostrarAyuda(true);
+      }
+      
+      if ((e.ctrlKey || e.metaKey) && e.key === 's' && mostrarFormulario) {
+        e.preventDefault();
+        // Simular submit del formulario
+        const form = document.querySelector('form');
+        if (form) {
+          form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, [mostrarFormulario]);
 
   // ELIMINADO: useEffect y seleccionarPrenda viejos - ahora se usa seleccionarPrendaDelDropdown
@@ -704,35 +728,58 @@ function PedidosPageContent() {
                 <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '700', color: '#374151' }}>
                   ➕ Nuevo Pedido
                 </h2>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMostrarFormulario(false);
-                    setFormData({ 
-                      cliente_id: '', 
-                      cliente_tipo: '', 
-                      cliente_nombre: '', 
-                      detalles: [],
-                      observaciones: '',
-                      modalidad_pago: 'TOTAL',
-                      efectivo_recibido: 0
-                    });
-                    setBusquedaCliente('');
-                    setClienteSeleccionado(null);
-                  }}
-                  style={{
-                    background: '#ef4444',
-                    border: 'none',
-                    borderRadius: '8px',
-                    padding: '0.5rem 1rem',
-                    color: 'white',
-                    fontSize: '1.2rem',
-                    cursor: 'pointer',
-                    fontWeight: '700'
-                  }}
-                >
-                  ✕
-                </button>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={() => setMostrarAyuda(true)}
+                    style={{
+                      background: '#3b82f6',
+                      border: 'none',
+                      borderRadius: '50%',
+                      width: '36px',
+                      height: '36px',
+                      color: 'white',
+                      fontSize: '1.2rem',
+                      cursor: 'pointer',
+                      fontWeight: '700',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                    title="Ayuda (F1)"
+                  >
+                    ?
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMostrarFormulario(false);
+                      setFormData({ 
+                        cliente_id: '', 
+                        cliente_tipo: '', 
+                        cliente_nombre: '', 
+                        detalles: [],
+                        observaciones: '',
+                        modalidad_pago: 'TOTAL',
+                        efectivo_recibido: 0
+                      });
+                      setBusquedaCliente('');
+                      setClienteSeleccionado(null);
+                    }}
+                    style={{
+                      background: '#ef4444',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '0.5rem 1rem',
+                      color: 'white',
+                      fontSize: '1.2rem',
+                      cursor: 'pointer',
+                      fontWeight: '700'
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
               </div>
             <form onSubmit={handleSubmit}>
               <div className="form-group" style={{ marginBottom: '0.75rem' }}>
@@ -745,6 +792,7 @@ function PedidosPageContent() {
                     value={busquedaCliente}
                     onChange={(e) => {
                       setBusquedaCliente(e.target.value);
+                      setIndiceClienteSeleccionado(-1);
                       if (e.target.value === '') {
                         setFormData({ ...formData, cliente_id: '', cliente_tipo: '', cliente_nombre: '' });
                         setClienteSeleccionado(null);
@@ -754,12 +802,32 @@ function PedidosPageContent() {
                       setBusquedaCliente(''); // Limpiar al hacer clic
                       setFormData({ ...formData, cliente_id: '', cliente_tipo: '', cliente_nombre: '' });
                       setClienteSeleccionado(null);
+                      setIndiceClienteSeleccionado(-1);
                       if (resultadosBusqueda.length > 0) {
                         setMostrarResultados(true);
                       }
                     }}
                     onBlur={() => {
                       setTimeout(() => setMostrarResultados(false), 200);
+                    }}
+                    onKeyDown={(e) => {
+                      if (!mostrarResultados || resultadosBusqueda.length === 0) return;
+                      
+                      if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        setIndiceClienteSeleccionado(prev => 
+                          prev < resultadosBusqueda.length - 1 ? prev + 1 : prev
+                        );
+                      } else if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        setIndiceClienteSeleccionado(prev => prev > 0 ? prev - 1 : -1);
+                      } else if (e.key === 'Enter' && indiceClienteSeleccionado >= 0) {
+                        e.preventDefault();
+                        seleccionarCliente(resultadosBusqueda[indiceClienteSeleccionado]);
+                      } else if (e.key === 'Escape') {
+                        setMostrarResultados(false);
+                        setIndiceClienteSeleccionado(-1);
+                      }
                     }}
                     placeholder="🔍 Buscar alumno o externo..."
                     style={{ width: '100%', padding: '0.5rem', fontSize: '0.9rem' }}
@@ -790,19 +858,13 @@ function PedidosPageContent() {
                             cursor: 'pointer',
                             borderBottom: index < resultadosBusqueda.length - 1 ? '1px solid #f0f0f0' : 'none',
                             transition: 'background-color 0.2s',
-                            backgroundColor: formData.cliente_id === cliente.id ? '#e7f3ff' : 'white'
+                            backgroundColor: 
+                              indiceClienteSeleccionado === index ? '#dbeafe' :
+                              formData.cliente_id === cliente.id ? '#e7f3ff' : 'white',
+                            borderLeft: indiceClienteSeleccionado === index ? '4px solid #3b82f6' : 'none'
                           }}
                           onMouseEnter={(e) => {
-                            if (formData.cliente_id !== cliente.id) {
-                              e.currentTarget.style.backgroundColor = '#f8f9fa';
-                            }
-                          }}
-                          onMouseLeave={(e) => {
-                            if (formData.cliente_id !== cliente.id) {
-                              e.currentTarget.style.backgroundColor = 'white';
-                            } else {
-                              e.currentTarget.style.backgroundColor = '#e7f3ff';
-                            }
+                            setIndiceClienteSeleccionado(index);
                           }}
                         >
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -1800,6 +1862,152 @@ function PedidosPageContent() {
           window.location.reload();
         }}
       />
+
+      {/* Modal de Ayuda - Shortcuts de Teclado */}
+      {mostrarAyuda && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 10000,
+            padding: '1rem'
+          }}
+          onClick={() => setMostrarAyuda(false)}
+        >
+          <div 
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '16px',
+              maxWidth: '600px',
+              width: '100%',
+              maxHeight: '90vh',
+              overflow: 'auto',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{
+              background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+              padding: '1.5rem',
+              borderTopLeftRadius: '16px',
+              borderTopRightRadius: '16px',
+              color: 'white',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '700' }}>
+                ⌨️ Atajos de Teclado
+              </h2>
+              <button
+                onClick={() => setMostrarAyuda(false)}
+                style={{
+                  background: 'rgba(255,255,255,0.2)',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '0.5rem 1rem',
+                  color: 'white',
+                  fontSize: '1.2rem',
+                  cursor: 'pointer',
+                  fontWeight: '700'
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ padding: '2rem' }}>
+              <div style={{ marginBottom: '1.5rem' }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '0.75rem', color: '#1e40af' }}>
+                  🔍 Búsqueda de Cliente
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem', backgroundColor: '#f3f4f6', borderRadius: '6px' }}>
+                    <span style={{ fontWeight: '600' }}>↓ Flecha Abajo</span>
+                    <span style={{ color: '#666' }}>Siguiente resultado</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem', backgroundColor: '#f3f4f6', borderRadius: '6px' }}>
+                    <span style={{ fontWeight: '600' }}>↑ Flecha Arriba</span>
+                    <span style={{ color: '#666' }}>Resultado anterior</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem', backgroundColor: '#f3f4f6', borderRadius: '6px' }}>
+                    <span style={{ fontWeight: '600' }}>Enter</span>
+                    <span style={{ color: '#666' }}>Seleccionar cliente</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem', backgroundColor: '#f3f4f6', borderRadius: '6px' }}>
+                    <span style={{ fontWeight: '600' }}>Escape</span>
+                    <span style={{ color: '#666' }}>Cerrar resultados</span>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '1.5rem' }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '0.75rem', color: '#1e40af' }}>
+                  📝 Formulario de Pedido
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem', backgroundColor: '#f3f4f6', borderRadius: '6px' }}>
+                    <span style={{ fontWeight: '600' }}>Tab</span>
+                    <span style={{ color: '#666' }}>Siguiente campo</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem', backgroundColor: '#f3f4f6', borderRadius: '6px' }}>
+                    <span style={{ fontWeight: '600' }}>Shift + Tab</span>
+                    <span style={{ color: '#666' }}>Campo anterior</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem', backgroundColor: '#f3f4f6', borderRadius: '6px' }}>
+                    <span style={{ fontWeight: '600' }}>Enter (en cantidad)</span>
+                    <span style={{ color: '#666' }}>Agregar partida automáticamente</span>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '1.5rem' }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '0.75rem', color: '#1e40af' }}>
+                  ⚡ Atajos Generales
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem', backgroundColor: '#f3f4f6', borderRadius: '6px' }}>
+                    <span style={{ fontWeight: '600' }}>F1</span>
+                    <span style={{ color: '#666' }}>Abrir esta ayuda</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem', backgroundColor: '#f3f4f6', borderRadius: '6px' }}>
+                    <span style={{ fontWeight: '600' }}>Ctrl + S</span>
+                    <span style={{ color: '#666' }}>Guardar pedido</span>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ 
+                padding: '1rem', 
+                backgroundColor: '#dbeafe', 
+                borderRadius: '8px',
+                borderLeft: '4px solid #3b82f6'
+              }}>
+                <p style={{ margin: 0, fontSize: '0.9rem', color: '#1e40af', fontWeight: '600' }}>
+                  💡 Tip: Todo el sistema puede operarse completamente con el teclado para mayor eficiencia.
+                </p>
+              </div>
+
+              <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
+                <button
+                  onClick={() => setMostrarAyuda(false)}
+                  className="btn btn-primary"
+                  style={{ padding: '0.75rem 2rem', fontSize: '1rem' }}
+                >
+                  Entendido
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </LayoutWrapper>
   );
 }
