@@ -1612,7 +1612,8 @@ function PedidosPageContent() {
                       const totalDetalles = formData.detalles.reduce((sum, det) => sum + det.total, 0);
                       const totalActual = (parseFloat(detalleActual.cantidad) || 0) * (parseFloat(detalleActual.precio) || 0);
                       const totalGeneral = totalDetalles + totalActual;
-                      return formData.efectivo_recibido < totalGeneral 
+                      const efectivoRecibido = parseFloat(formData.efectivo_recibido as string) || 0;
+                      return efectivoRecibido < totalGeneral 
                         ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)' 
                         : 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)';
                     })(),
