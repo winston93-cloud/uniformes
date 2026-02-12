@@ -1386,69 +1386,81 @@ function PedidosPageContent() {
                             {detalle.cantidad}
                           </td>
                           <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                            <span style={{
-                              display: 'inline-block',
-                              padding: '0.3rem 0.6rem',
-                              borderRadius: '6px',
-                              fontSize: '0.85rem',
-                              fontWeight: '700',
-                              backgroundColor: '#d1fae5',
-                              color: '#065f46'
-                            }}>
-                              {detalle.cantidad_con_stock || 0}
-                            </span>
+                            {(() => {
+                              const entregado = detalle.cantidad_con_stock || 0;
+                              return (
+                                <span style={{
+                                  display: 'inline-block',
+                                  padding: '0.3rem 0.6rem',
+                                  borderRadius: '6px',
+                                  fontSize: '0.85rem',
+                                  fontWeight: '700',
+                                  backgroundColor: '#d1fae5',
+                                  color: '#065f46'
+                                }}>
+                                  {entregado}
+                                </span>
+                              );
+                            })()}
                           </td>
                           <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-                              <span style={{
-                                display: 'inline-block',
-                                padding: '0.3rem 0.6rem',
-                                borderRadius: '6px',
-                                fontSize: '0.85rem',
-                                fontWeight: '700',
-                                backgroundColor: detalle.cantidad_pendiente && detalle.cantidad_pendiente > 0 ? '#fee2e2' : '#f3f4f6',
-                                color: detalle.cantidad_pendiente && detalle.cantidad_pendiente > 0 ? '#991b1b' : '#6b7280'
-                              }}>
-                                {detalle.cantidad_pendiente || 0}
-                              </span>
-                              {detalle.cantidad_pendiente && detalle.cantidad_pendiente > 0 && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setStockActualDetalle(costos.find(c => 
-                                      c.prenda_id === detalle.prenda_id && 
-                                      c.talla_id === detalle.talla_id
-                                    ));
-                                    setPartidaParaAgregarStock(index);
-                                    setCantidadAgregar('');
-                                    setMostrarModalAgregarStock(true);
-                                  }}
-                                  style={{
-                                    backgroundColor: '#3b82f6',
-                                    color: 'white',
-                                    border: 'none',
+                            {(() => {
+                              const pendiente = detalle.cantidad_pendiente || 0;
+                              const hayPendientes = pendiente > 0;
+                              
+                              return (
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                                  <span style={{
+                                    display: 'inline-block',
+                                    padding: '0.3rem 0.6rem',
                                     borderRadius: '6px',
-                                    padding: '0.3rem 0.5rem',
-                                    fontSize: '0.75rem',
+                                    fontSize: '0.85rem',
                                     fontWeight: '700',
-                                    cursor: 'pointer',
-                                    boxShadow: '0 2px 4px rgba(59,130,246,0.3)',
-                                    transition: 'all 0.2s'
-                                  }}
-                                  onMouseEnter={(e) => {
-                                    e.currentTarget.style.backgroundColor = '#2563eb';
-                                    e.currentTarget.style.transform = 'scale(1.05)';
-                                  }}
-                                  onMouseLeave={(e) => {
-                                    e.currentTarget.style.backgroundColor = '#3b82f6';
-                                    e.currentTarget.style.transform = 'scale(1)';
-                                  }}
-                                  title="Agregar stock"
-                                >
-                                  📦+
-                                </button>
-                              )}
-                            </div>
+                                    backgroundColor: hayPendientes ? '#fee2e2' : '#f3f4f6',
+                                    color: hayPendientes ? '#991b1b' : '#6b7280'
+                                  }}>
+                                    {pendiente}
+                                  </span>
+                                  {hayPendientes && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setStockActualDetalle(costos.find(c => 
+                                          c.prenda_id === detalle.prenda_id && 
+                                          c.talla_id === detalle.talla_id
+                                        ));
+                                        setPartidaParaAgregarStock(index);
+                                        setCantidadAgregar('');
+                                        setMostrarModalAgregarStock(true);
+                                      }}
+                                      style={{
+                                        backgroundColor: '#3b82f6',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '6px',
+                                        padding: '0.3rem 0.5rem',
+                                        fontSize: '0.75rem',
+                                        fontWeight: '700',
+                                        cursor: 'pointer',
+                                        boxShadow: '0 2px 4px rgba(59,130,246,0.3)',
+                                        transition: 'all 0.2s'
+                                      }}
+                                      onMouseEnter={(e) => {
+                                        e.currentTarget.style.backgroundColor = '#2563eb';
+                                        e.currentTarget.style.transform = 'scale(1.05)';
+                                      }}
+                                      onMouseLeave={(e) => {
+                                        e.currentTarget.style.backgroundColor = '#3b82f6';
+                                        e.currentTarget.style.transform = 'scale(1)';
+                                      }}
+                                      title="Agregar stock"
+                                    >
+                                      📦+
+                                    </button>
+                                  )}
+                                </div>
+                              );
+                            })()}
                           </td>
                           <td style={{ padding: '0.75rem', textAlign: 'right' }}>
                             ${detalle.precio.toFixed(2)}
