@@ -72,6 +72,7 @@ function PedidosPageContent() {
   const [mostrarModalStock, setMostrarModalStock] = useState(false);
   const [infoStock, setInfoStock] = useState({ disponible: 0, solicitado: 0 });
   const [accionPendienteStock, setAccionPendienteStock] = useState<(() => void) | null>(null);
+  const [tipoModalStock, setTipoModalStock] = useState<'insuficiente' | 'bajo'>('insuficiente');
   const [mostrarModalAgregarStock, setMostrarModalAgregarStock] = useState(false);
   const [cantidadAgregar, setCantidadAgregar] = useState('');
   const [stockActualDetalle, setStockActualDetalle] = useState(0);
@@ -440,6 +441,7 @@ function PedidosPageContent() {
       
       // Mostrar modal personalizada para confirmación
       setInfoStock({ disponible: costo.stock, solicitado: cantidadSolicitada });
+      setTipoModalStock('insuficiente');
       setMostrarModalStock(true);
       
       // Guardar acción para ejecutar si el usuario acepta
@@ -487,9 +489,55 @@ function PedidosPageContent() {
       return; // Salir y esperar confirmación del usuario
     } else if (costo.stock < cantidadSolicitada * 2) {
       // Advertencia si el stock quedará bajo
-      const quedarian = costo.stock - cantidadSolicitada;
-      const confirmar = confirm(`⚠️ Advertencia: Stock bajo\n\nStock actual: ${costo.stock}\nCantidad a agregar: ${cantidadSolicitada}\nQuedarían: ${quedarian} unidades\n\n¿Deseas continuar?`);
-      if (!confirmar) return;
+      console.log('⚠️ Stock bajo - Mostrar advertencia');
+      
+      setInfoStock({ disponible: costo.stock, solicitado: cantidadSolicitada });
+      setTipoModalStock('bajo');
+      setMostrarModalStock(true);
+      
+      // Guardar acción para ejecutar si el usuario acepta
+      setAccionPendienteStock(() => () => {
+        const cantidad = parseFloat(detalleActual.cantidad);
+        const precio = parseFloat(detalleActual.precio);
+        const total = cantidad * precio;
+
+        const nuevoDetalle: DetallePedido = {
+          prenda: detalleActual.prenda_nombre,
+          prenda_id: detalleActual.prenda_id,
+          talla: detalleActual.talla_nombre,
+          talla_id: detalleActual.talla_id,
+          especificaciones: detalleActual.especificaciones,
+          cantidad: cantidad,
+          pendiente: cantidad,
+          precio: precio,
+          total: total,
+          costoId: costo.id,
+          tiene_stock: true, // Sí tiene stock
+        };
+
+        setFormData(prevFormData => ({ 
+          ...prevFormData, 
+          detalles: [...prevFormData.detalles, nuevoDetalle] 
+        }));
+        
+        setDetalleActual({ 
+          prenda_id: '', 
+          prenda_nombre: '',
+          talla_id: '', 
+          talla_nombre: '',
+          especificaciones: '',
+          cantidad: '', 
+          precio: '0' 
+        });
+        setTextoPrendaBusqueda('');
+        setTallasDisponibles([]);
+        
+        setTimeout(() => {
+          inputPrendaRef.current?.focus();
+        }, 100);
+      });
+      
+      return;
     }
 
     const cantidad = parseFloat(detalleActual.cantidad);
@@ -2229,14 +2277,16 @@ function PedidosPageContent() {
             }}
           >
             <div style={{
-              background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+              background: tipoModalStock === 'insuficiente' 
+                ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
+                : 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
               padding: '2rem',
               textAlign: 'center',
               color: 'white'
             }}>
               <div style={{ fontSize: '4rem', marginBottom: '0.5rem' }}>⚠️</div>
               <h2 style={{ margin: 0, fontSize: '1.8rem', fontWeight: '700' }}>
-                Stock Insuficiente
+                {tipoModalStock === 'insuficiente' ? 'Stock Insuficiente' : 'Advertencia: Stock Bajo'}
               </h2>
             </div>
 
@@ -2264,55 +2314,96 @@ function PedidosPageContent() {
 
               <div style={{ 
                 padding: '1.25rem', 
-                backgroundColor: '#dbeafe', 
+                backgroundColor: tipoModalStock === 'insuficiente' ? '#dbeafe' : '#fef3c7', 
                 borderRadius: '12px',
                 marginBottom: '2rem',
-                borderLeft: '4px solid #3b82f6'
+                borderLeft: tipoModalStock === 'insuficiente' ? '4px solid #3b82f6' : '4px solid #f59e0b'
               }}>
-                <p style={{ margin: 0, fontSize: '1rem', color: '#1e40af', lineHeight: '1.6' }}>
-                  <strong>💡 La partida se creará como PENDIENTE</strong>
-                  <br />
-                  <span style={{ fontSize: '0.95rem' }}>
-                    NO se descontará del inventario hasta que haya stock disponible.
-                  </span>
+                <p style={{ 
+                  margin: 0, 
+                  fontSize: '1rem', 
+                  color: tipoModalStock === 'insuficiente' ? '#1e40af' : '#92400e', 
+                  lineHeight: '1.6' 
+                }}>
+                  {tipoModalStock === 'insuficiente' ? (
+                    <>
+                      <strong>💡 La partida se creará como PENDIENTE</strong>
+                      <br />
+                      <span style={{ fontSize: '0.95rem' }}>
+                        NO se descontará del inventario hasta que haya stock disponible.
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <strong>⚠️ El stock quedará en {infoStock.disponible - infoStock.solicitado} unidades</strong>
+                      <br />
+                      <span style={{ fontSize: '0.95rem' }}>
+                        Considera agregar más stock para mantener inventario saludable.
+                      </span>
+                    </>
+                  )}
                 </p>
               </div>
 
               <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-                <button
-                  onClick={() => {
-                    // Cerrar modal de stock insuficiente
-                    setMostrarModalStock(false);
-                    
-                    // Abrir modal de agregar stock
-                    setStockActualDetalle(infoStock.disponible);
-                    setCantidadAgregar('');
-                    setMostrarModalAgregarStock(true);
-                  }}
-                  style={{
-                    flex: 1,
-                    padding: '0.875rem 1.5rem',
-                    fontSize: '1.05rem',
-                    fontWeight: '700',
-                    borderRadius: '12px',
-                    border: 'none',
-                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                    color: 'white',
-                    cursor: 'pointer',
-                    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.4)',
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.boxShadow = '0 6px 20px rgba(16, 185, 129, 0.5)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.4)';
-                  }}
-                >
-                  📦 Agregar Stock
-                </button>
+                {tipoModalStock === 'insuficiente' && (
+                  <button
+                    onClick={() => {
+                      // Cerrar modal de stock insuficiente
+                      setMostrarModalStock(false);
+                      
+                      // Abrir modal de agregar stock
+                      setStockActualDetalle(infoStock.disponible);
+                      setCantidadAgregar('');
+                      setMostrarModalAgregarStock(true);
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: '0.875rem 1.5rem',
+                      fontSize: '1.05rem',
+                      fontWeight: '700',
+                      borderRadius: '12px',
+                      border: 'none',
+                      background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                      color: 'white',
+                      cursor: 'pointer',
+                      boxShadow: '0 4px 12px rgba(16, 185, 129, 0.4)',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      e.currentTarget.style.boxShadow = '0 6px 20px rgba(16, 185, 129, 0.5)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.4)';
+                    }}
+                  >
+                    📦 Agregar Stock
+                  </button>
+                )}
+                {tipoModalStock === 'bajo' && (
+                  <button
+                    onClick={() => {
+                      setMostrarModalStock(false);
+                      setAccionPendienteStock(null);
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: '0.875rem 1.5rem',
+                      fontSize: '1.05rem',
+                      fontWeight: '600',
+                      borderRadius: '12px',
+                      border: '2px solid #d1d5db',
+                      backgroundColor: 'white',
+                      color: '#374151',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    Cancelar
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     if (accionPendienteStock) {
@@ -2328,22 +2419,24 @@ function PedidosPageContent() {
                     fontWeight: '700',
                     borderRadius: '12px',
                     border: 'none',
-                    background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                    background: tipoModalStock === 'insuficiente' 
+                      ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
+                      : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                     color: 'white',
                     cursor: 'pointer',
-                    boxShadow: '0 4px 12px rgba(245, 158, 11, 0.4)',
+                    boxShadow: tipoModalStock === 'insuficiente'
+                      ? '0 4px 12px rgba(245, 158, 11, 0.4)'
+                      : '0 4px 12px rgba(16, 185, 129, 0.4)',
                     transition: 'all 0.2s'
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.boxShadow = '0 6px 20px rgba(245, 158, 11, 0.5)';
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(245, 158, 11, 0.4)';
                   }}
                 >
-                  ⚠️ Crear Pendiente
+                  {tipoModalStock === 'insuficiente' ? '⚠️ Crear Pendiente' : '✓ Continuar'}
                 </button>
               </div>
             </div>
