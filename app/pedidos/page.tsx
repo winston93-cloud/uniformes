@@ -42,6 +42,8 @@ interface DetallePedido {
   total: number;
   costoId?: string;
   tiene_stock?: boolean; // Flag para indicar si tiene stock disponible
+  cantidad_con_stock?: number; // Cantidad que sí tiene stock
+  cantidad_pendiente?: number; // Cantidad pendiente por falta de stock
 }
 
 export const dynamic = 'force-dynamic';
@@ -75,7 +77,8 @@ function PedidosPageContent() {
   const [tipoModalStock, setTipoModalStock] = useState<'insuficiente' | 'bajo'>('insuficiente');
   const [mostrarModalAgregarStock, setMostrarModalAgregarStock] = useState(false);
   const [cantidadAgregar, setCantidadAgregar] = useState('');
-  const [stockActualDetalle, setStockActualDetalle] = useState(0);
+  const [stockActualDetalle, setStockActualDetalle] = useState<any>(null);
+  const [partidaParaAgregarStock, setPartidaParaAgregarStock] = useState<number | null>(null);
   const [mostrarExitoStock, setMostrarExitoStock] = useState(false);
   const [mensajeExitoStock, setMensajeExitoStock] = useState('');
   const { costos, getCostosByPrenda, refetch: refetchCostos } = useCostos(sesion?.sucursal_id);
@@ -434,111 +437,12 @@ function PedidosPageContent() {
 
     const cantidadSolicitada = parseFloat(detalleActual.cantidad);
     
-    // Verificar stock y determinar si la partida será pendiente
-    let tieneStock = true;
-    if (costo.stock < cantidadSolicitada) {
-      console.log('⚠️ Stock insuficiente - Creando partida PENDIENTE');
-      
-      // Mostrar modal personalizada para confirmación
-      setInfoStock({ disponible: costo.stock, solicitado: cantidadSolicitada });
-      setTipoModalStock('insuficiente');
-      setMostrarModalStock(true);
-      
-      // Guardar acción para ejecutar si el usuario acepta
-      setAccionPendienteStock(() => () => {
-        const cantidad = parseFloat(detalleActual.cantidad);
-        const precio = parseFloat(detalleActual.precio);
-        const total = cantidad * precio;
-
-        const nuevoDetalle: DetallePedido = {
-          prenda: detalleActual.prenda_nombre,
-          prenda_id: detalleActual.prenda_id,
-          talla: detalleActual.talla_nombre,
-          talla_id: detalleActual.talla_id,
-          especificaciones: detalleActual.especificaciones,
-          cantidad: cantidad,
-          pendiente: cantidad,
-          precio: precio,
-          total: total,
-          costoId: costo.id,
-          tiene_stock: false, // Sin stock
-        };
-
-        setFormData(prevFormData => ({ 
-          ...prevFormData, 
-          detalles: [...prevFormData.detalles, nuevoDetalle] 
-        }));
-        
-        setDetalleActual({ 
-          prenda_id: '', 
-          prenda_nombre: '',
-          talla_id: '', 
-          talla_nombre: '',
-          especificaciones: '',
-          cantidad: '', 
-          precio: '0' 
-        });
-        setTextoPrendaBusqueda('');
-        setTallasDisponibles([]);
-        
-        setTimeout(() => {
-          inputPrendaRef.current?.focus();
-        }, 100);
-      });
-      
-      return; // Salir y esperar confirmación del usuario
-    } else if (costo.stock < cantidadSolicitada * 2) {
-      // Advertencia si el stock quedará bajo
-      console.log('⚠️ Stock bajo - Mostrar advertencia');
-      
-      setInfoStock({ disponible: costo.stock, solicitado: cantidadSolicitada });
-      setTipoModalStock('bajo');
-      setMostrarModalStock(true);
-      
-      // Guardar acción para ejecutar si el usuario acepta
-      setAccionPendienteStock(() => () => {
-        const cantidad = parseFloat(detalleActual.cantidad);
-        const precio = parseFloat(detalleActual.precio);
-        const total = cantidad * precio;
-
-        const nuevoDetalle: DetallePedido = {
-          prenda: detalleActual.prenda_nombre,
-          prenda_id: detalleActual.prenda_id,
-          talla: detalleActual.talla_nombre,
-          talla_id: detalleActual.talla_id,
-          especificaciones: detalleActual.especificaciones,
-          cantidad: cantidad,
-          pendiente: cantidad,
-          precio: precio,
-          total: total,
-          costoId: costo.id,
-          tiene_stock: true, // Sí tiene stock
-        };
-
-        setFormData(prevFormData => ({ 
-          ...prevFormData, 
-          detalles: [...prevFormData.detalles, nuevoDetalle] 
-        }));
-        
-        setDetalleActual({ 
-          prenda_id: '', 
-          prenda_nombre: '',
-          talla_id: '', 
-          talla_nombre: '',
-          especificaciones: '',
-          cantidad: '', 
-          precio: '0' 
-        });
-        setTextoPrendaBusqueda('');
-        setTallasDisponibles([]);
-        
-        setTimeout(() => {
-          inputPrendaRef.current?.focus();
-        }, 100);
-      });
-      
-      return;
-    }
+    // División automática: calcular cuánto se puede vender y cuánto queda pendiente
+    const stockDisponible = costo.stock || 0;
+    const cantidadConStock = Math.min(stockDisponible, cantidadSolicitada);
+    const cantidadPendiente = Math.max(0, cantidadSolicitada - stockDisponible);
+    
+    console.log(`📊 División automática: Total ${cantidadSolicitada} = ${cantidadConStock} con stock + ${cantidadPendiente} pendiente`);
 
     const cantidad = parseFloat(detalleActual.cantidad);
     const precio = parseFloat(detalleActual.precio);
@@ -551,11 +455,13 @@ function PedidosPageContent() {
       talla_id: detalleActual.talla_id,
       especificaciones: detalleActual.especificaciones,
       cantidad: cantidad,
-      pendiente: cantidad, // Inicialmente pendiente = cantidad
+      pendiente: cantidadPendiente, // Solo lo que no tiene stock
       precio: precio,
       total: total,
       costoId: costo.id,
-      tiene_stock: tieneStock, // Marcar si tiene stock disponible
+      tiene_stock: cantidadConStock > 0,
+      cantidad_con_stock: cantidadConStock,
+      cantidad_pendiente: cantidadPendiente,
     };
 
     console.log('✅ Agregando detalle:', nuevoDetalle);
@@ -635,10 +541,16 @@ function PedidosPageContent() {
     }
 
     try {
-      const costo = costos.find(c => 
-        c.prenda_id === detalleActual.prenda_id && 
-        c.talla_id === detalleActual.talla_id
-      );
+      // Buscar el costo correcto
+      let costo = stockActualDetalle; // Si viene de una partida agregada
+      
+      if (!costo && detalleActual.prenda_id && detalleActual.talla_id) {
+        // Si viene del flujo de agregar nueva partida
+        costo = costos.find(c => 
+          c.prenda_id === detalleActual.prenda_id && 
+          c.talla_id === detalleActual.talla_id
+        );
+      }
 
       if (!costo) {
         alert('No se encontró el registro de costo');
@@ -659,9 +571,30 @@ function PedidosPageContent() {
       // Recargar TODOS los costos para actualizar la información
       await refetchCostos();
 
+      // Si estamos agregando stock a una partida existente, recalcular división
+      if (partidaParaAgregarStock !== null) {
+        const partida = formData.detalles[partidaParaAgregarStock];
+        const cantidadTotal = partida.cantidad;
+        const cantidadConStock = Math.min(nuevoStock, cantidadTotal);
+        const cantidadPendiente = Math.max(0, cantidadTotal - nuevoStock);
+
+        // Actualizar la partida
+        const nuevosDetalles = [...formData.detalles];
+        nuevosDetalles[partidaParaAgregarStock] = {
+          ...partida,
+          cantidad_con_stock: cantidadConStock,
+          cantidad_pendiente: cantidadPendiente,
+          tiene_stock: cantidadConStock > 0,
+        };
+
+        setFormData({ ...formData, detalles: nuevosDetalles });
+        setPartidaParaAgregarStock(null);
+      }
+
       // Cerrar modal de agregar stock
       setMostrarModalAgregarStock(false);
       setCantidadAgregar('');
+      setStockActualDetalle(null);
 
       // Mostrar modal de éxito
       setMensajeExitoStock(`Stock actualizado: ${costo.stock} → ${nuevoStock} (+${nuevaCantidad})`);
@@ -733,11 +666,13 @@ function PedidosPageContent() {
       prenda_id: detalle.prenda_id,
       talla_id: detalle.talla_id,
       cantidad: detalle.cantidad,
+      cantidad_con_stock: detalle.cantidad_con_stock || detalle.cantidad, // Cuánto descontar del inventario
+      cantidad_pendiente: detalle.cantidad_pendiente || 0, // Cuánto queda pendiente
       precio_unitario: detalle.precio,
       subtotal: detalle.total,
-      pendiente: detalle.pendiente,
+      pendiente: detalle.cantidad_pendiente || 0, // Campo pendiente en BD
       especificaciones: detalle.especificaciones,
-      tiene_stock: detalle.tiene_stock !== false, // Pasar flag de stock
+      tiene_stock: (detalle.cantidad_con_stock || 0) > 0, // Tiene stock si hay al menos algo disponible
     }));
 
     // Crear el pedido en la base de datos
@@ -1400,12 +1335,12 @@ function PedidosPageContent() {
                           key={index} 
                           style={{ 
                             borderBottom: '1px solid #e0e0e0', 
-                            backgroundColor: detalle.tiene_stock === false ? '#fef2f2' : '#fafafa',
-                            borderLeft: detalle.tiene_stock === false ? '4px solid #ef4444' : 'none'
+                            backgroundColor: detalle.cantidad_pendiente && detalle.cantidad_pendiente > 0 ? '#fef2f2' : '#fafafa',
+                            borderLeft: detalle.cantidad_pendiente && detalle.cantidad_pendiente > 0 ? '4px solid #ef4444' : 'none'
                           }}
                         >
                           <td style={{ padding: '0.75rem', fontWeight: '600' }}>
-                            {detalle.tiene_stock === false && (
+                            {detalle.cantidad_pendiente && detalle.cantidad_pendiente > 0 && (
                               <span style={{ 
                                 display: 'inline-block',
                                 backgroundColor: '#fee2e2',
@@ -1416,7 +1351,7 @@ function PedidosPageContent() {
                                 fontWeight: '700',
                                 marginRight: '0.5rem'
                               }}>
-                                ⚠️ SIN STOCK
+                                ⚠️ PENDIENTE
                               </span>
                             )}
                             {detalle.prenda}
@@ -1450,7 +1385,64 @@ function PedidosPageContent() {
                             })()}
                           </td>
                           <td style={{ padding: '0.75rem', textAlign: 'center', fontWeight: '600' }}>
-                            {detalle.cantidad}
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                              <span>
+                                {detalle.cantidad_pendiente && detalle.cantidad_pendiente > 0 ? (
+                                  <>
+                                    <span style={{ color: '#10b981', fontWeight: '700' }}>{detalle.cantidad_con_stock || 0}</span>
+                                    <span style={{ color: '#94a3b8', margin: '0 0.2rem' }}>+</span>
+                                    <span style={{ 
+                                      color: '#dc2626', 
+                                      fontWeight: '700',
+                                      backgroundColor: '#fee2e2',
+                                      padding: '0.1rem 0.4rem',
+                                      borderRadius: '4px'
+                                    }}>
+                                      {detalle.cantidad_pendiente} ⚠️
+                                    </span>
+                                  </>
+                                ) : (
+                                  detalle.cantidad
+                                )}
+                              </span>
+                              {detalle.cantidad_pendiente && detalle.cantidad_pendiente > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setStockActualDetalle(costos.find(c => 
+                                      c.prenda_id === detalle.prenda_id && 
+                                      c.talla_id === detalle.talla_id
+                                    ));
+                                    setPartidaParaAgregarStock(index);
+                                    setCantidadAgregar('');
+                                    setMostrarModalAgregarStock(true);
+                                  }}
+                                  style={{
+                                    backgroundColor: '#3b82f6',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    padding: '0.3rem 0.5rem',
+                                    fontSize: '0.75rem',
+                                    fontWeight: '700',
+                                    cursor: 'pointer',
+                                    boxShadow: '0 2px 4px rgba(59,130,246,0.3)',
+                                    transition: 'all 0.2s'
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.backgroundColor = '#2563eb';
+                                    e.currentTarget.style.transform = 'scale(1.05)';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.backgroundColor = '#3b82f6';
+                                    e.currentTarget.style.transform = 'scale(1)';
+                                  }}
+                                  title="Agregar stock"
+                                >
+                                  📦+
+                                </button>
+                              )}
+                            </div>
                           </td>
                           <td style={{ padding: '0.75rem', textAlign: 'center' }}>
                             <span style={{
@@ -1458,14 +1450,13 @@ function PedidosPageContent() {
                               width: '12px',
                               height: '12px',
                               borderRadius: '50%',
-                              backgroundColor: detalle.tiene_stock === false ? '#ef4444' : 
-                                              detalle.pendiente > 0 ? '#f59e0b' : '#10b981'
+                              backgroundColor: detalle.cantidad_pendiente && detalle.cantidad_pendiente > 0 ? '#ef4444' : '#10b981'
                             }}></span>
                           </td>
                           <td style={{ padding: '0.75rem', textAlign: 'right' }}>
                             ${detalle.precio.toFixed(2)}
                           </td>
-                          <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: '700', color: detalle.tiene_stock === false ? '#dc2626' : '#10b981' }}>
+                          <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: '700', color: detalle.cantidad_pendiente && detalle.cantidad_pendiente > 0 ? '#f59e0b' : '#10b981' }}>
                             ${detalle.total.toFixed(2)}
                           </td>
                           <td style={{ padding: '0.75rem', textAlign: 'center' }}>
@@ -2179,19 +2170,23 @@ function PedidosPageContent() {
                   <div style={{ marginBottom: '0.75rem' }}>
                     <span style={{ fontSize: '0.9rem', color: '#666', display: 'block', marginBottom: '0.25rem' }}>Prenda:</span>
                     <span style={{ fontSize: '1.1rem', fontWeight: '700', color: '#065f46' }}>
-                      {detalleActual.prenda_nombre}
+                      {partidaParaAgregarStock !== null 
+                        ? formData.detalles[partidaParaAgregarStock].prenda
+                        : detalleActual.prenda_nombre}
                     </span>
                   </div>
                   <div style={{ marginBottom: '0.75rem' }}>
                     <span style={{ fontSize: '0.9rem', color: '#666', display: 'block', marginBottom: '0.25rem' }}>Talla:</span>
                     <span style={{ fontSize: '1.1rem', fontWeight: '700', color: '#065f46' }}>
-                      {detalleActual.talla_nombre}
+                      {partidaParaAgregarStock !== null 
+                        ? formData.detalles[partidaParaAgregarStock].talla
+                        : detalleActual.talla_nombre}
                     </span>
                   </div>
                   <div>
                     <span style={{ fontSize: '0.9rem', color: '#666', display: 'block', marginBottom: '0.25rem' }}>Stock actual:</span>
-                    <span style={{ fontSize: '1.3rem', fontWeight: '700', color: stockActualDetalle === 0 ? '#dc2626' : '#059669' }}>
-                      {stockActualDetalle} unidades
+                    <span style={{ fontSize: '1.3rem', fontWeight: '700', color: (stockActualDetalle?.stock || 0) === 0 ? '#dc2626' : '#059669' }}>
+                      {stockActualDetalle?.stock || 0} unidades
                     </span>
                   </div>
                 </div>
