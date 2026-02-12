@@ -82,12 +82,11 @@ export function usePedidos(sucursal_id?: string) {
         especificaciones: det.especificaciones || ''
       }));
 
-      // Obtener o generar UUID del usuario
-      // Si viene un número (usuario_id de sesión legacy), usar UUID temporal
-      // TODO: Migrar tabla usuarios para usar UUIDs
-      const usuario_uuid = typeof usuario_id === 'string' 
+      // Manejar usuario_id: enviar NULL si no es válido
+      // Esto evita problemas con foreign keys
+      const usuario_uuid = typeof usuario_id === 'string' && usuario_id.length > 0
         ? usuario_id 
-        : '00000000-0000-0000-0000-000000000001'; // UUID temporal para usuarios legacy
+        : null; // NULL si no hay usuario válido
 
       // LLAMAR A LA FUNCIÓN ATÓMICA que hace TODO en una transacción
       const { data, error } = await supabase.rpc('crear_pedido_atomico', {
