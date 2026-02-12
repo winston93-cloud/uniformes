@@ -460,10 +460,10 @@ function PedidosPageContent() {
           tiene_stock: false, // Sin stock
         };
 
-        setFormData({ 
-          ...formData, 
-          detalles: [...formData.detalles, nuevoDetalle] 
-        });
+        setFormData(prevFormData => ({ 
+          ...prevFormData, 
+          detalles: [...prevFormData.detalles, nuevoDetalle] 
+        }));
         
         setDetalleActual({ 
           prenda_id: '', 
