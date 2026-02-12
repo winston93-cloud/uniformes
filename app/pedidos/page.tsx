@@ -839,6 +839,11 @@ function PedidosPageContent() {
                               <strong>Referencia:</strong> {clienteSeleccionado.referencia}
                             </div>
                           )}
+                          {clienteSeleccionado.nivel && (
+                            <div>
+                              <strong>Nivel:</strong> {clienteSeleccionado.nivel}
+                            </div>
+                          )}
                           {clienteSeleccionado.grado && (
                             <div>
                               <strong>Grado:</strong> {clienteSeleccionado.grado}

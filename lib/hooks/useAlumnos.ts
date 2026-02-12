@@ -21,12 +21,25 @@ export interface Alumno {
   id: string;
   nombre: string;
   referencia: string;
+  nivel: string | null;
   grado: string | null;
   grupo: string | null;
   telefono: string | null;
   email: string | null;
   activo: boolean;
 }
+
+// Convertir número a nivel educativo
+const numeroANivel = (num: number | null): string | null => {
+  if (num === null) return null;
+  switch(num) {
+    case 1: return 'Maternal';
+    case 2: return 'Kinder';
+    case 3: return 'Primaria';
+    case 4: return 'Secundaria';
+    default: return 'Otro';
+  }
+};
 
 // Convertir número a letra de grupo
 const numeroAGrupo = (num: number | null): string | null => {
@@ -58,6 +71,7 @@ export const mapAlumnoFromDB = (db: AlumnoFromDB): Alumno => {
     id: db.alumno_id.toString(),
     nombre: nombreCompleto,
     referencia: db.alumno_ref,
+    nivel: numeroANivel(db.alumno_nivel),
     grado: db.alumno_grado ? `${db.alumno_grado}°` : null,
     grupo: numeroAGrupo(db.alumno_grupo),
     telefono: null, // No existe en la tabla
