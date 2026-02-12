@@ -67,6 +67,7 @@ function PedidosPageContent() {
   const [pedidoSeleccionado, setPedidoSeleccionado] = useState<any>(null);
   const [mostrarAyuda, setMostrarAyuda] = useState(false);
   const [indiceClienteSeleccionado, setIndiceClienteSeleccionado] = useState(-1);
+  const [indicePrendaSeleccionada, setIndicePrendaSeleccionada] = useState(-1);
   const { costos, getCostosByPrenda } = useCostos(sesion?.sucursal_id);
   const { alumnos, searchAlumnos } = useAlumnos(cicloEscolar);
   const { externos } = useExternos();
@@ -281,6 +282,7 @@ function PedidosPageContent() {
   const handleCambioBusquedaPrenda = (e: React.ChangeEvent<HTMLInputElement>) => {
     const nuevoTexto = e.target.value;
     setTextoPrendaBusqueda(nuevoTexto);
+    setIndicePrendaSeleccionada(-1);
     ejecutarBusquedaPrenda(nuevoTexto);
   };
 
@@ -996,10 +998,28 @@ function PedidosPageContent() {
                                 ejecutarBusquedaPrenda(textoPrendaBusqueda);
                               }}
                               onKeyDown={(e) => {
-                                if (e.key === 'Enter' && !detalleActual.prenda_id && formData.detalles.length > 0) {
-                                  // Si presiona Enter sin prenda seleccionada y ya hay partidas, ir a efectivo recibido
+                                if (!mostrarListaPrendas || prendasEncontradas.length === 0) {
+                                  if (e.key === 'Enter' && !detalleActual.prenda_id && formData.detalles.length > 0) {
+                                    e.preventDefault();
+                                    inputEfectivoRef.current?.focus();
+                                  }
+                                  return;
+                                }
+
+                                if (e.key === 'ArrowDown') {
                                   e.preventDefault();
-                                  inputEfectivoRef.current?.focus();
+                                  setIndicePrendaSeleccionada(prev => 
+                                    prev < prendasEncontradas.length - 1 ? prev + 1 : prev
+                                  );
+                                } else if (e.key === 'ArrowUp') {
+                                  e.preventDefault();
+                                  setIndicePrendaSeleccionada(prev => prev > 0 ? prev - 1 : -1);
+                                } else if (e.key === 'Enter' && indicePrendaSeleccionada >= 0) {
+                                  e.preventDefault();
+                                  seleccionarPrendaDelDropdown(prendasEncontradas[indicePrendaSeleccionada]);
+                                } else if (e.key === 'Escape') {
+                                  setMostrarListaPrendas(false);
+                                  setIndicePrendaSeleccionada(-1);
                                 }
                               }}
                               placeholder="SELECCIONAR PRENDA..."
@@ -1030,14 +1050,13 @@ function PedidosPageContent() {
                                       padding: '0.75rem 1rem',
                                       cursor: 'pointer',
                                       borderBottom: idx < prendasEncontradas.length - 1 ? '1px solid #e5e7eb' : 'none',
-                                      backgroundColor: detalleActual.prenda_id === prenda.id ? '#dbeafe' : 'white'
+                                      backgroundColor: 
+                                        indicePrendaSeleccionada === idx ? '#dbeafe' :
+                                        detalleActual.prenda_id === prenda.id ? '#e0f2fe' : 'white',
+                                      borderLeft: indicePrendaSeleccionada === idx ? '4px solid #3b82f6' : 'none'
                                     }}
                                     onMouseEnter={(e) => {
-                                      e.currentTarget.style.backgroundColor = '#f3f4f6';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                      e.currentTarget.style.backgroundColor = 
-                                        detalleActual.prenda_id === prenda.id ? '#dbeafe' : 'white';
+                                      setIndicePrendaSeleccionada(idx);
                                     }}
                                   >
                                     <div style={{ fontWeight: '600', color: '#1f2937' }}>
@@ -1926,7 +1945,7 @@ function PedidosPageContent() {
             <div style={{ padding: '2rem' }}>
               <div style={{ marginBottom: '1.5rem' }}>
                 <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '0.75rem', color: '#1e40af' }}>
-                  🔍 Búsqueda de Cliente
+                  🔍 Búsqueda (Cliente/Prenda)
                 </h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem', backgroundColor: '#f3f4f6', borderRadius: '6px' }}>
@@ -1939,7 +1958,7 @@ function PedidosPageContent() {
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem', backgroundColor: '#f3f4f6', borderRadius: '6px' }}>
                     <span style={{ fontWeight: '600' }}>Enter</span>
-                    <span style={{ color: '#666' }}>Seleccionar cliente</span>
+                    <span style={{ color: '#666' }}>Seleccionar elemento</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem', backgroundColor: '#f3f4f6', borderRadius: '6px' }}>
                     <span style={{ fontWeight: '600' }}>Escape</span>
