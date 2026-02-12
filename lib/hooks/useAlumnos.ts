@@ -62,7 +62,7 @@ export const mapAlumnoFromDB = (db: AlumnoFromDB): Alumno => {
     grupo: numeroAGrupo(db.alumno_grupo),
     telefono: null, // No existe en la tabla
     email: null, // No existe en la tabla
-    activo: db.alumno_status === 0, // 0 = Activo
+    activo: db.alumno_status === 1, // 1 = Activo
   };
 };
 
@@ -77,7 +77,7 @@ export function useAlumnos(cicloEscolar?: number) {
       let query = supabase
         .from('alumno')
         .select('*')
-        .eq('alumno_status', 0); // Solo alumnos activos (0 = Activo)
+        .eq('alumno_status', 1); // Solo alumnos activos (1 = Activo)
       
       // Filtrar por ciclo escolar si se proporciona
       if (cicloEscolar !== undefined) {
@@ -114,7 +114,7 @@ export function useAlumnos(cicloEscolar?: number) {
       let searchQuery = supabase
         .from('alumno')
         .select('*')
-        .eq('alumno_status', 0) // Solo alumnos activos (0 = Activo)
+        .eq('alumno_status', 1) // Solo alumnos activos (1 = Activo)
         .or(`alumno_ref.ilike.%${consulta}%,alumno_nombre.ilike.%${consulta}%,alumno_app.ilike.%${consulta}%,alumno_apm.ilike.%${consulta}%`);
       
       // Filtrar por ciclo escolar si se proporciona
