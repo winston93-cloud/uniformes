@@ -59,18 +59,31 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
     try {
       setLoading(true);
       
-      // Obtener pedido con sucursal y datos del alumno si aplica
+      // Obtener pedido con sucursal
       const { data: pedidoData, error: pedidoError } = await supabase
         .from('pedidos')
         .select(`
           *,
-          sucursal:sucursales(nombre, direccion, telefono),
-          alumno:alumnos(nivel, grado)
+          sucursales(nombre, direccion, telefono)
         `)
         .eq('id', resolvedParams.id)
         .single();
 
-      if (pedidoError) throw pedidoError;
+      if (pedidoError) {
+        console.error('Error al cargar pedido:', pedidoError);
+        throw pedidoError;
+      }
+
+      // Si hay alumno_id, obtener sus datos
+      let alumnoData = null;
+      if (pedidoData.alumno_id) {
+        const { data: alumno } = await supabase
+          .from('alumnos')
+          .select('nivel, grado')
+          .eq('alumno_id', pedidoData.alumno_id)
+          .single();
+        alumnoData = alumno;
+      }
 
       // Obtener detalles con nombres de prendas y tallas
       const { data: detallesData, error: detallesError } = await supabase
@@ -102,6 +115,8 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
 
       setPedido({
         ...pedidoData,
+        sucursal: pedidoData.sucursales || pedidoData.sucursal,
+        alumno: alumnoData,
         detalles: detallesData || []
       });
     } catch (error) {
