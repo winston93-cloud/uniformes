@@ -1238,66 +1238,43 @@ function PedidosPageContent() {
                           />
                         </td>
                         <td style={{ padding: '0.5rem', textAlign: 'center' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', justifyContent: 'center' }}>
-                            <input
-                              ref={inputCantidadRef}
-                              type="number"
-                              className="form-input"
-                              value={detalleActual.cantidad}
-                              onChange={(e) => {
-                                const cantidad = e.target.value;
-                                setDetalleActual({ ...detalleActual, cantidad });
-                              }}
-                              onBlur={(e) => {
-                                const cantidad = e.target.value;
-                                // Agregar automáticamente cuando todos los campos están completos al salir del input
+                          <input
+                            ref={inputCantidadRef}
+                            type="number"
+                            className="form-input"
+                            value={detalleActual.cantidad}
+                            onChange={(e) => {
+                              const cantidad = e.target.value;
+                              setDetalleActual({ ...detalleActual, cantidad });
+                            }}
+                            onBlur={(e) => {
+                              const cantidad = e.target.value;
+                              // Agregar automáticamente cuando todos los campos están completos al salir del input
+                              if (detalleActual.prenda_id && detalleActual.talla_id && parseFloat(cantidad) > 0) {
+                                agregarDetalle();
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                const cantidad = (e.target as HTMLInputElement).value;
+                                // Agregar automáticamente al presionar Enter
                                 if (detalleActual.prenda_id && detalleActual.talla_id && parseFloat(cantidad) > 0) {
                                   agregarDetalle();
-                                }
-                              }}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  e.preventDefault();
-                                  const cantidad = (e.target as HTMLInputElement).value;
-                                  // Agregar automáticamente al presionar Enter
-                                  if (detalleActual.prenda_id && detalleActual.talla_id && parseFloat(cantidad) > 0) {
-                                    agregarDetalle();
-                                    
-                                    // Si ya hay partidas agregadas, ir al input de efectivo
-                                    // (el detalle recién agregado aún no está en formData.detalles, por eso >= 0)
-                                    if (formData.detalles.length >= 0) {
-                                      setTimeout(() => {
-                                        inputEfectivoRef.current?.focus();
-                                      }, 200);
-                                    }
+                                  
+                                  // Si ya hay partidas agregadas, ir al input de efectivo
+                                  // (el detalle recién agregado aún no está en formData.detalles, por eso >= 0)
+                                  if (formData.detalles.length >= 0) {
+                                    setTimeout(() => {
+                                      inputEfectivoRef.current?.focus();
+                                    }, 200);
                                   }
                                 }
-                              }}
-                              min="0"
-                              style={{ width: '60px', textAlign: 'center', fontSize: '0.85rem', padding: '0.3rem' }}
-                            />
-                            <button
-                              type="button"
-                              onClick={abrirModalAgregarStock}
-                              disabled={!detalleActual.prenda_id || !detalleActual.talla_id}
-                              style={{
-                                padding: '0.3rem 0.5rem',
-                                fontSize: '0.75rem',
-                                borderRadius: '6px',
-                                border: 'none',
-                                background: detalleActual.prenda_id && detalleActual.talla_id 
-                                  ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
-                                  : '#d1d5db',
-                                color: 'white',
-                                cursor: detalleActual.prenda_id && detalleActual.talla_id ? 'pointer' : 'not-allowed',
-                                fontWeight: '700',
-                                whiteSpace: 'nowrap'
-                              }}
-                              title="Agregar stock"
-                            >
-                              📦+
-                            </button>
-                          </div>
+                              }
+                            }}
+                            min="0"
+                            style={{ width: '80px', textAlign: 'center', fontSize: '0.85rem', padding: '0.3rem' }}
+                          />
                         </td>
                         <td style={{ padding: '0.5rem', textAlign: 'center' }}>
                           <span style={{
@@ -2304,31 +2281,37 @@ function PedidosPageContent() {
               <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
                 <button
                   onClick={() => {
+                    // Cerrar modal de stock insuficiente
                     setMostrarModalStock(false);
-                    setAccionPendienteStock(null);
+                    
+                    // Abrir modal de agregar stock
+                    setStockActualDetalle(infoStock.disponible);
+                    setCantidadAgregar('');
+                    setMostrarModalAgregarStock(true);
                   }}
                   style={{
                     flex: 1,
                     padding: '0.875rem 1.5rem',
                     fontSize: '1.05rem',
-                    fontWeight: '600',
+                    fontWeight: '700',
                     borderRadius: '12px',
-                    border: '2px solid #d1d5db',
-                    backgroundColor: 'white',
-                    color: '#374151',
+                    border: 'none',
+                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                    color: 'white',
                     cursor: 'pointer',
+                    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.4)',
                     transition: 'all 0.2s'
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#f3f4f6';
-                    e.currentTarget.style.borderColor = '#9ca3af';
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 6px 20px rgba(16, 185, 129, 0.5)';
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'white';
-                    e.currentTarget.style.borderColor = '#d1d5db';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.4)';
                   }}
                 >
-                  Cancelar
+                  📦 Agregar Stock
                 </button>
                 <button
                   onClick={() => {
@@ -2345,22 +2328,22 @@ function PedidosPageContent() {
                     fontWeight: '700',
                     borderRadius: '12px',
                     border: 'none',
-                    background: 'linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%)',
+                    background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
                     color: 'white',
                     cursor: 'pointer',
-                    boxShadow: '0 4px 12px rgba(236, 72, 153, 0.4)',
+                    boxShadow: '0 4px 12px rgba(245, 158, 11, 0.4)',
                     transition: 'all 0.2s'
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.boxShadow = '0 6px 20px rgba(236, 72, 153, 0.5)';
+                    e.currentTarget.style.boxShadow = '0 6px 20px rgba(245, 158, 11, 0.5)';
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(236, 72, 153, 0.4)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(245, 158, 11, 0.4)';
                   }}
                 >
-                  Aceptar
+                  ⚠️ Crear Pendiente
                 </button>
               </div>
             </div>
