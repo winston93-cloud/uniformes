@@ -600,9 +600,9 @@ function PedidosPageContent() {
         setMostrarExitoStock(false);
       }, 2000);
 
-      // Enfocar en cantidad para continuar con el pedido
+      // Enfocar en input de prenda para continuar agregando partidas
       setTimeout(() => {
-        inputCantidadRef.current?.focus();
+        inputPrendaRef.current?.focus();
       }, 100);
     } catch (error: any) {
       console.error('Error al actualizar stock:', error);
@@ -2249,6 +2249,13 @@ function PedidosPageContent() {
                   onClick={() => {
                     setMostrarModalAgregarStock(false);
                     setCantidadAgregar('');
+                    setStockActualDetalle(null);
+                    setPartidaParaAgregarStock(null);
+                    
+                    // Volver al input de prenda para continuar
+                    setTimeout(() => {
+                      inputPrendaRef.current?.focus();
+                    }, 100);
                   }}
                   style={{
                     flex: 1,
