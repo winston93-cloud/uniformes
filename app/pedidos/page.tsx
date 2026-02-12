@@ -21,7 +21,7 @@ interface Pedido {
   cliente_tipo: 'alumno' | 'externo';
   cliente_nombre: string;
   total: number;
-  estado: 'PENDIENTE' | 'ENTREGADO' | 'CANCELADO';
+  estado: 'PENDIENTE' | 'COMPLETADO' | 'CANCELADO';
   tipo_cliente?: string;
   subtotal?: number;
   observaciones?: string;
@@ -645,7 +645,7 @@ function PedidosPageContent() {
     
     // Determinar estado automáticamente basado en pendientes
     const hayPendientes = formData.detalles.some(d => (d.cantidad_pendiente || 0) > 0);
-    const estadoPedido = hayPendientes ? 'PENDIENTE' : 'ENTREGADO';
+    const estadoPedido = hayPendientes ? 'PENDIENTE' : 'COMPLETADO';
     
     console.log(`📊 Estado determinado: ${estadoPedido} (¿Hay pendientes? ${hayPendientes})`);
     
@@ -656,7 +656,7 @@ function PedidosPageContent() {
       cliente_tipo: formData.cliente_tipo,
       cliente_nombre: formData.cliente_nombre,
       total: calcularTotal(),
-      estado: estadoPedido as 'PENDIENTE' | 'ENTREGADO',
+      estado: estadoPedido as 'PENDIENTE' | 'COMPLETADO',
       observaciones: formData.observaciones,
       modalidad_pago: formData.modalidad_pago,
       efectivo_recibido: parseFloat(formData.efectivo_recibido as string) || 0,
@@ -1789,7 +1789,7 @@ function PedidosPageContent() {
                   <td data-label="Estado">
                     <span className={`badge ${
                       pedido.estado === 'PENDIENTE' ? 'badge-warning' :
-                      pedido.estado === 'ENTREGADO' ? 'badge-success' : 'badge-danger'
+                      pedido.estado === 'COMPLETADO' ? 'badge-success' : 'badge-danger'
                     }`}>
                       {pedido.estado}
                     </span>
@@ -1800,15 +1800,15 @@ function PedidosPageContent() {
                       <button
                         className="btn btn-success"
                         style={{ padding: '0.5rem 1rem', marginRight: '0.5rem' }}
-                        onClick={() => cambiarEstado(pedido.id, 'ENTREGADO')}
+                        onClick={() => cambiarEstado(pedido.id, 'COMPLETADO')}
                         title="Marcar como completado cuando se entreguen los artículos pendientes"
                       >
                         ✓ Completado
                       </button>
                     )}
                     
-                    {/* Botón Devolución - Solo para pedidos completados (ENTREGADO) */}
-                    {pedido.estado === 'ENTREGADO' && (
+                    {/* Botón Devolución - Solo para pedidos completados */}
+                    {pedido.estado === 'COMPLETADO' && (
                       <button 
                         className="btn btn-warning" 
                         style={{ padding: '0.5rem 1rem', marginLeft: '0.5rem' }}
@@ -1975,9 +1975,9 @@ function PedidosPageContent() {
                       fontSize: '0.9rem',
                       fontWeight: '600',
                       backgroundColor: pedidoSeleccionado.estado === 'PENDIENTE' ? '#fef3c7' :
-                                       pedidoSeleccionado.estado === 'ENTREGADO' ? '#d1fae5' : '#fee2e2',
+                                       pedidoSeleccionado.estado === 'COMPLETADO' ? '#d1fae5' : '#fee2e2',
                       color: pedidoSeleccionado.estado === 'PENDIENTE' ? '#92400e' :
-                             pedidoSeleccionado.estado === 'ENTREGADO' ? '#065f46' : '#991b1b'
+                             pedidoSeleccionado.estado === 'COMPLETADO' ? '#065f46' : '#991b1b'
                     }}>
                       {pedidoSeleccionado.estado}
                     </span>

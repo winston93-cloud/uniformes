@@ -1,10 +1,21 @@
--- Migración para cambiar estado "PEDIDO" a "PENDIENTE"
--- Los pedidos siempre se pagan, "PENDIENTE" indica artículos pendientes de entrega
+-- Migración para cambiar estados de pedidos a PENDIENTE y COMPLETADO
+-- Los pedidos siempre se pagan
+-- PENDIENTE: artículos pendientes de entrega
+-- COMPLETADO: todo entregado correctamente
 
--- 1. Actualizar registros existentes en la tabla pedidos
+-- 1. Eliminar constraint antiguo y crear nuevo
+ALTER TABLE pedidos DROP CONSTRAINT IF EXISTS pedidos_estado_check;
+ALTER TABLE pedidos ADD CONSTRAINT pedidos_estado_check 
+  CHECK (estado IN ('PENDIENTE', 'COMPLETADO', 'CANCELADO'));
+
+-- 2. Actualizar registros existentes en la tabla pedidos
 UPDATE pedidos 
 SET estado = 'PENDIENTE' 
 WHERE estado = 'PEDIDO';
+
+UPDATE pedidos 
+SET estado = 'COMPLETADO' 
+WHERE estado = 'ENTREGADO';
 
 -- 2. Actualizar la función crear_pedido_atomico para usar 'PENDIENTE' por defecto
 DROP FUNCTION IF EXISTS crear_pedido_atomico(VARCHAR, VARCHAR, UUID, UUID, UUID, UUID, VARCHAR, TEXT, JSONB);
@@ -282,4 +293,4 @@ GRANT EXECUTE ON FUNCTION crear_pedido_atomico TO authenticated;
 GRANT EXECUTE ON FUNCTION crear_pedido_atomico TO anon;
 
 -- 4. Comentario actualizado
-COMMENT ON FUNCTION crear_pedido_atomico IS 'Función para crear pedidos con división automática. Estado PENDIENTE indica artículos pendientes de entrega. ENTREGADO indica pedido completado.';
+COMMENT ON FUNCTION crear_pedido_atomico IS 'Función para crear pedidos con división automática. Estado PENDIENTE indica artículos pendientes de entrega. COMPLETADO indica pedido completado.';

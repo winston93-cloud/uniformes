@@ -261,8 +261,8 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
 
           {/* Estado detallado del pedido */}
           <div style={{
-            backgroundColor: pedido.estado === 'ENTREGADO' ? '#d1fae5' : '#fef3c7',
-            border: `1px solid ${pedido.estado === 'ENTREGADO' ? '#10b981' : '#f59e0b'}`,
+            backgroundColor: pedido.estado === 'COMPLETADO' ? '#d1fae5' : '#fef3c7',
+            border: `1px solid ${pedido.estado === 'COMPLETADO' ? '#10b981' : '#f59e0b'}`,
             borderRadius: '4px',
             padding: '0.5rem',
             marginBottom: '0.75rem'
@@ -271,16 +271,16 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
               fontSize: '0.8rem', 
               fontWeight: '700',
               marginBottom: '0.35rem',
-              color: pedido.estado === 'ENTREGADO' ? '#065f46' : '#92400e',
+              color: pedido.estado === 'COMPLETADO' ? '#065f46' : '#92400e',
               textAlign: 'center'
             }}>
-              {pedido.estado === 'ENTREGADO' ? '✅ PEDIDO COMPLETADO' : '⚠️ PEDIDO PENDIENTE DE ENTREGA'}
+              {pedido.estado === 'COMPLETADO' ? '✅ PEDIDO COMPLETADO' : '⚠️ PEDIDO PENDIENTE DE ENTREGA'}
             </div>
             
             <div style={{ 
               fontSize: '0.65rem', 
               color: '#374151',
-              borderTop: `1px dashed ${pedido.estado === 'ENTREGADO' ? '#10b981' : '#f59e0b'}`,
+              borderTop: `1px dashed ${pedido.estado === 'COMPLETADO' ? '#10b981' : '#f59e0b'}`,
               paddingTop: '0.35rem',
               display: 'grid',
               gridTemplateColumns: '1fr 1fr',
@@ -304,7 +304,7 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
               )}
             </div>
             
-            {pedido.estado === 'ENTREGADO' && (
+            {pedido.estado === 'COMPLETADO' && (
               <div style={{ 
                 marginTop: '0.35rem', 
                 fontSize: '0.6rem', 
