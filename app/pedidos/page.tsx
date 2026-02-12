@@ -332,6 +332,15 @@ function PedidosPageContent() {
     return () => document.removeEventListener('mousedown', handleClickFuera);
   }, []);
 
+  // Enfocar automáticamente el input de cliente al abrir el modal
+  useEffect(() => {
+    if (mostrarFormulario) {
+      setTimeout(() => {
+        inputClienteRef.current?.focus();
+      }, 100);
+    }
+  }, [mostrarFormulario]);
+
   // ELIMINADO: useEffect y seleccionarPrenda viejos - ahora se usa seleccionarPrendaDelDropdown
 
   const seleccionarTalla = (tallaId: string) => {
