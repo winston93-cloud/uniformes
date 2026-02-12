@@ -21,7 +21,7 @@ interface Pedido {
   cliente_tipo: 'alumno' | 'externo';
   cliente_nombre: string;
   total: number;
-  estado: 'PEDIDO' | 'ENTREGADO' | 'LIQUIDADO' | 'CANCELADO';
+  estado: 'PEDIDO' | 'ENTREGADO' | 'CANCELADO';
   tipo_cliente?: string;
   subtotal?: number;
   observaciones?: string;
@@ -1789,49 +1789,26 @@ function PedidosPageContent() {
                   <td data-label="Estado">
                     <span className={`badge ${
                       pedido.estado === 'PEDIDO' ? 'badge-warning' :
-                      pedido.estado === 'ENTREGADO' ? 'badge-info' :
-                      pedido.estado === 'LIQUIDADO' ? 'badge-success' : 'badge-danger'
+                      pedido.estado === 'ENTREGADO' ? 'badge-success' : 'badge-danger'
                     }`}>
                       {pedido.estado}
                     </span>
                   </td>
                   <td>
+                    {/* Botón Entregado - Solo para pedidos con pendientes (PEDIDO) */}
                     {pedido.estado === 'PEDIDO' && (
-                      <>
-                        <button
-                          className="btn btn-success"
-                          style={{ padding: '0.5rem 1rem', marginRight: '0.5rem' }}
-                          onClick={() => cambiarEstado(pedido.id, 'ENTREGADO')}
-                        >
-                          ✓ Entregar
-                        </button>
-                        <button
-                          className="btn btn-danger"
-                          style={{ padding: '0.5rem 1rem', marginRight: '0.5rem' }}
-                          onClick={() => cambiarEstado(pedido.id, 'CANCELADO')}
-                        >
-                          ✕ Cancelar
-                        </button>
-                      </>
-                    )}
-                    {pedido.estado === 'ENTREGADO' && (
                       <button
-                        className="btn btn-primary"
+                        className="btn btn-success"
                         style={{ padding: '0.5rem 1rem', marginRight: '0.5rem' }}
-                        onClick={() => cambiarEstado(pedido.id, 'LIQUIDADO')}
+                        onClick={() => cambiarEstado(pedido.id, 'ENTREGADO')}
+                        title="Marcar como entregado cuando llegue el stock pendiente"
                       >
-                        💵 Liquidar
+                        ✓ Entregado
                       </button>
                     )}
-                    <button 
-                      className="btn btn-secondary" 
-                      style={{ padding: '0.5rem 1rem' }}
-                      onClick={() => verDetallePedido(pedido)}
-                    >
-                      👁️ Ver
-                    </button>
-                    {/* Botón de devoluciones - solo para pedidos ENTREGADOS o LIQUIDADOS */}
-                    {(pedido.estado === 'ENTREGADO' || pedido.estado === 'LIQUIDADO') && (
+                    
+                    {/* Botón Devolución - Solo para pedidos completados (ENTREGADO) */}
+                    {pedido.estado === 'ENTREGADO' && (
                       <button 
                         className="btn btn-warning" 
                         style={{ padding: '0.5rem 1rem', marginLeft: '0.5rem' }}
@@ -1893,6 +1870,15 @@ function PedidosPageContent() {
                         🔄 Devolución
                       </button>
                     )}
+                    
+                    {/* Botón Ver - Siempre visible para ver el recibo */}
+                    <button 
+                      className="btn btn-secondary" 
+                      style={{ padding: '0.5rem 1rem', marginLeft: '0.5rem' }}
+                      onClick={() => router.push(`/pedidos/${pedido.id}`)}
+                    >
+                      👁️ Ver
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -1989,11 +1975,9 @@ function PedidosPageContent() {
                       fontSize: '0.9rem',
                       fontWeight: '600',
                       backgroundColor: pedidoSeleccionado.estado === 'PEDIDO' ? '#fef3c7' :
-                                       pedidoSeleccionado.estado === 'ENTREGADO' ? '#d1fae5' :
-                                       pedidoSeleccionado.estado === 'LIQUIDADO' ? '#dbeafe' : '#fee2e2',
+                                       pedidoSeleccionado.estado === 'ENTREGADO' ? '#d1fae5' : '#fee2e2',
                       color: pedidoSeleccionado.estado === 'PEDIDO' ? '#92400e' :
-                             pedidoSeleccionado.estado === 'ENTREGADO' ? '#065f46' :
-                             pedidoSeleccionado.estado === 'LIQUIDADO' ? '#1e40af' : '#991b1b'
+                             pedidoSeleccionado.estado === 'ENTREGADO' ? '#065f46' : '#991b1b'
                     }}>
                       {pedidoSeleccionado.estado}
                     </span>

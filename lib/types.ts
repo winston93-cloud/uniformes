@@ -77,11 +77,10 @@ export interface Pedido {
   alumno_id: string | null;
   externo_id: string | null;
   tipo_cliente: 'alumno' | 'externo';
-  estado: 'PEDIDO' | 'ENTREGADO' | 'LIQUIDADO' | 'CANCELADO';
+  estado: 'PEDIDO' | 'ENTREGADO' | 'CANCELADO';
   subtotal: number;
   total: number;
   fecha_entrega: string | null;
-  fecha_liquidacion: string | null;
   notas: string | null;
   usuario_id: string | null;
   created_at?: string;
