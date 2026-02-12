@@ -18,6 +18,12 @@
 -- - Manejo correcto de errores con mensajes descriptivos
 -- ================================================
 
+-- ELIMINAR TODAS LAS VERSIONES ANTERIORES DE LA FUNCIÓN
+DROP FUNCTION IF EXISTS crear_pedido_atomico(VARCHAR, VARCHAR, UUID, SMALLINT, UUID, UUID, VARCHAR, TEXT, JSONB);
+DROP FUNCTION IF EXISTS crear_pedido_atomico(VARCHAR, VARCHAR, UUID, UUID, UUID, UUID, VARCHAR, TEXT, JSONB);
+DROP FUNCTION IF EXISTS crear_pedido_atomico;
+
+-- CREAR VERSIÓN FINAL
 CREATE OR REPLACE FUNCTION crear_pedido_atomico(
   p_tipo_cliente VARCHAR,
   p_cliente_nombre VARCHAR,
