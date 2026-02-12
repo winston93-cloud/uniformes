@@ -168,7 +168,7 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
         @media print {
           @page {
             size: letter;
-            margin: 0.5cm;
+            margin: 0.3cm;
           }
           body * {
             visibility: hidden;
@@ -182,6 +182,8 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
             top: 0;
             width: 100%;
             max-width: 100%;
+            transform: scale(0.85);
+            transform-origin: top left;
           }
           .no-imprimir {
             display: none !important;
@@ -226,47 +228,47 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
           id="recibo-impresion"
           style={{
             backgroundColor: 'white',
-            padding: '1rem',
+            padding: '0.5rem',
             borderRadius: '8px',
             boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
             fontFamily: 'monospace',
-            fontSize: '0.85rem',
-            maxWidth: '800px',
+            fontSize: '0.7rem',
+            maxWidth: '600px',
             margin: '0 auto'
           }}
         >
           {/* Encabezado */}
-          <div style={{ textAlign: 'center', marginBottom: '0.75rem', borderBottom: '2px solid #000', paddingBottom: '0.5rem' }}>
-            <h1 style={{ margin: '0 0 0.25rem 0', fontSize: '1.1rem', fontWeight: '700' }}>
+          <div style={{ textAlign: 'center', marginBottom: '0.4rem', borderBottom: '1px solid #000', paddingBottom: '0.3rem' }}>
+            <h1 style={{ margin: '0 0 0.15rem 0', fontSize: '0.85rem', fontWeight: '700' }}>
               {pedido.sucursal.nombre}
             </h1>
             {pedido.sucursal.direccion && (
-              <p style={{ margin: '0.1rem 0', fontSize: '0.7rem' }}>{pedido.sucursal.direccion}</p>
+              <p style={{ margin: '0.05rem 0', fontSize: '0.55rem' }}>{pedido.sucursal.direccion}</p>
             )}
             {pedido.sucursal.telefono && (
-              <p style={{ margin: '0.1rem 0', fontSize: '0.7rem' }}>Tel: {pedido.sucursal.telefono}</p>
+              <p style={{ margin: '0.05rem 0', fontSize: '0.55rem' }}>Tel: {pedido.sucursal.telefono}</p>
             )}
-            <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.85rem', fontWeight: '700' }}>
+            <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.65rem', fontWeight: '700' }}>
               TICKET DE VENTA
             </p>
           </div>
 
           {/* Información del pedido */}
-          <div style={{ marginBottom: '0.75rem', fontSize: '0.75rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.2rem' }}>
+          <div style={{ marginBottom: '0.4rem', fontSize: '0.6rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.1rem' }}>
               <span><strong>Folio:</strong></span>
               <span>#{pedido.id.slice(0, 8).toUpperCase()}</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.2rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.1rem' }}>
               <span><strong>Fecha:</strong></span>
               <span>{new Date(pedido.created_at).toLocaleString('es-MX')}</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.2rem' }}>
-              <span><strong>Alumno/Externo:</strong></span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.1rem' }}>
+              <span><strong>Cliente:</strong></span>
               <span>
                 {pedido.cliente_nombre}
                 {pedido.tipo_cliente === 'ALUMNO' && pedido.alumno && (
-                  <span style={{ marginLeft: '0.5rem', color: '#6b7280' }}>
+                  <span style={{ marginLeft: '0.3rem', color: '#6b7280', fontSize: '0.55rem' }}>
                     ({pedido.alumno.nivel || ''} {pedido.alumno.grado || ''})
                   </span>
                 )}
@@ -278,81 +280,47 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
           <div style={{
             backgroundColor: pedido.estado === 'COMPLETADO' ? '#d1fae5' : '#fef3c7',
             border: `1px solid ${pedido.estado === 'COMPLETADO' ? '#10b981' : '#f59e0b'}`,
-            borderRadius: '4px',
-            padding: '0.5rem',
-            marginBottom: '0.75rem'
+            borderRadius: '3px',
+            padding: '0.3rem',
+            marginBottom: '0.4rem'
           }}>
             <div style={{ 
-              fontSize: '0.8rem', 
+              fontSize: '0.6rem', 
               fontWeight: '700',
-              marginBottom: '0.35rem',
+              marginBottom: '0.2rem',
               color: pedido.estado === 'COMPLETADO' ? '#065f46' : '#92400e',
               textAlign: 'center'
             }}>
-              {pedido.estado === 'COMPLETADO' ? '✅ PEDIDO COMPLETADO' : '⚠️ PEDIDO PENDIENTE DE ENTREGA'}
+              {pedido.estado === 'COMPLETADO' ? '✅ COMPLETADO' : '⚠️ PENDIENTE'}
             </div>
             
             <div style={{ 
-              fontSize: '0.65rem', 
+              fontSize: '0.5rem', 
               color: '#374151',
               borderTop: `1px dashed ${pedido.estado === 'COMPLETADO' ? '#10b981' : '#f59e0b'}`,
-              paddingTop: '0.35rem',
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: '0.25rem'
+              paddingTop: '0.2rem',
+              display: 'flex',
+              justifyContent: 'space-around',
+              gap: '0.2rem'
             }}>
-              <div>
-                <strong>Partidas:</strong> {totalPartidas}
-              </div>
-              <div>
-                <strong>Entregadas:</strong> <span style={{ color: '#10b981', fontWeight: '700' }}>{totalUnidadesEntregadas}</span>
-              </div>
+              <span><strong>Partidas:</strong> {totalPartidas}</span>
+              <span><strong>Entregadas:</strong> <span style={{ color: '#10b981', fontWeight: '700' }}>{totalUnidadesEntregadas}</span></span>
               {tienePendientes && (
-                <>
-                  <div>
-                    <strong>Completas:</strong> {partidasEntregadasCompletas}
-                  </div>
-                  <div>
-                    <strong>Pendientes:</strong> <span style={{ color: '#dc2626', fontWeight: '700' }}>{totalUnidadesPendientes}</span>
-                  </div>
-                </>
+                <span><strong>Pendientes:</strong> <span style={{ color: '#dc2626', fontWeight: '700' }}>{totalUnidadesPendientes}</span></span>
               )}
             </div>
-            
-            {pedido.estado === 'COMPLETADO' && (
-              <div style={{ 
-                marginTop: '0.35rem', 
-                fontSize: '0.6rem', 
-                fontStyle: 'italic',
-                color: '#065f46',
-                textAlign: 'center'
-              }}>
-                Todas las prendas entregadas. Pedido completado.
-              </div>
-            )}
-            {tienePendientes && (
-              <div style={{ 
-                marginTop: '0.35rem', 
-                fontSize: '0.6rem', 
-                fontWeight: '600',
-                color: '#92400e',
-                textAlign: 'center'
-              }}>
-                {totalUnidadesEntregadas} entregadas. {totalUnidadesPendientes} pendientes.
-              </div>
-            )}
           </div>
 
           {/* Detalles del pedido */}
-          <div style={{ borderTop: '2px solid #000', borderBottom: '2px solid #000', padding: '0.5rem 0', marginBottom: '0.5rem' }}>
-            <table style={{ width: '100%', fontSize: '0.7rem', borderCollapse: 'collapse' }}>
+          <div style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '0.3rem 0', marginBottom: '0.3rem' }}>
+            <table style={{ width: '100%', fontSize: '0.55rem', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '1px dashed #666' }}>
-                  <th style={{ textAlign: 'left', padding: '0.25rem 0', fontWeight: '700', fontSize: '0.65rem' }}>ARTÍCULO</th>
-                  <th style={{ textAlign: 'center', padding: '0.25rem', fontWeight: '700', width: '35px', fontSize: '0.65rem' }}>✅</th>
-                  <th style={{ textAlign: 'center', padding: '0.25rem', fontWeight: '700', width: '35px', fontSize: '0.65rem' }}>⚠️</th>
-                  <th style={{ textAlign: 'right', padding: '0.25rem 0', fontWeight: '700', fontSize: '0.65rem' }}>PRECIO</th>
-                  <th style={{ textAlign: 'right', padding: '0.25rem 0', fontWeight: '700', fontSize: '0.65rem' }}>TOTAL</th>
+                  <th style={{ textAlign: 'left', padding: '0.15rem 0', fontWeight: '700', fontSize: '0.5rem' }}>ARTÍCULO</th>
+                  <th style={{ textAlign: 'center', padding: '0.15rem', fontWeight: '700', width: '25px', fontSize: '0.5rem' }}>✅</th>
+                  <th style={{ textAlign: 'center', padding: '0.15rem', fontWeight: '700', width: '25px', fontSize: '0.5rem' }}>⚠️</th>
+                  <th style={{ textAlign: 'right', padding: '0.15rem 0', fontWeight: '700', fontSize: '0.5rem' }}>PRECIO</th>
+                  <th style={{ textAlign: 'right', padding: '0.15rem 0', fontWeight: '700', fontSize: '0.5rem' }}>TOTAL</th>
                 </tr>
               </thead>
               <tbody>
@@ -365,41 +333,36 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
                       borderBottom: index < pedido.detalles.length - 1 ? '1px dashed #e0e0e0' : 'none',
                       backgroundColor: pendiente > 0 ? '#fffbeb' : 'transparent'
                     }}>
-                      <td style={{ padding: '0.4rem 0' }}>
+                      <td style={{ padding: '0.25rem 0' }}>
                         <div>
-                          <div style={{ fontWeight: '600', fontSize: '0.7rem' }}>{detalle.prenda.nombre}</div>
-                          <div style={{ fontSize: '0.6rem', color: '#666' }}>
-                            Talla: {detalle.talla.nombre}
+                          <div style={{ fontWeight: '600', fontSize: '0.55rem' }}>{detalle.prenda.nombre}</div>
+                          <div style={{ fontSize: '0.5rem', color: '#666' }}>
+                            {detalle.talla.nombre}{detalle.especificaciones ? ` - ${detalle.especificaciones}` : ''}
                           </div>
-                          {detalle.especificaciones && (
-                            <div style={{ fontSize: '0.6rem', color: '#666', fontStyle: 'italic' }}>
-                              {detalle.especificaciones}
-                            </div>
-                          )}
                         </div>
                       </td>
                       <td style={{ 
                         textAlign: 'center', 
-                        padding: '0.4rem 0.25rem', 
+                        padding: '0.25rem 0.15rem', 
                         fontWeight: '700',
                         color: '#10b981',
-                        fontSize: '0.75rem'
+                        fontSize: '0.6rem'
                       }}>
                         {entregado}
                       </td>
                       <td style={{ 
                         textAlign: 'center', 
-                        padding: '0.4rem 0.25rem', 
+                        padding: '0.25rem 0.15rem', 
                         fontWeight: '700',
                         color: pendiente > 0 ? '#dc2626' : '#9ca3af',
-                        fontSize: '0.75rem'
+                        fontSize: '0.6rem'
                       }}>
                         {pendiente}
                       </td>
-                      <td style={{ textAlign: 'right', padding: '0.4rem 0', fontSize: '0.7rem' }}>
+                      <td style={{ textAlign: 'right', padding: '0.25rem 0', fontSize: '0.55rem' }}>
                         ${detalle.precio_unitario.toFixed(2)}
                       </td>
-                      <td style={{ textAlign: 'right', padding: '0.4rem 0', fontWeight: '600', fontSize: '0.7rem' }}>
+                      <td style={{ textAlign: 'right', padding: '0.25rem 0', fontWeight: '600', fontSize: '0.55rem' }}>
                         ${detalle.subtotal.toFixed(2)}
                       </td>
                     </tr>
@@ -410,18 +373,18 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
           </div>
 
           {/* Totales */}
-          <div style={{ marginBottom: '0.75rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem', fontSize: '0.75rem' }}>
+          <div style={{ marginBottom: '0.4rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.15rem', fontSize: '0.6rem' }}>
               <span><strong>SUBTOTAL:</strong></span>
               <span>${pedido.subtotal.toFixed(2)}</span>
             </div>
             <div style={{ 
               display: 'flex', 
               justifyContent: 'space-between', 
-              fontSize: '0.9rem', 
+              fontSize: '0.7rem', 
               fontWeight: '700',
-              borderTop: '2px solid #000',
-              paddingTop: '0.25rem'
+              borderTop: '1px solid #000',
+              paddingTop: '0.15rem'
             }}>
               <span>TOTAL:</span>
               <span>${pedido.total.toFixed(2)}</span>
@@ -433,28 +396,28 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
             <div style={{
               backgroundColor: '#f0f9ff',
               border: '1px solid #3b82f6',
-              borderRadius: '4px',
-              padding: '0.5rem',
-              marginBottom: '0.75rem'
+              borderRadius: '3px',
+              padding: '0.3rem',
+              marginBottom: '0.4rem'
             }}>
               <h3 style={{ 
-                margin: '0 0 0.35rem 0', 
-                fontSize: '0.7rem', 
+                margin: '0 0 0.2rem 0', 
+                fontSize: '0.55rem', 
                 fontWeight: '700',
                 color: '#1e40af',
                 borderBottom: '1px solid #3b82f6',
-                paddingBottom: '0.25rem'
+                paddingBottom: '0.15rem'
               }}>
-                📦 MOVIMIENTOS DE INVENTARIO
+                📦 MOVIMIENTOS
               </h3>
               {movimientos.map((mov, idx) => (
                 <div key={mov.id} style={{ 
-                  fontSize: '0.65rem',
-                  marginBottom: idx < movimientos.length - 1 ? '0.3rem' : 0,
-                  paddingBottom: idx < movimientos.length - 1 ? '0.3rem' : 0,
+                  fontSize: '0.5rem',
+                  marginBottom: idx < movimientos.length - 1 ? '0.2rem' : 0,
+                  paddingBottom: idx < movimientos.length - 1 ? '0.2rem' : 0,
                   borderBottom: idx < movimientos.length - 1 ? '1px dashed #bfdbfe' : 'none'
                 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.15rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ fontWeight: '600' }}>
                       {mov.costo?.prenda?.nombre || 'Prenda'} - {mov.costo?.talla?.nombre || 'Talla'}
                     </span>
@@ -465,11 +428,6 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
                       {mov.tipo}: {Math.abs(mov.cantidad)}
                     </span>
                   </div>
-                  {mov.observaciones && (
-                    <div style={{ fontSize: '0.6rem', color: '#6b7280', fontStyle: 'italic' }}>
-                      {mov.observaciones}
-                    </div>
-                  )}
                 </div>
               ))}
             </div>
@@ -480,55 +438,55 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
             <div style={{
               backgroundColor: '#fef2f2',
               border: '1px solid #dc2626',
-              borderRadius: '4px',
-              padding: '0.5rem',
-              marginBottom: '0.75rem'
+              borderRadius: '3px',
+              padding: '0.3rem',
+              marginBottom: '0.4rem'
             }}>
-              <p style={{ margin: '0 0 0.35rem 0', color: '#991b1b', fontWeight: '700', textAlign: 'center', fontSize: '0.7rem' }}>
-                ⚠️ ARTÍCULOS PENDIENTES DE ENTREGA
+              <p style={{ margin: '0 0 0.2rem 0', color: '#991b1b', fontWeight: '700', textAlign: 'center', fontSize: '0.55rem' }}>
+                ⚠️ PENDIENTES DE ENTREGA
               </p>
-              <div style={{ marginTop: '0.35rem', fontSize: '0.65rem' }}>
+              <div style={{ marginTop: '0.2rem', fontSize: '0.5rem' }}>
                 {pedido.detalles.filter(d => d.pendiente > 0).map(d => (
                   <div key={d.id} style={{ 
                     display: 'flex', 
                     justifyContent: 'space-between',
-                    padding: '0.3rem',
+                    padding: '0.2rem',
                     backgroundColor: 'rgba(255,255,255,0.5)',
-                    borderRadius: '3px',
-                    marginBottom: '0.3rem'
+                    borderRadius: '2px',
+                    marginBottom: '0.2rem'
                   }}>
                     <span style={{ color: '#991b1b', fontWeight: '600' }}>
                       {d.prenda.nombre} - {d.talla.nombre}
                     </span>
                     <span style={{ color: '#dc2626', fontWeight: '700' }}>
-                      {d.pendiente} pend.
+                      {d.pendiente}
                     </span>
                   </div>
                 ))}
               </div>
-              <p style={{ margin: '0.35rem 0 0 0', color: '#991b1b', fontSize: '0.65rem', textAlign: 'center', fontWeight: '600' }}>
-                Favor de pasar a recoger cuando estén disponibles
+              <p style={{ margin: '0.2rem 0 0 0', color: '#991b1b', fontSize: '0.5rem', textAlign: 'center', fontWeight: '600' }}>
+                Pasar a recoger cuando estén disponibles
               </p>
             </div>
           )}
 
           {/* Notas */}
           {pedido.notas && (
-            <div style={{ marginBottom: '0.75rem', fontSize: '0.65rem' }}>
+            <div style={{ marginBottom: '0.4rem', fontSize: '0.5rem' }}>
               <strong>NOTAS:</strong>
-              <p style={{ margin: '0.25rem 0', fontStyle: 'italic' }}>{pedido.notas}</p>
+              <p style={{ margin: '0.15rem 0', fontStyle: 'italic' }}>{pedido.notas}</p>
             </div>
           )}
 
           {/* Pie de página */}
           <div style={{ 
-            borderTop: '2px solid #000', 
-            paddingTop: '0.5rem', 
+            borderTop: '1px solid #000', 
+            paddingTop: '0.3rem', 
             textAlign: 'center',
-            fontSize: '0.65rem'
+            fontSize: '0.5rem'
           }}>
-            <p style={{ margin: '0.15rem 0' }}>¡GRACIAS POR SU COMPRA!</p>
-            <p style={{ margin: '0.15rem 0', fontSize: '0.6rem', color: '#666' }}>
+            <p style={{ margin: '0.1rem 0' }}>¡GRACIAS POR SU COMPRA!</p>
+            <p style={{ margin: '0.1rem 0', fontSize: '0.45rem', color: '#666' }}>
               Sistema de Gestión de Uniformes
             </p>
           </div>
