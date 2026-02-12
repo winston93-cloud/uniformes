@@ -43,6 +43,8 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
   const [pedido, setPedido] = useState<Pedido | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const [movimientos, setMovimientos] = useState<any[]>([]);
+
   useEffect(() => {
     cargarPedido();
   }, [resolvedParams.id]);
@@ -75,6 +77,21 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
         .order('created_at', { ascending: true });
 
       if (detallesError) throw detallesError;
+
+      // Obtener movimientos de inventario relacionados con este pedido
+      const { data: movimientosData } = await supabase
+        .from('movimientos')
+        .select(`
+          *,
+          costo:costos(
+            prenda:prendas(nombre),
+            talla:tallas(nombre)
+          )
+        `)
+        .ilike('observaciones', `%Pedido #${resolvedParams.id}%`)
+        .order('created_at', { ascending: true });
+
+      setMovimientos(movimientosData || []);
 
       setPedido({
         ...pedidoData,
@@ -115,6 +132,13 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
 
   const cantidadEntregada = (detalle: DetallePedido) => detalle.cantidad - detalle.pendiente;
   const tienePendientes = pedido.detalles.some(d => d.pendiente > 0);
+  
+  // Calcular totales de entregadas y pendientes
+  const totalPartidas = pedido.detalles.length;
+  const partidasEntregadasCompletas = pedido.detalles.filter(d => d.pendiente === 0).length;
+  const partidasConPendientes = pedido.detalles.filter(d => d.pendiente > 0).length;
+  const totalUnidadesEntregadas = pedido.detalles.reduce((sum, d) => sum + cantidadEntregada(d), 0);
+  const totalUnidadesPendientes = pedido.detalles.reduce((sum, d) => sum + d.pendiente, 0);
 
   return (
     <LayoutWrapper>
@@ -211,16 +235,75 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
               <span><strong>Cliente:</strong></span>
               <span>{pedido.cliente_nombre}</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-              <span><strong>Estado:</strong></span>
-              <span style={{ 
-                fontWeight: '700',
-                color: pedido.estado === 'ENTREGADO' ? '#10b981' : 
-                       pedido.estado === 'PEDIDO' ? '#f59e0b' : '#6b7280'
-              }}>
-                {pedido.estado}
-              </span>
+          </div>
+
+          {/* Estado detallado del pedido */}
+          <div style={{
+            backgroundColor: pedido.estado === 'ENTREGADO' ? '#d1fae5' : '#fef3c7',
+            border: `2px solid ${pedido.estado === 'ENTREGADO' ? '#10b981' : '#f59e0b'}`,
+            borderRadius: '8px',
+            padding: '1rem',
+            marginBottom: '1.5rem'
+          }}>
+            <div style={{ 
+              fontSize: '1.2rem', 
+              fontWeight: '700',
+              marginBottom: '0.75rem',
+              color: pedido.estado === 'ENTREGADO' ? '#065f46' : '#92400e',
+              textAlign: 'center'
+            }}>
+              {pedido.estado === 'ENTREGADO' ? '✅ PEDIDO ENTREGADO COMPLETO' : '⚠️ PEDIDO CON PENDIENTES'}
             </div>
+            
+            <div style={{ 
+              fontSize: '0.9rem', 
+              color: '#374151',
+              borderTop: `1px dashed ${pedido.estado === 'ENTREGADO' ? '#10b981' : '#f59e0b'}`,
+              paddingTop: '0.75rem',
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '0.5rem'
+            }}>
+              <div>
+                <strong>Partidas totales:</strong> {totalPartidas}
+              </div>
+              <div>
+                <strong>Unidades entregadas:</strong> <span style={{ color: '#10b981', fontWeight: '700' }}>{totalUnidadesEntregadas}</span>
+              </div>
+              {tienePendientes && (
+                <>
+                  <div>
+                    <strong>Partidas completas:</strong> {partidasEntregadasCompletas}
+                  </div>
+                  <div>
+                    <strong>Unidades pendientes:</strong> <span style={{ color: '#dc2626', fontWeight: '700' }}>{totalUnidadesPendientes}</span>
+                  </div>
+                </>
+              )}
+            </div>
+            
+            {pedido.estado === 'ENTREGADO' && (
+              <div style={{ 
+                marginTop: '0.75rem', 
+                fontSize: '0.85rem', 
+                fontStyle: 'italic',
+                color: '#065f46',
+                textAlign: 'center'
+              }}>
+                Todas las prendas fueron entregadas. Pedido completado.
+              </div>
+            )}
+            {tienePendientes && (
+              <div style={{ 
+                marginTop: '0.75rem', 
+                fontSize: '0.85rem', 
+                fontWeight: '600',
+                color: '#92400e',
+                textAlign: 'center'
+              }}>
+                Se entregaron {totalUnidadesEntregadas} unidades. Quedan {totalUnidadesPendientes} pendientes de entregar.
+              </div>
+            )}
           </div>
 
           {/* Detalles del pedido */}
@@ -229,7 +312,8 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
               <thead>
                 <tr style={{ borderBottom: '1px dashed #666' }}>
                   <th style={{ textAlign: 'left', padding: '0.5rem 0', fontWeight: '700' }}>ARTÍCULO</th>
-                  <th style={{ textAlign: 'center', padding: '0.5rem 0', fontWeight: '700' }}>CANT</th>
+                  <th style={{ textAlign: 'center', padding: '0.5rem', fontWeight: '700', width: '50px' }}>✅</th>
+                  <th style={{ textAlign: 'center', padding: '0.5rem', fontWeight: '700', width: '50px' }}>⚠️</th>
                   <th style={{ textAlign: 'right', padding: '0.5rem 0', fontWeight: '700' }}>PRECIO</th>
                   <th style={{ textAlign: 'right', padding: '0.5rem 0', fontWeight: '700' }}>TOTAL</th>
                 </tr>
@@ -240,7 +324,10 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
                   const pendiente = detalle.pendiente;
                   
                   return (
-                    <tr key={detalle.id} style={{ borderBottom: index < pedido.detalles.length - 1 ? '1px dashed #e0e0e0' : 'none' }}>
+                    <tr key={detalle.id} style={{ 
+                      borderBottom: index < pedido.detalles.length - 1 ? '1px dashed #e0e0e0' : 'none',
+                      backgroundColor: pendiente > 0 ? '#fffbeb' : 'transparent'
+                    }}>
                       <td style={{ padding: '0.75rem 0' }}>
                         <div>
                           <div style={{ fontWeight: '600' }}>{detalle.prenda.nombre}</div>
@@ -252,24 +339,25 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
                               {detalle.especificaciones}
                             </div>
                           )}
-                          {pendiente > 0 && (
-                            <div style={{ 
-                              fontSize: '0.75rem', 
-                              color: '#dc2626', 
-                              fontWeight: '700',
-                              marginTop: '0.25rem',
-                              backgroundColor: '#fee2e2',
-                              padding: '0.2rem 0.4rem',
-                              borderRadius: '4px',
-                              display: 'inline-block'
-                            }}>
-                              ⚠️ {entregado} entregadas, {pendiente} pendientes
-                            </div>
-                          )}
                         </div>
                       </td>
-                      <td style={{ textAlign: 'center', padding: '0.75rem 0', fontWeight: '600' }}>
-                        {detalle.cantidad}
+                      <td style={{ 
+                        textAlign: 'center', 
+                        padding: '0.75rem 0.5rem', 
+                        fontWeight: '700',
+                        color: '#10b981',
+                        fontSize: '1rem'
+                      }}>
+                        {entregado}
+                      </td>
+                      <td style={{ 
+                        textAlign: 'center', 
+                        padding: '0.75rem 0.5rem', 
+                        fontWeight: '700',
+                        color: pendiente > 0 ? '#dc2626' : '#9ca3af',
+                        fontSize: '1rem'
+                      }}>
+                        {pendiente}
                       </td>
                       <td style={{ textAlign: 'right', padding: '0.75rem 0' }}>
                         ${detalle.precio_unitario.toFixed(2)}
@@ -303,6 +391,53 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
             </div>
           </div>
 
+          {/* Movimientos de inventario */}
+          {movimientos.length > 0 && (
+            <div style={{
+              backgroundColor: '#f0f9ff',
+              border: '2px solid #3b82f6',
+              borderRadius: '8px',
+              padding: '1rem',
+              marginBottom: '1.5rem'
+            }}>
+              <h3 style={{ 
+                margin: '0 0 0.75rem 0', 
+                fontSize: '1rem', 
+                fontWeight: '700',
+                color: '#1e40af',
+                borderBottom: '1px solid #3b82f6',
+                paddingBottom: '0.5rem'
+              }}>
+                📦 MOVIMIENTOS DE INVENTARIO
+              </h3>
+              {movimientos.map((mov, idx) => (
+                <div key={mov.id} style={{ 
+                  fontSize: '0.85rem',
+                  marginBottom: idx < movimientos.length - 1 ? '0.5rem' : 0,
+                  paddingBottom: idx < movimientos.length - 1 ? '0.5rem' : 0,
+                  borderBottom: idx < movimientos.length - 1 ? '1px dashed #bfdbfe' : 'none'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                    <span style={{ fontWeight: '600' }}>
+                      {mov.costo?.prenda?.nombre || 'Prenda'} - {mov.costo?.talla?.nombre || 'Talla'}
+                    </span>
+                    <span style={{ 
+                      fontWeight: '700',
+                      color: mov.tipo === 'SALIDA' ? '#dc2626' : '#10b981'
+                    }}>
+                      {mov.tipo}: {Math.abs(mov.cantidad)} unidades
+                    </span>
+                  </div>
+                  {mov.observaciones && (
+                    <div style={{ fontSize: '0.75rem', color: '#6b7280', fontStyle: 'italic' }}>
+                      {mov.observaciones}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Advertencia de pendientes */}
           {tienePendientes && (
             <div style={{
@@ -313,9 +448,28 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
               marginBottom: '1.5rem'
             }}>
               <p style={{ margin: 0, color: '#991b1b', fontWeight: '700', textAlign: 'center' }}>
-                ⚠️ ESTE PEDIDO TIENE PARTIDAS PENDIENTES DE ENTREGA
+                ⚠️ ARTÍCULOS PENDIENTES DE ENTREGA
               </p>
-              <p style={{ margin: '0.5rem 0 0 0', color: '#991b1b', fontSize: '0.85rem', textAlign: 'center' }}>
+              <div style={{ marginTop: '0.75rem', fontSize: '0.85rem' }}>
+                {pedido.detalles.filter(d => d.pendiente > 0).map(d => (
+                  <div key={d.id} style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between',
+                    padding: '0.5rem',
+                    backgroundColor: 'rgba(255,255,255,0.5)',
+                    borderRadius: '4px',
+                    marginBottom: '0.5rem'
+                  }}>
+                    <span style={{ color: '#991b1b', fontWeight: '600' }}>
+                      {d.prenda.nombre} - {d.talla.nombre}
+                    </span>
+                    <span style={{ color: '#dc2626', fontWeight: '700' }}>
+                      {d.pendiente} pendientes
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <p style={{ margin: '0.75rem 0 0 0', color: '#991b1b', fontSize: '0.85rem', textAlign: 'center', fontWeight: '600' }}>
                 Favor de pasar a recoger cuando estén disponibles
               </p>
             </div>
