@@ -13,7 +13,7 @@ interface Pedido {
   estado: 'PEDIDO' | 'ENTREGADO' | 'LIQUIDADO' | 'CANCELADO';
   observaciones?: string;
   modalidad_pago: 'TOTAL' | 'ANTICIPO';
-  efectivo_recibido: number;
+  efectivo_recibido: number | string;
   created_at?: string;
   updated_at?: string;
 }
@@ -66,7 +66,7 @@ export function usePedidos(sucursal_id?: string) {
     }
   };
 
-  const crearPedido = async (pedido: Omit<Pedido, 'id' | 'created_at' | 'updated_at'>, detalles: Omit<DetallePedido, 'id' | 'pedido_id'>[], pedido_sucursal_id?: string, usuario_id?: number) => {
+  const crearPedido = async (pedido: Omit<Pedido, 'id' | 'created_at' | 'updated_at'>, detalles: Omit<DetallePedido, 'id' | 'pedido_id'>[], pedido_sucursal_id?: string, usuario_id?: number | string) => {
     try {
       console.log('📦 Creando pedido con función atómica...', pedido);
       
@@ -78,12 +78,19 @@ export function usePedidos(sucursal_id?: string) {
         especificaciones: det.especificaciones || ''
       }));
 
+      // Obtener o generar UUID del usuario
+      // Si viene un número (usuario_id de sesión legacy), usar UUID temporal
+      // TODO: Migrar tabla usuarios para usar UUIDs
+      const usuario_uuid = typeof usuario_id === 'string' 
+        ? usuario_id 
+        : '00000000-0000-0000-0000-000000000001'; // UUID temporal para usuarios legacy
+
       // LLAMAR A LA FUNCIÓN ATÓMICA que hace TODO en una transacción
       const { data, error } = await supabase.rpc('crear_pedido_atomico', {
         p_tipo_cliente: pedido.cliente_tipo,
         p_cliente_nombre: pedido.cliente_nombre,
         p_sucursal_id: pedido_sucursal_id || sucursal_id,
-        p_usuario_id: usuario_id || 1, // TODO: obtener de sesión
+        p_usuario_id: usuario_uuid,
         p_alumno_id: null,
         p_externo_id: null,
         p_estado: pedido.estado,

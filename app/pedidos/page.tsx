@@ -26,7 +26,7 @@ interface Pedido {
   subtotal?: number;
   observaciones?: string;
   modalidad_pago?: 'TOTAL';
-  efectivo_recibido?: number;
+  efectivo_recibido?: number | string;
   cliente?: string; // Para compatibilidad con código existente
 }
 
@@ -128,7 +128,7 @@ function PedidosPageContent() {
     detalles: [] as DetallePedido[],
     observaciones: '',
     modalidad_pago: 'TOTAL' as const,
-    efectivo_recibido: 0,
+    efectivo_recibido: '',
   });
 
   // Estados para búsqueda de cliente
@@ -653,7 +653,7 @@ function PedidosPageContent() {
       estado: 'PEDIDO' as const,
       observaciones: formData.observaciones,
       modalidad_pago: formData.modalidad_pago,
-      efectivo_recibido: formData.efectivo_recibido,
+      efectivo_recibido: parseFloat(formData.efectivo_recibido as string) || 0,
     };
 
     // Preparar detalles para la base de datos
@@ -804,7 +804,7 @@ function PedidosPageContent() {
                   detalles: [],
                   observaciones: '',
                   modalidad_pago: 'TOTAL',
-                  efectivo_recibido: 0
+                  efectivo_recibido: ''
                 });
                 setBusquedaCliente('');
                 setClienteSeleccionado(null);
@@ -1586,7 +1586,7 @@ function PedidosPageContent() {
                       type="number"
                       className="form-input"
                       value={formData.efectivo_recibido}
-                      onChange={(e) => setFormData({ ...formData, efectivo_recibido: parseFloat(e.target.value) || 0 })}
+                      onChange={(e) => setFormData({ ...formData, efectivo_recibido: e.target.value })}
                       min="0"
                       step="0.01"
                       placeholder="0.00"
