@@ -868,9 +868,9 @@ function PedidosPageContent() {
                         cliente_tipo: '', 
                         cliente_nombre: '', 
                         detalles: [],
-                        observaciones: '',
-                        modalidad_pago: 'TOTAL',
-                        efectivo_recibido: 0
+                  observaciones: '',
+                  modalidad_pago: 'TOTAL',
+                  efectivo_recibido: ''
                       });
                       setBusquedaCliente('');
                       setClienteSeleccionado(null);
@@ -1649,9 +1649,9 @@ function PedidosPageContent() {
                       cliente_tipo: '', 
                       cliente_nombre: '', 
                       detalles: [],
-                      observaciones: '',
-                      modalidad_pago: 'TOTAL',
-                      efectivo_recibido: 0
+                  observaciones: '',
+                  modalidad_pago: 'TOTAL',
+                  efectivo_recibido: ''
                     });
                     setBusquedaCliente('');
                     setClienteSeleccionado(null);
