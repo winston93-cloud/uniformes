@@ -637,10 +637,97 @@ function PedidosPageContent() {
         </h1>
 
         {mostrarFormulario && (
-          <div className="form-container" style={{ maxWidth: '1600px', width: '95%', padding: '1rem', marginTop: '0.5rem' }}>
+          <div 
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.7)',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              zIndex: 9999,
+              padding: '1rem',
+              overflowY: 'auto'
+            }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setMostrarFormulario(false);
+                setFormData({ 
+                  cliente_id: '', 
+                  cliente_tipo: '', 
+                  cliente_nombre: '', 
+                  detalles: [],
+                  observaciones: '',
+                  modalidad_pago: 'TOTAL',
+                  efectivo_recibido: 0
+                });
+                setBusquedaCliente('');
+                setClienteSeleccionado(null);
+              }
+            }}
+          >
+            <div 
+              className="form-container" 
+              style={{ 
+                maxWidth: '1400px', 
+                width: '100%', 
+                maxHeight: '95vh',
+                overflowY: 'auto',
+                padding: '1.5rem', 
+                backgroundColor: 'white',
+                borderRadius: '16px',
+                boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+                position: 'relative'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '1rem',
+                paddingBottom: '1rem',
+                borderBottom: '2px solid #e0e0e0'
+              }}>
+                <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '700', color: '#374151' }}>
+                  ➕ Nuevo Pedido
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMostrarFormulario(false);
+                    setFormData({ 
+                      cliente_id: '', 
+                      cliente_tipo: '', 
+                      cliente_nombre: '', 
+                      detalles: [],
+                      observaciones: '',
+                      modalidad_pago: 'TOTAL',
+                      efectivo_recibido: 0
+                    });
+                    setBusquedaCliente('');
+                    setClienteSeleccionado(null);
+                  }}
+                  style={{
+                    background: '#ef4444',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '0.5rem 1rem',
+                    color: 'white',
+                    fontSize: '1.2rem',
+                    cursor: 'pointer',
+                    fontWeight: '700'
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
             <form onSubmit={handleSubmit}>
               <div className="form-group" style={{ marginBottom: '0.75rem' }}>
-                <label className="form-label" style={{ marginBottom: '0.4rem', fontSize: '0.9rem' }}>Cliente *</label>
+                <label className="form-label" style={{ marginBottom: '0.4rem', fontSize: '0.9rem' }}>Alumno/Externo *</label>
                 <div style={{ position: 'relative' }}>
                   <input
                     ref={inputClienteRef}
@@ -655,6 +742,9 @@ function PedidosPageContent() {
                       }
                     }}
                     onFocus={() => {
+                      setBusquedaCliente(''); // Limpiar al hacer clic
+                      setFormData({ ...formData, cliente_id: '', cliente_tipo: '', cliente_nombre: '' });
+                      setClienteSeleccionado(null);
                       if (resultadosBusqueda.length > 0) {
                         setMostrarResultados(true);
                       }
@@ -662,7 +752,7 @@ function PedidosPageContent() {
                     onBlur={() => {
                       setTimeout(() => setMostrarResultados(false), 200);
                     }}
-                    placeholder="🔍 Buscar cliente (alumno o externo)..."
+                    placeholder="🔍 Buscar alumno o externo..."
                     style={{ width: '100%', padding: '0.5rem', fontSize: '0.9rem' }}
                   />
 
@@ -1279,6 +1369,7 @@ function PedidosPageContent() {
                 </button>
               </div>
             </form>
+            </div>
           </div>
         )}
 
