@@ -766,6 +766,18 @@ function PedidosPageContent() {
 
   return (
     <LayoutWrapper>
+      <style jsx global>{`
+        @keyframes pulse {
+          0%, 100% {
+            opacity: 1;
+            transform: scale(1);
+          }
+          50% {
+            opacity: 0.5;
+            transform: scale(1.2);
+          }
+        }
+      `}</style>
       <Suspense fallback={null}>
         <SearchParamsDetector setMostrarFormulario={setMostrarFormulario} />
       </Suspense>
@@ -1088,8 +1100,37 @@ function PedidosPageContent() {
                       </tr>
                     </thead>
                     <tbody>
+                      {/* Encabezado de nueva partida */}
+                      <tr>
+                        <td colSpan={10} style={{ padding: '0.75rem 0 0.5rem 0', backgroundColor: '#f0f9ff', borderBottom: '2px solid #3b82f6' }}>
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            paddingLeft: '0.5rem'
+                          }}>
+                            <div style={{
+                              width: '8px',
+                              height: '8px',
+                              borderRadius: '50%',
+                              backgroundColor: '#3b82f6',
+                              animation: 'pulse 2s infinite'
+                            }} />
+                            <span style={{
+                              fontSize: '0.9rem',
+                              fontWeight: '700',
+                              color: '#1e40af',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.05em'
+                            }}>
+                              ➕ Agregar Nueva Partida
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                      
                       {/* Fila para agregar nuevo detalle */}
-                      <tr style={{ borderBottom: '1px solid #e0e0e0' }}>
+                      <tr style={{ borderBottom: '2px solid #3b82f6', backgroundColor: '#f8fafc' }}>
                         <td style={{ padding: '0.5rem' }}>
                           <div ref={contenedorPrendaRef} style={{ position: 'relative' }}>
                             <input
@@ -1313,6 +1354,48 @@ function PedidosPageContent() {
                           </button>
                         </td>
                       </tr>
+
+                      {/* Separador visual elegante */}
+                      {formData.detalles.length > 0 && (
+                        <tr>
+                          <td colSpan={10} style={{ padding: '1rem 0', position: 'relative' }}>
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '1rem',
+                              margin: '0.5rem 0'
+                            }}>
+                              <div style={{
+                                flex: 1,
+                                height: '2px',
+                                background: 'linear-gradient(90deg, transparent 0%, #3b82f6 50%, transparent 100%)',
+                                opacity: 0.3
+                              }} />
+                              <span style={{
+                                fontSize: '0.85rem',
+                                fontWeight: '600',
+                                color: '#64748b',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.1em',
+                                padding: '0.5rem 1.5rem',
+                                background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+                                borderRadius: '20px',
+                                border: '1px solid #cbd5e1',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                                whiteSpace: 'nowrap'
+                              }}>
+                                📦 Partidas Agregadas ({formData.detalles.length})
+                              </span>
+                              <div style={{
+                                flex: 1,
+                                height: '2px',
+                                background: 'linear-gradient(90deg, transparent 0%, #3b82f6 50%, transparent 100%)',
+                                opacity: 0.3
+                              }} />
+                            </div>
+                          </td>
+                        </tr>
+                      )}
 
                       {/* Filas de detalles agregados */}
                       {formData.detalles.map((detalle, index) => (
