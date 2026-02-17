@@ -11,15 +11,15 @@ export default function MobileScrollFix() {
       document.documentElement.style.overflowY = 'auto';
       document.documentElement.style.height = 'auto';
       document.documentElement.style.minHeight = '100%';
-      document.documentElement.style.webkitOverflowScrolling = 'touch';
+      (document.documentElement.style as any).webkitOverflowScrolling = 'touch';
       
       document.body.style.overflow = 'auto';
       document.body.style.overflowY = 'auto';
       document.body.style.height = 'auto';
       document.body.style.minHeight = '100vh';
-      document.body.style.webkitOverflowScrolling = 'touch';
+      (document.body.style as any).webkitOverflowScrolling = 'touch';
       document.body.style.position = 'relative';
-      document.body.style.touchAction = 'pan-y';
+      (document.body.style as any).touchAction = 'pan-y';
       
       // Prevenir comportamiento por defecto de iOS que a veces bloquea scroll
       document.addEventListener('touchmove', (e) => {
