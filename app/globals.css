@@ -5,6 +5,13 @@
   box-sizing: border-box;
 }
 
+html {
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+  height: auto;
+  min-height: 100%;
+}
+
 :root {
   /* Colores principales - INSTITUCIONALES (Azul Marino/Morado/Blanco) */
   --gradient-start: #1e3a8a;    /* Azul marino institucional */
@@ -46,8 +53,13 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-middle) 50%, var(--gradient-end) 100%);
   min-height: 100vh;
+  height: auto !important;
   color: var(--text-primary);
-  overflow-x: hidden; /* Prevenir scroll horizontal */
+  overflow-x: hidden !important; /* Prevenir scroll horizontal */
+  overflow-y: auto !important; /* Permitir scroll vertical */
+  -webkit-overflow-scrolling: touch !important; /* Scroll suave en iOS */
+  position: relative !important; /* Asegurar que el scroll funcione */
+  touch-action: pan-y !important; /* Permitir gestos verticales */
 }
 
 /* Layout Main */
@@ -55,7 +67,10 @@ body {
   width: 100%;
   max-width: 100vw;
   overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   box-sizing: border-box;
+  min-height: 100vh;
 }
 
 /* Header */
@@ -224,6 +239,9 @@ body {
   max-width: 1400px;
   margin: 0 auto;
   padding: 2rem;
+  min-height: 100vh;
+  height: auto;
+  overflow-y: visible;
 }
 
 /* Título Principal */
@@ -523,6 +541,26 @@ body {
 
 /* Responsive */
 @media (max-width: 768px) {
+  html, body {
+    height: auto;
+    min-height: 100vh;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    position: relative !important;
+  }
+
+  body {
+    touch-action: pan-y !important;
+  }
+
+  .layout-main {
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    min-height: 100vh !important;
+    height: auto !important;
+    position: relative !important;
+  }
+
   .page-title {
     font-size: 1.8rem;
     flex-direction: column;
@@ -661,6 +699,9 @@ body {
   
   .main-container {
     padding: 1rem;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
   }
   
   .header {

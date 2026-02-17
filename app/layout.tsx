@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import ThemeToggler from "@/components/ThemeToggler";
 import BackgroundGradient from "@/components/BackgroundGradient";
+import MobileScrollFix from "@/components/MobileScrollFix";
 import { AuthProvider } from "@/contexts/AuthContext";
 
 export const metadata: Metadata = {
@@ -15,9 +16,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es">
-      <body>
+    <html lang="es" style={{ height: '100%', overflow: 'auto', WebkitOverflowScrolling: 'touch' }}>
+      <body style={{ height: '100%', overflow: 'auto', WebkitOverflowScrolling: 'touch', position: 'relative' }}>
         <AuthProvider>
+          <MobileScrollFix />
           <BackgroundGradient />
           <ThemeToggler />
           {children}
