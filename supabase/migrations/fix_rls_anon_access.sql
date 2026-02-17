@@ -11,6 +11,7 @@ DROP POLICY IF EXISTS "Usuarios autenticados pueden insertar prenda_talla_insumo
 DROP POLICY IF EXISTS "Usuarios autenticados pueden actualizar prenda_talla_insumos" ON public.prenda_talla_insumos;
 DROP POLICY IF EXISTS "Usuarios autenticados pueden eliminar prenda_talla_insumos" ON public.prenda_talla_insumos;
 DROP POLICY IF EXISTS "Usuarios autenticados acceden a prenda_talla_insumos" ON public.prenda_talla_insumos;
+DROP POLICY IF EXISTS "Permitir acceso total a prenda_talla_insumos" ON public.prenda_talla_insumos;
 
 CREATE POLICY "Permitir acceso total a prenda_talla_insumos" ON public.prenda_talla_insumos
   FOR ALL USING (true) WITH CHECK (true);
@@ -21,6 +22,7 @@ DROP POLICY IF EXISTS "Usuarios autenticados pueden insertar snapshot_insumos_pe
 DROP POLICY IF EXISTS "Usuarios autenticados pueden actualizar snapshot_insumos_pedido" ON public.snapshot_insumos_pedido;
 DROP POLICY IF EXISTS "Usuarios autenticados pueden eliminar snapshot_insumos_pedido" ON public.snapshot_insumos_pedido;
 DROP POLICY IF EXISTS "Usuarios autenticados acceden a snapshot_insumos_pedido" ON public.snapshot_insumos_pedido;
+DROP POLICY IF EXISTS "Permitir acceso total a snapshot_insumos_pedido" ON public.snapshot_insumos_pedido;
 
 CREATE POLICY "Permitir acceso total a snapshot_insumos_pedido" ON public.snapshot_insumos_pedido
   FOR ALL USING (true) WITH CHECK (true);
@@ -31,6 +33,7 @@ DROP POLICY IF EXISTS "Usuarios autenticados pueden insertar transferencias" ON 
 DROP POLICY IF EXISTS "Usuarios autenticados pueden actualizar transferencias" ON public.transferencias;
 DROP POLICY IF EXISTS "Usuarios autenticados pueden eliminar transferencias" ON public.transferencias;
 DROP POLICY IF EXISTS "Usuarios autenticados acceden a transferencias" ON public.transferencias;
+DROP POLICY IF EXISTS "Permitir acceso total a transferencias" ON public.transferencias;
 
 CREATE POLICY "Permitir acceso total a transferencias" ON public.transferencias
   FOR ALL USING (true) WITH CHECK (true);
@@ -41,6 +44,7 @@ DROP POLICY IF EXISTS "Usuarios autenticados pueden insertar detalle_transferenc
 DROP POLICY IF EXISTS "Usuarios autenticados pueden actualizar detalle_transferencias" ON public.detalle_transferencias;
 DROP POLICY IF EXISTS "Usuarios autenticados pueden eliminar detalle_transferencias" ON public.detalle_transferencias;
 DROP POLICY IF EXISTS "Usuarios autenticados acceden a detalle_transferencias" ON public.detalle_transferencias;
+DROP POLICY IF EXISTS "Permitir acceso total a detalle_transferencias" ON public.detalle_transferencias;
 
 CREATE POLICY "Permitir acceso total a detalle_transferencias" ON public.detalle_transferencias
   FOR ALL USING (true) WITH CHECK (true);
@@ -51,6 +55,7 @@ DROP POLICY IF EXISTS "Usuarios autenticados pueden insertar devoluciones" ON pu
 DROP POLICY IF EXISTS "Usuarios autenticados pueden actualizar devoluciones" ON public.devoluciones;
 DROP POLICY IF EXISTS "Usuarios autenticados pueden eliminar devoluciones" ON public.devoluciones;
 DROP POLICY IF EXISTS "Usuarios autenticados acceden a devoluciones" ON public.devoluciones;
+DROP POLICY IF EXISTS "Permitir acceso total a devoluciones" ON public.devoluciones;
 
 CREATE POLICY "Permitir acceso total a devoluciones" ON public.devoluciones
   FOR ALL USING (true) WITH CHECK (true);
@@ -61,6 +66,7 @@ DROP POLICY IF EXISTS "Usuarios autenticados pueden insertar detalle_devolucione
 DROP POLICY IF EXISTS "Usuarios autenticados pueden actualizar detalle_devoluciones" ON public.detalle_devoluciones;
 DROP POLICY IF EXISTS "Usuarios autenticados pueden eliminar detalle_devoluciones" ON public.detalle_devoluciones;
 DROP POLICY IF EXISTS "Usuarios autenticados acceden a detalle_devoluciones" ON public.detalle_devoluciones;
+DROP POLICY IF EXISTS "Permitir acceso total a detalle_devoluciones" ON public.detalle_devoluciones;
 
 CREATE POLICY "Permitir acceso total a detalle_devoluciones" ON public.detalle_devoluciones
   FOR ALL USING (true) WITH CHECK (true);
@@ -71,6 +77,7 @@ DROP POLICY IF EXISTS "Usuarios autenticados pueden insertar sucursales" ON publ
 DROP POLICY IF EXISTS "Usuarios autenticados pueden actualizar sucursales" ON public.sucursales;
 DROP POLICY IF EXISTS "Usuarios autenticados pueden eliminar sucursales" ON public.sucursales;
 DROP POLICY IF EXISTS "Usuarios autenticados acceden a sucursales" ON public.sucursales;
+DROP POLICY IF EXISTS "Permitir acceso total a sucursales" ON public.sucursales;
 
 CREATE POLICY "Permitir acceso total a sucursales" ON public.sucursales
   FOR ALL USING (true) WITH CHECK (true);
@@ -81,6 +88,7 @@ DROP POLICY IF EXISTS "Usuarios autenticados pueden insertar ciclos_escolares" O
 DROP POLICY IF EXISTS "Usuarios autenticados pueden actualizar ciclos_escolares" ON public.ciclos_escolares;
 DROP POLICY IF EXISTS "Usuarios autenticados pueden eliminar ciclos_escolares" ON public.ciclos_escolares;
 DROP POLICY IF EXISTS "Usuarios autenticados acceden a ciclos_escolares" ON public.ciclos_escolares;
+DROP POLICY IF EXISTS "Permitir acceso total a ciclos_escolares" ON public.ciclos_escolares;
 
 CREATE POLICY "Permitir acceso total a ciclos_escolares" ON public.ciclos_escolares
   FOR ALL USING (true) WITH CHECK (true);
