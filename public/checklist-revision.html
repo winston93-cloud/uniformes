@@ -1,0 +1,1165 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checklist de Revisión Completo - Sistema Uniformes</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+
+        h1 {
+            color: #667eea;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .progress-container {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .progress-bar-container {
+            background: #e0e0e0;
+            border-radius: 10px;
+            height: 30px;
+            overflow: hidden;
+            position: relative;
+            margin: 15px 0;
+        }
+
+        .progress-bar {
+            background: linear-gradient(90deg, #4caf50, #8bc34a);
+            height: 100%;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .stat-box {
+            text-align: center;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 8px;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: #666;
+            text-transform: uppercase;
+        }
+
+        .filters {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 25px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filter-btn {
+            padding: 10px 20px;
+            border: 2px solid #667eea;
+            background: white;
+            color: #667eea;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .filter-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .filter-btn.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+            margin-left: auto;
+        }
+
+        .btn-action {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #4caf50;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #f44336;
+            color: white;
+        }
+
+        .btn-action:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .module {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+
+        .module-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #667eea;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .module-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .module-title h2 {
+            color: #667eea;
+            font-size: 1.5rem;
+        }
+
+        .module-icon {
+            font-size: 2rem;
+        }
+
+        .module-progress {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: bold;
+            color: #666;
+        }
+
+        .toggle-icon {
+            font-size: 1.5rem;
+            transition: transform 0.3s ease;
+        }
+
+        .toggle-icon.collapsed {
+            transform: rotate(-90deg);
+        }
+
+        .module-content {
+            display: block;
+        }
+
+        .module-content.collapsed {
+            display: none;
+        }
+
+        .check-item {
+            display: flex;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 4px solid #ddd;
+            background: #f9f9f9;
+            transition: all 0.3s ease;
+        }
+
+        .check-item:hover {
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            transform: translateX(5px);
+        }
+
+        .check-item.completed {
+            background: #e8f5e9;
+            border-left-color: #4caf50;
+        }
+
+        .check-item.priority-high {
+            border-left-color: #f44336;
+        }
+
+        .check-item.priority-medium {
+            border-left-color: #ff9800;
+        }
+
+        .check-item.priority-low {
+            border-left-color: #2196f3;
+        }
+
+        .checkbox-container {
+            margin-right: 15px;
+        }
+
+        .checkbox-container input[type="checkbox"] {
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            accent-color: #4caf50;
+        }
+
+        .check-content {
+            flex: 1;
+        }
+
+        .check-number {
+            font-weight: bold;
+            color: #667eea;
+            margin-right: 8px;
+        }
+
+        .check-title {
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .check-description {
+            color: #666;
+            margin-top: 8px;
+            line-height: 1.5;
+        }
+
+        .check-reason {
+            margin-top: 8px;
+            padding: 10px;
+            background: #fff3cd;
+            border-radius: 5px;
+            font-size: 0.95rem;
+            color: #856404;
+        }
+
+        .check-reason strong {
+            color: #664d03;
+        }
+
+        .priority-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .priority-high {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        .priority-medium {
+            background: #fff3e0;
+            color: #ef6c00;
+        }
+
+        .priority-low {
+            background: #e3f2fd;
+            color: #1565c0;
+        }
+
+        .check-tags {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+
+        .tag {
+            padding: 4px 10px;
+            border-radius: 15px;
+            font-size: 0.85rem;
+            background: #e0e0e0;
+            color: #555;
+        }
+
+        footer {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 30px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        @media print {
+            body {
+                background: white;
+            }
+            .filters, .actions, .btn-action {
+                display: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.8rem;
+            }
+            .filters {
+                flex-direction: column;
+            }
+            .module-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>✅ Checklist de Revisión Completo</h1>
+            <p><strong>Sistema de Uniformes Winston Churchill</strong></p>
+            <p style="color: #999; font-size: 0.9rem; margin-top: 10px;">Guía de revisión técnica desde lo simple hasta lo complejo</p>
+        </header>
+
+        <div class="progress-container">
+            <h3 style="margin-bottom: 15px;">📊 Progreso General</h3>
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="progressBar">0%</div>
+            </div>
+            <div class="stats">
+                <div class="stat-box">
+                    <div class="stat-number" id="totalChecks">0</div>
+                    <div class="stat-label">Total Checks</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number" id="completedChecks">0</div>
+                    <div class="stat-label">Completados</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number" id="pendingChecks">0</div>
+                    <div class="stat-label">Pendientes</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number" id="highPriority">0</div>
+                    <div class="stat-label">Alta Prioridad</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="filters">
+            <button class="filter-btn active" data-filter="all">Todos</button>
+            <button class="filter-btn" data-filter="high">🔴 Alta</button>
+            <button class="filter-btn" data-filter="medium">🟡 Media</button>
+            <button class="filter-btn" data-filter="low">🟢 Baja</button>
+            <button class="filter-btn" data-filter="completed">✅ Completados</button>
+            <button class="filter-btn" data-filter="pending">⏳ Pendientes</button>
+            
+            <div class="actions">
+                <button class="btn-action btn-secondary" onclick="exportProgress()">💾 Exportar</button>
+                <button class="btn-action btn-danger" onclick="resetProgress()">🔄 Reiniciar</button>
+                <button class="btn-action btn-primary" onclick="window.print()">🖨️ Imprimir</button>
+            </div>
+        </div>
+
+        <div id="checklistContainer"></div>
+
+        <footer>
+            <p><strong>Sistema de Uniformes Winston Churchill</strong></p>
+            <p style="color: #999; margin-top: 10px;">
+                Tu progreso se guarda automáticamente en el navegador
+            </p>
+        </footer>
+    </div>
+
+    <script>
+        const checklistData = {
+            "base-datos": {
+                icon: "🗄️",
+                title: "Base de Datos e Integridad",
+                checks: [
+                    {
+                        id: "bd-1",
+                        title: "Verificar que no existan registros duplicados en tablas principales",
+                        description: "Revisar alumnos, externos, prendas, tallas, sucursales para detectar duplicados",
+                        reason: "Los duplicados causan inconsistencias en reportes y operaciones. Pueden generar errores en relaciones FK.",
+                        priority: "high",
+                        tags: ["integridad", "datos", "duplicados"]
+                    },
+                    {
+                        id: "bd-2",
+                        title: "Validar que todos los pedidos tengan detalles asociados",
+                        description: "Query: SELECT * FROM pedidos WHERE id NOT IN (SELECT DISTINCT pedido_id FROM detalle_pedidos)",
+                        reason: "Un pedido sin detalles es inválido y puede causar errores en cálculos de totales y reportes.",
+                        priority: "high",
+                        tags: ["integridad", "pedidos", "query"]
+                    },
+                    {
+                        id: "bd-3",
+                        title: "✅ Verificar que no haya stock negativo en costos",
+                        description: "✅ COMPLETADO - Constraint check_stock_no_negativo implementado. Ahora es IMPOSIBLE tener stock negativo.",
+                        reason: "Stock negativo indica sobreventa o errores en actualización. Debe ser imposible por constraint CHECK.",
+                        priority: "high",
+                        tags: ["inventario", "stock", "constraint", "completado"]
+                    },
+                    {
+                        id: "bd-4",
+                        title: "✅ Validar que los totales de pedidos coincidan con sus detalles",
+                        description: "✅ COMPLETADO - Trigger validar_total_pedido() valida automáticamente. crear_pedido_atomico() calcula totales en BD (no frontend).",
+                        reason: "Totales incorrectos afectan reportes financieros y cortes de caja. Puede indicar manipulación o errores de cálculo.",
+                        priority: "high",
+                        tags: ["finanzas", "cálculos", "pedidos", "completado"]
+                    },
+                    {
+                        id: "bd-5",
+                        title: "Revisar que todos los pedidos tengan sucursal_id",
+                        description: "Query: SELECT * FROM pedidos WHERE sucursal_id IS NULL",
+                        reason: "Después de la migración multi-sucursal, todos los pedidos deben tener sucursal. NULL rompe reportes por sucursal.",
+                        priority: "high",
+                        tags: ["multi-sucursal", "migración", "integridad"]
+                    },
+                    {
+                        id: "bd-6",
+                        title: "Verificar que XOR constraint de clientes se cumpla en pedidos",
+                        description: "Query: SELECT * FROM pedidos WHERE (alumno_id IS NULL AND externo_id IS NULL) OR (alumno_id IS NOT NULL AND externo_id IS NOT NULL)",
+                        reason: "Un pedido debe tener EXACTAMENTE un cliente (alumno XOR externo). Violar esto rompe la lógica de negocio.",
+                        priority: "high",
+                        tags: ["constraint", "clientes", "lógica-negocio"]
+                    },
+                    {
+                        id: "bd-7",
+                        title: "Validar integridad referencial de FKs huérfanas",
+                        description: "Revisar si existen registros con FKs a registros eliminados o inexistentes",
+                        reason: "FKs huérfanas causan errores al intentar hacer JOIN. Indica eliminación incorrecta o migración fallida.",
+                        priority: "medium",
+                        tags: ["foreign-keys", "integridad", "joins"]
+                    },
+                    {
+                        id: "bd-8",
+                        title: "Revisar que created_at y updated_at sean coherentes",
+                        description: "Query: SELECT * FROM pedidos WHERE updated_at < created_at",
+                        reason: "updated_at anterior a created_at es imposible. Indica error en migración o manipulación de datos.",
+                        priority: "low",
+                        tags: ["timestamps", "auditoría", "migración"]
+                    },
+                    {
+                        id: "bd-9",
+                        title: "Verificar unicidad de códigos y folios",
+                        description: "Revisar prendas.codigo, sucursales.codigo, cotizaciones.folio, transferencias.folio",
+                        reason: "Códigos duplicados causan confusión y errores en búsquedas. Deben ser UNIQUE.",
+                        priority: "medium",
+                        tags: ["unicidad", "constraint", "códigos"]
+                    },
+                    {
+                        id: "bd-10",
+                        title: "Validar que todos los costos tengan sucursal_id",
+                        description: "Query: SELECT * FROM costos WHERE sucursal_id IS NULL",
+                        reason: "Stock sin sucursal no puede asignarse correctamente. Rompe sistema multi-sucursal.",
+                        priority: "high",
+                        tags: ["multi-sucursal", "inventario", "migración"]
+                    }
+                ]
+            },
+            "transacciones": {
+                icon: "💳",
+                title: "Transacciones y Atomicidad",
+                checks: [
+                    {
+                        id: "tx-1",
+                        title: "✅ Implementar transacción atómica para creación de pedidos",
+                        description: "✅ COMPLETADO - Función crear_pedido_atomico() implementada. Valida stock, inserta pedido+detalles, actualiza inventario, guarda snapshot de insumos.",
+                        reason: "Sin transacciones, si falla un paso (ej: insertar detalle), el pedido queda incompleto y el stock mal actualizado.",
+                        priority: "high",
+                        tags: ["transacciones", "atomicidad", "pedidos", "completado"]
+                    },
+                    {
+                        id: "tx-2",
+                        title: "✅ Validar que actualización de stock sea atómica con operador -=",
+                        description: "✅ COMPLETADO - Implementado en crear_pedido_atomico(): UPDATE stock = stock - cantidad WHERE stock >= cantidad",
+                        reason: "Lectura y escritura separadas permiten race conditions. Dos ventas simultáneas pueden causar sobreventa.",
+                        priority: "high",
+                        tags: ["race-condition", "stock", "concurrencia", "completado"]
+                    },
+                    {
+                        id: "tx-3",
+                        title: "✅ Implementar rollback automático en caso de stock insuficiente",
+                        description: "✅ COMPLETADO - crear_pedido_atomico() valida stock ANTES de insertar. Si falla, rollback automático de toda la transacción.",
+                        reason: "Pedido parcialmente creado sin stock es inválido. Cliente no puede recibir producto.",
+                        priority: "high",
+                        tags: ["rollback", "validación", "stock", "completado"]
+                    },
+                    {
+                        id: "tx-4",
+                        title: "Agregar locks pesimistas en tabla costos durante venta",
+                        description: "Usar SELECT FOR UPDATE al leer stock para prevenir lecturas simultáneas",
+                        reason: "Sin locks, dos transacciones pueden leer el mismo stock y ambas aprobar venta, causando sobreventa.",
+                        priority: "medium",
+                        tags: ["locks", "concurrencia", "performance"]
+                    },
+                    {
+                        id: "tx-5",
+                        title: "✅ Implementar transacción para devoluciones con cambios",
+                        description: "✅ COMPLETADO - procesar_devolucion_atomica() devuelve stock + resta cambios en una sola transacción. TODO-O-NADA.",
+                        reason: "Si falla una operación, el stock queda inconsistente (suma sin resta o viceversa).",
+                        priority: "high",
+                        tags: ["devoluciones", "transacciones", "stock", "completado"]
+                    },
+                    {
+                        id: "tx-6",
+                        title: "✅ Validar que movimientos de inventario se registren en la misma transacción",
+                        description: "✅ COMPLETADO - crear_pedido_atomico() y procesar_devolucion_atomica() insertan movimientos en la misma transacción.",
+                        reason: "Si falla el INSERT de movimiento, se pierde la trazabilidad. Stock real ≠ suma de movimientos.",
+                        priority: "medium",
+                        tags: ["movimientos", "auditoría", "trazabilidad", "completado"]
+                    },
+                    {
+                        id: "tx-7",
+                        title: "Implementar idempotencia en operaciones críticas",
+                        description: "Prevenir que se procese dos veces el mismo pedido/devolución si hay retry",
+                        reason: "Doble procesamiento = doble cobro o doble resta de stock. Debe detectarse con unique constraint.",
+                        priority: "medium",
+                        tags: ["idempotencia", "duplicados", "reliability"]
+                    }
+                ]
+            },
+            "seguridad": {
+                icon: "🔒",
+                title: "Seguridad y Validaciones",
+                checks: [
+                    {
+                        id: "seg-1",
+                        title: "Validar que passwords NO estén en texto plano",
+                        description: "Revisar tabla usuario y verificar que usuario_password esté hasheado (bcrypt, argon2)",
+                        reason: "Passwords en texto plano = catástrofe de seguridad. Si hay breach, todos los usuarios comprometidos.",
+                        priority: "high",
+                        tags: ["seguridad", "passwords", "encriptación"]
+                    },
+                    {
+                        id: "seg-2",
+                        title: "Verificar que RLS (Row Level Security) esté funcionando correctamente",
+                        description: "Probar que usuarios solo vean datos de su sucursal (si aplica) y no puedan acceder a otras",
+                        reason: "Sin RLS, cualquier usuario puede ver/modificar datos de todas las sucursales. Violación de privacidad.",
+                        priority: "high",
+                        tags: ["rls", "supabase", "privacidad"]
+                    },
+                    {
+                        id: "seg-3",
+                        title: "Validar entrada de usuario en formularios (XSS prevention)",
+                        description: "Revisar que campos de texto libre (observaciones, notas) escapen HTML/JS",
+                        reason: "XSS permite inyectar código malicioso. Usuario puede robar sesiones o datos de otros usuarios.",
+                        priority: "high",
+                        tags: ["xss", "sanitización", "frontend"]
+                    },
+                    {
+                        id: "seg-4",
+                        title: "Verificar que queries SQL usen parámetros (SQL Injection prevention)",
+                        description: "Revisar que NO se concatenen strings para queries. Usar prepared statements",
+                        reason: "SQL Injection permite ejecutar queries arbitrarios. Atacante puede borrar BD o robar datos.",
+                        priority: "high",
+                        tags: ["sql-injection", "queries", "backend"]
+                    },
+                    {
+                        id: "seg-5",
+                        title: "Validar que variables de entorno (.env) NO estén en Git",
+                        description: "Verificar .gitignore incluye .env.local y que no haya commits con credenciales",
+                        reason: "Credenciales en Git = acceso público a BD. Puede comprometer todo el sistema.",
+                        priority: "high",
+                        tags: ["credenciales", "git", "secrets"]
+                    },
+                    {
+                        id: "seg-6",
+                        title: "Implementar rate limiting en login",
+                        description: "Limitar intentos de login fallidos (ej: 5 intentos en 15 minutos)",
+                        reason: "Sin rate limit, atacantes pueden hacer brute force de passwords. Compromete cuentas.",
+                        priority: "medium",
+                        tags: ["rate-limit", "brute-force", "login"]
+                    },
+                    {
+                        id: "seg-7",
+                        title: "Validar permisos por rol en cada endpoint",
+                        description: "Usuario vendedor no debe poder acceder a reportes o módulos de admin",
+                        reason: "Sin control de permisos, cualquier usuario puede acceder a funciones privilegiadas.",
+                        priority: "high",
+                        tags: ["rbac", "permisos", "autorización"]
+                    },
+                    {
+                        id: "seg-8",
+                        title: "Implementar HTTPS para todas las comunicaciones",
+                        description: "Verificar que Vercel sirva sitio con HTTPS y que no haya mixed content",
+                        reason: "HTTP sin encriptar = datos viajan en texto plano. Passwords y sesiones pueden interceptarse.",
+                        priority: "high",
+                        tags: ["https", "ssl", "encriptación"]
+                    },
+                    {
+                        id: "seg-9",
+                        title: "Validar que sesiones expiren después de inactividad",
+                        description: "Implementar timeout de sesión (ej: 30 minutos sin actividad)",
+                        reason: "Sesiones perpetuas = riesgo si usuario deja sesión abierta. Acceso no autorizado.",
+                        priority: "medium",
+                        tags: ["sesiones", "timeout", "seguridad"]
+                    },
+                    {
+                        id: "seg-10",
+                        title: "Implementar CSRF protection en formularios",
+                        description: "Agregar tokens CSRF a todos los formularios que modifican datos",
+                        reason: "Sin CSRF token, atacante puede engañar al usuario para que ejecute acciones no deseadas.",
+                        priority: "medium",
+                        tags: ["csrf", "tokens", "formularios"]
+                    }
+                ]
+            },
+            "frontend": {
+                icon: "🎨",
+                title: "Frontend y UX/UI",
+                checks: [
+                    {
+                        id: "fe-1",
+                        title: "Validar que todos los formularios tengan validación de campos",
+                        description: "Campos requeridos, formatos (email, teléfono), rangos numéricos",
+                        reason: "Sin validación frontend, datos inválidos llegan a BD. Mejor UX con feedback inmediato.",
+                        priority: "medium",
+                        tags: ["validación", "formularios", "ux"]
+                    },
+                    {
+                        id: "fe-2",
+                        title: "✅ Verificar que mensajes de error sean claros y útiles",
+                        description: "✅ COMPLETADO - Alertas mejoradas en pedidos muestran: 'Stock disponible: X, Solicitado: Y'. Errores de BD se formatean claramente.",
+                        reason: "Errores genéricos frustran al usuario. Mensajes claros ayudan a corregir el problema.",
+                        priority: "medium",
+                        tags: ["errores", "ux", "mensajes", "completado"]
+                    },
+                    {
+                        id: "fe-3",
+                        title: "Validar que loading states sean consistentes",
+                        description: "Todos los botones/formularios deben mostrar spinner/loading durante peticiones async",
+                        reason: "Sin feedback visual, usuario no sabe si acción se ejecutó. Puede hacer doble click = duplicados.",
+                        priority: "low",
+                        tags: ["loading", "ux", "feedback"]
+                    },
+                    {
+                        id: "fe-4",
+                        title: "Revisar que no haya console.log en producción",
+                        description: "Buscar console.log, console.error que expongan información sensible",
+                        reason: "Console logs pueden exponer datos internos, queries, o lógica de negocio a usuarios maliciosos.",
+                        priority: "low",
+                        tags: ["logs", "producción", "seguridad"]
+                    },
+                    {
+                        id: "fe-5",
+                        title: "Validar responsive design en móviles",
+                        description: "Probar todas las páginas en dispositivos móviles o Chrome DevTools",
+                        reason: "Interfaz rota en móvil = usuarios no pueden usar el sistema. Mala imagen profesional.",
+                        priority: "medium",
+                        tags: ["responsive", "móvil", "ui"]
+                    },
+                    {
+                        id: "fe-6",
+                        title: "Verificar accesibilidad (a11y) básica",
+                        description: "Labels en inputs, alt en imágenes, navegación por teclado",
+                        reason: "Sin accesibilidad, usuarios con discapacidades no pueden usar el sistema. Puede ser requerimiento legal.",
+                        priority: "low",
+                        tags: ["accesibilidad", "a11y", "inclusión"]
+                    },
+                    {
+                        id: "fe-7",
+                        title: "Validar que modals se cierren correctamente",
+                        description: "Probar que modals se cierren con X, ESC, y click fuera. Verificar que limpien estado",
+                        reason: "Modals que no cierran = mal UX. Estado sucio entre aperturas causa bugs.",
+                        priority: "low",
+                        tags: ["modals", "ux", "estado"]
+                    },
+                    {
+                        id: "fe-8",
+                        title: "Revisar que imágenes estén optimizadas",
+                        description: "Verificar que imágenes usen formatos modernos (WebP) y estén comprimidas",
+                        reason: "Imágenes pesadas = carga lenta. Afecta performance y experiencia de usuario.",
+                        priority: "low",
+                        tags: ["imágenes", "performance", "optimización"]
+                    },
+                    {
+                        id: "fe-9",
+                        title: "Validar que botones deshabilitados tengan estilo visual claro",
+                        description: "Botones disabled deben verse grises/opacos y tener cursor: not-allowed",
+                        reason: "Usuario no debe poder hacer click en botones disabled. Debe ser visualmente claro el porqué.",
+                        priority: "low",
+                        tags: ["ui", "botones", "disabled"]
+                    },
+                    {
+                        id: "fe-10",
+                        title: "Verificar que tablas muestren mensaje cuando están vacías",
+                        description: "En lugar de tabla vacía, mostrar 'No hay datos disponibles' con icono/ilustración",
+                        reason: "Tabla vacía sin mensaje confunde al usuario. Puede pensar que hay error de carga.",
+                        priority: "low",
+                        tags: ["tablas", "empty-state", "ux"]
+                    }
+                ]
+            },
+            "performance": {
+                icon: "⚡",
+                title: "Performance y Optimización",
+                checks: [
+                    {
+                        id: "perf-1",
+                        title: "Agregar índices en columnas de búsqueda frecuente",
+                        description: "Identificar queries lentos con EXPLAIN y agregar índices apropiados",
+                        reason: "Queries sin índices hacen table scans. Con muchos registros = lentitud extrema.",
+                        priority: "high",
+                        tags: ["índices", "queries", "performance"]
+                    },
+                    {
+                        id: "perf-2",
+                        title: "Implementar paginación en listados grandes",
+                        description: "Pedidos, movimientos, cotizaciones deben paginar (ej: 50 registros por página)",
+                        reason: "Cargar 1000+ registros de una vez = página lenta, alto consumo de memoria, mal UX.",
+                        priority: "medium",
+                        tags: ["paginación", "listados", "ux"]
+                    },
+                    {
+                        id: "perf-3",
+                        title: "Implementar lazy loading de imágenes",
+                        description: "Imágenes de productos deben cargarse solo cuando son visibles (IntersectionObserver)",
+                        reason: "Cargar todas las imágenes de golpe = página lenta. Lazy loading mejora tiempo de carga inicial.",
+                        priority: "low",
+                        tags: ["lazy-loading", "imágenes", "performance"]
+                    },
+                    {
+                        id: "perf-4",
+                        title: "Revisar N+1 queries en listados con relaciones",
+                        description: "Usar JOINs o .select() con relaciones en lugar de queries individuales por item",
+                        reason: "N+1 = hacer 1 query + N queries adicionales. 100 pedidos = 101 queries. Extremadamente lento.",
+                        priority: "high",
+                        tags: ["n+1", "queries", "joins"]
+                    },
+                    {
+                        id: "perf-5",
+                        title: "Implementar cache de catálogos estáticos",
+                        description: "Tallas, categorías, presentaciones deben cachearse en memoria o localStorage",
+                        reason: "Datos que no cambian frecuentemente no deben consultarse en cada request. Cache reduce latencia.",
+                        priority: "medium",
+                        tags: ["cache", "catálogos", "optimización"]
+                    },
+                    {
+                        id: "perf-6",
+                        title: "Optimizar bundle size de JavaScript",
+                        description: "Analizar con next/bundle-analyzer y eliminar dependencias innecesarias",
+                        reason: "Bundle grande = descarga lenta, especialmente en móviles con conexión lenta.",
+                        priority: "low",
+                        tags: ["bundle", "javascript", "optimización"]
+                    },
+                    {
+                        id: "perf-7",
+                        title: "Implementar debounce en búsquedas/autocompletado",
+                        description: "Al buscar alumnos/productos, esperar que usuario termine de escribir antes de buscar",
+                        reason: "Sin debounce = 1 query por tecla presionada. 'Mario' = 5 queries. Desperdicia recursos.",
+                        priority: "medium",
+                        tags: ["debounce", "búsqueda", "performance"]
+                    },
+                    {
+                        id: "perf-8",
+                        title: "Revisar memory leaks en useEffect",
+                        description: "Verificar que todos los useEffect con listeners tengan cleanup function",
+                        reason: "Memory leaks causan lentitud progresiva. Navegación repetida = cada vez más lento.",
+                        priority: "medium",
+                        tags: ["memory-leaks", "react", "useEffect"]
+                    }
+                ]
+            },
+            "testing": {
+                icon: "🧪",
+                title: "Testing y Quality Assurance",
+                checks: [
+                    {
+                        id: "test-1",
+                        title: "Probar creación de pedido con stock insuficiente",
+                        description: "Intentar vender 10 unidades cuando solo hay 5. Debe rechazarse con mensaje claro",
+                        reason: "Sobreventa es bug crítico. Debe prevenirse y mostrar error útil.",
+                        priority: "high",
+                        tags: ["testing", "pedidos", "validación"]
+                    },
+                    {
+                        id: "test-2",
+                        title: "Probar concurrencia: dos usuarios comprando simultáneamente",
+                        description: "Stock 5, usuario A y B compran 5 cada uno al mismo tiempo. Solo uno debe procesar",
+                        reason: "Race condition puede causar sobreventa. Debe detectarse y prevenirse.",
+                        priority: "high",
+                        tags: ["concurrencia", "race-condition", "testing"]
+                    },
+                    {
+                        id: "test-3",
+                        title: "Probar devolución de cantidad mayor a la comprada",
+                        description: "Pedido tiene 3 camisas, intentar devolver 5. Debe rechazarse",
+                        reason: "Devolver más de lo comprado = fraude o error. Debe validarse.",
+                        priority: "high",
+                        tags: ["devoluciones", "validación", "testing"]
+                    },
+                    {
+                        id: "test-4",
+                        title: "Probar transferencia entre misma sucursal",
+                        description: "Intentar transferir de Matriz A → Matriz A. Debe rechazarse",
+                        reason: "Transferencia a misma sucursal es inválida. Constraint debe prevenirlo.",
+                        priority: "medium",
+                        tags: ["transferencias", "constraint", "testing"]
+                    },
+                    {
+                        id: "test-5",
+                        title: "Probar cálculo de totales con descuentos/promociones",
+                        description: "Verificar que cálculos de subtotales, impuestos, totales sean correctos",
+                        reason: "Errores en cálculos financieros = pérdidas económicas o fraude.",
+                        priority: "high",
+                        tags: ["cálculos", "finanzas", "testing"]
+                    },
+                    {
+                        id: "test-6",
+                        title: "Probar cambio de sucursal con datos en sesión",
+                        description: "Usuario en Sucursal A cambia a Sucursal B. Datos deben filtrarse correctamente",
+                        reason: "Filtro incorrecto = ver datos de otra sucursal. Violación de privacidad.",
+                        priority: "high",
+                        tags: ["multi-sucursal", "sesión", "testing"]
+                    },
+                    {
+                        id: "test-7",
+                        title: "Probar recuperación ante fallas de red",
+                        description: "Simular pérdida de conexión durante operación crítica. Verificar manejo de error",
+                        reason: "Falla de red sin manejo = operación perdida o duplicada. Debe tener retry/feedback.",
+                        priority: "medium",
+                        tags: ["network", "error-handling", "reliability"]
+                    },
+                    {
+                        id: "test-8",
+                        title: "Probar límites de campos de texto",
+                        description: "Intentar ingresar textos muy largos en observaciones, notas, etc.",
+                        reason: "Sin límite, campos pueden causar problemas de UI o BD (VARCHAR overflow).",
+                        priority: "low",
+                        tags: ["validación", "límites", "testing"]
+                    }
+                ]
+            },
+            "reportes": {
+                icon: "📊",
+                title: "Reportes y Analítica",
+                checks: [
+                    {
+                        id: "rep-1",
+                        title: "Validar que reportes filtren correctamente por sucursal",
+                        description: "Usuario en Sucursal A no debe ver ventas de Sucursal B en sus reportes",
+                        reason: "Datos cruzados entre sucursales = reportes incorrectos. Afecta toma de decisiones.",
+                        priority: "high",
+                        tags: ["reportes", "multi-sucursal", "filtros"]
+                    },
+                    {
+                        id: "rep-2",
+                        title: "Verificar que totales en reportes coincidan con suma de detalles",
+                        description: "Reporte de ventas: total general = suma de totales individuales",
+                        reason: "Totales incorrectos = reportes no confiables. Afecta decisiones financieras.",
+                        priority: "high",
+                        tags: ["reportes", "cálculos", "validación"]
+                    },
+                    {
+                        id: "rep-3",
+                        title: "Probar exportación a Excel con datos especiales",
+                        description: "Exportar datos con caracteres especiales, fechas, números. Verificar formato correcto",
+                        reason: "Excel mal formateado = datos ilegibles. Usuario no puede analizar información.",
+                        priority: "medium",
+                        tags: ["excel", "exportación", "formatos"]
+                    },
+                    {
+                        id: "rep-4",
+                        title: "Validar que filtros por fecha incluyan el rango completo",
+                        description: "Filtro 'Del 1 al 5 de enero' debe incluir TODO el día 5 (hasta 23:59:59)",
+                        reason: "Rangos de fecha mal implementados = datos faltantes en reportes.",
+                        priority: "medium",
+                        tags: ["fechas", "filtros", "reportes"]
+                    },
+                    {
+                        id: "rep-5",
+                        title: "Verificar que reportes grandes no bloqueen la UI",
+                        description: "Generar reporte de 5000 pedidos debe mostrar loading y no congelar interfaz",
+                        reason: "UI bloqueada = mala experiencia. Usuario piensa que sistema se colgó.",
+                        priority: "low",
+                        tags: ["performance", "ui", "reportes"]
+                    }
+                ]
+            },
+            "documentacion": {
+                icon: "📚",
+                title: "Documentación y Mantenimiento",
+                checks: [
+                    {
+                        id: "doc-1",
+                        title: "Documentar funciones complejas con comentarios JSDoc",
+                        description: "Funciones con lógica de negocio compleja deben tener comentarios explicativos",
+                        reason: "Sin documentación, futuro mantenedor (o tú mismo en 6 meses) no entenderá el código.",
+                        priority: "low",
+                        tags: ["documentación", "comentarios", "mantenimiento"]
+                    },
+                    {
+                        id: "doc-2",
+                        title: "Crear README con instrucciones de setup",
+                        description: "Cómo instalar, configurar .env, correr migraciones, iniciar dev server",
+                        reason: "Sin README, nuevo desarrollador pierde horas configurando. Onboarding lento.",
+                        priority: "medium",
+                        tags: ["readme", "setup", "onboarding"]
+                    },
+                    {
+                        id: "doc-3",
+                        title: "Documentar esquema de base de datos actualizado",
+                        description: "Mantener diagrama ER y descripción de tablas al día con cambios",
+                        reason: "Esquema desactualizado = confusión. Desarrolladores hacen suposiciones incorrectas.",
+                        priority: "low",
+                        tags: ["esquema", "base-datos", "documentación"]
+                    },
+                    {
+                        id: "doc-4",
+                        title: "Documentar APIs y endpoints principales",
+                        description: "Qué hace cada endpoint, parámetros esperados, respuestas posibles",
+                        reason: "Sin documentación de API, frontend no sabe cómo consumir correctamente los endpoints.",
+                        priority: "low",
+                        tags: ["api", "endpoints", "documentación"]
+                    },
+                    {
+                        id: "doc-5",
+                        title: "Crear guía de solución de problemas comunes",
+                        description: "FAQ con errores frecuentes y cómo resolverlos",
+                        reason: "Usuarios recurrentes con mismo problema = pérdida de tiempo. FAQ reduce soporte.",
+                        priority: "low",
+                        tags: ["faq", "troubleshooting", "soporte"]
+                    }
+                ]
+            }
+        };
+
+        // Estado global
+        let currentFilter = 'all';
+        let completedItems = new Set(JSON.parse(localStorage.getItem('checklistProgress') || '[]'));
+
+        // Inicializar
+        function init() {
+            renderChecklist();
+            setupFilters();
+            updateProgress();
+        }
+
+        // Renderizar checklist
+        function renderChecklist() {
+            const container = document.getElementById('checklistContainer');
+            container.innerHTML = '';
+
+            Object.entries(checklistData).forEach(([moduleId, module]) => {
+                const moduleDiv = document.createElement('div');
+                moduleDiv.className = 'module';
+                moduleDiv.dataset.moduleId = moduleId;
+
+                const completedCount = module.checks.filter(check => completedItems.has(check.id)).length;
+                const totalCount = module.checks.length;
+                const percentage = Math.round((completedCount / totalCount) * 100);
+
+                let checksHtml = '';
+                module.checks.forEach((check, index) => {
+                    const isCompleted = completedItems.has(check.id);
+                    const shouldShow = filterCheck(check, isCompleted);
+                    
+                    if (shouldShow) {
+                        checksHtml += `
+                            <div class="check-item ${isCompleted ? 'completed' : ''} priority-${check.priority}" data-check-id="${check.id}" data-priority="${check.priority}">
+                                <div class="checkbox-container">
+                                    <input type="checkbox" id="${check.id}" ${isCompleted ? 'checked' : ''} onchange="toggleCheck('${check.id}')">
+                                </div>
+                                <div class="check-content">
+                                    <div class="check-title">
+                                        <span class="check-number">#${index + 1}</span>
+                                        <span>${check.title}</span>
+                                        <span class="priority-badge priority-${check.priority}">
+                                            ${check.priority === 'high' ? '🔴 Alta' : check.priority === 'medium' ? '🟡 Media' : '🟢 Baja'}
+                                        </span>
+                                    </div>
+                                    <div class="check-description">${check.description}</div>
+                                    <div class="check-reason"><strong>¿Por qué?</strong> ${check.reason}</div>
+                                    <div class="check-tags">
+                                        ${check.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                });
+
+                if (checksHtml) {
+                    moduleDiv.innerHTML = `
+                        <div class="module-header" onclick="toggleModule('${moduleId}')">
+                            <div class="module-title">
+                                <span class="module-icon">${module.icon}</span>
+                                <h2>${module.title}</h2>
+                            </div>
+                            <div class="module-progress">
+                                <span>${completedCount}/${totalCount} (${percentage}%)</span>
+                                <span class="toggle-icon">▼</span>
+                            </div>
+                        </div>
+                        <div class="module-content" id="module-${moduleId}">
+                            ${checksHtml}
+                        </div>
+                    `;
+                    container.appendChild(moduleDiv);
+                }
+            });
+        }
+
+        // Filtrar checks
+        function filterCheck(check, isCompleted) {
+            switch(currentFilter) {
+                case 'high':
+                case 'medium':
+                case 'low':
+                    return check.priority === currentFilter;
+                case 'completed':
+                    return isCompleted;
+                case 'pending':
+                    return !isCompleted;
+                default:
+                    return true;
+            }
+        }
+
+        // Toggle check
+        function toggleCheck(checkId) {
+            if (completedItems.has(checkId)) {
+                completedItems.delete(checkId);
+            } else {
+                completedItems.add(checkId);
+            }
+            localStorage.setItem('checklistProgress', JSON.stringify([...completedItems]));
+            updateProgress();
+            renderChecklist();
+        }
+
+        // Toggle module
+        function toggleModule(moduleId) {
+            const content = document.getElementById(`module-${moduleId}`);
+            const icon = content.previousElementSibling.querySelector('.toggle-icon');
+            content.classList.toggle('collapsed');
+            icon.classList.toggle('collapsed');
+        }
+
+        // Setup filters
+        function setupFilters() {
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    currentFilter = btn.dataset.filter;
+                    renderChecklist();
+                });
+            });
+        }
+
+        // Update progress
+        function updateProgress() {
+            const totalChecks = Object.values(checklistData).reduce((sum, module) => sum + module.checks.length, 0);
+            const completed = completedItems.size;
+            const pending = totalChecks - completed;
+            const percentage = Math.round((completed / totalChecks) * 100);
+            
+            const highPriority = Object.values(checklistData).reduce((sum, module) => 
+                sum + module.checks.filter(c => c.priority === 'high' && !completedItems.has(c.id)).length, 0);
+
+            document.getElementById('totalChecks').textContent = totalChecks;
+            document.getElementById('completedChecks').textContent = completed;
+            document.getElementById('pendingChecks').textContent = pending;
+            document.getElementById('highPriority').textContent = highPriority;
+            
+            const progressBar = document.getElementById('progressBar');
+            progressBar.style.width = percentage + '%';
+            progressBar.textContent = percentage + '%';
+        }
+
+        // Export progress
+        function exportProgress() {
+            const progress = {
+                date: new Date().toISOString(),
+                completed: [...completedItems],
+                total: Object.values(checklistData).reduce((sum, m) => sum + m.checks.length, 0),
+                percentage: Math.round((completedItems.size / Object.values(checklistData).reduce((sum, m) => sum + m.checks.length, 0)) * 100)
+            };
+            
+            const blob = new Blob([JSON.stringify(progress, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `checklist-progress-${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+        }
+
+        // Reset progress
+        function resetProgress() {
+            if (confirm('¿Estás seguro de que quieres reiniciar todo el progreso?')) {
+                completedItems.clear();
+                localStorage.removeItem('checklistProgress');
+                updateProgress();
+                renderChecklist();
+            }
+        }
+
+        // Initialize on load
+        init();
+    </script>
+</body>
+</html>

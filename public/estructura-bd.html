@@ -1,0 +1,1211 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estructura de Base de Datos - Sistema Uniformes</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+
+        header h1 {
+            color: #667eea;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            color: #666;
+            font-size: 1.1rem;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        }
+
+        .stat-number {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        nav {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 20px;
+            z-index: 100;
+        }
+
+        nav ul {
+            list-style: none;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        nav a {
+            text-decoration: none;
+            color: #667eea;
+            font-weight: 600;
+            padding: 10px 20px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            border: 2px solid #667eea;
+        }
+
+        nav a:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .section {
+            background: white;
+            border-radius: 15px;
+            padding: 35px;
+            margin-bottom: 30px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+
+        .section h2 {
+            color: #667eea;
+            font-size: 2rem;
+            margin-bottom: 20px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .section h3 {
+            color: #764ba2;
+            font-size: 1.5rem;
+            margin-top: 25px;
+            margin-bottom: 15px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        th {
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 0.9rem;
+        }
+
+        tbody tr:hover {
+            background: #f8f9ff;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin: 2px;
+        }
+
+        .badge-primary { background: #e3f2fd; color: #1976d2; }
+        .badge-success { background: #e8f5e9; color: #388e3c; }
+        .badge-warning { background: #fff3e0; color: #f57c00; }
+        .badge-danger { background: #ffebee; color: #d32f2f; }
+        .badge-info { background: #e0f2f1; color: #00796b; }
+        .badge-purple { background: #f3e5f5; color: #7b1fa2; }
+
+        .mermaid {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+
+        .alert {
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 5px solid;
+        }
+
+        .alert-info {
+            background: #e3f2fd;
+            border-color: #2196f3;
+            color: #0d47a1;
+        }
+
+        .alert-success {
+            background: #e8f5e9;
+            border-color: #4caf50;
+            color: #1b5e20;
+        }
+
+        .alert-warning {
+            background: #fff3e0;
+            border-color: #ff9800;
+            color: #e65100;
+        }
+
+        .alert-danger {
+            background: #ffebee;
+            border-color: #f44336;
+            color: #b71c1c;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .card {
+            background: #f8f9ff;
+            border-radius: 10px;
+            padding: 20px;
+            border: 2px solid #e0e0e0;
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            border-color: #667eea;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
+        }
+
+        .card h4 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        ul.checklist {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        ul.checklist li {
+            padding: 8px 0;
+            padding-left: 30px;
+            position: relative;
+        }
+
+        ul.checklist li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #4caf50;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        ul.checklist li.issue:before {
+            content: "⚠";
+            color: #ff9800;
+        }
+
+        ul.checklist li.error:before {
+            content: "✗";
+            color: #f44336;
+        }
+
+        code {
+            background: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            color: #d32f2f;
+        }
+
+        .relationship-type {
+            font-weight: bold;
+            color: #764ba2;
+        }
+
+        footer {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 30px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 1.8rem;
+            }
+
+            .stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            nav ul {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🗄️ Estructura de Base de Datos</h1>
+            <p><strong>Sistema de Uniformes Winston Churchill</strong></p>
+            <p style="color: #999; font-size: 0.9rem; margin-top: 10px;">Análisis de Normalización, Integridad y Relaciones</p>
+        </header>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number">29</div>
+                <div class="stat-label">Tablas Totales</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">55+</div>
+                <div class="stat-label">Foreign Keys</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">65+</div>
+                <div class="stat-label">Índices</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">17+</div>
+                <div class="stat-label">Triggers</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">5</div>
+                <div class="stat-label">Funciones PL/pgSQL</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">1</div>
+                <div class="stat-label">Vistas Materializadas</div>
+            </div>
+        </div>
+
+        <nav>
+            <ul>
+                <li><a href="#resumen">📊 Resumen</a></li>
+                <li><a href="#diagrama">🗺️ Diagrama ER</a></li>
+                <li><a href="#tablas">📋 Tablas</a></li>
+                <li><a href="#normalizacion">✅ Normalización</a></li>
+                <li><a href="#integridad">🔒 Integridad</a></li>
+                <li><a href="#relaciones">🔗 Relaciones</a></li>
+                <li><a href="#recomendaciones">💡 Recomendaciones</a></li>
+            </ul>
+        </nav>
+
+        <!-- RESUMEN -->
+        <section id="resumen" class="section">
+            <h2>📊 Resumen Ejecutivo</h2>
+            
+            <div class="grid">
+                <div class="card">
+                    <h4>👥 Usuarios (2)</h4>
+                    <ul>
+                        <li>usuario</li>
+                        <li>usuarios (deprecada)</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h4>🏪 Multi-Sucursal (5)</h4>
+                    <ul>
+                        <li>sucursales</li>
+                        <li>transferencias</li>
+                        <li>detalle_transferencias</li>
+                        <li>devoluciones</li>
+                        <li>detalle_devoluciones</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h4>👕 Productos (5)</h4>
+                    <ul>
+                        <li>categorias_prendas</li>
+                        <li>prendas</li>
+                        <li>tallas</li>
+                        <li>costos</li>
+                        <li>movimientos</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h4>📦 Ventas (4)</h4>
+                    <ul>
+                        <li>alumnos</li>
+                        <li>externos</li>
+                        <li>pedidos</li>
+                        <li>detalle_pedidos</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h4>📋 Cotizaciones (2)</h4>
+                    <ul>
+                        <li>cotizaciones</li>
+                        <li>detalle_cotizacion</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h4>🧵 Insumos (4)</h4>
+                    <ul>
+                        <li>presentaciones</li>
+                        <li>insumos</li>
+                        <li>compras_insumos</li>
+                        <li>prenda_talla_insumos</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h4>💰 Finanzas (2)</h4>
+                    <ul>
+                        <li>cortes</li>
+                        <li>detalle_cortes</li>
+                    </ul>
+                </div>
+                
+                <div class="card">
+                    <h4>🔒 Auditoría e Integridad (3) ✨ NUEVO</h4>
+                    <ul>
+                        <li>auditoria</li>
+                        <li>snapshot_insumos_pedido</li>
+                        <li>mv_ventas_por_sucursal</li>
+                    </ul>
+                </div>
+                
+                <div class="card">
+                    <h4>📚 Configuración (1) ✨ NUEVO</h4>
+                    <ul>
+                        <li>ciclos_escolares</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- DIAGRAMA ER -->
+        <section id="diagrama" class="section">
+            <h2>🗺️ Diagrama Entidad-Relación</h2>
+            <p style="margin-bottom: 20px;">Visualización completa de las relaciones entre tablas:</p>
+            
+            <div class="mermaid">
+erDiagram
+    %% CATÁLOGO PRINCIPAL
+    sucursales ||--o{ costos : "tiene stock"
+    sucursales ||--o{ pedidos : "registra"
+    sucursales ||--o{ transferencias : "origen"
+    sucursales ||--o{ transferencias : "destino"
+    sucursales ||--o{ devoluciones : "procesa"
+
+    categorias_prendas ||--o{ prendas : "clasifica"
+    prendas ||--o{ costos : "tiene precio"
+    tallas ||--o{ costos : "en talla"
+    prendas ||--o{ detalle_pedidos : "vendida"
+    tallas ||--o{ detalle_pedidos : "en talla"
+
+    %% CLIENTES Y VENTAS
+    alumnos ||--o{ pedidos : "realiza"
+    externos ||--o{ pedidos : "realiza"
+    pedidos ||--|{ detalle_pedidos : "contiene"
+    pedidos ||--o{ devoluciones : "devuelve"
+    
+    %% DEVOLUCIONES
+    devoluciones ||--|{ detalle_devoluciones : "detalla"
+    detalle_devoluciones }o--|| prendas : "devuelve"
+    detalle_devoluciones }o--|| tallas : "talla"
+
+    %% TRANSFERENCIAS
+    transferencias ||--|{ detalle_transferencias : "contiene"
+    detalle_transferencias }o--|| prendas : "transfiere"
+    detalle_transferencias }o--|| tallas : "talla"
+
+    %% COTIZACIONES
+    alumnos ||--o{ cotizaciones : "solicita"
+    externos ||--o{ cotizaciones : "solicita"
+    cotizaciones ||--|{ detalle_cotizacion : "incluye"
+
+    %% INSUMOS
+    presentaciones ||--o{ insumos : "mide"
+    insumos ||--o{ compras_insumos : "se compra"
+    insumos ||--o{ prenda_talla_insumos : "requiere"
+    prendas ||--o{ prenda_talla_insumos : "usa"
+    tallas ||--o{ prenda_talla_insumos : "necesita"
+
+    %% FINANZAS
+    cortes ||--|{ detalle_cortes : "incluye"
+    detalle_cortes }o--|| pedidos : "suma"
+
+    %% MOVIMIENTOS
+    costos ||--o{ movimientos : "registra"
+            </div>
+
+            <div class="alert alert-info">
+                <strong>💡 Lectura del diagrama:</strong><br>
+                <code>||--o{</code> = Uno a muchos (opcional)<br>
+                <code>||--|{</code> = Uno a muchos (obligatorio)<br>
+                <code>}o--||</code> = Muchos a uno (opcional)<br>
+                <code>}|--||</code> = Muchos a uno (obligatorio)
+            </div>
+        </section>
+
+        <!-- LISTADO DE TABLAS -->
+        <section id="tablas" class="section">
+            <h2>📋 Listado Completo de Tablas</h2>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Tabla</th>
+                        <th>Categoría</th>
+                        <th>PK</th>
+                        <th>FKs</th>
+                        <th>Propósito</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>1</td>
+                        <td><strong>usuario</strong></td>
+                        <td><span class="badge badge-primary">Autenticación</span></td>
+                        <td>usuario_id (SMALLSERIAL)</td>
+                        <td>perfil_id</td>
+                        <td>Usuarios del sistema</td>
+                    </tr>
+                    <tr>
+                        <td>2</td>
+                        <td><strong>sucursales</strong></td>
+                        <td><span class="badge badge-info">Multi-Sucursal</span></td>
+                        <td>id (UUID)</td>
+                        <td>-</td>
+                        <td>Catálogo de sucursales</td>
+                    </tr>
+                    <tr>
+                        <td>3</td>
+                        <td><strong>transferencias</strong></td>
+                        <td><span class="badge badge-info">Multi-Sucursal</span></td>
+                        <td>id (UUID)</td>
+                        <td>sucursal_origen_id, sucursal_destino_id, usuario_id</td>
+                        <td>Movimiento mercancía entre sucursales</td>
+                    </tr>
+                    <tr>
+                        <td>4</td>
+                        <td><strong>detalle_transferencias</strong></td>
+                        <td><span class="badge badge-info">Multi-Sucursal</span></td>
+                        <td>id (UUID)</td>
+                        <td>transferencia_id, prenda_id, talla_id</td>
+                        <td>Detalle de prendas transferidas</td>
+                    </tr>
+                    <tr>
+                        <td>5</td>
+                        <td><strong>devoluciones</strong></td>
+                        <td><span class="badge badge-warning">Devoluciones</span></td>
+                        <td>id (UUID)</td>
+                        <td>pedido_id, sucursal_id, usuario_id</td>
+                        <td>Registro de devoluciones</td>
+                    </tr>
+                    <tr>
+                        <td>6</td>
+                        <td><strong>detalle_devoluciones</strong></td>
+                        <td><span class="badge badge-warning">Devoluciones</span></td>
+                        <td>id (UUID)</td>
+                        <td>devolucion_id, prenda_id, talla_id</td>
+                        <td>Items devueltos y cambios</td>
+                    </tr>
+                    <tr>
+                        <td>7</td>
+                        <td><strong>categorias_prendas</strong></td>
+                        <td><span class="badge badge-success">Catálogo</span></td>
+                        <td>id (UUID)</td>
+                        <td>-</td>
+                        <td>Clasificación de prendas</td>
+                    </tr>
+                    <tr>
+                        <td>8</td>
+                        <td><strong>prendas</strong></td>
+                        <td><span class="badge badge-success">Catálogo</span></td>
+                        <td>id (UUID)</td>
+                        <td>categoria_id</td>
+                        <td>Productos vendidos</td>
+                    </tr>
+                    <tr>
+                        <td>9</td>
+                        <td><strong>tallas</strong></td>
+                        <td><span class="badge badge-success">Catálogo</span></td>
+                        <td>id (UUID)</td>
+                        <td>-</td>
+                        <td>Tallas disponibles</td>
+                    </tr>
+                    <tr>
+                        <td>10</td>
+                        <td><strong>costos</strong></td>
+                        <td><span class="badge badge-success">Catálogo</span></td>
+                        <td>id (UUID)</td>
+                        <td>prenda_id, talla_id, sucursal_id</td>
+                        <td>Precios y stock por prenda-talla-sucursal</td>
+                    </tr>
+                    <tr>
+                        <td>11</td>
+                        <td><strong>movimientos</strong></td>
+                        <td><span class="badge badge-success">Inventario</span></td>
+                        <td>id (UUID)</td>
+                        <td>costo_id, usuario_id</td>
+                        <td>Historial movimientos inventario</td>
+                    </tr>
+                    <tr>
+                        <td>12</td>
+                        <td><strong>alumnos</strong></td>
+                        <td><span class="badge badge-purple">Clientes</span></td>
+                        <td>id (UUID)</td>
+                        <td>-</td>
+                        <td>Clientes internos (estudiantes)</td>
+                    </tr>
+                    <tr>
+                        <td>13</td>
+                        <td><strong>externos</strong></td>
+                        <td><span class="badge badge-purple">Clientes</span></td>
+                        <td>id (UUID)</td>
+                        <td>-</td>
+                        <td>Clientes externos</td>
+                    </tr>
+                    <tr>
+                        <td>14</td>
+                        <td><strong>pedidos</strong></td>
+                        <td><span class="badge badge-purple">Ventas</span></td>
+                        <td>id (UUID)</td>
+                        <td>alumno_id, externo_id, sucursal_id, usuario_id</td>
+                        <td>Órdenes de venta</td>
+                    </tr>
+                    <tr>
+                        <td>15</td>
+                        <td><strong>detalle_pedidos</strong></td>
+                        <td><span class="badge badge-purple">Ventas</span></td>
+                        <td>id (UUID)</td>
+                        <td>pedido_id, prenda_id, talla_id</td>
+                        <td>Items de cada pedido</td>
+                    </tr>
+                    <tr>
+                        <td>16</td>
+                        <td><strong>cotizaciones</strong></td>
+                        <td><span class="badge badge-info">Cotizaciones</span></td>
+                        <td>id (UUID)</td>
+                        <td>alumno_id, externo_id, usuario_id</td>
+                        <td>Presupuestos</td>
+                    </tr>
+                    <tr>
+                        <td>17</td>
+                        <td><strong>detalle_cotizacion</strong></td>
+                        <td><span class="badge badge-info">Cotizaciones</span></td>
+                        <td>id (UUID)</td>
+                        <td>cotizacion_id</td>
+                        <td>Partidas cotizadas</td>
+                    </tr>
+                    <tr>
+                        <td>18</td>
+                        <td><strong>presentaciones</strong></td>
+                        <td><span class="badge badge-success">Insumos</span></td>
+                        <td>id (UUID)</td>
+                        <td>-</td>
+                        <td>Unidades de medida</td>
+                    </tr>
+                    <tr>
+                        <td>19</td>
+                        <td><strong>insumos</strong></td>
+                        <td><span class="badge badge-success">Insumos</span></td>
+                        <td>id (UUID)</td>
+                        <td>presentacion_id</td>
+                        <td>Materiales para producción</td>
+                    </tr>
+                    <tr>
+                        <td>20</td>
+                        <td><strong>compras_insumos</strong></td>
+                        <td><span class="badge badge-success">Insumos</span></td>
+                        <td>id (UUID)</td>
+                        <td>insumo_id, usuario_id</td>
+                        <td>Compras de materiales</td>
+                    </tr>
+                    <tr>
+                        <td>21</td>
+                        <td><strong>prenda_talla_insumos</strong></td>
+                        <td><span class="badge badge-success">Producción</span></td>
+                        <td>id (UUID)</td>
+                        <td>prenda_id, talla_id, insumo_id</td>
+                        <td>Receta de fabricación</td>
+                    </tr>
+                    <tr>
+                        <td>22</td>
+                        <td><strong>cortes</strong></td>
+                        <td><span class="badge badge-danger">Finanzas</span></td>
+                        <td>id (UUID)</td>
+                        <td>usuario_id</td>
+                        <td>Cortes de caja</td>
+                    </tr>
+                    <tr>
+                        <td>23</td>
+                        <td><strong>detalle_cortes</strong></td>
+                        <td><span class="badge badge-danger">Finanzas</span></td>
+                        <td>id (UUID)</td>
+                        <td>corte_id, pedido_id</td>
+                        <td>Pedidos por corte</td>
+                    </tr>
+                    <tr>
+                        <td>24</td>
+                        <td><strong>auditoria</strong></td>
+                        <td><span class="badge badge-purple">Auditoría ✨</span></td>
+                        <td>id (UUID)</td>
+                        <td>usuario_id (opcional)</td>
+                        <td>Registro de cambios críticos</td>
+                    </tr>
+                    <tr>
+                        <td>25</td>
+                        <td><strong>snapshot_insumos_pedido</strong></td>
+                        <td><span class="badge badge-purple">Auditoría ✨</span></td>
+                        <td>id (UUID)</td>
+                        <td>pedido_id, prenda_id, talla_id, insumo_id</td>
+                        <td>Historial de recetas por pedido</td>
+                    </tr>
+                    <tr>
+                        <td>26</td>
+                        <td><strong>mv_ventas_por_sucursal</strong></td>
+                        <td><span class="badge badge-purple">Vista Mat. ✨</span></td>
+                        <td>-</td>
+                        <td>sucursal_id, fecha</td>
+                        <td>Ventas precalculadas por sucursal</td>
+                    </tr>
+                    <tr>
+                        <td>27</td>
+                        <td><strong>ciclos_escolares</strong></td>
+                        <td><span class="badge badge-info">Configuración ✨</span></td>
+                        <td>id (SERIAL)</td>
+                        <td>-</td>
+                        <td>Catálogo de ciclos escolares</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- ANÁLISIS DE NORMALIZACIÓN -->
+        <section id="normalizacion" class="section">
+            <h2>✅ Análisis de Normalización</h2>
+            
+            <h3>Primera Forma Normal (1NF)</h3>
+            <div class="alert alert-success">
+                <strong>✓ Cumple 1NF</strong><br>
+                Todas las tablas tienen valores atómicos (no hay columnas multivalor)
+            </div>
+            <ul class="checklist">
+                <li>Cada columna contiene valores atómicos</li>
+                <li>No hay grupos repetitivos de columnas</li>
+                <li>Cada tabla tiene clave primaria definida</li>
+                <li>Los valores de cada columna son del mismo dominio</li>
+            </ul>
+
+            <h3>Segunda Forma Normal (2NF)</h3>
+            <div class="alert alert-success">
+                <strong>✓ Cumple 2NF</strong><br>
+                No hay dependencias parciales. Todos los atributos no clave dependen completamente de la clave primaria.
+            </div>
+            <ul class="checklist">
+                <li>Cumple 1NF</li>
+                <li>Todos los atributos no clave dependen de toda la clave primaria</li>
+                <li>Tablas con clave compuesta (ej: <code>costos</code>) tienen dependencia funcional completa</li>
+            </ul>
+
+            <h3>Tercera Forma Normal (3NF)</h3>
+            <div class="alert alert-success">
+                <strong>✓ Cumple 3NF en su mayoría</strong><br>
+                No hay dependencias transitivas significativas
+            </div>
+            <ul class="checklist">
+                <li>Cumple 2NF</li>
+                <li>No hay dependencias transitivas</li>
+                <li>Atributos calculables se derivan, no se almacenan redundantemente</li>
+                <li class="issue">Posible mejora: <code>pedidos.total</code> y <code>pedidos.subtotal</code> son calculables desde <code>detalle_pedidos</code></li>
+            </ul>
+
+            <h3>Forma Normal de Boyce-Codd (BCNF)</h3>
+            <div class="alert alert-warning">
+                <strong>⚠ Principalmente cumple BCNF</strong><br>
+                Con algunas áreas de mejora
+            </div>
+            <ul class="checklist">
+                <li>La mayoría de tablas cumplen BCNF</li>
+                <li class="issue">Revisar: Tabla <code>detalle_cotizacion</code> almacena texto libre en lugar de FKs</li>
+                <li class="issue">Revisar: <code>pedidos</code> tiene XOR constraint (alumno_id XOR externo_id) que podría modelarse mejor</li>
+            </ul>
+
+            <h3>🎯 Recomendaciones de Normalización</h3>
+            <div class="card">
+                <h4>1. Tabla de Clientes Unificada</h4>
+                <p>Considerar crear una tabla <code>clientes</code> que unifique <code>alumnos</code> y <code>externos</code> con un campo <code>tipo_cliente</code></p>
+                <code>CREATE TABLE clientes (id UUID, tipo VARCHAR, alumno_id UUID, externo_id UUID)</code>
+            </div>
+
+            <div class="card">
+                <h4>2. Campos Calculados</h4>
+                <p>Los campos <code>total</code> y <code>subtotal</code> deberían calcularse dinámicamente desde sus detalles en lugar de almacenarse</p>
+            </div>
+
+            <div class="card">
+                <h4>3. Tabla Usuarios Duplicada</h4>
+                <p>Existe tanto <code>usuario</code> (real) como <code>usuarios</code> (schema). Eliminar la tabla <code>usuarios</code> del schema</p>
+            </div>
+        </section>
+
+        <!-- ANÁLISIS DE INTEGRIDAD -->
+        <section id="integridad" class="section">
+            <h2>🔒 Análisis de Integridad Referencial</h2>
+
+            <h3>Integridad de Entidad</h3>
+            <div class="alert alert-success">
+                <strong>✓ Excelente</strong><br>
+                Todas las tablas tienen clave primaria definida
+            </div>
+            <ul class="checklist">
+                <li>29/29 tablas tienen PRIMARY KEY</li>
+                <li>Uso consistente de UUID (excepto <code>usuario</code> con SMALLSERIAL)</li>
+                <li>Constraints UNIQUE en códigos y folios</li>
+            </ul>
+
+            <h3>Integridad Referencial (Foreign Keys)</h3>
+            <div class="alert alert-success">
+                <strong>✓ Muy buena</strong><br>
+                ~55 Foreign Keys implementadas correctamente
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Tabla</th>
+                        <th>FK</th>
+                        <th>Referencia</th>
+                        <th>ON DELETE</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>prendas</td>
+                        <td>categoria_id</td>
+                        <td>categorias_prendas(id)</td>
+                        <td>SET NULL ✓</td>
+                    </tr>
+                    <tr>
+                        <td>costos</td>
+                        <td>prenda_id, talla_id, sucursal_id</td>
+                        <td>prendas, tallas, sucursales</td>
+                        <td>CASCADE ✓</td>
+                    </tr>
+                    <tr>
+                        <td>pedidos</td>
+                        <td>alumno_id, externo_id</td>
+                        <td>alumnos, externos</td>
+                        <td>SET NULL ✓</td>
+                    </tr>
+                    <tr>
+                        <td>detalle_pedidos</td>
+                        <td>pedido_id</td>
+                        <td>pedidos(id)</td>
+                        <td>CASCADE ✓</td>
+                    </tr>
+                    <tr>
+                        <td>devoluciones</td>
+                        <td>pedido_id, sucursal_id, usuario_id</td>
+                        <td>pedidos, sucursales, usuario</td>
+                        <td>CASCADE ✓</td>
+                    </tr>
+                    <tr>
+                        <td>detalle_devoluciones</td>
+                        <td>devolucion_id, prenda_id, talla_id</td>
+                        <td>devoluciones, prendas, tallas</td>
+                        <td>CASCADE ✓</td>
+                    </tr>
+                    <tr>
+                        <td>transferencias</td>
+                        <td>sucursal_origen_id, sucursal_destino_id</td>
+                        <td>sucursales</td>
+                        <td>N/A ✓</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Integridad de Dominio</h3>
+            <div class="alert alert-success">
+                <strong>✓ Bien implementada</strong><br>
+                Constraints CHECK y DEFAULT apropiados
+            </div>
+            <ul class="checklist">
+                <li>CHECK constraints en estados (PEDIDO, ENTREGADO, etc.)</li>
+                <li>CHECK constraints en tipos (alumno, externo)</li>
+                <li>CHECK constraints en cantidades (> 0)</li>
+                <li>CHECK constraints en stock (>= 0)</li>
+                <li>DEFAULT values apropiados (NOW(), true, 0)</li>
+            </ul>
+
+            <h3>⚠ Áreas de Mejora</h3>
+            <div class="card">
+                <h4>1. Consistencia en ON DELETE</h4>
+                <p>Revisar que todas las FKs tengan la política ON DELETE apropiada</p>
+                <ul>
+                    <li><code>CASCADE</code> para detalles que no tienen sentido sin el padre</li>
+                    <li><code>SET NULL</code> para referencias opcionales</li>
+                    <li><code>RESTRICT</code> para prevenir eliminación accidental</li>
+                </ul>
+            </div>
+
+            <div class="card">
+                <h4>2. Constraint XOR en pedidos</h4>
+                <p>El constraint <code>CHECK (alumno_id IS NOT NULL XOR externo_id IS NOT NULL)</code> está bien, pero podría mejorarse con una tabla <code>clientes</code> unificada</p>
+            </div>
+        </section>
+
+        <!-- ANÁLISIS DE RELACIONES -->
+        <section id="relaciones" class="section">
+            <h2>🔗 Análisis de Relaciones</h2>
+
+            <h3>Relaciones 1:N (Uno a Muchos)</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Tabla Padre (1)</th>
+                        <th>Relación</th>
+                        <th>Tabla Hija (N)</th>
+                        <th>Tipo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>sucursales</td>
+                        <td class="relationship-type">1:N</td>
+                        <td>costos</td>
+                        <td>Obligatoria</td>
+                    </tr>
+                    <tr>
+                        <td>sucursales</td>
+                        <td class="relationship-type">1:N</td>
+                        <td>pedidos</td>
+                        <td>Obligatoria</td>
+                    </tr>
+                    <tr>
+                        <td>sucursales</td>
+                        <td class="relationship-type">1:N</td>
+                        <td>transferencias (origen)</td>
+                        <td>Obligatoria</td>
+                    </tr>
+                    <tr>
+                        <td>sucursales</td>
+                        <td class="relationship-type">1:N</td>
+                        <td>transferencias (destino)</td>
+                        <td>Obligatoria</td>
+                    </tr>
+                    <tr>
+                        <td>categorias_prendas</td>
+                        <td class="relationship-type">1:N</td>
+                        <td>prendas</td>
+                        <td>Opcional</td>
+                    </tr>
+                    <tr>
+                        <td>prendas</td>
+                        <td class="relationship-type">1:N</td>
+                        <td>costos</td>
+                        <td>Obligatoria</td>
+                    </tr>
+                    <tr>
+                        <td>tallas</td>
+                        <td class="relationship-type">1:N</td>
+                        <td>costos</td>
+                        <td>Obligatoria</td>
+                    </tr>
+                    <tr>
+                        <td>alumnos</td>
+                        <td class="relationship-type">1:N</td>
+                        <td>pedidos</td>
+                        <td>Opcional (XOR externos)</td>
+                    </tr>
+                    <tr>
+                        <td>externos</td>
+                        <td class="relationship-type">1:N</td>
+                        <td>pedidos</td>
+                        <td>Opcional (XOR alumnos)</td>
+                    </tr>
+                    <tr>
+                        <td>pedidos</td>
+                        <td class="relationship-type">1:N</td>
+                        <td>detalle_pedidos</td>
+                        <td>Obligatoria</td>
+                    </tr>
+                    <tr>
+                        <td>pedidos</td>
+                        <td class="relationship-type">1:N</td>
+                        <td>devoluciones</td>
+                        <td>Opcional</td>
+                    </tr>
+                    <tr>
+                        <td>devoluciones</td>
+                        <td class="relationship-type">1:N</td>
+                        <td>detalle_devoluciones</td>
+                        <td>Obligatoria</td>
+                    </tr>
+                    <tr>
+                        <td>cotizaciones</td>
+                        <td class="relationship-type">1:N</td>
+                        <td>detalle_cotizacion</td>
+                        <td>Obligatoria</td>
+                    </tr>
+                    <tr>
+                        <td>presentaciones</td>
+                        <td class="relationship-type">1:N</td>
+                        <td>insumos</td>
+                        <td>Obligatoria</td>
+                    </tr>
+                    <tr>
+                        <td>insumos</td>
+                        <td class="relationship-type">1:N</td>
+                        <td>compras_insumos</td>
+                        <td>Obligatoria</td>
+                    </tr>
+                    <tr>
+                        <td>cortes</td>
+                        <td class="relationship-type">1:N</td>
+                        <td>detalle_cortes</td>
+                        <td>Obligatoria</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Relaciones N:M (Muchos a Muchos)</h3>
+            <div class="alert alert-info">
+                <strong>ℹ️ Tablas intermedias implementadas correctamente</strong>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Entidad 1</th>
+                        <th>Relación</th>
+                        <th>Tabla Intermedia</th>
+                        <th>Entidad 2</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>prendas</td>
+                        <td class="relationship-type">N:M</td>
+                        <td>costos</td>
+                        <td>tallas</td>
+                    </tr>
+                    <tr>
+                        <td>pedidos</td>
+                        <td class="relationship-type">N:M</td>
+                        <td>detalle_pedidos</td>
+                        <td>prendas + tallas</td>
+                    </tr>
+                    <tr>
+                        <td>prendas + tallas</td>
+                        <td class="relationship-type">N:M</td>
+                        <td>prenda_talla_insumos</td>
+                        <td>insumos</td>
+                    </tr>
+                    <tr>
+                        <td>cortes</td>
+                        <td class="relationship-type">N:M</td>
+                        <td>detalle_cortes</td>
+                        <td>pedidos</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Relaciones Especiales</h3>
+            <div class="grid">
+                <div class="card">
+                    <h4>📊 Relación XOR (Exclusiva)</h4>
+                    <p><code>pedidos</code> → <code>alumnos</code> XOR <code>externos</code></p>
+                    <p style="color: #666; font-size: 0.9rem;">Un pedido pertenece a UN cliente (alumno O externo, no ambos)</p>
+                </div>
+
+                <div class="card">
+                    <h4>🔄 Relación Autorreferencial</h4>
+                    <p><code>transferencias</code> → <code>sucursales</code> (origen y destino)</p>
+                    <p style="color: #666; font-size: 0.9rem;">Una transferencia conecta DOS sucursales de la misma tabla</p>
+                </div>
+
+                <div class="card">
+                    <h4>🎯 Relación Ternaria</h4>
+                    <p><code>costos</code> ← prenda_id + talla_id + sucursal_id</p>
+                    <p style="color: #666; font-size: 0.9rem;">Precio y stock únicos para cada combinación</p>
+                </div>
+
+                <div class="card">
+                    <h4>🔀 Relación con Cambio</h4>
+                    <p><code>detalle_devoluciones</code> puede tener prenda_cambio_id y talla_cambio_id</p>
+                    <p style="color: #666; font-size: 0.9rem;">Permite registrar qué se devuelve y qué se lleva en su lugar</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- RECOMENDACIONES -->
+        <section id="recomendaciones" class="section">
+            <h2>💡 Recomendaciones de Mejora</h2>
+
+            <h3>🔴 Prioridad Alta</h3>
+            <div class="card">
+                <h4>1. Eliminar tabla duplicada `usuarios`</h4>
+                <p><strong>Problema:</strong> Existe <code>usuario</code> (real, con SMALLSERIAL) y <code>usuarios</code> (schema, con UUID)</p>
+                <p><strong>Solución:</strong> Eliminar la tabla <code>usuarios</code> del schema.sql y usar solo <code>usuario</code></p>
+                <p><strong>Impacto:</strong> Evita confusión y posibles errores</p>
+            </div>
+
+            <div class="card">
+                <h4>2. Agregar índices compuestos faltantes</h4>
+                <p><strong>Problema:</strong> Queries frecuentes por múltiples columnas sin índice compuesto</p>
+                <p><strong>Solución:</strong></p>
+                <code>CREATE INDEX idx_pedidos_sucursal_estado ON pedidos(sucursal_id, estado);</code><br>
+                <code>CREATE INDEX idx_costos_sucursal_prenda_talla ON costos(sucursal_id, prenda_id, talla_id);</code>
+            </div>
+
+            <h3>🟡 Prioridad Media</h3>
+            <div class="card">
+                <h4>3. Unificar tabla de clientes</h4>
+                <p><strong>Problema:</strong> <code>alumnos</code> y <code>externos</code> separados con XOR en <code>pedidos</code></p>
+                <p><strong>Solución:</strong> Crear tabla <code>clientes</code> unificada con tipo discriminador</p>
+                <p><strong>Beneficio:</strong> Simplifica queries y elimina XOR constraint</p>
+            </div>
+
+            <div class="card">
+                <h4>4. Agregar auditoría completa</h4>
+                <p><strong>Problema:</strong> Algunas tablas no tienen <code>created_at</code> o <code>updated_at</code></p>
+                <p><strong>Solución:</strong> Agregar campos de auditoría a todas las tablas transaccionales</p>
+            </div>
+
+            <h3>🟢 Prioridad Baja (Optimizaciones)</h3>
+            <div class="card">
+                <h4>5. Considerar particionamiento</h4>
+                <p><strong>Tabla:</strong> <code>pedidos</code>, <code>movimientos</code>, <code>detalle_pedidos</code></p>
+                <p><strong>Estrategia:</strong> Particionar por fecha (mensual o anual)</p>
+                <p><strong>Beneficio:</strong> Mejor performance en queries históricas</p>
+            </div>
+
+            <div class="card">
+                <h4>6. Implementar soft deletes</h4>
+                <p><strong>Problema:</strong> Actualmente se usa campo <code>activo</code> en algunas tablas</p>
+                <p><strong>Solución:</strong> Estandarizar con <code>deleted_at</code> nullable</p>
+                <p><strong>Beneficio:</strong> Recuperación de datos y auditoría mejorada</p>
+            </div>
+
+            <h3>✅ Aspectos Bien Implementados</h3>
+            <ul class="checklist">
+                <li>Sistema multi-sucursal correctamente diseñado</li>
+                <li>Integridad referencial bien definida</li>
+                <li>Uso consistente de UUIDs</li>
+                <li>Triggers para updated_at automáticos</li>
+                <li>Generación automática de folios</li>
+                <li>RLS (Row Level Security) habilitado</li>
+                <li>Índices en columnas de búsqueda frecuente</li>
+                <li>Check constraints apropiados</li>
+                <li>Comentarios en tablas y columnas</li>
+                <li>Separación clara de responsabilidades</li>
+            </ul>
+        </section>
+
+        <footer>
+            <p><strong>Sistema de Uniformes Winston Churchill</strong></p>
+            <p style="color: #999; margin-top: 10px;">
+                Generado: ${new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+            </p>
+            <p style="color: #999; font-size: 0.9rem;">
+                PostgreSQL (Supabase) - 29 Tablas - 55+ Foreign Keys - 65+ Índices - 5 Funciones PL/pgSQL
+            </p>
+        </footer>
+    </div>
+
+    <script>
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'default',
+            themeVariables: {
+                primaryColor: '#667eea',
+                primaryTextColor: '#fff',
+                primaryBorderColor: '#764ba2',
+                lineColor: '#764ba2',
+                secondaryColor: '#f3e5f5',
+                tertiaryColor: '#e0f2f1'
+            }
+        });
+
+        // Smooth scroll para los enlaces de navegación
+        document.querySelectorAll('nav a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>

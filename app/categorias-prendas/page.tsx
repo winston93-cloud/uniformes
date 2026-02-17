@@ -1,0 +1,391 @@
+'use client';
+
+import { useState, useRef, useEffect } from 'react';
+import LayoutWrapper from '@/components/LayoutWrapper';
+import { useCategorias } from '@/lib/hooks/useCategorias';
+import type { CategoriaPrenda } from '@/lib/hooks/useCategorias';
+
+export const dynamic = 'force-dynamic';
+
+export default function CategoriasPrendasPage() {
+  const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const [categoriaEditando, setCategoriaEditando] = useState<CategoriaPrenda | null>(null);
+  const [busqueda, setBusqueda] = useState('');
+  const [botonEstado, setBotonEstado] = useState<'normal' | 'exito' | 'error'>('normal');
+  const [mensajeError, setMensajeError] = useState<string>('');
+  const [modalErrorAbierto, setModalErrorAbierto] = useState(false);
+  const inputBusquedaRef = useRef<HTMLInputElement>(null);
+  const { categorias, loading, error, createCategoria, updateCategoria, deleteCategoria } = useCategorias();
+
+  const [formData, setFormData] = useState({
+    nombre: '',
+    activo: true,
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBotonEstado('normal');
+    setMensajeError('');
+    
+    const categoriaData = {
+      nombre: formData.nombre.trim(),
+      activo: formData.activo,
+    };
+
+    // Validar duplicados antes de enviar
+    const nombreExiste = categorias.some(cat => 
+      cat.nombre.toLowerCase() === categoriaData.nombre.toLowerCase() && 
+      (!categoriaEditando || cat.id !== categoriaEditando.id)
+    );
+
+    if (nombreExiste) {
+      setMensajeError(`❌ Ya existe una categoría con el nombre "${categoriaData.nombre}"`);
+      setModalErrorAbierto(true);
+      return;
+    }
+
+    if (categoriaEditando) {
+      const { error } = await updateCategoria(categoriaEditando.id, categoriaData);
+      if (error) {
+        if (error.includes('duplicate') || error.includes('unique')) {
+          setMensajeError(`❌ Ya existe una categoría con el nombre "${categoriaData.nombre}"`);
+        } else {
+          setMensajeError(`❌ Error al actualizar: ${error}`);
+        }
+        setModalErrorAbierto(true);
+        return;
+      }
+      setBotonEstado('exito');
+      setTimeout(() => {
+        setFormData({ nombre: '', activo: true });
+        setMostrarFormulario(false);
+        setCategoriaEditando(null);
+        setBotonEstado('normal');
+        setMensajeError('');
+        setTimeout(() => {
+          inputBusquedaRef.current?.focus();
+        }, 100);
+      }, 1500);
+    } else {
+      const { error } = await createCategoria(categoriaData);
+      if (error) {
+        if (error.includes('duplicate') || error.includes('unique')) {
+          setMensajeError(`❌ Ya existe una categoría con el nombre "${categoriaData.nombre}"`);
+        } else {
+          setMensajeError(`❌ Error al crear: ${error}`);
+        }
+        setModalErrorAbierto(true);
+        return;
+      }
+      setBotonEstado('exito');
+      setTimeout(() => {
+        setFormData({ nombre: '', activo: true });
+        setMostrarFormulario(false);
+        setCategoriaEditando(null);
+        setBotonEstado('normal');
+        setMensajeError('');
+        setTimeout(() => {
+          inputBusquedaRef.current?.focus();
+        }, 100);
+      }, 1500);
+    }
+  };
+
+  const handleEditar = (categoria: CategoriaPrenda) => {
+    setCategoriaEditando(categoria);
+    setFormData({
+      nombre: categoria.nombre,
+      activo: categoria.activo,
+    });
+    setBotonEstado('normal');
+    setMensajeError('');
+    setMostrarFormulario(true);
+  };
+
+  const handleEliminar = async (id: string) => {
+    if (confirm('¿Estás seguro de eliminar esta categoría? Las prendas asociadas no se eliminarán, pero perderán su categoría.')) {
+      const { error } = await deleteCategoria(id);
+      if (!error) {
+        // Volver a poner focus en el input de búsqueda
+        setTimeout(() => {
+          inputBusquedaRef.current?.focus();
+        }, 100);
+      }
+    }
+  };
+
+  const handleNuevo = () => {
+    setCategoriaEditando(null);
+    setFormData({ nombre: '', activo: true });
+    setBotonEstado('normal');
+    setMensajeError('');
+    setMostrarFormulario(true);
+  };
+
+  // Auto-focus en el input de búsqueda al cargar la página
+  useEffect(() => {
+    if (!loading && inputBusquedaRef.current) {
+      const timer = setTimeout(() => {
+        inputBusquedaRef.current?.focus();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [loading]);
+
+  // Filtrar categorías según la búsqueda
+  const categoriasFiltradas = categorias.filter(categoria =>
+    categoria.nombre.toLowerCase().includes(busqueda.toLowerCase())
+  );
+
+  if (loading) {
+    return (
+      <LayoutWrapper>
+        <div className="main-container">
+          <div className="loading">
+            <div className="spinner"></div>
+          </div>
+        </div>
+      </LayoutWrapper>
+    );
+  }
+
+  return (
+    <LayoutWrapper>
+      <div className="main-container">
+        <div style={{ marginBottom: '2rem' }}>
+          <h1 style={{ fontSize: '2.5rem', fontWeight: '700', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.2)', marginBottom: '1rem', textAlign: 'center' }}>
+            🏷️ Gestión de Categorías de Prendas
+          </h1>
+        </div>
+
+        {/* Input de búsqueda */}
+        <div style={{ marginBottom: '1.5rem', maxWidth: '800px', margin: '0 auto 1.5rem auto' }}>
+          <input
+            ref={inputBusquedaRef}
+            type="text"
+            className="form-input"
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            placeholder="🔍 Buscar categoría por nombre..."
+            style={{
+              width: '100%',
+              fontSize: '1rem',
+              padding: '0.75rem 1rem',
+            }}
+          />
+          {busqueda && (
+            <div style={{ marginTop: '0.5rem', color: 'white', fontSize: '0.9rem' }}>
+              {categoriasFiltradas.length === 0 ? (
+                <span style={{ color: '#ff6b6b' }}>❌ No se encontraron categorías</span>
+              ) : (
+                <span style={{ color: '#51cf66' }}>
+                  ✓ {categoriasFiltradas.length} categoría{categoriasFiltradas.length !== 1 ? 's' : ''} encontrada{categoriasFiltradas.length !== 1 ? 's' : ''}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+
+        {error && (
+          <div className="alert alert-error">
+            Error al cargar las categorías: {error}
+          </div>
+        )}
+
+        {/* Formulario */}
+        {mostrarFormulario && (
+          <div className="form-container">
+            <h2 className="form-title">
+              {categoriaEditando ? 'Editar Categoría' : 'Nueva Categoría'}
+            </h2>
+            
+            <form onSubmit={handleSubmit}>
+              <div className="form-group">
+                <label className="form-label">Nombre de la Categoría *</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={formData.nombre}
+                  onChange={(e) => setFormData({ ...formData, nombre: e.target.value.toUpperCase() })}
+                  placeholder="Ej: CAMISAS, PANTALONES, SUÉTERES, etc."
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={formData.activo}
+                    onChange={(e) => setFormData({ ...formData, activo: e.target.checked })}
+                    style={{ width: '20px', height: '20px' }}
+                  />
+                  <span className="form-label" style={{ marginBottom: 0 }}>Categoría Activa</span>
+                </label>
+              </div>
+
+              <div className="btn-group">
+                <button 
+                  type="submit" 
+                  className="btn btn-primary"
+                  style={{
+                    backgroundColor: botonEstado === 'exito' ? '#28a745' : undefined,
+                    color: botonEstado === 'exito' ? 'white' : undefined,
+                    borderColor: botonEstado === 'exito' ? '#28a745' : undefined,
+                  }}
+                >
+                  {botonEstado === 'exito' 
+                    ? '✓ Guardado' 
+                    : categoriaEditando 
+                    ? '💾 Guardar Cambios' 
+                    : '➕ Crear Categoría'}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setMostrarFormulario(false);
+                    setCategoriaEditando(null);
+                    setFormData({ nombre: '', activo: true });
+                    setMensajeError('');
+                    // Volver a poner focus en el input de búsqueda
+                    setTimeout(() => {
+                      inputBusquedaRef.current?.focus();
+                    }, 100);
+                  }}
+                >
+                  ❌ Cancelar
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* Tabla de Categorías */}
+        <div className="table-container">
+          {!mostrarFormulario && (
+            <div style={{ marginBottom: '1rem', textAlign: 'right', padding: '0 1rem' }}>
+              <button className="btn btn-primary" onClick={handleNuevo} style={{ width: '200px' }}>
+                ➕ Nueva Categoría
+              </button>
+            </div>
+          )}
+          
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {categoriasFiltradas.length === 0 ? (
+                <tr>
+                  <td colSpan={3} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                    {busqueda ? 'No se encontraron categorías con ese nombre.' : 'No hay categorías registradas. Crea tu primera categoría.'}
+                  </td>
+                </tr>
+              ) : (
+                categoriasFiltradas.map((categoria) => (
+                  <tr key={categoria.id}>
+                    <td data-label="Nombre" style={{ fontWeight: '600' }}>{categoria.nombre}</td>
+                    <td data-label="Estado">
+                      <span className={`badge ${categoria.activo ? 'badge-success' : 'badge-danger'}`}>
+                        {categoria.activo ? '✓ Activa' : '✗ Inactiva'}
+                      </span>
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
+                        <button
+                          className="btn btn-secondary"
+                          style={{ padding: '0.5rem 1rem' }}
+                          onClick={() => handleEditar(categoria)}
+                        >
+                          ✏️ Editar
+                        </button>
+                        <button
+                          className="btn btn-danger"
+                          style={{ padding: '0.5rem 1rem' }}
+                          onClick={() => handleEliminar(categoria.id)}
+                        >
+                          🗑️ Eliminar
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Modal de Error */}
+      {modalErrorAbierto && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 2000,
+          padding: '1rem'
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            padding: '2rem',
+            maxWidth: '500px',
+            width: '100%',
+            boxShadow: '0 10px 40px rgba(0,0,0,0.3)'
+          }}>
+            <h3 style={{ 
+              color: '#dc3545', 
+              marginBottom: '1rem',
+              fontSize: '1.5rem',
+              fontWeight: '700'
+            }}>
+              Error
+            </h3>
+            <p style={{ 
+              color: '#333', 
+              marginBottom: '2rem',
+              fontSize: '1.1rem',
+              lineHeight: '1.5'
+            }}>
+              {mensajeError}
+            </p>
+            <button 
+              className="btn btn-primary"
+              onClick={() => {
+                setModalErrorAbierto(false);
+                setMensajeError('');
+                setMostrarFormulario(false);
+                setCategoriaEditando(null);
+                setFormData({ nombre: '', activo: true });
+                setBotonEstado('normal');
+                setTimeout(() => {
+                  inputBusquedaRef.current?.focus();
+                }, 100);
+              }}
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                fontSize: '1rem',
+                fontWeight: '600'
+              }}
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+      )}
+    </LayoutWrapper>
+  );
+}
+
