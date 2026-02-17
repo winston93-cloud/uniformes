@@ -131,10 +131,13 @@ export default function Dashboard() {
           @media (max-width: 1024px) {
             .modulos-vip-grid {
               flex-wrap: wrap !important;
+              height: auto !important;
+              margin-bottom: 2rem !important;
             }
             .modulos-vip-grid > div {
               flex: 1 1 100% !important;
               min-width: 100% !important;
+              height: auto !important;
             }
           }
         `}</style>
