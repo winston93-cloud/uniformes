@@ -69,7 +69,15 @@ export function usePrendas() {
 
   const deletePrenda = async (id: string) => {
     try {
-      // 1. Obtener todos los costos de la prenda
+      // 1. Eliminar detalle_pedidos por prenda_id (relación directa)
+      const { error: detallePrendaError } = await supabase
+        .from('detalle_pedidos')
+        .delete()
+        .eq('prenda_id', id);
+
+      if (detallePrendaError) throw detallePrendaError;
+
+      // 2. Obtener todos los costos de la prenda
       const { data: costos, error: costosError } = await supabase
         .from('costos')
         .select('id')
@@ -77,17 +85,17 @@ export function usePrendas() {
 
       if (costosError) throw costosError;
 
-      // 2. Si hay costos, eliminar registros relacionados
+      // 3. Si hay costos, eliminar registros relacionados por costo_id
       if (costos && costos.length > 0) {
         const costosIds = costos.map(c => c.id);
         
-        // Eliminar detalle_pedidos asociados
-        const { error: detalleError } = await supabase
+        // Eliminar detalle_pedidos asociados por costo_id
+        const { error: detalleCostoError } = await supabase
           .from('detalle_pedidos')
           .delete()
           .in('costo_id', costosIds);
 
-        if (detalleError) throw detalleError;
+        if (detalleCostoError) throw detalleCostoError;
 
         // Eliminar movimientos asociados
         const { error: movimientosError } = await supabase
@@ -98,7 +106,7 @@ export function usePrendas() {
         if (movimientosError) throw movimientosError;
       }
 
-      // 3. Eliminar los costos de la prenda
+      // 4. Eliminar los costos de la prenda
       const { error: costosDelError } = await supabase
         .from('costos')
         .delete()
@@ -106,7 +114,7 @@ export function usePrendas() {
 
       if (costosDelError) throw costosDelError;
 
-      // 4. Finalmente eliminar la prenda
+      // 5. Finalmente eliminar la prenda
       const { error } = await supabase
         .from('prendas')
         .delete()
