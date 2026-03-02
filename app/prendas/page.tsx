@@ -403,12 +403,17 @@ export default function PrendasPage() {
     setBotonEstado('normal');
     setMensajeError('');
     
-    // Cargar tallas asociadas
+    // Cargar tallas asociadas ANTES de mostrar el formulario
     const { data: costos } = await getCostosByPrenda(prenda.id);
     if (costos) {
       const tallasIds = costos.map(c => c.talla_id);
       setTallasAsociadas(tallasIds);
       setTallasSeleccionadas(tallasIds);
+      
+      // Forzar actualización después de un momento para asegurar que los checkboxes se rendericen
+      setTimeout(() => {
+        setTallasSeleccionadas([...tallasIds]);
+      }, 50);
     } else {
       setTallasAsociadas([]);
       setTallasSeleccionadas([]);
