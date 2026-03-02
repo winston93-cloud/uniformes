@@ -448,7 +448,7 @@ export default function InsumosPage() {
                   onClick={() => {
                     setMostrarFormulario(false);
                     setInsumoEditando(null);
-                    setFormData({ nombre: '', codigo: '', descripcion: '', presentacion_id: '', cantidad_por_presentacion: '', stock_inicial: '', stock_minimo: '', activo: true });
+                    setFormData({ nombre: '', codigo: '', descripcion: '', presentacion_id: '', cantidad_por_presentacion: '', costo_compra: '', stock_inicial: '', stock_minimo: '', activo: true });
                     setTimeout(() => {
                       inputBusquedaRef.current?.focus();
                     }, 100);
@@ -560,7 +560,7 @@ export default function InsumosPage() {
                   setMensajeError('');
                   setMostrarFormulario(false);
                   setInsumoEditando(null);
-                  setFormData({ nombre: '', codigo: '', descripcion: '', presentacion_id: '', cantidad_por_presentacion: '', stock_inicial: '', stock_minimo: '', activo: true });
+                  setFormData({ nombre: '', codigo: '', descripcion: '', presentacion_id: '', cantidad_por_presentacion: '', costo_compra: '', stock_inicial: '', stock_minimo: '', activo: true });
                   setBotonEstado('normal');
                 }}
               >
