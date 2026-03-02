@@ -314,47 +314,6 @@ export default function Dashboard() {
             </p>
           </Link>
 
-          {/* Inventario - Módulo de Productos */}
-          <Link 
-            href="/inventario" 
-            className="card"
-            style={{
-              background: 'linear-gradient(135deg, #b19cd9 0%, #9370db 100%)',
-              border: '2px solid rgba(177, 156, 217, 0.4)',
-            }}
-          >
-            <div 
-              style={{
-                fontSize: '2.5rem',
-                background: 'rgba(255, 255, 255, 0.3)',
-                borderRadius: '12px',
-                width: '60px',
-                height: '60px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto 1rem',
-              }}
-            >
-              📦
-            </div>
-            <h3 style={{ 
-              margin: '0 0 0.5rem 0',
-              fontSize: '1.3rem',
-              fontWeight: '600',
-              color: 'white',
-            }}>
-              Inventario de Prendas
-            </h3>
-            <p style={{ 
-              margin: 0,
-              fontSize: '0.95rem',
-              color: 'rgba(255, 255, 255, 0.9)',
-            }}>
-              Control de stock y movimientos de prendas terminadas
-            </p>
-          </Link>
-
           {/* Alumnos - Módulo de Clientes */}
           <Link 
             href="/alumnos" 
