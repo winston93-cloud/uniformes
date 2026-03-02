@@ -256,6 +256,13 @@ export default function PrendasPage() {
       const tallasAEliminar = tallasAsociadas.filter(t => !tallasSeleccionadas.includes(t));
       const tallasAAgregar = tallasSeleccionadas.filter(t => !tallasAsociadas.includes(t));
       
+      console.log('🔍 Debug tallas:', {
+        tallasAsociadas,
+        tallasSeleccionadas,
+        tallasAEliminar,
+        tallasAAgregar
+      });
+      
       // Eliminar costos de tallas que se quitaron
       if (tallasAEliminar.length > 0) {
         const { data: costosExistentes } = await getCostosByPrenda(prendaEditando.id);
@@ -264,8 +271,13 @@ export default function PrendasPage() {
             .filter(c => tallasAEliminar.includes(c.talla_id))
             .map(c => c.id);
           
+          console.log('🗑️ Eliminando costos:', costosAEliminar);
+          
           for (const costoId of costosAEliminar) {
-            await deleteCosto(costoId);
+            const resultado = await deleteCosto(costoId);
+            if (resultado.error) {
+              console.error('❌ Error al eliminar costo:', resultado.error);
+            }
           }
         }
       }
@@ -314,6 +326,10 @@ export default function PrendasPage() {
       }
       
       setBotonEstado('exito');
+      
+      // Actualizar tallasAsociadas con las tallas actuales después del guardado
+      setTallasAsociadas([...tallasSeleccionadas]);
+      
       await refetchCategorias(); // Recargar lista de prendas
       setTimeout(() => {
         setFormData({ nombre: '', codigo: '', descripcion: '', categoria_id: '', activo: true });
