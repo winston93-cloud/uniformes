@@ -65,6 +65,15 @@ export default function Header({ onMenuClick }: HeaderProps) {
                 }}>
                   Sistema de Uniformes
                 </span>
+                <span style={{ 
+                  fontSize: '0.7rem', 
+                  fontWeight: '600',
+                  color: '#667eea',
+                  letterSpacing: '0.05em',
+                  opacity: 0.8,
+                }}>
+                  WINSTON CHURCHILL
+                </span>
               </div>
             </Link>
           </div>
