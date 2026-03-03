@@ -58,11 +58,6 @@ export default function Dashboard() {
   return (
     <LayoutWrapper>
       <div className="main-container">
-        <h1 className="page-title">
-          Sistema de Uniformes Winston Churchill
-          <span className="title-icon">✨</span>
-        </h1>
-
         {/* ⭐ MÓDULOS PRINCIPALES VIP - Layout Dinámico con 3 Tarjetas ⭐ */}
         <div 
           className="modulos-vip-grid"
