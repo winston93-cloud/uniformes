@@ -9,13 +9,12 @@ import { Outfit, DM_Sans } from 'next/font/google';
 import {
   Calendar,
   ArrowLeft,
-  LogIn,
-  LogOut,
+  DollarSign,
+  Settings,
   Wrench,
   Sun,
   Moon,
   TrendingUp,
-  TrendingDown,
 } from 'lucide-react';
 import styles from './produccion.module.css';
 
@@ -160,16 +159,16 @@ export default function ProduccionSemanalPage() {
               variants={fadeUp}
               whileHover={{ y: -6, transition: { duration: 0.3 } }}
               whileTap={{ scale: 0.99 }}
-              aria-label="Registro de entrada"
+              aria-label="Gastos fijos semanales"
             >
               <div className={styles.actionIcon}>
-                <LogIn size={24} strokeWidth={2} />
+                <DollarSign size={24} strokeWidth={2} />
               </div>
               <h2 className={styles.actionTitle} style={{ fontFamily: 'var(--font-outfit)' }}>
-                Entrada
+                Gastos fijos Semanales
               </h2>
               <p className={styles.actionDesc}>
-                Registro de insumos y materiales que ingresan a producción
+                Control y registro de gastos fijos recurrentes cada semana
               </p>
               <div className={styles.actionMetric}>—</div>
             </motion.a>
@@ -181,16 +180,16 @@ export default function ProduccionSemanalPage() {
               variants={fadeUp}
               whileHover={{ y: -6, transition: { duration: 0.3 } }}
               whileTap={{ scale: 0.99 }}
-              aria-label="Registro de salida"
+              aria-label="Producción"
             >
               <div className={styles.actionIcon}>
-                <LogOut size={24} strokeWidth={2} />
+                <Settings size={24} strokeWidth={2} />
               </div>
               <h2 className={styles.actionTitle} style={{ fontFamily: 'var(--font-outfit)' }}>
-                Salida
+                Producción
               </h2>
               <p className={styles.actionDesc}>
-                Registro de prendas terminadas y productos que salen de producción
+                Seguimiento y planificación de la producción semanal
               </p>
               <div className={styles.actionMetric}>—</div>
             </motion.a>
