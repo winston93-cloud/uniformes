@@ -17,6 +17,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import ModalGastosFijos from '@/components/ModalGastosFijos';
+import ModalProduccion, { type ItemProduccion } from '@/components/ModalProduccion';
 import styles from './produccion.module.css';
 
 const outfit = Outfit({ weight: ['500', '600', '700'], subsets: ['latin'], variable: '--font-outfit' });
@@ -55,6 +56,8 @@ export default function ProduccionSemanalPage() {
   const { sesion } = useAuth();
   const [darkMode, setDarkMode] = useState(false);
   const [modalGastosAbierto, setModalGastosAbierto] = useState(false);
+  const [modalProduccionAbierto, setModalProduccionAbierto] = useState(false);
+  const [itemsProduccion, setItemsProduccion] = useState<ItemProduccion[]>([]);
   const weekDates = useMemo(getWeekDates, []);
 
   const today = new Date();
@@ -180,14 +183,15 @@ export default function ProduccionSemanalPage() {
               <ModalGastosFijos onClose={() => setModalGastosAbierto(false)} />
             )}
 
-            <motion.a
-              href="#"
+            <motion.button
+              type="button"
               className={`${styles.actionCard} ${styles.actionCardSalida}`}
-              onClick={(e) => e.preventDefault()}
+              onClick={() => setModalProduccionAbierto(true)}
               variants={fadeUp}
               whileHover={{ y: -6, transition: { duration: 0.3 } }}
               whileTap={{ scale: 0.99 }}
               aria-label="Producción"
+              style={{ border: 'none', font: 'inherit', textAlign: 'left', width: '100%', cursor: 'pointer' }}
             >
               <div className={styles.actionIcon}>
                 <Settings size={24} strokeWidth={2} />
@@ -198,9 +202,93 @@ export default function ProduccionSemanalPage() {
               <p className={styles.actionDesc}>
                 Seguimiento y planificación de la producción semanal
               </p>
-              <div className={styles.actionMetric}>—</div>
-            </motion.a>
+              <div className={styles.actionMetric}>
+                {itemsProduccion.length > 0 ? `${itemsProduccion.length} ítems` : '—'}
+              </div>
+            </motion.button>
+
+            {modalProduccionAbierto && (
+              <ModalProduccion
+                onClose={() => setModalProduccionAbierto(false)}
+                onGuardar={(items) => setItemsProduccion(items)}
+              />
+            )}
           </motion.section>
+
+          {/* Dashboard de Producción - items seleccionados */}
+          {itemsProduccion.length > 0 && (
+            <motion.section
+              className={styles.calendarSection}
+              variants={fadeUp}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              <h3 className={styles.sectionTitle}>Dashboard de producción</h3>
+              <div
+                style={{
+                  background: 'var(--card-bg)',
+                  border: '1px solid var(--glass-border)',
+                  borderRadius: '1.5rem',
+                  overflow: 'hidden',
+                  boxShadow: 'var(--glass-shadow)',
+                }}
+              >
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: '#f9fafb' }}>
+                      <th
+                        style={{
+                          padding: '0.75rem 1rem',
+                          textAlign: 'left',
+                          fontWeight: 600,
+                          fontSize: '0.85rem',
+                          color: 'var(--text)',
+                          borderBottom: '1px solid #e5e7eb',
+                        }}
+                      >
+                        Modelo
+                      </th>
+                      <th
+                        style={{
+                          padding: '0.75rem 1rem',
+                          textAlign: 'left',
+                          fontWeight: 600,
+                          fontSize: '0.85rem',
+                          color: 'var(--text)',
+                          borderBottom: '1px solid #e5e7eb',
+                        }}
+                      >
+                        Nº Cotización
+                      </th>
+                      <th
+                        style={{
+                          padding: '0.75rem 1rem',
+                          textAlign: 'right',
+                          fontWeight: 600,
+                          fontSize: '0.85rem',
+                          color: 'var(--text)',
+                          borderBottom: '1px solid #e5e7eb',
+                        }}
+                      >
+                        Piezas
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {itemsProduccion.map((item) => (
+                      <tr key={`${item.cotizacion_id}-${item.detalle_id}`} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                        <td style={{ padding: '0.75rem 1rem', color: 'var(--text)' }}>{item.modelo}</td>
+                        <td style={{ padding: '0.75rem 1rem', color: 'var(--text)' }}>{item.folio}</td>
+                        <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 600, color: 'var(--text)' }}>
+                          {item.piezas}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </motion.section>
+          )}
 
           {/* Real Calendar */}
           <motion.section className={styles.calendarSection} variants={fadeUp}>
