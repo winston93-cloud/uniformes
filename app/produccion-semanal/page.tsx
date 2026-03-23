@@ -3,193 +3,119 @@
 import { useAuth } from '@/contexts/AuthContext';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import Link from 'next/link';
+import { Inter, Poppins } from 'next/font/google';
+import styles from './produccion.module.css';
+
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
+const poppins = Poppins({ weight: ['600', '700'], subsets: ['latin'], variable: '--font-poppins' });
 
 export default function ProduccionSemanalPage() {
-  const { sesion } = useAuth();
+  useAuth(); // Mantener sesión para protección de ruta si se añade
 
   return (
     <LayoutWrapper>
-      <div className="main-container">
-        <h1 style={{ 
-          fontSize: '2.5rem', 
-          fontWeight: '700', 
-          color: 'white', 
-          textShadow: '0 2px 10px rgba(0,0,0,0.2)', 
-          marginBottom: '0.5rem',
-          textAlign: 'center'
-        }}>
-          📅 Módulo de Producción Semanal
-        </h1>
-        <p style={{ 
-          color: 'rgba(255, 255, 255, 0.9)', 
-          textAlign: 'center',
-          fontSize: '1.1rem',
-          marginBottom: '3rem'
-        }}>
-          Planificación y seguimiento de la producción semanal
-        </p>
+      <div className={`main-container ${inter.variable} ${poppins.variable} ${inter.className}`}>
+        <article className={styles.wrapper} role="main">
+          {/* Header con badge En Desarrollo */}
+          <header className={styles.header}>
+            <h1 className={styles.title}>
+              <span aria-hidden="true">📅</span>
+              Módulo de Producción Semanal
+            </h1>
+            <p className={styles.subtitle}>
+              Planificación y seguimiento de la producción semanal
+            </p>
+            <div className={styles.badgeWrapper}>
+              <span
+                className={styles.badge}
+                title="Este módulo está en desarrollo. Próximamente incluirá: registro de entrada/salida de insumos, calendario semanal, métricas y reportes de producción."
+                aria-label="Módulo en desarrollo. Más información disponible al pasar el cursor."
+              >
+                🚧 En Desarrollo
+              </span>
+            </div>
+          </header>
 
-        {/* Botón de regreso */}
-        <div style={{ marginBottom: '2.5rem', textAlign: 'center' }}>
-          <Link href="/dashboard">
-            <button className="btn btn-secondary" style={{ 
-              padding: '0.75rem 2rem',
-              fontSize: '1rem'
-            }}>
+          {/* Botón Volver - estilo shadcn Button */}
+          <div style={{ textAlign: 'center' }}>
+            <Link
+              href="/dashboard"
+              className={styles.backButton}
+              aria-label="Volver al panel principal del sistema"
+            >
               ← Volver al Panel Principal
-            </button>
-          </Link>
-        </div>
-
-        {/* Tarjetas Entrada / Salida - UI UX MAX PRO */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-          gap: '2rem',
-          maxWidth: '900px',
-          margin: '0 auto',
-        }}>
-          {/* Tarjeta Entrada */}
-          <div
-            style={{
-              background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.25) 0%, rgba(6, 95, 70, 0.35) 100%)',
-              backdropFilter: 'blur(20px)',
-              WebkitBackdropFilter: 'blur(20px)',
-              borderRadius: '24px',
-              padding: '2.5rem',
-              border: '1px solid rgba(255, 255, 255, 0.3)',
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
-              cursor: 'pointer',
-              transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-              position: 'relative',
-              overflow: 'hidden',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-8px) scale(1.02)';
-              e.currentTarget.style.boxShadow = '0 20px 50px rgba(16, 185, 129, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.3)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0) scale(1)';
-              e.currentTarget.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)';
-            }}
-          >
-            <div style={{
-              position: 'absolute',
-              top: '-50%',
-              right: '-50%',
-              width: '100%',
-              height: '100%',
-              background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)',
-              pointerEvents: 'none',
-            }} />
-            <div style={{
-              width: '72px',
-              height: '72px',
-              borderRadius: '20px',
-              background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.9) 0%, rgba(5, 150, 105, 0.95) 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: '1.5rem',
-              fontSize: '2rem',
-              boxShadow: '0 8px 24px rgba(16, 185, 129, 0.4)',
-            }}>
-              📥
-            </div>
-            <h2 style={{
-              fontSize: '2rem',
-              fontWeight: '800',
-              color: 'white',
-              margin: '0 0 0.5rem 0',
-              textShadow: '0 2px 4px rgba(0,0,0,0.2)',
-            }}>
-              Entrada
-            </h2>
-            <p style={{
-              color: 'rgba(255, 255, 255, 0.9)',
-              fontSize: '1rem',
-              margin: 0,
-              lineHeight: 1.5,
-            }}>
-              Registro de insumos y materiales que ingresan a producción
-            </p>
+            </Link>
           </div>
 
-          {/* Tarjeta Salida */}
-          <div
-            style={{
-              background: 'linear-gradient(135deg, rgba(249, 115, 22, 0.25) 0%, rgba(220, 38, 38, 0.35) 100%)',
-              backdropFilter: 'blur(20px)',
-              WebkitBackdropFilter: 'blur(20px)',
-              borderRadius: '24px',
-              padding: '2.5rem',
-              border: '1px solid rgba(255, 255, 255, 0.3)',
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
-              cursor: 'pointer',
-              transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-              position: 'relative',
-              overflow: 'hidden',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-8px) scale(1.02)';
-              e.currentTarget.style.boxShadow = '0 20px 50px rgba(249, 115, 22, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.3)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0) scale(1)';
-              e.currentTarget.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)';
-            }}
-          >
-            <div style={{
-              position: 'absolute',
-              top: '-50%',
-              right: '-50%',
-              width: '100%',
-              height: '100%',
-              background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)',
-              pointerEvents: 'none',
-            }} />
-            <div style={{
-              width: '72px',
-              height: '72px',
-              borderRadius: '20px',
-              background: 'linear-gradient(135deg, rgba(249, 115, 22, 0.9) 0%, rgba(220, 38, 38, 0.95) 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: '1.5rem',
-              fontSize: '2rem',
-              boxShadow: '0 8px 24px rgba(249, 115, 22, 0.4)',
-            }}>
-              📤
+          {/* KPIs teaser - placeholders visuales */}
+          <section className={styles.kpiRow} aria-label="Métricas de producción">
+            <div className={`${styles.kpiCard} ${styles.animateIn} ${styles.animateInDelay1}`}>
+              <p className={styles.kpiLabel}>Insumos esta semana</p>
+              <div className={`${styles.skeleton} ${styles.skeletonText}`} style={{ height: '1.75rem', margin: '0 auto' }} />
             </div>
-            <h2 style={{
-              fontSize: '2rem',
-              fontWeight: '800',
-              color: 'white',
-              margin: '0 0 0.5rem 0',
-              textShadow: '0 2px 4px rgba(0,0,0,0.2)',
-            }}>
-              Salida
-            </h2>
-            <p style={{
-              color: 'rgba(255, 255, 255, 0.9)',
-              fontSize: '1rem',
-              margin: 0,
-              lineHeight: 1.5,
-            }}>
-              Registro de prendas terminadas y productos que salen de producción
-            </p>
-          </div>
-        </div>
+            <div className={`${styles.kpiCard} ${styles.animateIn} ${styles.animateInDelay2}`}>
+              <p className={styles.kpiLabel}>Prendas terminadas</p>
+              <div className={`${styles.skeleton} ${styles.skeletonText}`} style={{ height: '1.75rem', margin: '0 auto' }} />
+            </div>
+            <div className={`${styles.kpiCard} ${styles.animateIn} ${styles.animateInDelay3}`}>
+              <p className={styles.kpiLabel}>En producción</p>
+              <div className={`${styles.skeleton} ${styles.skeletonText}`} style={{ height: '1.75rem', margin: '0 auto' }} />
+            </div>
+          </section>
 
-        <p style={{ 
-          color: 'rgba(255, 255, 255, 0.7)', 
-          textAlign: 'center',
-          marginTop: '2rem',
-          fontSize: '0.95rem',
-        }}>
-          Módulo en desarrollo — funcionalidades próximamente
-        </p>
+          {/* Bento Grid - Tarjetas Entrada / Salida */}
+          <section className={styles.bentoGrid} aria-label="Acciones de producción">
+            {/* Tarjeta Entrada */}
+            <a
+              href="#"
+              className={`${styles.card} ${styles.cardEntrada} ${styles.animateIn} ${styles.animateInDelay2}`}
+              onClick={(e) => e.preventDefault()}
+              aria-label="Registro de entrada: insumos y materiales que ingresan a producción"
+              tabIndex={0}
+            >
+              <div className={styles.cardIcon} aria-hidden="true">
+                📥
+              </div>
+              <h2 className={styles.cardTitle}>Entrada</h2>
+              <p className={styles.cardDesc}>
+                Registro de insumos y materiales que ingresan a producción
+              </p>
+            </a>
+
+            {/* Tarjeta Salida */}
+            <a
+              href="#"
+              className={`${styles.card} ${styles.cardSalida} ${styles.animateIn} ${styles.animateInDelay3}`}
+              onClick={(e) => e.preventDefault()}
+              aria-label="Registro de salida: prendas terminadas y productos que salen de producción"
+              tabIndex={0}
+            >
+              <div className={styles.cardIcon} aria-hidden="true">
+                📤
+              </div>
+              <h2 className={styles.cardTitle}>Salida</h2>
+              <p className={styles.cardDesc}>
+                Registro de prendas terminadas y productos que salen de producción
+              </p>
+            </a>
+          </section>
+
+          {/* Teaser: Calendario semanal placeholder */}
+          <section className={styles.teaserSection}>
+            <h3 className={styles.teaserTitle}>Calendario semanal (próximamente)</h3>
+            <div className={`${styles.skeleton} ${styles.skeletonCalendar}`} />
+          </section>
+
+          {/* Teaser: Tabla de producción placeholder */}
+          <section className={styles.teaserSection}>
+            <h3 className={styles.teaserTitle}>Vista de producción (próximamente)</h3>
+            <div className={`${styles.skeleton} ${styles.skeletonTable}`} />
+          </section>
+
+          <p className={styles.footerText}>
+            Módulo en desarrollo — funcionalidades próximamente
+          </p>
+        </article>
       </div>
     </LayoutWrapper>
   );
