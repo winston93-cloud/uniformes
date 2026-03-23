@@ -4,6 +4,7 @@ import ThemeToggler from "@/components/ThemeToggler";
 import BackgroundGradient from "@/components/BackgroundGradient";
 import MobileScrollFix from "@/components/MobileScrollFix";
 import { AuthProvider } from "@/contexts/AuthContext";
+import VercelAnalytics from "@/components/VercelAnalytics";
 
 export const metadata: Metadata = {
   title: "Sistema de Gestión de Uniformes",
@@ -23,6 +24,7 @@ export default function RootLayout({
           <BackgroundGradient />
           <ThemeToggler />
           {children}
+          <VercelAnalytics />
         </AuthProvider>
       </body>
     </html>

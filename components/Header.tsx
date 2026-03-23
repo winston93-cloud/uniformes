@@ -125,8 +125,26 @@ export default function Header({ onMenuClick }: HeaderProps) {
           paddingLeft: '3.5rem',
           paddingRight: '1rem',
         }}>
-          <div className="welcome-badge" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            Bienvenido, {sesion?.usuario_username || 'Usuario'}
+          <div className="welcome-badge" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, #CA8A04 0%, #EAB308 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'white',
+                fontWeight: 700,
+                fontSize: '0.95rem',
+                boxShadow: '0 2px 8px rgba(202, 138, 4, 0.4)',
+              }}
+              aria-hidden
+            >
+              {(sesion?.usuario_username || 'U').charAt(0).toUpperCase()}
+            </div>
+            <span>Bienvenido, {sesion?.usuario_username || 'Usuario'}</span>
           </div>
           {sesion && (
             <div style={{
