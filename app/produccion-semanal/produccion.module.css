@@ -58,6 +58,7 @@
 .pageHeader {
   text-align: center;
   margin-bottom: 2rem;
+  padding-right: 3.5rem; /* Espacio para el botón de tema */
 }
 
 .title {
