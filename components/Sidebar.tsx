@@ -22,6 +22,7 @@ const menuItems = [
   { href: '/externos', label: 'Clientes Externos', icon: '👤' },
   { href: '/cortes', label: 'Cortes de Caja', icon: '💵' },
   { href: '/reportes', label: 'Reportes', icon: '📈' },
+  { href: '/produccion-semanal', label: 'Producción Semanal', icon: '📅' },
 ];
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
