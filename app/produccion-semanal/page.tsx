@@ -16,6 +16,7 @@ import {
   Moon,
   TrendingUp,
 } from 'lucide-react';
+import ModalGastosFijos from '@/components/ModalGastosFijos';
 import styles from './produccion.module.css';
 
 const outfit = Outfit({ weight: ['500', '600', '700'], subsets: ['latin'], variable: '--font-outfit' });
@@ -53,6 +54,7 @@ const stagger = {
 export default function ProduccionSemanalPage() {
   const { sesion } = useAuth();
   const [darkMode, setDarkMode] = useState(false);
+  const [modalGastosAbierto, setModalGastosAbierto] = useState(false);
   const weekDates = useMemo(getWeekDates, []);
 
   const today = new Date();
@@ -152,14 +154,15 @@ export default function ProduccionSemanalPage() {
 
           {/* Action Cards */}
           <motion.section className={styles.cardsGrid} aria-label="Acciones" variants={fadeUp}>
-            <motion.a
-              href="#"
+            <motion.button
+              type="button"
               className={`${styles.actionCard} ${styles.actionCardEntrada}`}
-              onClick={(e) => e.preventDefault()}
+              onClick={() => setModalGastosAbierto(true)}
               variants={fadeUp}
               whileHover={{ y: -6, transition: { duration: 0.3 } }}
               whileTap={{ scale: 0.99 }}
               aria-label="Gastos fijos semanales"
+              style={{ border: 'none', font: 'inherit', textAlign: 'left', width: '100%', cursor: 'pointer' }}
             >
               <div className={styles.actionIcon}>
                 <DollarSign size={24} strokeWidth={2} />
@@ -171,7 +174,11 @@ export default function ProduccionSemanalPage() {
                 Control y registro de gastos fijos recurrentes cada semana
               </p>
               <div className={styles.actionMetric}>—</div>
-            </motion.a>
+            </motion.button>
+
+            {modalGastosAbierto && (
+              <ModalGastosFijos onClose={() => setModalGastosAbierto(false)} />
+            )}
 
             <motion.a
               href="#"
