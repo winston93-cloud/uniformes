@@ -2,17 +2,16 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import ModalCotizacion from './ModalCotizacion';
 import { useCiclosEscolares } from '@/lib/hooks/useCiclosEscolares';
+import { Menu, Home, FileText, LogOut, GraduationCap, Building2, MapPin, BookOpen } from 'lucide-react';
 
 interface HeaderProps {
   onMenuClick: () => void;
 }
 
 export default function Header({ onMenuClick }: HeaderProps) {
-  const router = useRouter();
   const { sesion, cerrarSesion, cicloEscolar, setCicloEscolar } = useAuth();
   const [modalCotizacionAbierto, setModalCotizacionAbierto] = useState(false);
   const { getCiclosActivos } = useCiclosEscolares();
@@ -31,35 +30,32 @@ export default function Header({ onMenuClick }: HeaderProps) {
         {/* Fila superior: Logo/Título a la izquierda, Botones a la derecha */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
           <div className="header-left">
-            <button className="menu-button" onClick={onMenuClick}>
-              <div className="menu-icon">
-                <span></span>
-                <span></span>
-                <span></span>
-              </div>
+            <button
+              className="menu-button"
+              onClick={onMenuClick}
+              aria-label="Abrir menú de navegación"
+            >
+              <Menu size={24} strokeWidth={2} />
             </button>
             
             <Link href="/dashboard" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <div style={{
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                background: 'linear-gradient(135deg, #6366F1 0%, #818CF8 100%)',
                 borderRadius: '12px',
                 padding: '0.5rem 0.75rem',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
-                border: '2px solid rgba(255, 255, 255, 0.2)',
+                boxShadow: '4px 4px 0 0 rgba(99, 102, 241, 0.2)',
+                border: '3px solid rgba(255, 255, 255, 0.3)',
               }}>
-                <span style={{ fontSize: '1.8rem' }}>🎓</span>
+                <GraduationCap size={28} color="white" strokeWidth={2} aria-hidden />
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
                 <span style={{ 
                   fontSize: '1.4rem', 
                   fontWeight: '800',
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  backgroundClip: 'text',
+                  color: '#1E1B4B',
                   letterSpacing: '-0.02em',
                   lineHeight: '1.2',
                 }}>
@@ -68,9 +64,8 @@ export default function Header({ onMenuClick }: HeaderProps) {
                 <span style={{ 
                   fontSize: '0.7rem', 
                   fontWeight: '600',
-                  color: '#667eea',
+                  color: '#6366F1',
                   letterSpacing: '0.05em',
-                  opacity: 0.8,
                 }}>
                   WINSTON CHURCHILL
                 </span>
@@ -82,9 +77,10 @@ export default function Header({ onMenuClick }: HeaderProps) {
             <button 
               onClick={handleIrAlPanel} 
               className="btn btn-primary header-btn" 
-              style={{ cursor: 'pointer' }}
+              style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+              aria-label="Ir al panel principal"
             >
-              <span className="btn-icon">🏠</span>
+              <Home size={18} aria-hidden />
               <span className="btn-text">Ir al Panel</span>
             </button>
 
@@ -93,22 +89,28 @@ export default function Header({ onMenuClick }: HeaderProps) {
               className="btn header-btn"
               style={{ 
                 cursor: 'pointer',
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                background: '#6366F1',
                 color: 'white',
-                border: 'none',
+                border: '3px solid rgba(255,255,255,0.3)',
                 fontWeight: 'bold',
-                boxShadow: '0 4px 6px rgba(102, 126, 234, 0.4)',
+                boxShadow: '4px 4px 0 0 rgba(99, 102, 241, 0.25)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
               }}
+              aria-label="Abrir cotizaciones"
             >
-              <span className="btn-icon">📄</span>
+              <FileText size={18} aria-hidden />
               <span className="btn-text">Cotizaciones</span>
             </button>
 
             <button 
               className="logout-button header-btn"
               onClick={cerrarSesion}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+              aria-label="Cerrar sesión"
             >
-              <span className="btn-icon">🚪</span>
+              <LogOut size={18} aria-hidden />
               <span className="btn-text">Cerrar Sesión</span>
             </button>
           </div>
@@ -123,56 +125,58 @@ export default function Header({ onMenuClick }: HeaderProps) {
           paddingLeft: '3.5rem',
           paddingRight: '1rem',
         }}>
-          <div className="welcome-badge" style={{ margin: 0 }}>
-            ⭐ Bienvenido, {sesion?.usuario_username || 'Usuario'} ⭐
+          <div className="welcome-badge" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            Bienvenido, {sesion?.usuario_username || 'Usuario'}
           </div>
           {sesion && (
             <div style={{
-              background: sesion.es_matriz 
-                ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-                : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              background: sesion.es_matriz ? '#6366F1' : '#10B981',
               color: 'white',
               padding: '0.4rem 1rem',
-              borderRadius: '15px',
+              borderRadius: '1rem',
               fontSize: '0.85rem',
               fontWeight: 'bold',
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+              border: '2px solid rgba(255,255,255,0.3)',
+              boxShadow: '3px 3px 0 0 rgba(0,0,0,0.1)',
               display: 'flex',
               alignItems: 'center',
               gap: '0.5rem',
             }}>
-              {sesion.es_matriz ? '🏛️' : '📍'} {sesion.sucursal_nombre}
+              {sesion.es_matriz ? <Building2 size={16} aria-hidden /> : <MapPin size={16} aria-hidden />}
+              {sesion.sucursal_nombre}
             </div>
           )}
           
-          {/* Selector de Ciclo Escolar */}
+          {/* Selector de Ciclo Escolar — indicador visual activo */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
             gap: '0.5rem',
           }}>
+            <BookOpen size={18} color="#6366F1" aria-hidden />
             <span style={{
               fontSize: '0.85rem',
               fontWeight: '600',
-              color: '#667eea',
+              color: '#1E1B4B',
             }}>
-              📚 Ciclo Escolar:
+              Ciclo:
             </span>
             <select
               value={cicloEscolar}
               onChange={(e) => setCicloEscolar(parseInt(e.target.value))}
               style={{
-                background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
-                color: 'white',
+                background: '#F59E0B',
+                color: '#1E1B4B',
                 padding: '0.4rem 0.8rem',
-                borderRadius: '12px',
-                border: '2px solid rgba(255, 255, 255, 0.3)',
+                borderRadius: '1rem',
+                border: '3px solid rgba(255,255,255,0.4)',
                 fontSize: '0.85rem',
                 fontWeight: 'bold',
                 cursor: 'pointer',
-                boxShadow: '0 2px 8px rgba(251, 191, 36, 0.4)',
+                boxShadow: '3px 3px 0 0 rgba(245, 158, 11, 0.4)',
                 outline: 'none',
               }}
+              aria-label="Seleccionar ciclo escolar activo"
             >
               {ciclosDisponibles.map(ciclo => (
                 <option 

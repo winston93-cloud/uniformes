@@ -11,6 +11,7 @@
     "@supabase/supabase-js": "^2.83.0",
     "jspdf": "^4.1.0",
     "jspdf-autotable": "^5.0.2",
+    "lucide-react": "^1.0.1",
     "next": "^16.1.6",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
@@ -24,6 +25,10 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "typescript": "^5"
+    "autoprefixer": "^10.4.27",
+    "postcss": "^8.5.8",
+    "tailwindcss": "^4.2.2",
+    "typescript": "^5",
+    "uipro-cli": "^2.2.3"
   }
 }

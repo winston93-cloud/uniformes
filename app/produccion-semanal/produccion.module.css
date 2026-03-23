@@ -1,62 +1,56 @@
 /* ========================================
-   Módulo Producción Semanal - UI/UX Pro Max
-   Paleta: Teal/Indigo (confianza) + Naranja (energía)
+   Módulo Producción Semanal — UI UX PRO MAX
+   Estilo: Claymorphism | Paleta: Indigo + Emerald
    ======================================== */
 
-/* Variables - Light mode (default) */
+/* Variables Design System */
 .wrapper {
-  --prod-bg: rgba(255, 255, 255, 0.08);
-  --prod-bg-card: rgba(255, 255, 255, 0.12);
-  --prod-bg-card-hover: rgba(255, 255, 255, 0.18);
-  --prod-text: #ffffff;
-  --prod-text-muted: rgba(255, 255, 255, 0.85);
-  --prod-text-subtle: rgba(255, 255, 255, 0.7);
-  --prod-border: rgba(255, 255, 255, 0.2);
-  --prod-shadow: rgba(0, 0, 0, 0.15);
-  --prod-teal: #0d9488;
-  --prod-teal-soft: rgba(13, 148, 136, 0.3);
-  --prod-indigo: #4f46e5;
-  --prod-indigo-soft: rgba(79, 70, 229, 0.3);
-  --prod-orange: #f97316;
-  --prod-orange-soft: rgba(249, 115, 22, 0.3);
-  --prod-skeleton: rgba(255, 255, 255, 0.15);
+  --primary: #6366F1;
+  --primary-soft: rgba(99, 102, 241, 0.15);
+  --secondary: #818CF8;
+  --cta: #10B981;
+  --cta-soft: rgba(16, 185, 129, 0.15);
+  --accent-salida: #F59E0B;
+  --accent-salida-soft: rgba(245, 158, 11, 0.15);
+  --bg: #F5F3FF;
+  --bg-card: #FFFFFF;
+  --text: #1E1B4B;
+  --text-muted: #64748B;
+  --border: #E2E8F0;
+  --shadow-soft: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-clay: 6px 6px 0 0 rgba(99, 102, 241, 0.12), inset 0 -2px 0 0 rgba(0, 0, 0, 0.04);
+  --shadow-clay-hover: 8px 8px 0 0 rgba(99, 102, 241, 0.15), inset 0 -2px 0 0 rgba(0, 0, 0, 0.04);
 }
 
-/* Dark mode - auto (prefers-color-scheme) */
-@media (prefers-color-scheme: dark) {
+/* Contenedor principal - fondo claro para claymorphism */
+.wrapper {
+  font-family: var(--font-fira), 'Fira Sans', -apple-system, sans-serif;
+  background: var(--bg);
+  border-radius: 1.5rem;
+  padding: 2rem;
+  max-width: 1100px;
+  margin: 0 auto;
+  box-shadow: var(--shadow-soft);
+}
+
+@media (max-width: 768px) {
   .wrapper {
-    --prod-bg: rgba(15, 23, 42, 0.6);
-    --prod-bg-card: rgba(30, 41, 59, 0.7);
-    --prod-bg-card-hover: rgba(51, 65, 85, 0.8);
-    --prod-text: #f1f5f9;
-    --prod-text-muted: #e2e8f0;
-    --prod-text-subtle: #94a3b8;
-    --prod-border: rgba(148, 163, 184, 0.2);
-    --prod-shadow: rgba(0, 0, 0, 0.4);
+    padding: 1.25rem;
+    border-radius: 1rem;
   }
 }
 
-/* Container - usa variables de next/font si existen */
-.wrapper {
-  font-family: var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  padding: 1.5rem 1rem;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-/* Header section */
+/* Header */
 .header {
   text-align: center;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
 }
 
 .title {
-  font-family: var(--font-poppins), 'Poppins', 'Inter', sans-serif;
-  font-size: clamp(1.75rem, 5vw, 2.5rem);
+  font-size: clamp(1.5rem, 4vw, 2rem);
   font-weight: 700;
-  color: var(--prod-text);
-  margin: 0 0 0.5rem 0;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  color: var(--text);
+  margin: 0 0 0.25rem 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -65,57 +59,63 @@
 }
 
 .subtitle {
-  color: var(--prod-text-muted);
-  font-size: clamp(0.95rem, 2.5vw, 1.1rem);
+  color: var(--text-muted);
+  font-size: 0.95rem;
   margin: 0;
 }
 
-/* Badge En Desarrollo */
+/* Badge En Desarrollo — Claymorphism */
 .badgeWrapper {
   display: inline-flex;
-  align-items: center;
-  margin-top: 1rem;
+  margin-top: 0.75rem;
 }
 
 .badge {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.35rem 0.75rem;
-  background: var(--prod-orange-soft);
-  border: 1px solid rgba(249, 115, 22, 0.5);
-  border-radius: 9999px;
+  padding: 0.35rem 0.85rem;
+  background: var(--accent-salida-soft);
+  border: 3px solid rgba(245, 158, 11, 0.4);
+  border-radius: 1rem;
   font-size: 0.8rem;
   font-weight: 600;
-  color: var(--prod-text);
+  color: #92400E;
   cursor: help;
+  box-shadow: 3px 3px 0 0 rgba(245, 158, 11, 0.2);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-/* Botón Volver - estilo Card/Button shadcn-like */
+.badge:hover {
+  transform: translateY(-1px);
+  box-shadow: 4px 4px 0 0 rgba(245, 158, 11, 0.25);
+}
+
+/* Botón Volver — Claymorphism */
 .backButton {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.625rem 1.5rem;
-  background: var(--prod-bg-card);
-  border: 1px solid var(--prod-border);
-  border-radius: 0.5rem;
-  color: var(--prod-text);
+  padding: 0.6rem 1.25rem;
+  background: var(--bg-card);
+  border: 3px solid var(--border);
+  border-radius: 1rem;
+  color: var(--text);
   font-size: 0.95rem;
-  font-weight: 500;
+  font-weight: 600;
   text-decoration: none;
   transition: all 0.2s ease;
   cursor: pointer;
-  margin-bottom: 2rem;
-  box-shadow: 0 1px 3px var(--prod-shadow);
+  margin-bottom: 1.5rem;
+  box-shadow: var(--shadow-clay);
 }
 
 .backButton:hover,
 .backButton:focus-visible {
-  background: var(--prod-bg-card-hover);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px var(--prod-shadow);
-  outline: 2px solid var(--prod-teal);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-clay-hover);
+  border-color: var(--primary);
+  outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
 
@@ -123,12 +123,56 @@
   outline: none;
 }
 
-/* Bento Grid */
+/* KPIs con métricas visuales */
+.kpiRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (max-width: 640px) {
+  .kpiRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+.kpiCard {
+  background: var(--bg-card);
+  border: 3px solid var(--border);
+  border-radius: 1rem;
+  padding: 1.25rem;
+  text-align: center;
+  box-shadow: var(--shadow-clay);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.kpiCard:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-clay-hover);
+}
+
+.kpiLabel {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.kpiValue {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+/* Bento Grid — Tarjetas Entrada / Salida Claymorphism */
 .bentoGrid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 1.25rem;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
 }
 
 @media (max-width: 768px) {
@@ -137,175 +181,187 @@
   }
 }
 
-/* Cards Entrada / Salida */
 .card {
-  background: var(--prod-bg-card);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--prod-border);
-  border-radius: 1rem;
-  padding: 1.5rem;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: var(--bg-card);
+  border: 3px solid var(--border);
+  border-radius: 1.25rem;
+  padding: 1.75rem;
+  transition: all 0.2s ease;
   cursor: pointer;
   position: relative;
-  overflow: hidden;
+  box-shadow: var(--shadow-clay);
 }
 
 .card:hover,
 .card:focus-within {
   transform: translateY(-4px);
-  box-shadow: 0 12px 40px var(--prod-shadow);
-  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: var(--shadow-clay-hover);
 }
 
 .card:focus-within {
-  outline: 2px solid var(--prod-teal);
+  outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
 
 .cardEntrada {
-  --card-accent: var(--prod-teal);
-  --card-accent-soft: var(--prod-teal-soft);
+  border-color: rgba(16, 185, 129, 0.35);
+  box-shadow: 5px 5px 0 0 rgba(16, 185, 129, 0.12), inset 0 -2px 0 0 rgba(0, 0, 0, 0.04);
+}
+
+.cardEntrada:hover {
+  box-shadow: 7px 7px 0 0 rgba(16, 185, 129, 0.18), inset 0 -2px 0 0 rgba(0, 0, 0, 0.04);
 }
 
 .cardSalida {
-  --card-accent: var(--prod-orange);
-  --card-accent-soft: var(--prod-orange-soft);
+  border-color: rgba(245, 158, 11, 0.35);
+  box-shadow: 5px 5px 0 0 rgba(245, 158, 11, 0.12), inset 0 -2px 0 0 rgba(0, 0, 0, 0.04);
+}
+
+.cardSalida:hover {
+  box-shadow: 7px 7px 0 0 rgba(245, 158, 11, 0.18), inset 0 -2px 0 0 rgba(0, 0, 0, 0.04);
 }
 
 .cardIcon {
-  width: 3rem;
-  height: 3rem;
-  border-radius: 0.75rem;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 1rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.5rem;
   margin-bottom: 1rem;
-  background: var(--card-accent-soft);
+  border: 3px solid;
 }
 
 .cardEntrada .cardIcon {
-  background: var(--prod-teal-soft);
+  background: var(--cta-soft);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: #059669;
 }
 
 .cardSalida .cardIcon {
-  background: var(--prod-orange-soft);
+  background: var(--accent-salida-soft);
+  border-color: rgba(245, 158, 11, 0.3);
+  color: #B45309;
 }
 
 .cardTitle {
-  font-family: var(--font-poppins), 'Poppins', sans-serif;
   font-size: 1.35rem;
   font-weight: 700;
-  color: var(--prod-text);
+  color: var(--text);
   margin: 0 0 0.25rem 0;
 }
 
 .cardDesc {
-  color: var(--prod-text-muted);
+  color: var(--text-muted);
   font-size: 0.9rem;
   line-height: 1.5;
   margin: 0;
 }
 
-/* KPIs teaser row */
-.kpiRow {
+.cardMetric {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-top: 0.75rem;
+  color: var(--primary);
+}
+
+/* Calendario semanal skeleton — atractivo */
+.calendarSection {
+  margin-top: 1.5rem;
+}
+
+.sectionTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+
+.calendarSkeleton {
+  background: var(--bg-card);
+  border: 3px solid var(--border);
+  border-radius: 1.25rem;
+  padding: 1.5rem;
+  box-shadow: var(--shadow-clay);
+}
+
+.calendarHeader {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 1rem;
-  margin-bottom: 2rem;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 1rem;
 }
 
-.kpiCard {
-  background: var(--prod-bg-card);
-  border: 1px solid var(--prod-border);
-  border-radius: 0.75rem;
-  padding: 1rem;
-  text-align: center;
-}
-
-.kpiLabel {
-  font-size: 0.75rem;
-  color: var(--prod-text-subtle);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 0.25rem;
-}
-
-/* Skeletons */
-.skeleton {
-  background: linear-gradient(
-    90deg,
-    var(--prod-skeleton) 25%,
-    rgba(255, 255, 255, 0.25) 50%,
-    var(--prod-skeleton) 75%
-  );
-  background-size: 200% 100%;
-  animation: skeletonPulse 1.5s ease-in-out infinite;
+.calendarDayLabel {
+  height: 2rem;
+  background: var(--primary-soft);
   border-radius: 0.5rem;
+  animation: skeletonPulse 1.5s ease-in-out infinite;
+}
+
+.calendarGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.5rem;
+}
+
+.calendarCell {
+  height: 3rem;
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background-size: 200% 100%;
+  border-radius: 0.5rem;
+  animation: skeletonPulse 1.5s ease-in-out infinite;
 }
 
 @keyframes skeletonPulse {
-  0%, 100% { background-position: 200% 0; }
-  50% { background-position: -200% 0; }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
 }
 
-.skeletonText {
-  height: 1rem;
-  margin-bottom: 0.5rem;
+/* Tabla producción skeleton */
+.tableSkeleton {
+  background: var(--bg-card);
+  border: 3px solid var(--border);
+  border-radius: 1.25rem;
+  padding: 1.5rem;
+  box-shadow: var(--shadow-clay);
+  margin-top: 1rem;
 }
 
-.skeletonTextShort {
-  width: 60%;
+.tableRow {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
 }
 
-.skeletonCalendar {
-  height: 12rem;
-  margin-bottom: 1rem;
+.tableCell {
+  flex: 1;
+  height: 2rem;
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background-size: 200% 100%;
+  border-radius: 0.5rem;
+  animation: skeletonPulse 1.5s ease-in-out infinite;
 }
 
-.skeletonTable {
-  height: 8rem;
-}
-
-/* Teaser section */
-.teaserSection {
-  margin-top: 2rem;
-}
-
-.teaserTitle {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--prod-text-muted);
-  margin-bottom: 1rem;
-}
-
-/* Footer text */
+/* Footer */
 .footerText {
   text-align: center;
-  color: var(--prod-text-subtle);
-  font-size: 0.9rem;
-  margin-top: 2rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-top: 1.5rem;
 }
 
-/* Animaciones de entrada */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .card:hover,
+  .kpiCard:hover,
+  .badge:hover {
+    transform: none;
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+  
+  .calendarDayLabel,
+  .calendarCell,
+  .tableCell {
+    animation: none;
   }
 }
-
-.animateIn {
-  opacity: 0;
-  animation: fadeInUp 0.5s ease-out forwards;
-}
-
-.animateInDelay1 { animation-delay: 0.1s; }
-.animateInDelay2 { animation-delay: 0.2s; }
-.animateInDelay3 { animation-delay: 0.3s; }
-.animateInDelay4 { animation-delay: 0.4s; }
