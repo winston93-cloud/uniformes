@@ -99,7 +99,7 @@ export default function ProduccionSemanalPage() {
             <motion.div variants={fadeUp}>
               <span
                 className={styles.badge}
-                title="Próximamente: registro entrada/salida, métricas en tiempo real, reportes."
+                title="Próximamente: gastos fijos semanales, producción, métricas en tiempo real, reportes."
                 aria-label="Módulo en desarrollo"
               >
                 <Wrench size={14} aria-hidden />
