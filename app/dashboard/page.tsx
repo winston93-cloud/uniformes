@@ -644,15 +644,32 @@ export default function Dashboard() {
             </p>
           </Link>
 
-          {/* Módulo de Producción Semanal */}
+          {/* Módulo de Producción Semanal - Módulo especial (acceso restringido) */}
           <Link 
             href="/produccion-semanal" 
             className="card"
             style={{
               background: 'linear-gradient(135deg, #7986cb 0%, #5c6bc0 100%)',
               border: '2px solid rgba(121, 134, 203, 0.4)',
+              position: 'relative',
             }}
           >
+            <div
+              style={{
+                position: 'absolute',
+                top: '0.5rem',
+                left: '0.5rem',
+                fontSize: '1.5rem',
+                zIndex: 10,
+                background: 'rgba(0, 0, 0, 0.25)',
+                borderRadius: '8px',
+                padding: '0.25rem 0.4rem',
+                lineHeight: 1,
+              }}
+              title="Módulo especial - acceso restringido"
+            >
+              🔒
+            </div>
             <div 
               style={{
                 fontSize: '2.5rem',
