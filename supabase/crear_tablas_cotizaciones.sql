@@ -27,12 +27,13 @@ CREATE TABLE IF NOT EXISTS cotizaciones (
   observaciones TEXT,
   condiciones_pago TEXT, -- Ej: "50% anticipo, 50% contra entrega"
   tiempo_entrega VARCHAR(100), -- Ej: "5-7 días hábiles"
+  fecha_entrega DATE, -- Fecha comprometida de entrega
   
   -- PDF generado
   pdf_url TEXT,
   
   -- Estado de la cotización
-  estado VARCHAR(20) DEFAULT 'vigente' CHECK (estado IN ('vigente', 'aceptada', 'rechazada', 'vencida')),
+  estado VARCHAR(20) DEFAULT 'emitido' CHECK (estado IN ('emitido', 'aprobado', 'trabajando', 'terminado')),
   
   -- Usuario que creó la cotización
   usuario_id UUID REFERENCES usuarios(id) ON DELETE SET NULL,
@@ -123,9 +124,10 @@ COMMENT ON TABLE cotizaciones IS 'Cotizaciones generadas para alumnos y clientes
 COMMENT ON COLUMN cotizaciones.folio IS 'Folio único de la cotización (formato: COT-YYYYMM-0001)';
 COMMENT ON COLUMN cotizaciones.tipo_cliente IS 'Tipo de cliente: alumno o externo';
 COMMENT ON COLUMN cotizaciones.fecha_vigencia IS 'Fecha hasta la cual es válida la cotización';
-COMMENT ON COLUMN cotizaciones.estado IS 'Estado actual: vigente, aceptada, rechazada, vencida';
+COMMENT ON COLUMN cotizaciones.estado IS 'Estado actual: emitido, aprobado, trabajando, terminado';
 COMMENT ON COLUMN cotizaciones.condiciones_pago IS 'Condiciones de pago acordadas';
 COMMENT ON COLUMN cotizaciones.tiempo_entrega IS 'Tiempo estimado de entrega';
+COMMENT ON COLUMN cotizaciones.fecha_entrega IS 'Fecha comprometida de entrega al cliente';
 
 COMMENT ON TABLE detalle_cotizacion IS 'Partidas/items de cada cotización';
 COMMENT ON COLUMN detalle_cotizacion.orden IS 'Orden de visualización de la partida';

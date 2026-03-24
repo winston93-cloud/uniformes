@@ -24,6 +24,7 @@ export interface NuevaCotizacion {
   externo_id?: string;
   tipo_cliente: 'alumno' | 'externo';
   fecha_vigencia?: string;
+  fecha_entrega?: string;
   observaciones?: string;
   condiciones_pago?: string;
   tiempo_entrega?: string;
@@ -127,7 +128,8 @@ export function useCotizaciones() {
           observaciones: nuevaCotizacion.observaciones || null,
           condiciones_pago: nuevaCotizacion.condiciones_pago || '50% anticipo, 50% contra entrega',
           tiempo_entrega: nuevaCotizacion.tiempo_entrega || '5-7 días hábiles',
-          estado: 'vigente',
+          fecha_entrega: nuevaCotizacion.fecha_entrega || null,
+          estado: 'emitido',
         }])
         .select()
         .single();
@@ -156,7 +158,7 @@ export function useCotizaciones() {
   };
 
   // Actualizar estado de cotización
-  const actualizarEstado = async (id: string, estado: 'vigente' | 'aceptada' | 'rechazada' | 'vencida') => {
+  const actualizarEstado = async (id: string, estado: 'emitido' | 'aprobado' | 'trabajando' | 'terminado') => {
     try {
       const { error } = await supabase
         .from('cotizaciones')

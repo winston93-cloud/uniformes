@@ -51,10 +51,10 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
 
   const cotizacionesAceptadas = useMemo(() => {
     return cotizaciones
-      .filter((c) => c.estado === 'aceptada')
+      .filter((c) => c.estado === 'aprobado')
       .sort((a, b) => {
-        const fa = a.fecha_vigencia || a.fecha_cotizacion || '9999-12-31';
-        const fb = b.fecha_vigencia || b.fecha_cotizacion || '9999-12-31';
+        const fa = a.fecha_entrega || a.fecha_vigencia || a.fecha_cotizacion || '9999-12-31';
+        const fb = b.fecha_entrega || b.fecha_vigencia || b.fecha_cotizacion || '9999-12-31';
         return fa.localeCompare(fb);
       });
   }, [cotizaciones]);

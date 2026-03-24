@@ -94,6 +94,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   const [observaciones, setObservaciones] = useState('');
   const [condicionesPago, setCondicionesPago] = useState('50% anticipo, 50% contra entrega');
   const [tiempoEntrega, setTiempoEntrega] = useState('5-7 días hábiles');
+  const [fechaEntrega, setFechaEntrega] = useState('');
   const [fechaVigencia, setFechaVigencia] = useState('');
 
   const [generando, setGenerando] = useState(false);
@@ -575,12 +576,17 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     doc.setFont('helvetica', 'normal');
     doc.text(tiempoEntrega, 14, finalY + 59);
 
+    doc.setFont('helvetica', 'bold');
+    doc.text('Fecha de Entrega:', 14, finalY + 69);
+    doc.setFont('helvetica', 'normal');
+    doc.text(fechaEntrega ? new Date(fechaEntrega + 'T12:00:00').toLocaleDateString('es-MX') : '—', 14, finalY + 76);
+
     if (observaciones) {
       doc.setFont('helvetica', 'bold');
-      doc.text('Observaciones:', 14, finalY + 69);
+      doc.text('Observaciones:', 14, finalY + 86);
       doc.setFont('helvetica', 'normal');
       const lineas = doc.splitTextToSize(observaciones, 180);
-      doc.text(lineas, 14, finalY + 76);
+      doc.text(lineas, 14, finalY + 93);
     }
 
     return doc;
@@ -611,6 +617,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
         externo_id: tipoCliente === 'externo' ? clienteSeleccionado.id : undefined,
         tipo_cliente: tipoCliente,
         fecha_vigencia: fechaVigencia || undefined,
+        fecha_entrega: fechaEntrega || undefined,
         observaciones,
         condiciones_pago: condicionesPago,
         tiempo_entrega: tiempoEntrega,
@@ -2027,16 +2034,29 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                 />
               </div>
 
-              <div>
-                <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem' }}>
-                  Tiempo de Entrega:
-                </label>
-                <input
-                  type="text"
-                  value={tiempoEntrega}
-                  onChange={(e) => setTiempoEntrega(e.target.value)}
-                  style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #ddd' }}
-                />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem' }}>
+                    Tiempo de Entrega:
+                  </label>
+                  <input
+                    type="text"
+                    value={tiempoEntrega}
+                    onChange={(e) => setTiempoEntrega(e.target.value)}
+                    style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #ddd' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem' }}>
+                    Fecha de Entrega:
+                  </label>
+                  <input
+                    type="date"
+                    value={fechaEntrega}
+                    onChange={(e) => setFechaEntrega(e.target.value)}
+                    style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #ddd' }}
+                  />
+                </div>
               </div>
             </div>
 
@@ -2192,9 +2212,9 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                             padding: '0.4rem 0.8rem',
                             borderRadius: '20px',
                             background: 
-                              cot.estado === 'vigente' ? '#10b981' :
-                              cot.estado === 'aceptada' ? '#3b82f6' :
-                              cot.estado === 'rechazada' ? '#ef4444' : '#1e40af',
+                              cot.estado === 'emitido' ? '#10b981' :
+                              cot.estado === 'aprobado' ? '#3b82f6' :
+                              cot.estado === 'trabajando' ? '#f59e0b' : '#6b7280',
                             color: 'white',
                             fontSize: '0.8rem',
                             fontWeight: 'bold',
