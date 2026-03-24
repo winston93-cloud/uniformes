@@ -152,6 +152,54 @@ export default function ProduccionSemanalPage() {
                 onGuardar={(items) => setItemsProduccion(items)}
               />
             )}
+
+            <motion.button
+              type="button"
+              className={`${styles.actionCard} ${styles.actionCardTerminada}`}
+              variants={fadeUp}
+              whileHover={{ y: -6, transition: { duration: 0.3 } }}
+              whileTap={{ scale: 0.99 }}
+              aria-label="Producción terminada"
+              title="Próximamente"
+              style={{ border: 'none', font: 'inherit', textAlign: 'left', width: '100%', cursor: 'pointer' }}
+            >
+              <div className={styles.actionIcon}>
+                <span className={styles.actionEmojiIcon} aria-hidden>
+                  ✅
+                </span>
+              </div>
+              <h2 className={styles.actionTitle} style={{ fontFamily: 'var(--font-outfit)' }}>
+                Producción terminada
+              </h2>
+              <p className={styles.actionDesc}>
+                Prendas y lotes marcados como finalizados en la semana
+              </p>
+              <div className={styles.actionMetric}>—</div>
+            </motion.button>
+
+            <motion.button
+              type="button"
+              className={`${styles.actionCard} ${styles.actionCardHistorial}`}
+              variants={fadeUp}
+              whileHover={{ y: -6, transition: { duration: 0.3 } }}
+              whileTap={{ scale: 0.99 }}
+              aria-label="Historial de producción"
+              title="Próximamente"
+              style={{ border: 'none', font: 'inherit', textAlign: 'left', width: '100%', cursor: 'pointer' }}
+            >
+              <div className={styles.actionIcon}>
+                <span className={styles.actionEmojiIcon} aria-hidden>
+                  📜
+                </span>
+              </div>
+              <h2 className={styles.actionTitle} style={{ fontFamily: 'var(--font-outfit)' }}>
+                Historial
+              </h2>
+              <p className={styles.actionDesc}>
+                Consulta semanas anteriores, lotes y movimientos registrados
+              </p>
+              <div className={styles.actionMetric}>—</div>
+            </motion.button>
           </motion.section>
 
           {/* Dashboard de Producción - items seleccionados */}

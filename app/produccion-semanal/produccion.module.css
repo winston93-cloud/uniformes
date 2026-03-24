@@ -203,6 +203,7 @@
   grid-template-columns: repeat(2, 1fr);
   gap: 1.5rem;
   margin-bottom: 2rem;
+  align-items: stretch;
 }
 
 @media (max-width: 768px) {
@@ -219,6 +220,9 @@
   position: relative;
   overflow: hidden;
   box-shadow: var(--glass-shadow);
+  min-height: 260px;
+  display: flex;
+  flex-direction: column;
 }
 
 .actionCard::before {
@@ -237,6 +241,14 @@
 
 .actionCardSalida::before {
   background: linear-gradient(90deg, #EA580C, #FB923C);
+}
+
+.actionCardTerminada::before {
+  background: linear-gradient(90deg, #0ea5e9, #06b6d4);
+}
+
+.actionCardHistorial::before {
+  background: linear-gradient(90deg, #6366f1, #a855f7);
 }
 
 .actionCard:hover {
@@ -265,6 +277,32 @@
   color: var(--warning);
 }
 
+.actionCardTerminada .actionIcon {
+  background: rgba(14, 165, 233, 0.14);
+  color: #0284c7;
+}
+
+.wrapper[data-theme="dark"] .actionCardTerminada .actionIcon {
+  background: rgba(56, 189, 248, 0.18);
+  color: #38bdf8;
+}
+
+.actionCardHistorial .actionIcon {
+  background: rgba(99, 102, 241, 0.14);
+  color: #6366f1;
+}
+
+.wrapper[data-theme="dark"] .actionCardHistorial .actionIcon {
+  background: rgba(129, 140, 248, 0.2);
+  color: #a5b4fc;
+}
+
+.actionEmojiIcon {
+  font-size: 1.85rem;
+  line-height: 1;
+  display: block;
+}
+
 .actionTitle {
   font-size: 1.35rem;
   font-weight: 700;
@@ -282,7 +320,8 @@
 .actionMetric {
   font-size: 1.75rem;
   font-weight: 700;
-  margin-top: 1rem;
+  margin-top: auto;
+  padding-top: 1rem;
   color: var(--text);
 }
 
