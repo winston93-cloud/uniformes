@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useState } from 'react';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
@@ -14,7 +13,6 @@ import {
   Wrench,
   Sun,
   Moon,
-  TrendingUp,
 } from 'lucide-react';
 import ModalGastosFijos from '@/components/ModalGastosFijos';
 import ModalProduccion, { type ItemProduccion } from '@/components/ModalProduccion';
@@ -22,23 +20,6 @@ import styles from './produccion.module.css';
 
 const outfit = Outfit({ weight: ['500', '600', '700'], subsets: ['latin'], variable: '--font-outfit' });
 const dmSans = DM_Sans({ weight: ['400', '500', '600', '700'], subsets: ['latin'], variable: '--font-dm' });
-
-// Get current week dates (Mon-Sun)
-function getWeekDates() {
-  const today = new Date();
-  const day = today.getDay();
-  const diff = day === 0 ? -6 : 1 - day; // Monday as start
-  const monday = new Date(today);
-  monday.setDate(today.getDate() + diff);
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(monday);
-    d.setDate(monday.getDate() + i);
-    return d;
-  });
-}
-
-// Mock trend data for mini chart
-const TREND_DATA = [40, 65, 45, 80, 55, 70, 60];
 
 const fadeUp = {
   initial: { opacity: 0, y: 20 },
@@ -53,19 +34,10 @@ const stagger = {
 };
 
 export default function ProduccionSemanalPage() {
-  const { sesion } = useAuth();
   const [darkMode, setDarkMode] = useState(false);
   const [modalGastosAbierto, setModalGastosAbierto] = useState(false);
   const [modalProduccionAbierto, setModalProduccionAbierto] = useState(false);
   const [itemsProduccion, setItemsProduccion] = useState<ItemProduccion[]>([]);
-  const weekDates = useMemo(getWeekDates, []);
-
-  const today = new Date();
-  const isToday = (d: Date) =>
-    d.getDate() === today.getDate() &&
-    d.getMonth() === today.getMonth() &&
-    d.getFullYear() === today.getFullYear();
-
 
   return (
     <LayoutWrapper>
@@ -121,39 +93,6 @@ export default function ProduccionSemanalPage() {
               </Link>
             </motion.div>
           </div>
-
-          {/* KPI Cards with mini charts */}
-          <motion.section className={styles.kpiGrid} aria-label="Métricas" variants={fadeUp}>
-            <motion.div className={styles.kpiCard} variants={fadeUp} whileHover={{ y: -4 }}>
-              <p className={styles.kpiLabel}>Insumos esta semana</p>
-              <div className={styles.kpiValue}>—</div>
-              <div className={styles.miniChart}>
-                {TREND_DATA.map((h, i) => (
-                  <motion.div
-                    key={i}
-                    className={styles.miniBar}
-                    initial={{ height: 0 }}
-                    animate={{ height: `${h}%` }}
-                    transition={{ delay: 0.2 + i * 0.05, duration: 0.5 }}
-                  />
-                ))}
-              </div>
-            </motion.div>
-            <motion.div className={styles.kpiCard} variants={fadeUp} whileHover={{ y: -4 }}>
-              <p className={styles.kpiLabel}>Prendas terminadas</p>
-              <div className={styles.kpiValue}>—</div>
-              <p className={`${styles.kpiTrend} ${styles.kpiTrendUp}`}>
-                <TrendingUp size={14} /> Próximamente
-              </p>
-            </motion.div>
-            <motion.div className={styles.kpiCard} variants={fadeUp} whileHover={{ y: -4 }}>
-              <p className={styles.kpiLabel}>En producción</p>
-              <div className={styles.kpiValue}>—</div>
-              <p className={styles.kpiTrend}>
-                <TrendingUp size={14} style={{ opacity: 0.5 }} /> —
-              </p>
-            </motion.div>
-          </motion.section>
 
           {/* Action Cards */}
           <motion.section className={styles.cardsGrid} aria-label="Acciones" variants={fadeUp}>
@@ -289,33 +228,6 @@ export default function ProduccionSemanalPage() {
               </div>
             </motion.section>
           )}
-
-          {/* Real Calendar */}
-          <motion.section className={styles.calendarSection} variants={fadeUp}>
-            <h3 className={styles.sectionTitle}>
-              Semana del {weekDates[0].getDate()} de{' '}
-              {weekDates[0].toLocaleDateString('es-MX', { month: 'long' })}
-            </h3>
-            <div className={styles.calendar}>
-              <div className={styles.calendarHeader}>
-                {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map((d) => (
-                  <div key={d} className={styles.calendarDayName}>
-                    {d}
-                  </div>
-                ))}
-              </div>
-              <div className={styles.calendarGrid}>
-                {weekDates.map((d) => (
-                  <div
-                    key={d.toISOString()}
-                    className={`${styles.calendarCell} ${isToday(d) ? styles.calendarCellToday : ''}`}
-                  >
-                    {d.getDate()}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </motion.section>
 
           <motion.p className={styles.footer} variants={fadeUp}>
             Módulo en desarrollo — funcionalidades próximamente
