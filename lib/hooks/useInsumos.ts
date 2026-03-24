@@ -12,7 +12,7 @@ export function useInsumos() {
       setLoading(true);
       const { data, error } = await supabase
         .from('insumos')
-        .select('*, presentacion:presentaciones(*)')
+        .select('*, presentacion:presentaciones(*), ubicacion_almacenamiento:ubicaciones_almacenamiento(*)')
         .order('created_at', { ascending: false});
 
       if (error) throw error;
@@ -146,7 +146,7 @@ export function useInsumos() {
     try {
       const { data, error } = await supabase
         .from('insumos')
-        .select('*, presentacion:presentaciones(*)')
+        .select('*, presentacion:presentaciones(*), ubicacion_almacenamiento:ubicaciones_almacenamiento(*)')
         .or(`nombre.ilike.%${query}%,codigo.ilike.%${query}%,descripcion.ilike.%${query}%`)
         .order('nombre', { ascending: true });
 

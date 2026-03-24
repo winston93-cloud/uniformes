@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import { useInsumos } from '@/lib/hooks/useInsumos';
 import { usePresentaciones } from '@/lib/hooks/usePresentaciones';
+import { useUbicacionesAlmacenamiento } from '@/lib/hooks/useUbicacionesAlmacenamiento';
 import type { Insumo } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -48,6 +49,7 @@ export default function InsumosPage() {
   const inputBusquedaRef = useRef<HTMLInputElement>(null);
   const { insumos, loading, error, createInsumo, updateInsumo, deleteInsumo } = useInsumos();
   const { presentaciones, loading: loadingPresentaciones } = usePresentaciones();
+  const { ubicaciones, loading: loadingUbicaciones } = useUbicacionesAlmacenamiento();
 
   const [formData, setFormData] = useState({
     nombre: '',
@@ -58,6 +60,7 @@ export default function InsumosPage() {
     costo_compra: '',
     stock_inicial: '',
     stock_minimo: '',
+    ubicacion_almacenamiento_id: '',
     activo: true,
   });
 
@@ -75,6 +78,7 @@ export default function InsumosPage() {
       stock_inicial: parseFloat(formData.stock_inicial) || 0,
       stock: parseFloat(formData.stock_inicial) || 0, // Stock actual = stock inicial
       stock_minimo: parseFloat(formData.stock_minimo) || 0,
+      ubicacion_almacenamiento_id: formData.ubicacion_almacenamiento_id || null,
       activo: formData.activo,
     };
 
@@ -90,7 +94,7 @@ export default function InsumosPage() {
       setTimeout(() => {
         setModalExitoAbierto(false);
         setMensajeExito('');
-        setFormData({ nombre: '', codigo: '', descripcion: '', presentacion_id: '', cantidad_por_presentacion: '', costo_compra: '', stock_inicial: '', stock_minimo: '', activo: true });
+        setFormData({ nombre: '', codigo: '', descripcion: '', presentacion_id: '', cantidad_por_presentacion: '', costo_compra: '', stock_inicial: '', stock_minimo: '', ubicacion_almacenamiento_id: '', activo: true });
         setMostrarFormulario(false);
         setInsumoEditando(null);
         setBotonEstado('normal');
@@ -110,7 +114,7 @@ export default function InsumosPage() {
       setTimeout(() => {
         setModalExitoAbierto(false);
         setMensajeExito('');
-        setFormData({ nombre: '', codigo: '', descripcion: '', presentacion_id: '', cantidad_por_presentacion: '', costo_compra: '', stock_inicial: '', stock_minimo: '', activo: true });
+        setFormData({ nombre: '', codigo: '', descripcion: '', presentacion_id: '', cantidad_por_presentacion: '', costo_compra: '', stock_inicial: '', stock_minimo: '', ubicacion_almacenamiento_id: '', activo: true });
         setMostrarFormulario(false);
         setInsumoEditando(null);
         setBotonEstado('normal');
@@ -132,6 +136,7 @@ export default function InsumosPage() {
       costo_compra: insumo.costo_compra?.toString() || '0',
       stock_inicial: insumo.stock_inicial?.toString() || '0',
       stock_minimo: insumo.stock_minimo?.toString() || '0',
+      ubicacion_almacenamiento_id: insumo.ubicacion_almacenamiento_id || '',
       activo: insumo.activo,
     });
     setBotonEstado('normal');
@@ -152,7 +157,7 @@ export default function InsumosPage() {
 
   const handleNuevo = () => {
     setInsumoEditando(null);
-    setFormData({ nombre: '', codigo: '', descripcion: '', presentacion_id: '', cantidad_por_presentacion: '', costo_compra: '', stock_inicial: '', stock_minimo: '', activo: true });
+    setFormData({ nombre: '', codigo: '', descripcion: '', presentacion_id: '', cantidad_por_presentacion: '', costo_compra: '', stock_inicial: '', stock_minimo: '', ubicacion_almacenamiento_id: '', activo: true });
     setBotonEstado('normal');
     setMensajeError('');
     setMostrarFormulario(true);
@@ -184,7 +189,8 @@ export default function InsumosPage() {
     insumo.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
     (insumo.codigo && insumo.codigo.toLowerCase().includes(busqueda.toLowerCase())) ||
     (insumo.descripcion && insumo.descripcion.toLowerCase().includes(busqueda.toLowerCase())) ||
-    (insumo.presentacion?.nombre && insumo.presentacion.nombre.toLowerCase().includes(busqueda.toLowerCase()))
+    (insumo.presentacion?.nombre && insumo.presentacion.nombre.toLowerCase().includes(busqueda.toLowerCase())) ||
+    (insumo.ubicacion_almacenamiento?.nombre && insumo.ubicacion_almacenamiento.nombre.toLowerCase().includes(busqueda.toLowerCase()))
   );
 
   if (loading) {
@@ -405,6 +411,27 @@ export default function InsumosPage() {
               </div>
 
               <div className="form-group">
+                <label className="form-label">📍 Dónde está almacenado</label>
+                <select
+                  className="form-select"
+                  value={formData.ubicacion_almacenamiento_id}
+                  onChange={(e) => setFormData({ ...formData, ubicacion_almacenamiento_id: e.target.value })}
+                  disabled={loadingUbicaciones}
+                  style={{
+                    borderLeft: '4px solid #8b5cf6',
+                  }}
+                >
+                  <option value="">Seleccionar ubicación (opcional)</option>
+                  {ubicaciones.filter(u => u.activo).map(ubic => (
+                    <option key={ubic.id} value={ubic.id}>{ubic.nombre}</option>
+                  ))}
+                </select>
+                <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
+                  Ubicación física donde se guarda el insumo. <a href="/ubicaciones-almacenamiento" style={{ color: '#007bff', textDecoration: 'underline' }}>Gestionar ubicaciones</a>
+                </small>
+              </div>
+
+              <div className="form-group">
                 <label className="form-label">Descripción</label>
                 <textarea
                   className="form-textarea"
@@ -448,7 +475,7 @@ export default function InsumosPage() {
                   onClick={() => {
                     setMostrarFormulario(false);
                     setInsumoEditando(null);
-                    setFormData({ nombre: '', codigo: '', descripcion: '', presentacion_id: '', cantidad_por_presentacion: '', costo_compra: '', stock_inicial: '', stock_minimo: '', activo: true });
+                    setFormData({ nombre: '', codigo: '', descripcion: '', presentacion_id: '', cantidad_por_presentacion: '', costo_compra: '', stock_inicial: '', stock_minimo: '', ubicacion_almacenamiento_id: '', activo: true });
                     setTimeout(() => {
                       inputBusquedaRef.current?.focus();
                     }, 100);
@@ -476,6 +503,7 @@ export default function InsumosPage() {
                 <th>Nombre</th>
                 <th>Presentación</th>
                 <th>Cantidad</th>
+                <th>Almacenado</th>
                 <th>Descripción</th>
                 <th>Estado</th>
                 <th>Acciones</th>
@@ -484,7 +512,7 @@ export default function InsumosPage() {
             <tbody>
               {insumosFiltrados.length === 0 ? (
                 <tr>
-                  <td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                  <td colSpan={8} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
                     {busqueda ? 'No se encontraron insumos con ese criterio.' : 'No hay insumos registrados. Crea tu primer insumo.'}
                   </td>
                 </tr>
@@ -496,6 +524,11 @@ export default function InsumosPage() {
                     <td data-label="Presentación"><span className="badge badge-info">{insumo.presentacion?.nombre || '-'}</span></td>
                     <td data-label="Cantidad" style={{ fontWeight: '600', color: '#3b82f6' }}>
                       {insumo.cantidad_por_presentacion} {insumo.cantidad_por_presentacion === 1 ? 'unidad' : 'unidades'}
+                    </td>
+                    <td data-label="Almacenado">
+                      <span className="badge badge-info" style={{ backgroundColor: insumo.ubicacion_almacenamiento ? '#8b5cf6' : '#94a3b8' }}>
+                        {insumo.ubicacion_almacenamiento?.nombre || '-'}
+                      </span>
                     </td>
                     <td data-label="Descripción">{insumo.descripcion || '-'}</td>
                     <td data-label="Estado">
@@ -560,7 +593,7 @@ export default function InsumosPage() {
                   setMensajeError('');
                   setMostrarFormulario(false);
                   setInsumoEditando(null);
-                  setFormData({ nombre: '', codigo: '', descripcion: '', presentacion_id: '', cantidad_por_presentacion: '', costo_compra: '', stock_inicial: '', stock_minimo: '', activo: true });
+                  setFormData({ nombre: '', codigo: '', descripcion: '', presentacion_id: '', cantidad_por_presentacion: '', costo_compra: '', stock_inicial: '', stock_minimo: '', ubicacion_almacenamiento_id: '', activo: true });
                   setBotonEstado('normal');
                 }}
               >

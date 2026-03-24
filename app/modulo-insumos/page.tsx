@@ -129,6 +129,47 @@ export default function ModuloInsumosPage() {
               Unidades de medida y presentaciones para insumos
             </p>
           </Link>
+
+          {/* Ubicaciones de Almacenamiento */}
+          <Link 
+            href="/ubicaciones-almacenamiento" 
+            className="card"
+            style={{
+              background: 'linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%)',
+              border: '2px solid rgba(167, 139, 250, 0.4)',
+            }}
+          >
+            <div 
+              style={{
+                fontSize: '2.5rem',
+                background: 'rgba(255, 255, 255, 0.3)',
+                borderRadius: '12px',
+                width: '60px',
+                height: '60px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 1rem',
+              }}
+            >
+              📍
+            </div>
+            <h3 style={{ 
+              margin: '0 0 0.5rem 0',
+              fontSize: '1.3rem',
+              fontWeight: '600',
+              color: 'white',
+            }}>
+              Ubicaciones de Almacenamiento
+            </h3>
+            <p style={{ 
+              margin: 0,
+              fontSize: '0.95rem',
+              color: 'rgba(255, 255, 255, 0.9)',
+            }}>
+              Taller, Bodega uno, Bodega dos y más
+            </p>
+          </Link>
         </div>
       </div>
     </LayoutWrapper>

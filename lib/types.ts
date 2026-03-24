@@ -133,6 +133,15 @@ export interface Presentacion {
   updated_at?: string;
 }
 
+export interface UbicacionAlmacenamiento {
+  id: string;
+  nombre: string;
+  descripcion: string | null;
+  activo: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface Insumo {
   id: string;
   codigo: string;
@@ -144,10 +153,12 @@ export interface Insumo {
   stock_inicial?: number; // Stock inicial del insumo
   stock?: number; // Stock actual del insumo
   stock_minimo?: number; // Cantidad mínima de stock para alertas
+  ubicacion_almacenamiento_id?: string | null; // Dónde está almacenado (Taller, Bodega uno, etc.)
   activo: boolean;
   created_at?: string;
   updated_at?: string;
   presentacion?: Presentacion;
+  ubicacion_almacenamiento?: UbicacionAlmacenamiento | null;
 }
 
 export interface Cotizacion {
@@ -163,8 +174,9 @@ export interface Cotizacion {
   observaciones: string | null;
   condiciones_pago: string | null;
   tiempo_entrega: string | null;
+  fecha_entrega: string | null;
   pdf_url: string | null;
-  estado: 'vigente' | 'aceptada' | 'rechazada' | 'vencida';
+  estado: 'emitido' | 'aprobado' | 'trabajando' | 'terminado';
   usuario_id: string | null;
   created_at?: string;
   updated_at?: string;
