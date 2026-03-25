@@ -17,6 +17,8 @@ interface ModalGastosFijosProps {
 export default function ModalGastosFijos({ onClose }: ModalGastosFijosProps) {
   const [mounted, setMounted] = useState(false);
   const [gastos, setGastos] = useState<GastoFijo[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -48,9 +50,39 @@ export default function ModalGastosFijos({ onClose }: ModalGastosFijosProps) {
     );
   };
 
-  const handleGuardar = () => {
-    // TODO: persistir en backend cuando exista la API
-    onClose();
+  const handleGuardar = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      const gastosLimpios = gastos
+        .map((g) => ({ nombre: g.nombre.trim(), monto: Number(g.monto) }))
+        .filter((g) => g.nombre.length > 0 && !Number.isNaN(g.monto) && g.monto >= 0);
+
+      if (gastosLimpios.length === 0) {
+        setError('Agrega al menos un concepto con nombre y monto válido.');
+        return;
+      }
+
+      const res = await fetch('/api/gastos-fijos-semanales/guardar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ gastos: gastosLimpios }),
+      });
+
+      const json = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(json?.error || 'No se pudo guardar los gastos');
+      }
+      if (!json?.success) {
+        throw new Error(json?.error || 'No se pudo guardar los gastos');
+      }
+
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error al guardar');
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (!mounted) return null;
@@ -261,6 +293,7 @@ export default function ModalGastosFijos({ onClose }: ModalGastosFijosProps) {
             type="button"
             className="btn btn-secondary"
             onClick={onClose}
+            disabled={saving}
           >
             Cancelar
           </button>
@@ -268,10 +301,17 @@ export default function ModalGastosFijos({ onClose }: ModalGastosFijosProps) {
             type="button"
             className="btn btn-success"
             onClick={handleGuardar}
+            disabled={saving}
           >
-            Guardar
+            {saving ? 'Guardando...' : 'Guardar'}
           </button>
         </div>
+
+        {error && (
+          <div style={{ marginTop: '0.75rem', color: '#b91c1c', fontSize: '0.9rem', padding: '0 1rem 1rem 1rem' }}>
+            {error}
+          </div>
+        )}
       </div>
     </div>
   );
