@@ -12,6 +12,48 @@ import {
 } from '@/lib/cotizacionesSort';
 import { getWeekForDate, toISODate } from '@/lib/produccion-semanal-week';
 
+/** Fila guardada en InsForge para esta semana (permite conservar partidas sin reexpandir cotizaciones). */
+type PlanItemSemana = {
+  detalle_id: string;
+  cotizacion_id: string;
+  cotizacion_folio: string;
+  modelo: string;
+  piezas: number;
+  precio_unitario: number;
+  costo_unitario: number;
+};
+
+type SeleccionRow = {
+  cotizacion_id: string;
+  cotizacion_folio: string;
+  detalle_id: string;
+  modelo: string;
+  piezas: number;
+  precio_unitario: number;
+  costo_unitario: number;
+  ganancia_unitaria: number;
+  ganancia_total: number;
+};
+
+function rowDesdePlanItemGuardado(p: PlanItemSemana): SeleccionRow {
+  const precio = Number(p.precio_unitario) || 0;
+  const costo = Number(p.costo_unitario) || 0;
+  const piezas = Number(p.piezas) || 0;
+  const ganU = Number((precio - costo).toFixed(2));
+  const ganT = Number((ganU * piezas).toFixed(2));
+  return {
+    cotizacion_id: p.cotizacion_id,
+    cotizacion_folio: p.cotizacion_folio,
+    detalle_id: p.detalle_id,
+    modelo: p.modelo,
+    piezas,
+    precio_unitario: precio,
+    costo_unitario: costo,
+    ganancia_unitaria: ganU,
+    ganancia_total: ganT,
+  };
+}
+
 export interface ItemProduccion {
   cotizacion_id: string;
   folio: string;
@@ -57,6 +99,8 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
   const [ocupadosGlobal, setOcupadosGlobal] = useState<Record<string, string>>({});
   const [loadingContext, setLoadingContext] = useState(false);
   const [guardandoSeleccion, setGuardandoSeleccion] = useState(false);
+  /** Ítems ya persistidos en esta semana (evita perder partidas al guardar solo lo expandido). */
+  const [planItemsCache, setPlanItemsCache] = useState<PlanItemSemana[]>([]);
 
   const { cotizaciones, obtenerCotizacion } = useCotizaciones();
 
@@ -98,8 +142,10 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
         const json = await res.json().catch(() => null);
         if (cancelled || !json?.success) return;
         setOcupadosGlobal((json.ocupados as Record<string, string>) || {});
-        const ids = (json.planItems as { detalle_id: string }[] | undefined) || [];
-        setSeleccionados(new Set(ids.map((x) => x.detalle_id)));
+        const rawItems = (json.planItems as PlanItemSemana[] | undefined) || [];
+        setPlanItemsCache(rawItems);
+        const ids = rawItems.map((x) => x.detalle_id);
+        setSeleccionados(new Set(ids));
       } catch {
         if (!cancelled) setOcupadosGlobal({});
       } finally {
@@ -186,18 +232,7 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
   const estaSeleccionado = (detalleId: string) => seleccionados.has(detalleId);
 
   const seleccionInfo = useMemo(() => {
-    const rows: Array<{
-      cotizacion_id: string;
-      cotizacion_folio: string;
-      detalle_id: string;
-      modelo: string;
-      piezas: number;
-      precio_unitario: number;
-      costo_unitario: number;
-      ganancia_unitaria: number;
-      ganancia_total: number;
-    }> = [];
-
+    const desdeExpandido = new Map<string, SeleccionRow>();
     for (const cot of cotizacionesProduccion) {
       const detalles = detallesExpandidos[cot.id] || [];
       for (const d of detalles as any[]) {
@@ -209,7 +244,7 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
         const piezas = Number(d.cantidad) || 0;
         const ganU = Number((precio - costoUnit).toFixed(2));
         const ganT = Number((ganU * piezas).toFixed(2));
-        rows.push({
+        desdeExpandido.set(d.id, {
           cotizacion_id: cot.id,
           cotizacion_folio: cot.folio,
           detalle_id: d.id,
@@ -223,9 +258,29 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
       }
     }
 
+    const rows: SeleccionRow[] = [];
+    for (const detalleId of seleccionados) {
+      if (!detalleDisponibleEnEstaSemana(detalleId)) continue;
+      const exp = desdeExpandido.get(detalleId);
+      if (exp) {
+        rows.push(exp);
+        continue;
+      }
+      const cached = planItemsCache.find((p) => p.detalle_id === detalleId);
+      if (cached) rows.push(rowDesdePlanItemGuardado(cached));
+    }
+
     const gananciasTotal = rows.reduce((s, r) => s + r.ganancia_total, 0);
     return { rows, gananciasTotal };
-  }, [cotizacionesProduccion, detallesExpandidos, seleccionados, costoPorId, ocupadosGlobal, fechaInicioSemanaActual]);
+  }, [
+    cotizacionesProduccion,
+    detallesExpandidos,
+    seleccionados,
+    costoPorId,
+    ocupadosGlobal,
+    fechaInicioSemanaActual,
+    planItemsCache,
+  ]);
 
   const minimoAlcanzado = seleccionInfo.gananciasTotal >= gastosFijosTotal && gastosFijosTotal > 0;
 
@@ -236,22 +291,17 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
       : 0;
 
   const handleGuardar = () => {
-    const items: ItemProduccion[] = [];
-    cotizacionesProduccion.forEach((cot) => {
-      const detalles = detallesExpandidos[cot.id] || [];
-      detalles.forEach((d) => {
-        if (!detalleDisponibleEnEstaSemana(d.id)) return;
-        if (seleccionados.has(d.id)) {
-          items.push({
-            cotizacion_id: cot.id,
-            folio: cot.folio,
-            detalle_id: d.id,
-            modelo: d.prenda_nombre,
-            piezas: d.cantidad,
-            fecha_entrega: cot.fecha_entrega,
-          });
-        }
-      });
+    const porCot = new Map(cotizacionesProduccion.map((c) => [c.id, c] as const));
+    const items: ItemProduccion[] = seleccionInfo.rows.map((r) => {
+      const cot = porCot.get(r.cotizacion_id);
+      return {
+        cotizacion_id: r.cotizacion_id,
+        folio: r.cotizacion_folio,
+        detalle_id: r.detalle_id,
+        modelo: r.modelo,
+        piezas: r.piezas,
+        fecha_entrega: cot?.fecha_entrega,
+      };
     });
     items.sort(compareItemsProduccionPorFechaEntrega);
     onGuardar(items);
@@ -291,8 +341,9 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
       const ctx = await ctxRes.json().catch(() => null);
       if (ctx?.success) {
         setOcupadosGlobal((ctx.ocupados as Record<string, string>) || {});
-        const ids = (ctx.planItems as { detalle_id: string }[] | undefined) || [];
-        setSeleccionados(new Set(ids.map((x) => x.detalle_id)));
+        const rawItems = (ctx.planItems as PlanItemSemana[] | undefined) || [];
+        setPlanItemsCache(rawItems);
+        setSeleccionados(new Set(rawItems.map((x) => x.detalle_id)));
       }
 
       handleGuardar();
@@ -369,7 +420,8 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
               <h2 style={{ margin: 0, fontSize: 'clamp(1.1rem, 2.5vw, 1.35rem)' }}>Producción semanal</h2>
               <p style={{ margin: '0.35rem 0 0', fontSize: '0.85rem', color: '#6b7280', lineHeight: 1.4 }}>
                 Cotizaciones <strong>aprobadas</strong> y <strong>terminadas</strong> (orden: fecha de entrega). Expande
-                una cotización y elige las partidas para el plan.
+                una cotización y elige las partidas. Puedes guardar aunque no alcances el mínimo; si llegan más
+                cotizaciones en la semana, añade partidas y vuelve a guardar: se suman al plan de esta semana.
               </p>
             </div>
             <button type="button" className="modal-close" onClick={onClose} aria-label="Cerrar">
