@@ -99,10 +99,28 @@ export default function ModalGastosFijos({ onClose }: ModalGastosFijosProps) {
         return;
       }
 
+      // Acumular: mantenemos los ya guardados y aplicamos/actualizamos con lo que viene del editor.
+      const merged = new Map<string, number>();
+      for (const g of gastosGuardados) {
+        const nombre = g.nombre.trim();
+        if (nombre.length > 0 && !Number.isNaN(g.monto) && g.monto >= 0) {
+          merged.set(nombre, g.monto);
+        }
+      }
+
+      for (const g of gastosLimpios) {
+        merged.set(g.nombre, g.monto);
+      }
+
+      const gastosParaGuardar = Array.from(merged.entries()).map(([nombre, monto]) => ({
+        nombre,
+        monto,
+      }));
+
       const res = await fetch('/api/gastos-fijos-semanales/guardar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gastos: gastosLimpios }),
+        body: JSON.stringify({ gastos: gastosParaGuardar }),
       });
 
       const json = await res.json().catch(() => null);
