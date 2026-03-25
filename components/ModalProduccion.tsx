@@ -35,6 +35,26 @@ function formatWeekRange(monday: Date, sunday: Date) {
   return `${monday.getDate()} - ${sunday.getDate()} ${sunday.toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })}`;
 }
 
+function fmtFechaCot(fecha: string | null | undefined) {
+  if (!fecha) return '—';
+  try {
+    return new Date(fecha).toLocaleDateString('es-MX');
+  } catch {
+    return '—';
+  }
+}
+
+function calcGananciaLinea(d: DetalleCotizacion, costoPorId: Record<string, Costo>) {
+  const precio = Number(d.precio_unitario) || 0;
+  const costoId = d.costo_id;
+  const costoUnit =
+    costoId && costoPorId[costoId] ? Number((costoPorId[costoId] as Costo).precio_compra) || 0 : 0;
+  const piezas = Number(d.cantidad) || 0;
+  const ganU = Number((precio - costoUnit).toFixed(2));
+  const ganT = Number((ganU * piezas).toFixed(2));
+  return { ganU, ganT, costoUnit };
+}
+
 export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionProps) {
   const [mounted, setMounted] = useState(false);
   const [semanaOffset, setSemanaOffset] = useState(0);
@@ -47,6 +67,7 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
   const [guardandoPlan, setGuardandoPlan] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [seleccionGuardadaMsg, setSeleccionGuardadaMsg] = useState<string | null>(null);
 
   const { cotizaciones, obtenerCotizacion } = useCotizaciones();
 
@@ -56,15 +77,19 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
     return getWeekForDate(base);
   }, [semanaOffset]);
 
-  const cotizacionesAceptadas = useMemo(() => {
+  /** Aprobadas (flujo principal) y terminadas (pueden cargarse al plan con las partidas que elijas). */
+  const cotizacionesProduccion = useMemo(() => {
     return cotizaciones
-      .filter((c) => c.estado === 'aprobado')
+      .filter((c) => c.estado === 'aprobado' || c.estado === 'terminado')
       .sort((a, b) => {
         const fa = a.fecha_entrega || a.fecha_vigencia || a.fecha_cotizacion || '9999-12-31';
         const fb = b.fecha_entrega || b.fecha_vigencia || b.fecha_cotizacion || '9999-12-31';
         return fa.localeCompare(fb);
       });
   }, [cotizaciones]);
+
+  const nombreCliente = (cot: Cotizacion) =>
+    cot.alumno?.nombre || cot.externo?.nombre || 'Cliente general';
 
   useEffect(() => {
     setMounted(true);
@@ -157,7 +182,7 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
       ganancia_total: number;
     }> = [];
 
-    for (const cot of cotizacionesAceptadas) {
+    for (const cot of cotizacionesProduccion) {
       const detalles = detallesExpandidos[cot.id] || [];
       for (const d of detalles as any[]) {
         if (!seleccionados.has(d.id)) continue;
@@ -183,14 +208,18 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
 
     const gananciasTotal = rows.reduce((s, r) => s + r.ganancia_total, 0);
     return { rows, gananciasTotal };
-  }, [cotizacionesAceptadas, detallesExpandidos, seleccionados, costoPorId]);
+  }, [cotizacionesProduccion, detallesExpandidos, seleccionados, costoPorId]);
 
   const minimoAlcanzado = seleccionInfo.gananciasTotal >= gastosFijosTotal && gastosFijosTotal > 0;
   const faltante = Math.max(0, gastosFijosTotal - seleccionInfo.gananciasTotal);
+  const progresoPct =
+    gastosFijosTotal > 0
+      ? Math.min(100, (seleccionInfo.gananciasTotal / gastosFijosTotal) * 100)
+      : 0;
 
   const handleGuardar = () => {
     const items: ItemProduccion[] = [];
-    cotizacionesAceptadas.forEach((cot) => {
+    cotizacionesProduccion.forEach((cot) => {
       const detalles = detallesExpandidos[cot.id] || [];
       detalles.forEach((d) => {
         if (seleccionados.has(d.id)) {
@@ -205,7 +234,18 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
       });
     });
     onGuardar(items);
-    // Ya no cerramos aquí: se cierra solo al generar/guardar plan.
+  };
+
+  const handleGuardarSeleccion = () => {
+    setSeleccionGuardadaMsg(null);
+    setError(null);
+    setSuccess(null);
+    if (seleccionados.size === 0) {
+      setSeleccionGuardadaMsg('No hay partidas seleccionadas. Marca al menos una fila.');
+      return;
+    }
+    handleGuardar();
+    setSeleccionGuardadaMsg('Selección guardada. Puedes generar el plan cuando el mínimo esté en verde.');
   };
 
   const handleGenerarPlan = async () => {
@@ -254,13 +294,24 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
     <div className="modal-overlay" onClick={onClose}>
       <div
         className="modal-content"
-        style={{ maxWidth: '720px', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}
+        style={{
+          maxWidth: 'min(960px, 100vw - 1.5rem)',
+          width: '100%',
+          maxHeight: '90vh',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header con navegación de semana */}
-        <div className="modal-header" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '1rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2 style={{ margin: 0 }}>Producción — Cotizaciones aprobadas</h2>
+        <div className="modal-header" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+            <div>
+              <h2 style={{ margin: 0, fontSize: 'clamp(1.1rem, 2.5vw, 1.35rem)' }}>Producción semanal</h2>
+              <p style={{ margin: '0.35rem 0 0', fontSize: '0.85rem', color: '#6b7280', lineHeight: 1.4 }}>
+                Cotizaciones <strong>aprobadas</strong> y <strong>terminadas</strong> (orden: fecha de entrega). Expande
+                una cotización y elige las partidas para el plan.
+              </p>
+            </div>
             <button type="button" className="modal-close" onClick={onClose} aria-label="Cerrar">
               <X size={20} />
             </button>
@@ -270,6 +321,8 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '0.5rem',
               padding: '0.5rem 0',
               borderTop: '1px solid #e5e7eb',
             }}
@@ -292,7 +345,7 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
               <ChevronLeft size={20} />
               Anterior
             </button>
-            <span style={{ fontWeight: 600, fontSize: '1rem' }}>
+            <span style={{ fontWeight: 600, fontSize: '0.95rem', textAlign: 'center' }}>
               Semana {formatWeekRange(monday, sunday)}
             </span>
             <button
@@ -317,13 +370,14 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
         </div>
 
         <div className="modal-body" style={{ flex: 1, overflowY: 'auto' }}>
-          {cotizacionesAceptadas.length === 0 ? (
+          {cotizacionesProduccion.length === 0 ? (
             <p style={{ textAlign: 'center', color: '#6b7280', padding: '2rem' }}>
-              No hay cotizaciones aprobadas.
+              No hay cotizaciones en estado <strong>Aprobado</strong> o <strong>Terminado</strong>. Cambia el estatus en
+              el historial de cotizaciones.
             </p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {cotizacionesAceptadas.map((cot) => (
+              {cotizacionesProduccion.map((cot) => (
                 <div
                   key={cot.id}
                   style={{
@@ -337,7 +391,7 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
                     onClick={() => handleExpandirCotizacion(cot.id)}
                     style={{
                       width: '100%',
-                      padding: '1rem 1.25rem',
+                      padding: '0.85rem 1rem',
                       background: cotizacionExpandida === cot.id ? '#f9fafb' : '#fff',
                       border: 'none',
                       cursor: 'pointer',
@@ -345,14 +399,33 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
                       justifyContent: 'space-between',
                       alignItems: 'center',
                       textAlign: 'left',
-                      fontSize: '1rem',
+                      fontSize: '0.95rem',
+                      gap: '0.5rem',
+                      flexWrap: 'wrap',
                     }}
                   >
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                       <FileText size={20} color="#6366f1" />
                       <strong>{cot.folio}</strong>
-                      <span style={{ color: '#6b7280', fontSize: '0.9rem' }}>
-                        — {cot.fecha_vigencia ? new Date(cot.fecha_vigencia).toLocaleDateString('es-MX') : 'Sin fecha'}
+                      <span style={{ color: '#374151', maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {nombreCliente(cot)}
+                      </span>
+                      <span
+                        style={{
+                          padding: '0.2rem 0.55rem',
+                          borderRadius: '999px',
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.02em',
+                          background: cot.estado === 'aprobado' ? '#dbeafe' : '#f3f4f6',
+                          color: cot.estado === 'aprobado' ? '#1d4ed8' : '#4b5563',
+                        }}
+                      >
+                        {cot.estado === 'aprobado' ? 'Aprobado' : 'Terminado'}
+                      </span>
+                      <span style={{ color: '#6b7280', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
+                        Entrega: {fmtFechaCot(cot.fecha_entrega)}
                       </span>
                     </span>
                     <ChevronRight
@@ -360,45 +433,94 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
                       style={{
                         transform: cotizacionExpandida === cot.id ? 'rotate(90deg)' : 'none',
                         transition: 'transform 0.2s',
+                        flexShrink: 0,
                       }}
                     />
                   </button>
 
                   {cotizacionExpandida === cot.id && (
-                    <div style={{ padding: '0 1.25rem 1rem', borderTop: '1px solid #f3f4f6' }}>
+                    <div style={{ padding: '0 0.75rem 1rem', borderTop: '1px solid #f3f4f6' }}>
                       {!detallesExpandidos[cot.id] ? (
                         <p style={{ padding: '1rem', color: '#6b7280' }}>Cargando conceptos...</p>
                       ) : (
-                        <div style={{ paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                          {detallesExpandidos[cot.id].map((d) => (
-                            <label
-                              key={d.id}
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.75rem',
-                                padding: '0.75rem',
-                                background: estaSeleccionado(d.id) ? '#ecfdf5' : '#f9fafb',
-                                borderRadius: '8px',
-                                cursor: 'pointer',
-                                border: estaSeleccionado(d.id) ? '2px solid #10b981' : '2px solid transparent',
-                              }}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={estaSeleccionado(d.id)}
-                                onChange={() => toggleSeleccion(d, cot)}
-                                style={{ width: 20, height: 20 }}
-                              />
-                              <span style={{ flex: 1 }}>
-                                <strong>{d.prenda_nombre}</strong> — {d.talla}
-                                {d.color ? ` · ${d.color}` : ''}
-                              </span>
-                              <span style={{ fontWeight: 600, color: '#374151' }}>
-                                {d.cantidad} pzs
-                              </span>
-                            </label>
-                          ))}
+                        <div style={{ paddingTop: '0.75rem', overflowX: 'auto' }}>
+                          <table
+                            style={{
+                              width: '100%',
+                              minWidth: '720px',
+                              borderCollapse: 'collapse',
+                              fontSize: '0.85rem',
+                            }}
+                          >
+                            <thead>
+                              <tr style={{ background: '#f3f4f6', textAlign: 'left' }}>
+                                <th style={{ padding: '0.5rem', width: 36 }} aria-label="Seleccionar" />
+                                <th style={{ padding: '0.5rem' }}>Cliente</th>
+                                <th style={{ padding: '0.5rem' }}>Modelo</th>
+                                <th style={{ padding: '0.5rem', textAlign: 'right' }}>Piezas</th>
+                                <th style={{ padding: '0.5rem', textAlign: 'right' }}>P. venta</th>
+                                <th style={{ padding: '0.5rem' }}>Fecha entrega</th>
+                                <th style={{ padding: '0.5rem' }}>Tiempo entrega</th>
+                                <th style={{ padding: '0.5rem', textAlign: 'right' }}>Ganancia (partida)</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {detallesExpandidos[cot.id].map((d) => {
+                                const { ganT } = calcGananciaLinea(d, costoPorId);
+                                const sel = estaSeleccionado(d.id);
+                                return (
+                                  <tr
+                                    key={d.id}
+                                    style={{
+                                      background: sel ? '#ecfdf5' : '#fff',
+                                      borderBottom: '1px solid #f3f4f6',
+                                    }}
+                                  >
+                                    <td style={{ padding: '0.45rem 0.5rem', verticalAlign: 'middle' }}>
+                                      <input
+                                        type="checkbox"
+                                        checked={sel}
+                                        onChange={() => toggleSeleccion(d, cot)}
+                                        aria-label={`Seleccionar ${d.prenda_nombre}`}
+                                        style={{ width: 18, height: 18, cursor: 'pointer' }}
+                                      />
+                                    </td>
+                                    <td style={{ padding: '0.45rem 0.5rem', verticalAlign: 'middle' }}>
+                                      {nombreCliente(cot)}
+                                    </td>
+                                    <td style={{ padding: '0.45rem 0.5rem', verticalAlign: 'middle' }}>
+                                      <strong>{d.prenda_nombre}</strong>
+                                      {d.talla ? ` · ${d.talla}` : ''}
+                                      {d.color ? ` · ${d.color}` : ''}
+                                    </td>
+                                    <td style={{ padding: '0.45rem 0.5rem', textAlign: 'right', verticalAlign: 'middle' }}>
+                                      {d.cantidad}
+                                    </td>
+                                    <td style={{ padding: '0.45rem 0.5rem', textAlign: 'right', verticalAlign: 'middle' }}>
+                                      ${Number(d.precio_unitario).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                                    </td>
+                                    <td style={{ padding: '0.45rem 0.5rem', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                                      {fmtFechaCot(cot.fecha_entrega)}
+                                    </td>
+                                    <td style={{ padding: '0.45rem 0.5rem', verticalAlign: 'middle' }}>
+                                      {cot.tiempo_entrega || '—'}
+                                    </td>
+                                    <td
+                                      style={{
+                                        padding: '0.45rem 0.5rem',
+                                        textAlign: 'right',
+                                        verticalAlign: 'middle',
+                                        fontWeight: 600,
+                                        color: ganT >= 0 ? '#047857' : '#b91c1c',
+                                      }}
+                                    >
+                                      ${ganT.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
                         </div>
                       )}
                     </div>
@@ -409,8 +531,54 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
           )}
         </div>
 
-        <div className="modal-footer" style={{ justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+        <div
+          style={{
+            padding: '0.75rem 1.25rem',
+            borderTop: '1px solid #e5e7eb',
+            background: '#fafafa',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>Ganancias seleccionadas</span>
+            <span style={{ fontSize: '1.15rem', fontWeight: 800, color: '#047857' }}>
+              ${seleccionInfo.gananciasTotal.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+            </span>
+          </div>
+          {gastosFijosTotal > 0 && (
+            <>
+              <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '0.35rem' }}>
+                Meta (gastos fijos semanales): ${gastosFijosTotal.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+              </div>
+              <div
+                style={{
+                  height: 10,
+                  background: '#e5e7eb',
+                  borderRadius: 999,
+                  overflow: 'hidden',
+                  marginTop: '0.4rem',
+                }}
+              >
+                <div
+                  style={{
+                    width: `${progresoPct}%`,
+                    height: '100%',
+                    background: minimoAlcanzado ? '#10b981' : '#f59e0b',
+                    transition: 'width 0.35s ease',
+                  }}
+                />
+              </div>
+            </>
+          )}
+          {loadingGastos && (
+            <p style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', color: '#6b7280' }}>Cargando gastos fijos…</p>
+          )}
+          {seleccionGuardadaMsg && (
+            <p style={{ margin: '0.65rem 0 0', fontSize: '0.85rem', color: '#0369a1' }}>{seleccionGuardadaMsg}</p>
+          )}
+        </div>
+
+        <div className="modal-footer" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', minWidth: 'min(100%, 280px)' }}>
             <span style={{ fontSize: '0.9rem', color: '#6b7280' }}>
               {seleccionados.size} concepto{seleccionados.size !== 1 ? 's' : ''} seleccionado{seleccionados.size !== 1 ? 's' : ''}
             </span>
@@ -426,9 +594,12 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
               )}
             </span>
           </div>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
             <button type="button" className="btn btn-secondary" onClick={onClose}>
               Cancelar
+            </button>
+            <button type="button" className="btn btn-primary" onClick={handleGuardarSeleccion}>
+              Guardar selección
             </button>
             <button
               type="button"

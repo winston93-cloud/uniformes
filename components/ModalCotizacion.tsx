@@ -100,7 +100,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   const [generando, setGenerando] = useState(false);
   
   const { cicloEscolar } = useAuth();
-  const { crearCotizacion, cotizaciones, obtenerCotizacion, cargando } = useCotizaciones();
+  const { crearCotizacion, cotizaciones, obtenerCotizacion, cargando, actualizarEstado } = useCotizaciones();
+  const [actualizandoEstadoId, setActualizandoEstadoId] = useState<string | null>(null);
   const { searchAlumnos } = useAlumnos(cicloEscolar);
   const { searchExternos } = useExternos();
   const { prendas } = usePrendas();
@@ -2207,20 +2208,50 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                         <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 'bold', fontSize: '0.9rem' }}>
                           ${cot.total.toFixed(2)}
                         </td>
-                        <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                          <span style={{
-                            padding: '0.4rem 0.8rem',
-                            borderRadius: '20px',
-                            background: 
-                              cot.estado === 'emitido' ? '#10b981' :
-                              cot.estado === 'aprobado' ? '#3b82f6' :
-                              cot.estado === 'trabajando' ? '#f59e0b' : '#6b7280',
-                            color: 'white',
-                            fontSize: '0.8rem',
-                            fontWeight: 'bold',
-                          }}>
-                            {cot.estado.toUpperCase()}
-                          </span>
+                        <td
+                          style={{ padding: '0.75rem', textAlign: 'center', minWidth: '160px' }}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <select
+                            value={cot.estado}
+                            disabled={actualizandoEstadoId === cot.id}
+                            onChange={async (e) => {
+                              const nuevo = e.target.value as 'emitido' | 'aprobado' | 'trabajando' | 'terminado';
+                              if (nuevo === cot.estado) return;
+                              setActualizandoEstadoId(cot.id);
+                              const { error } = await actualizarEstado(cot.id, nuevo);
+                              setActualizandoEstadoId(null);
+                              if (error) {
+                                alert(`No se pudo actualizar el estatus: ${error}`);
+                              }
+                            }}
+                            style={{
+                              width: '100%',
+                              maxWidth: '200px',
+                              padding: '0.45rem 0.6rem',
+                              borderRadius: '8px',
+                              border: '1px solid #e5e7eb',
+                              fontSize: '0.85rem',
+                              fontWeight: 600,
+                              background: '#fff',
+                              cursor: actualizandoEstadoId === cot.id ? 'wait' : 'pointer',
+                              color:
+                                cot.estado === 'emitido' ? '#047857' :
+                                cot.estado === 'aprobado' ? '#1d4ed8' :
+                                cot.estado === 'trabajando' ? '#b45309' : '#4b5563',
+                            }}
+                            aria-label={`Estatus de cotización ${cot.folio}`}
+                          >
+                            <option value="emitido">Emitido</option>
+                            <option value="aprobado">Aprobado</option>
+                            <option value="trabajando">Trabajando</option>
+                            <option value="terminado">Terminado</option>
+                          </select>
+                          {actualizandoEstadoId === cot.id && (
+                            <span style={{ display: 'block', fontSize: '0.7rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                              Guardando…
+                            </span>
+                          )}
                         </td>
                         <td style={{ padding: '1rem', textAlign: 'center' }}>
                           <button
