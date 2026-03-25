@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight, X, Check, FileText } from 'lucide-react';
 import { useCotizaciones } from '@/lib/hooks/useCotizaciones';
@@ -82,6 +82,20 @@ function fmtFechaCot(fecha: string | null | undefined) {
   }
 }
 
+/** Al menos una partida libre o ya asignada al plan de esta semana (no todas en otra semana). */
+function cotizacionTienePartidaDisponibleAqui(
+  detalles: DetalleCotizacion[] | undefined,
+  fechaInicioSemana: string,
+  ocupados: Record<string, string>
+): boolean {
+  if (!detalles || detalles.length === 0) return false;
+  return detalles.some((d) => {
+    const asignadoA = ocupados[d.id];
+    if (!asignadoA) return true;
+    return asignadoA === fechaInicioSemana;
+  });
+}
+
 export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionProps) {
   const [mounted, setMounted] = useState(false);
   const [semanaOffset, setSemanaOffset] = useState(0);
@@ -101,6 +115,7 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
   const [guardandoSeleccion, setGuardandoSeleccion] = useState(false);
   /** Ítems ya persistidos en esta semana (evita perder partidas al guardar solo lo expandido). */
   const [planItemsCache, setPlanItemsCache] = useState<PlanItemSemana[]>([]);
+  const prefetchedCotIdsRef = useRef<Set<string>>(new Set());
 
   const { cotizaciones, obtenerCotizacion } = useCotizaciones();
 
@@ -124,6 +139,27 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
       compareCotizacionesPorFechaEntrega
     );
   }, [cotizaciones]);
+
+  const cotizacionesIdsKey = useMemo(
+    () => cotizacionesProduccion.map((c) => c.id).sort().join(','),
+    [cotizacionesProduccion]
+  );
+
+  /** Oculta cotizaciones cuyas partidas están todas en otra semana (no aplica hasta cargar detalles). */
+  const cotizacionesVisibles = useMemo(() => {
+    if (loadingContext) return cotizacionesProduccion;
+    return cotizacionesProduccion.filter((cot) => {
+      const detalles = detallesExpandidos[cot.id];
+      if (!detalles) return true;
+      return cotizacionTienePartidaDisponibleAqui(detalles, fechaInicioSemanaActual, ocupadosGlobal);
+    });
+  }, [
+    cotizacionesProduccion,
+    detallesExpandidos,
+    ocupadosGlobal,
+    fechaInicioSemanaActual,
+    loadingContext,
+  ]);
 
   const nombreCliente = (cot: Cotizacion) =>
     cot.alumno?.nombre || cot.externo?.nombre || 'Cliente general';
@@ -156,6 +192,55 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
       cancelled = true;
     };
   }, [mounted, semanaOffset]);
+
+  useEffect(() => {
+    if (cotizacionExpandida && !cotizacionesVisibles.some((c) => c.id === cotizacionExpandida)) {
+      setCotizacionExpandida(null);
+    }
+  }, [cotizacionesVisibles, cotizacionExpandida]);
+
+  /** Precarga partidas de todas las cotizaciones para poder filtrar filas vacías en esta semana. */
+  useEffect(() => {
+    if (!mounted || !cotizacionesIdsKey) return;
+    let cancelled = false;
+    (async () => {
+      await Promise.all(
+        cotizacionesProduccion.map(async (c) => {
+          if (prefetchedCotIdsRef.current.has(c.id)) return;
+          prefetchedCotIdsRef.current.add(c.id);
+          try {
+            const { detalle } = await obtenerCotizacion(c.id);
+            if (cancelled) return;
+            const list = detalle ?? [];
+            setDetallesExpandidos((prev) => (prev[c.id] ? prev : { ...prev, [c.id]: list }));
+            const costoIds = Array.from(
+              new Set(
+                (list as any[]).map((d) => d.costo_id).filter((x) => typeof x === 'string' && x.length > 0)
+              )
+            ) as string[];
+            if (costoIds.length === 0) return;
+            const { data: costosRows, error: costosErr } = await supabase
+              .from('costos')
+              .select('*')
+              .in('id', costoIds);
+            if (!costosErr && costosRows) {
+              setCostoPorId((prev) => {
+                const next = { ...prev };
+                for (const row of costosRows as any[]) next[row.id] = row as Costo;
+                return next;
+              });
+            }
+          } catch (e) {
+            console.error('Prefetch cotización', c.id, e);
+            prefetchedCotIdsRef.current.delete(c.id);
+          }
+        })
+      );
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [mounted, cotizacionesIdsKey, cotizacionesProduccion, obtenerCotizacion]);
 
   useEffect(() => {
     if (!mounted) return;
@@ -487,9 +572,14 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
               No hay cotizaciones en estado <strong>Aprobado</strong> o <strong>Terminado</strong>. Cambia el estatus en
               el historial de cotizaciones.
             </p>
+          ) : cotizacionesVisibles.length === 0 ? (
+            <p style={{ textAlign: 'center', color: '#6b7280', padding: '2rem' }}>
+              No hay partidas disponibles para <strong>esta semana</strong>: las de tus cotizaciones aprobadas ya están
+              en el plan de otra semana.
+            </p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {cotizacionesProduccion.map((cot) => (
+              {cotizacionesVisibles.map((cot) => (
                 <div
                   key={cot.id}
                   style={{
@@ -562,7 +652,7 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
                             <p style={{ padding: '1rem 0', color: '#6b7280', fontSize: '0.9rem' }}>
                               {detallesRaw.length === 0
                                 ? 'Sin conceptos en esta cotización.'
-                                : 'Todas las partidas ya están en el plan de otra semana.'}
+                                : 'No hay partidas disponibles para esta semana.'}
                             </p>
                           );
                         }
