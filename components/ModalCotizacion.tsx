@@ -9,6 +9,7 @@ import { useExternos } from '@/lib/hooks/useExternos';
 import { usePrendas } from '@/lib/hooks/usePrendas';
 import { useCostos } from '@/lib/hooks/useCostos';
 import type { Costo } from '@/lib/types';
+import { compareCotizacionesPorFechaEntrega } from '@/lib/cotizacionesSort';
 import { supabase } from '@/lib/supabase';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -140,17 +141,18 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
 
   // Filtrar cotizaciones por cliente y fecha
   const cotizacionesFiltradas = useMemo(() => {
-    return cotizaciones.filter(cot => {
+    const filtradas = cotizaciones.filter((cot) => {
       // Filtro por cliente
       const nombreCliente = (cot.alumno?.nombre || cot.externo?.nombre || '').toLowerCase();
       const cumpleFiltroCliente = !filtroCliente.trim() || nombreCliente.includes(filtroCliente.toLowerCase());
-      
+
       // Filtro por fecha
       const fechaCotizacion = new Date(cot.fecha_cotizacion).toISOString().split('T')[0];
       const cumpleFiltroFecha = !filtroFecha || fechaCotizacion === filtroFecha;
-      
+
       return cumpleFiltroCliente && cumpleFiltroFecha;
     });
+    return [...filtradas].sort(compareCotizacionesPorFechaEntrega);
   }, [cotizaciones, filtroCliente, filtroFecha]);
 
   // Montar componente (necesario para portales)

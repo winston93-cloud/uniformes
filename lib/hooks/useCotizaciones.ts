@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase, getSupabaseErrorMessage } from '@/lib/supabase';
 import type { Cotizacion, DetalleCotizacion } from '@/lib/types';
+import { compareCotizacionesPorFechaEntrega } from '@/lib/cotizacionesSort';
 
 export interface PartidaCotizacion {
   prenda_nombre: string;
@@ -85,11 +86,10 @@ export function useCotizaciones() {
           *,
           alumno:alumnos(*),
           externo:externos(*)
-        `)
-        .order('created_at', { ascending: false });
+        `);
 
       if (fetchError) throw fetchError;
-      setCotizaciones(data || []);
+      setCotizaciones([...(data || [])].sort(compareCotizacionesPorFechaEntrega));
     } catch (err) {
       console.error('Error al obtener cotizaciones:', err);
       setError(getSupabaseErrorMessage(err));

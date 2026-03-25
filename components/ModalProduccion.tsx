@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, X, Check, FileText } from 'lucide-react';
 import { useCotizaciones } from '@/lib/hooks/useCotizaciones';
 import { supabase } from '@/lib/supabase';
 import type { Cotizacion, DetalleCotizacion, Costo } from '@/lib/types';
+import { compareCotizacionesPorFechaEntrega } from '@/lib/cotizacionesSort';
 
 export interface ItemProduccion {
   cotizacion_id: string;
@@ -81,11 +82,7 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
   const cotizacionesProduccion = useMemo(() => {
     return cotizaciones
       .filter((c) => c.estado === 'aprobado' || c.estado === 'terminado')
-      .sort((a, b) => {
-        const fa = a.fecha_entrega || a.fecha_vigencia || a.fecha_cotizacion || '9999-12-31';
-        const fb = b.fecha_entrega || b.fecha_vigencia || b.fecha_cotizacion || '9999-12-31';
-        return fa.localeCompare(fb);
-      });
+      .sort(compareCotizacionesPorFechaEntrega);
   }, [cotizaciones]);
 
   const nombreCliente = (cot: Cotizacion) =>
