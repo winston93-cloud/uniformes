@@ -1,23 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { insforge, assertInsforgeConfigured } from '@/lib/insforge';
+import { getWeekForDate, toISODate } from '@/lib/produccion-semanal-week';
 
 export const runtime = 'nodejs';
-
-function getWeekForDate(date: Date) {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = day === 0 ? -6 : 1 - day; // lunes
-  const monday = new Date(d);
-  monday.setDate(d.getDate() + diff);
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-  return { monday, sunday };
-}
-
-function toISODate(d: Date) {
-  return d.toISOString().slice(0, 10);
-}
 
 const ItemSchema = z.object({
   cotizacion_id: z.string().min(1),
@@ -34,7 +20,7 @@ const BodySchema = z.object({
   gastos_fijos_total: z.number().nonnegative(),
   ganancias_total: z.number(),
   estado: z.enum(['BORRADOR', 'GENERADO']).default('GENERADO'),
-  items: z.array(ItemSchema).min(1),
+  items: z.array(ItemSchema),
 });
 
 export async function POST(request: NextRequest) {
@@ -62,7 +48,6 @@ export async function POST(request: NextRequest) {
     const fecha_inicio = toISODate(monday);
     const fecha_fin = toISODate(sunday);
 
-    // Semana (dimension)
     const { data: semanaExisting, error: semanaSelErr } = await insforge.database
       .from('semanas')
       .select('id')
@@ -87,7 +72,6 @@ export async function POST(request: NextRequest) {
       semanaId = semanaInserted!.id as string;
     }
 
-    // Header plan (1 por semana). Si existe, lo sobreescribimos.
     const { data: planExisting, error: planSelErr } = await insforge.database
       .from('produccion_plan_semanal')
       .select('id')
@@ -119,11 +103,21 @@ export async function POST(request: NextRequest) {
       planId = planInserted!.id as string;
     }
 
-    // Reemplazar items (delete + insert)
-    const { error: delErr } = await insforge.database
-      .from('produccion_plan_semanal_items')
-      .delete()
-      .eq('plan_id', planId);
+    const detalleIds = items.map((it) => it.detalle_id).filter(Boolean);
+
+    /** Quitar estas partidas de planes de *otras* semanas (una partida solo en un plan). */
+    if (detalleIds.length > 0) {
+      const { error: delOtroErr } = await insforge.database
+        .from('produccion_plan_semanal_items')
+        .delete()
+        .in('detalle_id', detalleIds)
+        .neq('plan_id', planId);
+      if (delOtroErr) {
+        return NextResponse.json({ success: false, error: `Error reasignando partidas: ${delOtroErr.message}` }, { status: 500 });
+      }
+    }
+
+    const { error: delErr } = await insforge.database.from('produccion_plan_semanal_items').delete().eq('plan_id', planId);
     if (delErr) {
       return NextResponse.json({ success: false, error: `Error limpiando items: ${delErr.message}` }, { status: 500 });
     }
@@ -145,9 +139,11 @@ export async function POST(request: NextRequest) {
       };
     });
 
-    const { error: insErr } = await insforge.database.from('produccion_plan_semanal_items').insert(rows);
-    if (insErr) {
-      return NextResponse.json({ success: false, error: `Error insertando items: ${insErr.message}` }, { status: 500 });
+    if (rows.length > 0) {
+      const { error: insErr } = await insforge.database.from('produccion_plan_semanal_items').insert(rows);
+      if (insErr) {
+        return NextResponse.json({ success: false, error: `Error insertando items: ${insErr.message}` }, { status: 500 });
+      }
     }
 
     return NextResponse.json({ success: true, planId, semanaId, fecha_inicio, fecha_fin, items: rows.length });
@@ -156,4 +152,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }
-

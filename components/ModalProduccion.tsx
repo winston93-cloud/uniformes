@@ -10,6 +10,7 @@ import {
   compareCotizacionesPorFechaEntrega,
   compareItemsProduccionPorFechaEntrega,
 } from '@/lib/cotizacionesSort';
+import { getWeekForDate, toISODate } from '@/lib/produccion-semanal-week';
 
 export interface ItemProduccion {
   cotizacion_id: string;
@@ -24,17 +25,6 @@ export interface ItemProduccion {
 interface ModalProduccionProps {
   onClose: () => void;
   onGuardar: (items: ItemProduccion[]) => void;
-}
-
-function getWeekForDate(date: Date) {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  const monday = new Date(d);
-  monday.setDate(d.getDate() + diff);
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-  return { monday, sunday };
 }
 
 function formatWeekRange(monday: Date, sunday: Date) {
@@ -63,6 +53,10 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [seleccionGuardadaMsg, setSeleccionGuardadaMsg] = useState<string | null>(null);
+  /** detalle_id → fecha_inicio (lunes) de la semana donde ya está en un plan InsForge */
+  const [ocupadosGlobal, setOcupadosGlobal] = useState<Record<string, string>>({});
+  const [loadingContext, setLoadingContext] = useState(false);
+  const [guardandoSeleccion, setGuardandoSeleccion] = useState(false);
 
   const { cotizaciones, obtenerCotizacion } = useCotizaciones();
 
@@ -71,6 +65,14 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
     base.setDate(base.getDate() + semanaOffset * 7);
     return getWeekForDate(base);
   }, [semanaOffset]);
+
+  const fechaInicioSemanaActual = useMemo(() => toISODate(monday), [monday]);
+
+  const detalleDisponibleEnEstaSemana = (detalleId: string) => {
+    const asignadoA = ocupadosGlobal[detalleId];
+    if (!asignadoA) return true;
+    return asignadoA === fechaInicioSemanaActual;
+  };
 
   /** Aprobadas (flujo principal) y terminadas (pueden cargarse al plan con las partidas que elijas). */
   const cotizacionesProduccion = useMemo(() => {
@@ -85,6 +87,29 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+    let cancelled = false;
+    (async () => {
+      setLoadingContext(true);
+      try {
+        const res = await fetch(`/api/produccion-semanal/context?semanaOffset=${semanaOffset}`);
+        const json = await res.json().catch(() => null);
+        if (cancelled || !json?.success) return;
+        setOcupadosGlobal((json.ocupados as Record<string, string>) || {});
+        const ids = (json.planItems as { detalle_id: string }[] | undefined) || [];
+        setSeleccionados(new Set(ids.map((x) => x.detalle_id)));
+      } catch {
+        if (!cancelled) setOcupadosGlobal({});
+      } finally {
+        if (!cancelled) setLoadingContext(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [mounted, semanaOffset]);
 
   useEffect(() => {
     if (!mounted) return;
@@ -177,6 +202,7 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
       const detalles = detallesExpandidos[cot.id] || [];
       for (const d of detalles as any[]) {
         if (!seleccionados.has(d.id)) continue;
+        if (!detalleDisponibleEnEstaSemana(d.id)) continue;
         const precio = Number(d.precio_unitario) || 0;
         const costoId = d.costo_id as string | undefined;
         const costoUnit = costoId && costoPorId[costoId] ? Number((costoPorId[costoId] as any).precio_compra) || 0 : 0;
@@ -199,7 +225,7 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
 
     const gananciasTotal = rows.reduce((s, r) => s + r.ganancia_total, 0);
     return { rows, gananciasTotal };
-  }, [cotizacionesProduccion, detallesExpandidos, seleccionados, costoPorId]);
+  }, [cotizacionesProduccion, detallesExpandidos, seleccionados, costoPorId, ocupadosGlobal, fechaInicioSemanaActual]);
 
   const minimoAlcanzado = seleccionInfo.gananciasTotal >= gastosFijosTotal && gastosFijosTotal > 0;
 
@@ -214,6 +240,7 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
     cotizacionesProduccion.forEach((cot) => {
       const detalles = detallesExpandidos[cot.id] || [];
       detalles.forEach((d) => {
+        if (!detalleDisponibleEnEstaSemana(d.id)) return;
         if (seleccionados.has(d.id)) {
           items.push({
             cotizacion_id: cot.id,
@@ -230,16 +257,55 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
     onGuardar(items);
   };
 
-  const handleGuardarSeleccion = () => {
+  const handleGuardarSeleccion = async () => {
+    setGuardandoSeleccion(true);
     setSeleccionGuardadaMsg(null);
     setError(null);
     setSuccess(null);
-    if (seleccionados.size === 0) {
-      setSeleccionGuardadaMsg('No hay partidas seleccionadas. Marca al menos una fila.');
-      return;
+    try {
+      const itemsPayload = seleccionInfo.rows.map((r) => ({
+        cotizacion_id: r.cotizacion_id,
+        cotizacion_folio: r.cotizacion_folio,
+        detalle_id: r.detalle_id,
+        modelo: r.modelo,
+        piezas: r.piezas,
+        precio_unitario: r.precio_unitario,
+        costo_unitario: r.costo_unitario,
+      }));
+
+      const res = await fetch('/api/produccion-semanal/plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          semanaOffset,
+          gastos_fijos_total: Number(gastosFijosTotal.toFixed(2)),
+          ganancias_total: Number(seleccionInfo.gananciasTotal.toFixed(2)),
+          estado: 'BORRADOR',
+          items: itemsPayload,
+        }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.success) throw new Error(json?.error || 'No se pudo guardar la selección');
+
+      const ctxRes = await fetch(`/api/produccion-semanal/context?semanaOffset=${semanaOffset}`);
+      const ctx = await ctxRes.json().catch(() => null);
+      if (ctx?.success) {
+        setOcupadosGlobal((ctx.ocupados as Record<string, string>) || {});
+        const ids = (ctx.planItems as { detalle_id: string }[] | undefined) || [];
+        setSeleccionados(new Set(ids.map((x) => x.detalle_id)));
+      }
+
+      handleGuardar();
+      setSeleccionGuardadaMsg(
+        itemsPayload.length === 0
+          ? 'Plan de esta semana vaciado.'
+          : 'Selección guardada para esta semana. Ya no aparecerá en otras semanas.'
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error al guardar');
+    } finally {
+      setGuardandoSeleccion(false);
     }
-    handleGuardar();
-    setSeleccionGuardadaMsg('Selección guardada. Puedes generar el plan cuando el mínimo esté en verde.');
   };
 
   const handleGenerarPlan = async () => {
@@ -436,7 +502,19 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
                     <div style={{ padding: '0 0.75rem 1rem', borderTop: '1px solid #f3f4f6' }}>
                       {!detallesExpandidos[cot.id] ? (
                         <p style={{ padding: '1rem', color: '#6b7280' }}>Cargando conceptos...</p>
-                      ) : (
+                      ) : (() => {
+                        const detallesRaw = detallesExpandidos[cot.id] || [];
+                        const detallesMostrar = detallesRaw.filter((d) => detalleDisponibleEnEstaSemana(d.id));
+                        if (detallesMostrar.length === 0) {
+                          return (
+                            <p style={{ padding: '1rem 0', color: '#6b7280', fontSize: '0.9rem' }}>
+                              {detallesRaw.length === 0
+                                ? 'Sin conceptos en esta cotización.'
+                                : 'Todas las partidas ya están en el plan de otra semana.'}
+                            </p>
+                          );
+                        }
+                        return (
                         <div style={{ paddingTop: '0.75rem', overflowX: 'auto' }}>
                           <table
                             style={{
@@ -457,7 +535,7 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
                               </tr>
                             </thead>
                             <tbody>
-                              {detallesExpandidos[cot.id].map((d) => {
+                              {detallesMostrar.map((d) => {
                                 const sel = estaSeleccionado(d.id);
                                 return (
                                   <tr
@@ -499,7 +577,8 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
                             </tbody>
                           </table>
                         </div>
-                      )}
+                        );
+                      })()}
                     </div>
                   )}
                 </div>
@@ -517,7 +596,8 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
           }}
         >
           <p style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#1f2937', letterSpacing: '0.02em' }}>
-            {seleccionados.size} concepto{seleccionados.size !== 1 ? 's' : ''} seleccionado{seleccionados.size !== 1 ? 's' : ''}
+            {seleccionInfo.rows.length} concepto{seleccionInfo.rows.length !== 1 ? 's' : ''} seleccionado
+            {seleccionInfo.rows.length !== 1 ? 's' : ''}
           </p>
           {!loadingGastos && gastosFijosTotal > 0 && (
             <div
@@ -596,8 +676,13 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
             <button type="button" className="btn btn-secondary" onClick={onClose}>
               Cancelar
             </button>
-            <button type="button" className="btn btn-primary" onClick={handleGuardarSeleccion}>
-              Guardar selección
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleGuardarSeleccion}
+              disabled={loadingContext || guardandoSeleccion}
+            >
+              {guardandoSeleccion ? 'Guardando…' : 'Guardar selección'}
             </button>
             <button
               type="button"
