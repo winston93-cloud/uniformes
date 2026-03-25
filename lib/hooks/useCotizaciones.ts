@@ -21,6 +21,9 @@ export interface PartidaCotizacion {
 
 export interface NuevaCotizacion {
   alumno_id?: string;
+  /** Referencia del alumno (tabla legacy `alumno`); sirve para resolver UUID en `alumnos`. */
+  alumno_referencia?: string;
+  alumno_nombre?: string;
   externo_id?: string;
   tipo_cliente: 'alumno' | 'externo';
   fecha_vigencia?: string;
@@ -29,6 +32,40 @@ export interface NuevaCotizacion {
   condiciones_pago?: string;
   tiempo_entrega?: string;
   partidas: PartidaCotizacion[];
+}
+
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value.trim()
+  );
+}
+
+/** La UI busca en `alumno` (id numérico); `cotizaciones.alumno_id` apunta a `alumnos.id` (UUID). */
+async function resolverAlumnoUuidParaCotizacion(
+  legacyId: string,
+  referencia: string | undefined,
+  nombre: string
+): Promise<string> {
+  if (isUuid(legacyId)) return legacyId;
+
+  const ref = referencia?.trim();
+  if (!ref) {
+    throw new Error(
+      'El alumno no tiene referencia escolar; no se puede vincular a cotizaciones. Usa un alumno con referencia o da de alta el alumno en la tabla alumnos.'
+    );
+  }
+
+  const { data: row, error } = await supabase
+    .from('alumnos')
+    .upsert(
+      { nombre: nombre?.trim() || 'Alumno', referencia: ref, activo: true },
+      { onConflict: 'referencia' }
+    )
+    .select('id')
+    .single();
+
+  if (error) throw error;
+  return row!.id as string;
 }
 
 export function useCotizaciones() {
@@ -113,13 +150,30 @@ export function useCotizaciones() {
       const subtotal = nuevaCotizacion.partidas.reduce((sum, p) => sum + p.subtotal, 0);
       const total = subtotal;
 
+      let alumnoId: string | null = nuevaCotizacion.alumno_id ?? null;
+      if (nuevaCotizacion.tipo_cliente === 'alumno' && alumnoId) {
+        alumnoId = await resolverAlumnoUuidParaCotizacion(
+          alumnoId,
+          nuevaCotizacion.alumno_referencia,
+          nuevaCotizacion.alumno_nombre || ''
+        );
+      }
+
+      const externoId = nuevaCotizacion.externo_id ?? null;
+      if (nuevaCotizacion.tipo_cliente === 'externo' && externoId && !isUuid(externoId)) {
+        return {
+          data: null,
+          error: 'Cliente externo inválido. Vuelve a seleccionar el cliente.',
+        };
+      }
+
       // 3. Crear cotización
       const { data: cotizacion, error: cotError } = await supabase
         .from('cotizaciones')
         .insert([{
           folio,
-          alumno_id: nuevaCotizacion.alumno_id || null,
-          externo_id: nuevaCotizacion.externo_id || null,
+          alumno_id: alumnoId,
+          externo_id: externoId,
           tipo_cliente: nuevaCotizacion.tipo_cliente,
           fecha_cotizacion: new Date().toISOString().split('T')[0],
           fecha_vigencia: nuevaCotizacion.fecha_vigencia || null,

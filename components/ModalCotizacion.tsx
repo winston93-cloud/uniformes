@@ -615,6 +615,9 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
 
       const nuevaCotizacion = {
         alumno_id: tipoCliente === 'alumno' ? clienteSeleccionado.id : undefined,
+        alumno_referencia:
+          tipoCliente === 'alumno' ? clienteSeleccionado.referencia || clienteSeleccionado.alumno_ref : undefined,
+        alumno_nombre: tipoCliente === 'alumno' ? clienteSeleccionado.nombre : undefined,
         externo_id: tipoCliente === 'externo' ? clienteSeleccionado.id : undefined,
         tipo_cliente: tipoCliente,
         fecha_vigencia: fechaVigencia || undefined,
