@@ -132,7 +132,17 @@ export default function ModalGastosFijos({ onClose }: ModalGastosFijosProps) {
         throw new Error(json?.error || 'No se pudo guardar los gastos');
       }
 
-      const nuevos = (json.gastosGuardados ?? []) as Array<{ nombre: string; monto: number }>;
+      // Solo mostrarlos abajo: el editor se limpia luego de guardar.
+      setGastos([]);
+
+      // Re-cargar desde backend para asegurar que se refleje todo (incluye acumulación).
+      const actualRes = await fetch('/api/gastos-fijos-semanales/actual');
+      const actualJson = await actualRes.json().catch(() => null);
+      if (!actualRes.ok || !actualJson?.success) {
+        throw new Error(actualJson?.error || 'Guardado OK, pero no se pudo recargar la lista');
+      }
+
+      const nuevos = (actualJson.gastosGuardados ?? []) as Array<{ nombre: string; monto: number }>;
       setGastosGuardados(
         nuevos.map((g) => ({
           id: crypto.randomUUID(),
@@ -140,8 +150,6 @@ export default function ModalGastosFijos({ onClose }: ModalGastosFijosProps) {
           monto: g.monto,
         }))
       );
-      // Solo mostrarlos abajo: el editor se limpia luego de guardar.
-      setGastos([]);
 
       setSuccess('Guardado correctamente para la semana actual.');
     } catch (e) {
