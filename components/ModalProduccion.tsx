@@ -50,17 +50,6 @@ function fmtFechaCot(fecha: string | null | undefined) {
   }
 }
 
-function calcGananciaLinea(d: DetalleCotizacion, costoPorId: Record<string, Costo>) {
-  const precio = Number(d.precio_unitario) || 0;
-  const costoId = d.costo_id;
-  const costoUnit =
-    costoId && costoPorId[costoId] ? Number((costoPorId[costoId] as Costo).precio_compra) || 0 : 0;
-  const piezas = Number(d.cantidad) || 0;
-  const ganU = Number((precio - costoUnit).toFixed(2));
-  const ganT = Number((ganU * piezas).toFixed(2));
-  return { ganU, ganT, costoUnit };
-}
-
 export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionProps) {
   const [mounted, setMounted] = useState(false);
   const [semanaOffset, setSemanaOffset] = useState(0);
@@ -213,11 +202,6 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
   }, [cotizacionesProduccion, detallesExpandidos, seleccionados, costoPorId]);
 
   const minimoAlcanzado = seleccionInfo.gananciasTotal >= gastosFijosTotal && gastosFijosTotal > 0;
-  const faltante = Math.max(0, gastosFijosTotal - seleccionInfo.gananciasTotal);
-  const progresoPct =
-    gastosFijosTotal > 0
-      ? Math.min(100, (seleccionInfo.gananciasTotal / gastosFijosTotal) * 100)
-      : 0;
 
   const handleGuardar = () => {
     const items: ItemProduccion[] = [];
@@ -451,7 +435,7 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
                           <table
                             style={{
                               width: '100%',
-                              minWidth: '720px',
+                              minWidth: '560px',
                               borderCollapse: 'collapse',
                               fontSize: '0.85rem',
                             }}
@@ -462,15 +446,12 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
                                 <th style={{ padding: '0.5rem' }}>Cliente</th>
                                 <th style={{ padding: '0.5rem' }}>Modelo</th>
                                 <th style={{ padding: '0.5rem', textAlign: 'right' }}>Piezas</th>
-                                <th style={{ padding: '0.5rem', textAlign: 'right' }}>P. venta</th>
                                 <th style={{ padding: '0.5rem' }}>Fecha entrega</th>
                                 <th style={{ padding: '0.5rem' }}>Tiempo entrega</th>
-                                <th style={{ padding: '0.5rem', textAlign: 'right' }}>Ganancia (partida)</th>
                               </tr>
                             </thead>
                             <tbody>
                               {detallesExpandidos[cot.id].map((d) => {
-                                const { ganT } = calcGananciaLinea(d, costoPorId);
                                 const sel = estaSeleccionado(d.id);
                                 return (
                                   <tr
@@ -500,25 +481,11 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
                                     <td style={{ padding: '0.45rem 0.5rem', textAlign: 'right', verticalAlign: 'middle' }}>
                                       {d.cantidad}
                                     </td>
-                                    <td style={{ padding: '0.45rem 0.5rem', textAlign: 'right', verticalAlign: 'middle' }}>
-                                      ${Number(d.precio_unitario).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-                                    </td>
                                     <td style={{ padding: '0.45rem 0.5rem', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
                                       {fmtFechaCot(cot.fecha_entrega)}
                                     </td>
                                     <td style={{ padding: '0.45rem 0.5rem', verticalAlign: 'middle' }}>
                                       {cot.tiempo_entrega || '—'}
-                                    </td>
-                                    <td
-                                      style={{
-                                        padding: '0.45rem 0.5rem',
-                                        textAlign: 'right',
-                                        verticalAlign: 'middle',
-                                        fontWeight: 600,
-                                        color: ganT >= 0 ? '#047857' : '#b91c1c',
-                                      }}
-                                    >
-                                      ${ganT.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                                     </td>
                                   </tr>
                                 );
@@ -537,44 +504,17 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
 
         <div
           style={{
-            padding: '0.75rem 1.25rem',
+            padding: '0.85rem 1.25rem',
             borderTop: '1px solid #e5e7eb',
             background: '#fafafa',
+            textAlign: 'center',
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: '0.5rem' }}>
-            <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>Ganancias seleccionadas</span>
-            <span style={{ fontSize: '1.15rem', fontWeight: 800, color: '#047857' }}>
-              ${seleccionInfo.gananciasTotal.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-            </span>
-          </div>
-          {gastosFijosTotal > 0 && (
-            <>
-              <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '0.35rem' }}>
-                Meta (gastos fijos semanales): ${gastosFijosTotal.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-              </div>
-              <div
-                style={{
-                  height: 10,
-                  background: '#e5e7eb',
-                  borderRadius: 999,
-                  overflow: 'hidden',
-                  marginTop: '0.4rem',
-                }}
-              >
-                <div
-                  style={{
-                    width: `${progresoPct}%`,
-                    height: '100%',
-                    background: minimoAlcanzado ? '#10b981' : '#f59e0b',
-                    transition: 'width 0.35s ease',
-                  }}
-                />
-              </div>
-            </>
-          )}
+          <p style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#1f2937', letterSpacing: '0.02em' }}>
+            {seleccionados.size} concepto{seleccionados.size !== 1 ? 's' : ''} seleccionado{seleccionados.size !== 1 ? 's' : ''}
+          </p>
           {loadingGastos && (
-            <p style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', color: '#6b7280' }}>Cargando gastos fijos…</p>
+            <p style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', color: '#6b7280' }}>Validando…</p>
           )}
           {seleccionGuardadaMsg && (
             <p style={{ margin: '0.65rem 0 0', fontSize: '0.85rem', color: '#0369a1' }}>{seleccionGuardadaMsg}</p>
@@ -583,18 +523,15 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
 
         <div className="modal-footer" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', minWidth: 'min(100%, 280px)' }}>
-            <span style={{ fontSize: '0.9rem', color: '#6b7280' }}>
-              {seleccionados.size} concepto{seleccionados.size !== 1 ? 's' : ''} seleccionado{seleccionados.size !== 1 ? 's' : ''}
-            </span>
             <span style={{ fontSize: '0.9rem', fontWeight: 800, color: minimoAlcanzado ? '#047857' : '#b91c1c' }}>
               {loadingGastos ? (
-                'Calculando mínimo...'
+                'Validando…'
               ) : gastosFijosTotal <= 0 ? (
-                'Configura gastos fijos semanales para validar mínimo'
+                'Configura gastos fijos semanales para poder generar el plan'
               ) : minimoAlcanzado ? (
                 'Mínimo alcanzado'
               ) : (
-                `Faltan $${faltante.toLocaleString('es-MX', { minimumFractionDigits: 2 })} para alcanzar gastos semanales`
+                'Aún no alcanzas el mínimo de ganancias para cubrir gastos fijos semanales'
               )}
             </span>
           </div>
