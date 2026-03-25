@@ -64,19 +64,17 @@ export default function ModalGastosFijos({ onClose }: ModalGastosFijosProps) {
   const totalGuardado = gastosGuardados.reduce((sum, g) => sum + (isNaN(g.monto) ? 0 : g.monto), 0);
 
   const agregarConcepto = () => {
-    setGastos([
-      ...gastos,
-      { id: crypto.randomUUID(), nombre: '', monto: 0 },
-    ]);
+    // Uso update funcional para evitar perder filas si el usuario toca rápido.
+    setGastos((prev) => [...prev, { id: crypto.randomUUID(), nombre: '', monto: 0 }]);
   };
 
   const eliminarConcepto = (id: string) => {
-    setGastos(gastos.filter((g) => g.id !== id));
+    setGastos((prev) => prev.filter((g) => g.id !== id));
   };
 
   const actualizarGasto = (id: string, campo: 'nombre' | 'monto', valor: string | number) => {
-    setGastos(
-      gastos.map((g) =>
+    setGastos((prev) =>
+      prev.map((g) =>
         g.id === id
           ? {
               ...g,
