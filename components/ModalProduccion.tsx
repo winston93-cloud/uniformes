@@ -6,7 +6,10 @@ import { ChevronLeft, ChevronRight, X, Check, FileText } from 'lucide-react';
 import { useCotizaciones } from '@/lib/hooks/useCotizaciones';
 import { supabase } from '@/lib/supabase';
 import type { Cotizacion, DetalleCotizacion, Costo } from '@/lib/types';
-import { compareCotizacionesPorFechaEntrega } from '@/lib/cotizacionesSort';
+import {
+  compareCotizacionesPorFechaEntrega,
+  compareItemsProduccionPorFechaEntrega,
+} from '@/lib/cotizacionesSort';
 
 export interface ItemProduccion {
   cotizacion_id: string;
@@ -14,6 +17,8 @@ export interface ItemProduccion {
   detalle_id: string;
   modelo: string;
   piezas: number;
+  /** Para ordenar listados del módulo por la misma fecha que la cotización */
+  fecha_entrega?: string | null;
 }
 
 interface ModalProduccionProps {
@@ -80,9 +85,9 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
 
   /** Aprobadas (flujo principal) y terminadas (pueden cargarse al plan con las partidas que elijas). */
   const cotizacionesProduccion = useMemo(() => {
-    return cotizaciones
-      .filter((c) => c.estado === 'aprobado' || c.estado === 'terminado')
-      .sort(compareCotizacionesPorFechaEntrega);
+    return [...cotizaciones.filter((c) => c.estado === 'aprobado' || c.estado === 'terminado')].sort(
+      compareCotizacionesPorFechaEntrega
+    );
   }, [cotizaciones]);
 
   const nombreCliente = (cot: Cotizacion) =>
@@ -226,10 +231,12 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
             detalle_id: d.id,
             modelo: d.prenda_nombre,
             piezas: d.cantidad,
+            fecha_entrega: cot.fecha_entrega,
           });
         }
       });
     });
+    items.sort(compareItemsProduccionPorFechaEntrega);
     onGuardar(items);
   };
 

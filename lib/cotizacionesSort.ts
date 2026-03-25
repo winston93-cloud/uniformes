@@ -11,3 +11,14 @@ export function compareCotizacionesPorFechaEntrega(a: Cotizacion, b: Cotizacion)
   if (d !== 0) return d;
   return (b.folio || '').localeCompare(a.folio || '');
 }
+
+/** Ítems de producción (partidas) ordenados por fecha de entrega de la cotización padre. */
+export function compareItemsProduccionPorFechaEntrega<
+  T extends { fecha_entrega?: string | null; folio: string; detalle_id: string },
+>(a: T, b: T): number {
+  const fa = a.fecha_entrega || '9999-12-31';
+  const fb = b.fecha_entrega || '9999-12-31';
+  const d = fa.localeCompare(fb);
+  if (d !== 0) return d;
+  return `${a.folio}\u0000${a.detalle_id}`.localeCompare(`${b.folio}\u0000${b.detalle_id}`);
+}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import ModalGastosFijos from '@/components/ModalGastosFijos';
 import ModalProduccion, { type ItemProduccion } from '@/components/ModalProduccion';
+import { compareItemsProduccionPorFechaEntrega } from '@/lib/cotizacionesSort';
 import styles from './produccion.module.css';
 
 const outfit = Outfit({ weight: ['500', '600', '700'], subsets: ['latin'], variable: '--font-outfit' });
@@ -38,6 +39,11 @@ export default function ProduccionSemanalPage() {
   const [modalGastosAbierto, setModalGastosAbierto] = useState(false);
   const [modalProduccionAbierto, setModalProduccionAbierto] = useState(false);
   const [itemsProduccion, setItemsProduccion] = useState<ItemProduccion[]>([]);
+
+  const itemsProduccionOrdenados = useMemo(
+    () => [...itemsProduccion].sort(compareItemsProduccionPorFechaEntrega),
+    [itemsProduccion]
+  );
 
   return (
     <LayoutWrapper>
@@ -203,7 +209,7 @@ export default function ProduccionSemanalPage() {
           </motion.section>
 
           {/* Dashboard de Producción - items seleccionados */}
-          {itemsProduccion.length > 0 && (
+          {itemsProduccionOrdenados.length > 0 && (
             <motion.section
               className={styles.calendarSection}
               variants={fadeUp}
@@ -262,7 +268,7 @@ export default function ProduccionSemanalPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {itemsProduccion.map((item) => (
+                    {itemsProduccionOrdenados.map((item) => (
                       <tr key={`${item.cotizacion_id}-${item.detalle_id}`} style={{ borderBottom: '1px solid #f3f4f6' }}>
                         <td style={{ padding: '0.75rem 1rem', color: 'var(--text)' }}>{item.modelo}</td>
                         <td style={{ padding: '0.75rem 1rem', color: 'var(--text)' }}>{item.folio}</td>
