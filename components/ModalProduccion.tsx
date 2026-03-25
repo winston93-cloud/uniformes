@@ -203,6 +203,12 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
 
   const minimoAlcanzado = seleccionInfo.gananciasTotal >= gastosFijosTotal && gastosFijosTotal > 0;
 
+  /** 0–100 % del mínimo (gastos fijos); solo para barra y etiqueta, sin mostrar pesos. */
+  const progresoPct =
+    gastosFijosTotal > 0
+      ? Math.min(100, (seleccionInfo.gananciasTotal / gastosFijosTotal) * 100)
+      : 0;
+
   const handleGuardar = () => {
     const items: ItemProduccion[] = [];
     cotizacionesProduccion.forEach((cot) => {
@@ -513,6 +519,57 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
           <p style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#1f2937', letterSpacing: '0.02em' }}>
             {seleccionados.size} concepto{seleccionados.size !== 1 ? 's' : ''} seleccionado{seleccionados.size !== 1 ? 's' : ''}
           </p>
+          {!loadingGastos && gastosFijosTotal > 0 && (
+            <div
+              style={{ marginTop: '0.85rem', maxWidth: 'min(100%, 340px)', marginLeft: 'auto', marginRight: 'auto' }}
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(progresoPct)}
+              aria-label="Porcentaje de avance hacia el mínimo semanal"
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '0.35rem',
+                }}
+              >
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', letterSpacing: '0.02em' }}>
+                  Avance hacia el mínimo
+                </span>
+                <span
+                  style={{
+                    fontSize: '1.05rem',
+                    fontWeight: 800,
+                    color: minimoAlcanzado ? '#047857' : '#d97706',
+                    fontVariantNumeric: 'tabular-nums',
+                  }}
+                >
+                  {Math.round(progresoPct)}%
+                </span>
+              </div>
+              <div
+                style={{
+                  height: 12,
+                  background: '#e5e7eb',
+                  borderRadius: 999,
+                  overflow: 'hidden',
+                  boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.06)',
+                }}
+              >
+                <div
+                  style={{
+                    width: `${progresoPct}%`,
+                    height: '100%',
+                    background: minimoAlcanzado ? '#10b981' : '#f59e0b',
+                    transition: 'width 0.35s ease',
+                  }}
+                />
+              </div>
+            </div>
+          )}
           {loadingGastos && (
             <p style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', color: '#6b7280' }}>Validando…</p>
           )}
