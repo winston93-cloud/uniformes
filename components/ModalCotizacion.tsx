@@ -17,6 +17,22 @@ interface ModalCotizacionProps {
   onClose: () => void;
 }
 
+/** Resalta visualmente el control de estatus en historial (colores alineados al flujo del negocio). */
+function estilosEstadoCotizacion(estado: string) {
+  switch (estado) {
+    case 'emitido':
+      return { chip: '#10b981', wrapBg: '#ecfdf5', wrapBorder: '#34d399', text: '#047857', soft: '#d1fae5' };
+    case 'aprobado':
+      return { chip: '#3b82f6', wrapBg: '#eff6ff', wrapBorder: '#60a5fa', text: '#1e40af', soft: '#dbeafe' };
+    case 'trabajando':
+      return { chip: '#f59e0b', wrapBg: '#fffbeb', wrapBorder: '#fbbf24', text: '#b45309', soft: '#fde68a' };
+    case 'terminado':
+      return { chip: '#64748b', wrapBg: '#f1f5f9', wrapBorder: '#94a3b8', text: '#334155', soft: '#e2e8f0' };
+    default:
+      return { chip: '#6b7280', wrapBg: '#f9fafb', wrapBorder: '#d1d5db', text: '#374151', soft: '#f3f4f6' };
+  }
+}
+
 export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   // Estados principales
   const [vista, setVista] = useState<'nueva' | 'historial'>('nueva');
@@ -2192,12 +2208,42 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                       <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.9rem' }}>Cliente</th>
                       <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.9rem' }}>Fecha</th>
                       <th style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.9rem' }}>Total</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'center', fontSize: '0.9rem' }}>Estado</th>
+                      <th
+                        style={{
+                          padding: '0.75rem',
+                          textAlign: 'center',
+                          fontSize: '0.9rem',
+                          minWidth: '200px',
+                        }}
+                      >
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.35rem',
+                            padding: '0.4rem 0.75rem',
+                            background: 'rgba(255,255,255,0.22)',
+                            borderRadius: '999px',
+                            fontWeight: 800,
+                            letterSpacing: '0.06em',
+                            fontSize: '0.72rem',
+                            textTransform: 'uppercase',
+                            border: '1px solid rgba(255,255,255,0.45)',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+                          }}
+                          title="Cambiar estatus afecta producción y seguimiento"
+                        >
+                          Estado
+                        </span>
+                      </th>
                       <th style={{ padding: '0.75rem', textAlign: 'center', fontSize: '0.9rem' }}>Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {cotizacionesFiltradas.map((cot) => (
+                    {cotizacionesFiltradas.map((cot) => {
+                      const est = estilosEstadoCotizacion(cot.estado);
+                      return (
                       <tr key={cot.id} style={{ borderBottom: '1px solid #eee' }}>
                         <td style={{ padding: '0.75rem', fontWeight: 'bold', color: '#667eea', fontSize: '0.9rem' }}>
                           {cot.folio}
@@ -2212,49 +2258,92 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                           ${cot.total.toFixed(2)}
                         </td>
                         <td
-                          style={{ padding: '0.75rem', textAlign: 'center', minWidth: '160px' }}
+                          style={{
+                            padding: '0.65rem 0.75rem',
+                            textAlign: 'center',
+                            verticalAlign: 'middle',
+                            minWidth: '200px',
+                            background: est.soft,
+                            borderLeft: `4px solid ${est.chip}`,
+                          }}
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <select
-                            value={cot.estado}
-                            disabled={actualizandoEstadoId === cot.id}
-                            onChange={async (e) => {
-                              const nuevo = e.target.value as 'emitido' | 'aprobado' | 'trabajando' | 'terminado';
-                              if (nuevo === cot.estado) return;
-                              setActualizandoEstadoId(cot.id);
-                              const { error } = await actualizarEstado(cot.id, nuevo);
-                              setActualizandoEstadoId(null);
-                              if (error) {
-                                alert(`No se pudo actualizar el estatus: ${error}`);
-                              }
-                            }}
+                          <div
                             style={{
-                              width: '100%',
-                              maxWidth: '200px',
-                              padding: '0.45rem 0.6rem',
-                              borderRadius: '8px',
-                              border: '1px solid #e5e7eb',
-                              fontSize: '0.85rem',
-                              fontWeight: 600,
-                              background: '#fff',
-                              cursor: actualizandoEstadoId === cot.id ? 'wait' : 'pointer',
-                              color:
-                                cot.estado === 'emitido' ? '#047857' :
-                                cot.estado === 'aprobado' ? '#1d4ed8' :
-                                cot.estado === 'trabajando' ? '#b45309' : '#4b5563',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'stretch',
+                              gap: '0.35rem',
+                              maxWidth: '220px',
+                              margin: '0 auto',
+                              padding: '0.5rem 0.55rem',
+                              borderRadius: '12px',
+                              background: est.wrapBg,
+                              border: `2px solid ${est.wrapBorder}`,
+                              boxShadow:
+                                '0 4px 14px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(255,255,255,0.6) inset',
                             }}
-                            aria-label={`Estatus de cotización ${cot.folio}`}
                           >
-                            <option value="emitido">Emitido</option>
-                            <option value="aprobado">Aprobado</option>
-                            <option value="trabajando">Trabajando</option>
-                            <option value="terminado">Terminado</option>
-                          </select>
-                          {actualizandoEstadoId === cot.id && (
-                            <span style={{ display: 'block', fontSize: '0.7rem', color: '#6b7280', marginTop: '0.25rem' }}>
-                              Guardando…
+                            <span
+                              style={{
+                                fontSize: '0.65rem',
+                                fontWeight: 800,
+                                letterSpacing: '0.08em',
+                                textTransform: 'uppercase',
+                                color: est.text,
+                                opacity: 0.85,
+                                textAlign: 'center',
+                              }}
+                            >
+                              Estatus
                             </span>
-                          )}
+                            <select
+                              value={cot.estado}
+                              disabled={actualizandoEstadoId === cot.id}
+                              onChange={async (e) => {
+                                const nuevo = e.target.value as 'emitido' | 'aprobado' | 'trabajando' | 'terminado';
+                                if (nuevo === cot.estado) return;
+                                setActualizandoEstadoId(cot.id);
+                                const { error } = await actualizarEstado(cot.id, nuevo);
+                                setActualizandoEstadoId(null);
+                                if (error) {
+                                  alert(`No se pudo actualizar el estatus: ${error}`);
+                                }
+                              }}
+                              style={{
+                                width: '100%',
+                                padding: '0.55rem 0.65rem',
+                                borderRadius: '10px',
+                                border: `2px solid ${est.wrapBorder}`,
+                                fontSize: '0.88rem',
+                                fontWeight: 800,
+                                background: '#ffffff',
+                                cursor: actualizandoEstadoId === cot.id ? 'wait' : 'pointer',
+                                color: est.text,
+                                boxShadow: '0 2px 6px rgba(15, 23, 42, 0.06)',
+                                outline: 'none',
+                              }}
+                              aria-label={`Estatus de cotización ${cot.folio}`}
+                            >
+                              <option value="emitido">Emitido</option>
+                              <option value="aprobado">Aprobado</option>
+                              <option value="trabajando">Trabajando</option>
+                              <option value="terminado">Terminado</option>
+                            </select>
+                            {actualizandoEstadoId === cot.id && (
+                              <span
+                                style={{
+                                  display: 'block',
+                                  fontSize: '0.68rem',
+                                  color: est.text,
+                                  fontWeight: 600,
+                                  textAlign: 'center',
+                                }}
+                              >
+                                Guardando…
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td style={{ padding: '1rem', textAlign: 'center' }}>
                           <button
@@ -2273,7 +2362,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                           </button>
                         </td>
                       </tr>
-                    ))}
+                    );
+                    })}
                   </tbody>
                 </table>
               </div>
