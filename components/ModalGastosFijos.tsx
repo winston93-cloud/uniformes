@@ -43,12 +43,6 @@ export default function ModalGastosFijos({ onClose }: ModalGastosFijosProps) {
           throw new Error(json?.error || 'No se pudieron cargar los gastos guardados');
         }
 
-        const gastosDesdeBackend = (json.gastosGuardados ?? []).map((g: { nombre: string; monto: number }) => ({
-          id: crypto.randomUUID(),
-          nombre: g.nombre,
-          monto: g.monto,
-        }));
-
         setGastosGuardados(
           (json.gastosGuardados ?? []).map((g: { nombre: string; monto: number }) => ({
             id: crypto.randomUUID(),
@@ -56,7 +50,8 @@ export default function ModalGastosFijos({ onClose }: ModalGastosFijosProps) {
             monto: g.monto,
           }))
         );
-        setGastos(gastosDesdeBackend);
+        // Solo mostrarlos abajo para evitar duplicación: el editor inicia vacío.
+        setGastos([]);
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Error al cargar gastos');
       } finally {
@@ -66,6 +61,7 @@ export default function ModalGastosFijos({ onClose }: ModalGastosFijosProps) {
   }, [mounted]);
 
   const total = gastos.reduce((sum, g) => sum + (isNaN(g.monto) ? 0 : g.monto), 0);
+  const totalGuardado = gastosGuardados.reduce((sum, g) => sum + (isNaN(g.monto) ? 0 : g.monto), 0);
 
   const agregarConcepto = () => {
     setGastos([
@@ -120,13 +116,6 @@ export default function ModalGastosFijos({ onClose }: ModalGastosFijosProps) {
       }
 
       const nuevos = (json.gastosGuardados ?? []) as Array<{ nombre: string; monto: number }>;
-      setGastos(
-        nuevos.map((g) => ({
-          id: crypto.randomUUID(),
-          nombre: g.nombre,
-          monto: g.monto,
-        }))
-      );
       setGastosGuardados(
         nuevos.map((g) => ({
           id: crypto.randomUUID(),
@@ -134,6 +123,8 @@ export default function ModalGastosFijos({ onClose }: ModalGastosFijosProps) {
           monto: g.monto,
         }))
       );
+      // Solo mostrarlos abajo: el editor se limpia luego de guardar.
+      setGastos([]);
 
       setSuccess('Guardado correctamente para la semana actual.');
     } catch (e) {
@@ -321,39 +312,64 @@ export default function ModalGastosFijos({ onClose }: ModalGastosFijosProps) {
               border: '1px solid #fcd34d',
             }}
           >
-            <span style={{ fontWeight: 700, fontSize: '1.1rem', color: '#92400e' }}>
-              Total:
-            </span>
-            <span
-              style={{
-                fontWeight: 800,
-                fontSize: '1.5rem',
-                color: '#92400e',
-              }}
-            >
-              ${total.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-            </span>
+            {gastos.length > 0 ? (
+              <>
+                <span style={{ fontWeight: 700, fontSize: '1.1rem', color: '#92400e' }}>Total:</span>
+                <span
+                  style={{
+                    fontWeight: 800,
+                    fontSize: '1.5rem',
+                    color: '#92400e',
+                  }}
+                >
+                  ${total.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                </span>
+              </>
+            ) : (
+              <span style={{ fontWeight: 700, color: '#92400e', fontSize: '0.95rem' }}>Agrega conceptos arriba y da Guardar</span>
+            )}
           </div>
 
-          <p
-            style={{
-              marginTop: '0.75rem',
-              fontSize: '0.8rem',
-              color: '#6b7280',
-            }}
-          >
-            {gastos.length} concepto{gastos.length !== 1 ? 's' : ''}
-          </p>
+          {gastos.length > 0 && (
+            <p
+              style={{
+                marginTop: '0.75rem',
+                fontSize: '0.8rem',
+                color: '#6b7280',
+              }}
+            >
+              {gastos.length} concepto{gastos.length !== 1 ? 's' : ''}
+            </p>
+          )}
 
           <div
             style={{
               marginTop: '1rem',
-              borderTop: '1px solid #e5e7eb',
+              borderTop: '2px solid rgba(29, 78, 216, 0.22)',
               paddingTop: '1rem',
             }}
           >
-            <div style={{ fontWeight: 700, color: '#374151', marginBottom: '0.5rem' }}>
-              Gastos fijos semanales guardados (semana actual)
+            <div
+              style={{
+                fontWeight: 900,
+                color: '#1d4ed8',
+                marginBottom: '0.75rem',
+                background: 'linear-gradient(135deg, rgba(59,130,246,0.10) 0%, rgba(245,158,11,0.10) 100%)',
+                border: '1px solid rgba(29,78,216,0.22)',
+                borderRadius: '12px',
+                padding: '0.75rem 0.9rem',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: '1rem',
+              }}
+            >
+              <span>Gastos fijos semanales guardados (semana actual)</span>
+              {gastosGuardados.length > 0 && (
+                <span style={{ color: '#92400e' }}>
+                  Total: ${totalGuardado.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                </span>
+              )}
             </div>
 
             {cargandoGuardados ? (
@@ -361,11 +377,22 @@ export default function ModalGastosFijos({ onClose }: ModalGastosFijosProps) {
             ) : gastosGuardados.length === 0 ? (
               <div style={{ color: '#9ca3af', fontSize: '0.9rem' }}>Todavía no hay gastos guardados.</div>
             ) : (
-              <div style={{ display: 'grid', gap: '0.35rem' }}>
+              <div style={{ display: 'grid', gap: '0.55rem' }}>
                 {gastosGuardados.map((g) => (
-                  <div key={g.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
-                    <span style={{ color: '#374151' }}>{g.nombre}</span>
-                    <span style={{ color: '#374151', fontWeight: 700 }}>${g.monto.toFixed(2)}</span>
+                  <div
+                    key={g.id}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      gap: '1rem',
+                      padding: '0.6rem 0.75rem',
+                      borderRadius: '12px',
+                      border: '1px solid rgba(229,231,235,1)',
+                      background: 'rgba(255,255,255,0.65)',
+                    }}
+                  >
+                    <span style={{ color: '#374151', fontWeight: 700 }}>{g.nombre}</span>
+                    <span style={{ color: '#92400e', fontWeight: 900 }}>${g.monto.toFixed(2)}</span>
                   </div>
                 ))}
               </div>
