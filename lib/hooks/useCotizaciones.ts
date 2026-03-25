@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase, getSupabaseErrorMessage } from '@/lib/supabase';
 import type { Cotizacion, DetalleCotizacion } from '@/lib/types';
 
 export interface PartidaCotizacion {
@@ -55,7 +55,7 @@ export function useCotizaciones() {
       setCotizaciones(data || []);
     } catch (err) {
       console.error('Error al obtener cotizaciones:', err);
-      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setError(getSupabaseErrorMessage(err));
     } finally {
       setCargando(false);
     }
@@ -153,7 +153,7 @@ export function useCotizaciones() {
       return { data: cotizacion, error: null };
     } catch (err) {
       console.error('Error al crear cotizacion:', err);
-      return { data: null, error: err instanceof Error ? err.message : 'Error desconocido' };
+      return { data: null, error: getSupabaseErrorMessage(err) };
     }
   };
 
@@ -170,7 +170,7 @@ export function useCotizaciones() {
       return { error: null };
     } catch (err) {
       console.error('Error al actualizar estado:', err);
-      return { error: err instanceof Error ? err.message : 'Error desconocido' };
+      return { error: getSupabaseErrorMessage(err) };
     }
   };
 
@@ -186,7 +186,7 @@ export function useCotizaciones() {
       return { error: null };
     } catch (err) {
       console.error('Error al actualizar PDF URL:', err);
-      return { error: err instanceof Error ? err.message : 'Error desconocido' };
+      return { error: getSupabaseErrorMessage(err) };
     }
   };
 
@@ -203,7 +203,7 @@ export function useCotizaciones() {
       return { error: null };
     } catch (err) {
       console.error('Error al eliminar cotizacion:', err);
-      return { error: err instanceof Error ? err.message : 'Error desconocido' };
+      return { error: getSupabaseErrorMessage(err) };
     }
   };
 
