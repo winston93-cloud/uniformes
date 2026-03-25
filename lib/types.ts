@@ -193,6 +193,8 @@ export interface DetalleCotizacion {
   especificaciones: string | null;
   cantidad: number;
   precio_unitario: number;
+  // En BD existe en varias migraciones/flows; lo tipamos para producción semanal.
+  costo_id?: string | null;
   subtotal: number;
   orden: number;
   created_at?: string;

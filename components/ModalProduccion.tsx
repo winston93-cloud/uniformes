@@ -4,7 +4,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight, X, Check, FileText } from 'lucide-react';
 import { useCotizaciones } from '@/lib/hooks/useCotizaciones';
-import type { Cotizacion, DetalleCotizacion } from '@/lib/types';
+import { supabase } from '@/lib/supabase';
+import type { Cotizacion, DetalleCotizacion, Costo } from '@/lib/types';
 
 export interface ItemProduccion {
   cotizacion_id: string;
@@ -39,7 +40,13 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
   const [semanaOffset, setSemanaOffset] = useState(0);
   const [cotizacionExpandida, setCotizacionExpandida] = useState<string | null>(null);
   const [detallesExpandidos, setDetallesExpandidos] = useState<Record<string, DetalleCotizacion[]>>({});
+  const [costoPorId, setCostoPorId] = useState<Record<string, Costo>>({});
   const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set());
+  const [gastosFijosTotal, setGastosFijosTotal] = useState(0);
+  const [loadingGastos, setLoadingGastos] = useState(false);
+  const [guardandoPlan, setGuardandoPlan] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   const { cotizaciones, obtenerCotizacion } = useCotizaciones();
 
@@ -63,6 +70,24 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
     setMounted(true);
   }, []);
 
+  useEffect(() => {
+    if (!mounted) return;
+    (async () => {
+      setLoadingGastos(true);
+      try {
+        const res = await fetch('/api/gastos-fijos-semanales/actual');
+        const json = await res.json().catch(() => null);
+        if (!res.ok || !json?.success) throw new Error(json?.error || 'No se pudieron cargar gastos fijos');
+        const total = (json.gastosGuardados ?? []).reduce((sum: number, g: any) => sum + (Number(g.monto) || 0), 0);
+        setGastosFijosTotal(total);
+      } catch (e) {
+        setGastosFijosTotal(0);
+      } finally {
+        setLoadingGastos(false);
+      }
+    })();
+  }, [mounted]);
+
   const handleExpandirCotizacion = async (id: string) => {
     if (cotizacionExpandida === id) {
       setCotizacionExpandida(null);
@@ -73,6 +98,31 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
       try {
         const { detalle } = await obtenerCotizacion(id);
         setDetallesExpandidos((prev) => ({ ...prev, [id]: detalle }));
+
+        const costoIds = Array.from(
+          new Set(
+            (detalle as any[])
+              .map((d) => d.costo_id)
+              .filter((x) => typeof x === 'string' && x.length > 0)
+          )
+        ) as string[];
+
+        if (costoIds.length > 0) {
+          const faltantes = costoIds.filter((cid) => !costoPorId[cid]);
+          if (faltantes.length > 0) {
+            const { data: costosRows, error: costosErr } = await supabase
+              .from('costos')
+              .select('*')
+              .in('id', faltantes);
+            if (!costosErr && costosRows) {
+              setCostoPorId((prev) => {
+                const next = { ...prev };
+                for (const c of costosRows as any[]) next[c.id] = c as Costo;
+                return next;
+              });
+            }
+          }
+        }
       } catch (e) {
         console.error('Error cargando detalle:', e);
       }
@@ -94,6 +144,50 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
 
   const estaSeleccionado = (detalleId: string) => seleccionados.has(detalleId);
 
+  const seleccionInfo = useMemo(() => {
+    const rows: Array<{
+      cotizacion_id: string;
+      cotizacion_folio: string;
+      detalle_id: string;
+      modelo: string;
+      piezas: number;
+      precio_unitario: number;
+      costo_unitario: number;
+      ganancia_unitaria: number;
+      ganancia_total: number;
+    }> = [];
+
+    for (const cot of cotizacionesAceptadas) {
+      const detalles = detallesExpandidos[cot.id] || [];
+      for (const d of detalles as any[]) {
+        if (!seleccionados.has(d.id)) continue;
+        const precio = Number(d.precio_unitario) || 0;
+        const costoId = d.costo_id as string | undefined;
+        const costoUnit = costoId && costoPorId[costoId] ? Number((costoPorId[costoId] as any).precio_compra) || 0 : 0;
+        const piezas = Number(d.cantidad) || 0;
+        const ganU = Number((precio - costoUnit).toFixed(2));
+        const ganT = Number((ganU * piezas).toFixed(2));
+        rows.push({
+          cotizacion_id: cot.id,
+          cotizacion_folio: cot.folio,
+          detalle_id: d.id,
+          modelo: d.prenda_nombre,
+          piezas,
+          precio_unitario: precio,
+          costo_unitario: costoUnit,
+          ganancia_unitaria: ganU,
+          ganancia_total: ganT,
+        });
+      }
+    }
+
+    const gananciasTotal = rows.reduce((s, r) => s + r.ganancia_total, 0);
+    return { rows, gananciasTotal };
+  }, [cotizacionesAceptadas, detallesExpandidos, seleccionados, costoPorId]);
+
+  const minimoAlcanzado = seleccionInfo.gananciasTotal >= gastosFijosTotal && gastosFijosTotal > 0;
+  const faltante = Math.max(0, gastosFijosTotal - seleccionInfo.gananciasTotal);
+
   const handleGuardar = () => {
     const items: ItemProduccion[] = [];
     cotizacionesAceptadas.forEach((cot) => {
@@ -111,7 +205,47 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
       });
     });
     onGuardar(items);
-    onClose();
+    // Ya no cerramos aquí: se cierra solo al generar/guardar plan.
+  };
+
+  const handleGenerarPlan = async () => {
+    setGuardandoPlan(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      if (!minimoAlcanzado) return;
+      const payload = {
+        semanaOffset,
+        gastos_fijos_total: Number(gastosFijosTotal.toFixed(2)),
+        ganancias_total: Number(seleccionInfo.gananciasTotal.toFixed(2)),
+        estado: 'GENERADO' as const,
+        items: seleccionInfo.rows.map((r) => ({
+          cotizacion_id: r.cotizacion_id,
+          cotizacion_folio: r.cotizacion_folio,
+          detalle_id: r.detalle_id,
+          modelo: r.modelo,
+          piezas: r.piezas,
+          precio_unitario: r.precio_unitario,
+          costo_unitario: r.costo_unitario,
+        })),
+      };
+
+      const res = await fetch('/api/produccion-semanal/plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.success) throw new Error(json?.error || 'No se pudo guardar el plan');
+
+      setSuccess('Plan generado y guardado.');
+      handleGuardar();
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error al generar plan');
+    } finally {
+      setGuardandoPlan(false);
+    }
   };
 
   if (!mounted) return null;
@@ -276,9 +410,22 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
         </div>
 
         <div className="modal-footer" style={{ justifyContent: 'space-between' }}>
-          <span style={{ fontSize: '0.9rem', color: '#6b7280' }}>
-            {seleccionados.size} concepto{seleccionados.size !== 1 ? 's' : ''} seleccionado{seleccionados.size !== 1 ? 's' : ''}
-          </span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+            <span style={{ fontSize: '0.9rem', color: '#6b7280' }}>
+              {seleccionados.size} concepto{seleccionados.size !== 1 ? 's' : ''} seleccionado{seleccionados.size !== 1 ? 's' : ''}
+            </span>
+            <span style={{ fontSize: '0.9rem', fontWeight: 800, color: minimoAlcanzado ? '#047857' : '#b91c1c' }}>
+              {loadingGastos ? (
+                'Calculando mínimo...'
+              ) : gastosFijosTotal <= 0 ? (
+                'Configura gastos fijos semanales para validar mínimo'
+              ) : minimoAlcanzado ? (
+                'Mínimo alcanzado'
+              ) : (
+                `Faltan $${faltante.toLocaleString('es-MX', { minimumFractionDigits: 2 })} para alcanzar gastos semanales`
+              )}
+            </span>
+          </div>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             <button type="button" className="btn btn-secondary" onClick={onClose}>
               Cancelar
@@ -286,15 +433,26 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
             <button
               type="button"
               className="btn btn-success"
-              onClick={handleGuardar}
-              disabled={seleccionados.size === 0}
+              onClick={handleGenerarPlan}
+              disabled={!minimoAlcanzado || guardandoPlan}
               style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
             >
               <Check size={18} />
-              Guardar y ver dashboard
+              {guardandoPlan ? 'Generando...' : 'Generar plan de trabajo'}
             </button>
           </div>
         </div>
+
+        {error && (
+          <div style={{ marginTop: '0.5rem', color: '#b91c1c', fontSize: '0.9rem', padding: '0 1.5rem 1rem' }}>
+            {error}
+          </div>
+        )}
+        {success && (
+          <div style={{ marginTop: '0.5rem', color: '#047857', fontSize: '0.9rem', padding: '0 1.5rem 1rem' }}>
+            {success}
+          </div>
+        )}
       </div>
     </div>
   );
