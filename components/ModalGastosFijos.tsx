@@ -17,12 +17,53 @@ interface ModalGastosFijosProps {
 export default function ModalGastosFijos({ onClose }: ModalGastosFijosProps) {
   const [mounted, setMounted] = useState(false);
   const [gastos, setGastos] = useState<GastoFijo[]>([]);
+  const [gastosGuardados, setGastosGuardados] = useState<GastoFijo[]>([]);
+  const [cargandoGuardados, setCargandoGuardados] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+    (async () => {
+      setCargandoGuardados(true);
+      setError(null);
+      setSuccess(null);
+      try {
+        const res = await fetch('/api/gastos-fijos-semanales/actual');
+        const json = await res.json().catch(() => null);
+        if (!res.ok) {
+          throw new Error(json?.error || 'No se pudo cargar los gastos guardados');
+        }
+        if (!json?.success) {
+          throw new Error(json?.error || 'No se pudieron cargar los gastos guardados');
+        }
+
+        const gastosDesdeBackend = (json.gastosGuardados ?? []).map((g: { nombre: string; monto: number }) => ({
+          id: crypto.randomUUID(),
+          nombre: g.nombre,
+          monto: g.monto,
+        }));
+
+        setGastosGuardados(
+          (json.gastosGuardados ?? []).map((g: { nombre: string; monto: number }) => ({
+            id: crypto.randomUUID(),
+            nombre: g.nombre,
+            monto: g.monto,
+          }))
+        );
+        setGastos(gastosDesdeBackend);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Error al cargar gastos');
+      } finally {
+        setCargandoGuardados(false);
+      }
+    })();
+  }, [mounted]);
 
   const total = gastos.reduce((sum, g) => sum + (isNaN(g.monto) ? 0 : g.monto), 0);
 
@@ -53,6 +94,7 @@ export default function ModalGastosFijos({ onClose }: ModalGastosFijosProps) {
   const handleGuardar = async () => {
     setSaving(true);
     setError(null);
+    setSuccess(null);
     try {
       const gastosLimpios = gastos
         .map((g) => ({ nombre: g.nombre.trim(), monto: Number(g.monto) }))
@@ -77,7 +119,23 @@ export default function ModalGastosFijos({ onClose }: ModalGastosFijosProps) {
         throw new Error(json?.error || 'No se pudo guardar los gastos');
       }
 
-      onClose();
+      const nuevos = (json.gastosGuardados ?? []) as Array<{ nombre: string; monto: number }>;
+      setGastos(
+        nuevos.map((g) => ({
+          id: crypto.randomUUID(),
+          nombre: g.nombre,
+          monto: g.monto,
+        }))
+      );
+      setGastosGuardados(
+        nuevos.map((g) => ({
+          id: crypto.randomUUID(),
+          nombre: g.nombre,
+          monto: g.monto,
+        }))
+      );
+
+      setSuccess('Guardado correctamente para la semana actual.');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error al guardar');
     } finally {
@@ -286,6 +344,33 @@ export default function ModalGastosFijos({ onClose }: ModalGastosFijosProps) {
           >
             {gastos.length} concepto{gastos.length !== 1 ? 's' : ''}
           </p>
+
+          <div
+            style={{
+              marginTop: '1rem',
+              borderTop: '1px solid #e5e7eb',
+              paddingTop: '1rem',
+            }}
+          >
+            <div style={{ fontWeight: 700, color: '#374151', marginBottom: '0.5rem' }}>
+              Gastos fijos semanales guardados (semana actual)
+            </div>
+
+            {cargandoGuardados ? (
+              <div style={{ color: '#9ca3af', fontSize: '0.9rem' }}>Cargando...</div>
+            ) : gastosGuardados.length === 0 ? (
+              <div style={{ color: '#9ca3af', fontSize: '0.9rem' }}>Todavía no hay gastos guardados.</div>
+            ) : (
+              <div style={{ display: 'grid', gap: '0.35rem' }}>
+                {gastosGuardados.map((g) => (
+                  <div key={g.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
+                    <span style={{ color: '#374151' }}>{g.nombre}</span>
+                    <span style={{ color: '#374151', fontWeight: 700 }}>${g.monto.toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="modal-footer">
@@ -310,6 +395,12 @@ export default function ModalGastosFijos({ onClose }: ModalGastosFijosProps) {
         {error && (
           <div style={{ marginTop: '0.75rem', color: '#b91c1c', fontSize: '0.9rem', padding: '0 1rem 1rem 1rem' }}>
             {error}
+          </div>
+        )}
+
+        {success && (
+          <div style={{ marginTop: '0.75rem', color: '#047857', fontSize: '0.9rem', padding: '0 1rem 1rem 1rem' }}>
+            {success}
           </div>
         )}
       </div>

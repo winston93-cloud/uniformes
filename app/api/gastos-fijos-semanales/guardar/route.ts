@@ -183,6 +183,10 @@ export async function POST(request: NextRequest) {
       semanaFechaInicio,
       headerId,
       conceptos: detalleRows.length,
+      gastosGuardados: detalleRows.map((r) => ({
+        nombre: nombres.find((n) => (idPorNombre.get(n) as string) === r.gasto_fijo_catalogo_id)!,
+        monto: Number(r.monto),
+      })),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Error interno';
