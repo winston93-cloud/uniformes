@@ -22,6 +22,7 @@ export default function ModalGastosFijos({ onClose }: ModalGastosFijosProps) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [eliminandoNombre, setEliminandoNombre] = useState<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -147,6 +148,41 @@ export default function ModalGastosFijos({ onClose }: ModalGastosFijosProps) {
       setError(e instanceof Error ? e.message : 'Error al guardar');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleEliminarConcepto = async (nombre: string) => {
+    if (!nombre) return;
+    setEliminandoNombre(nombre);
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await fetch('/api/gastos-fijos-semanales/eliminar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombre }),
+      });
+
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.success) {
+        throw new Error(json?.error || 'No se pudo eliminar el concepto');
+      }
+
+      const nuevos = (json.gastosGuardados ?? []) as Array<{ nombre: string; monto: number }>;
+      setGastosGuardados(
+        nuevos.map((g) => ({
+          id: crypto.randomUUID(),
+          nombre: g.nombre,
+          monto: g.monto,
+        }))
+      );
+      // Mantener editor vacío (solo mostrar guardados abajo).
+      setGastos([]);
+      setSuccess('Concepto eliminado para la semana actual.');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error al eliminar');
+    } finally {
+      setEliminandoNombre(null);
     }
   };
 
@@ -408,7 +444,27 @@ export default function ModalGastosFijos({ onClose }: ModalGastosFijosProps) {
                     }}
                   >
                     <span style={{ color: '#374151', fontWeight: 700 }}>{g.nombre}</span>
-                    <span style={{ color: '#92400e', fontWeight: 900 }}>${g.monto.toFixed(2)}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <span style={{ color: '#92400e', fontWeight: 900 }}>${g.monto.toFixed(2)}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleEliminarConcepto(g.nombre)}
+                        disabled={eliminandoNombre === g.nombre}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          cursor: eliminandoNombre === g.nombre ? 'not-allowed' : 'pointer',
+                          padding: '0.25rem',
+                          color: eliminandoNombre === g.nombre ? '#fca5a5' : '#ef4444',
+                          borderRadius: '8px',
+                          lineHeight: 0,
+                        }}
+                        aria-label="Eliminar concepto"
+                        title="Eliminar"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
