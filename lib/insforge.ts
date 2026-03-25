@@ -17,8 +17,16 @@ export function assertInsforgeConfigured() {
   }
 }
 
+function looksLikeJwt(token: string) {
+  // JWT suele venir como: header.payload.signature (3 partes separadas por '.')
+  return token.split('.').length === 3;
+}
+
 export const insforge = createClient({
   baseUrl: insforgeUrl || 'https://placeholder.supabase.co',
-  anonKey: insforgeAnonKey || 'placeholder-key',
+  // Si el token NO parece JWT (por ejemplo empieza con `ik_`), el SDK podría
+  // intentar decodificarlo como JWT y fallar. Como en nuestro caso las policies
+  // son `public`, intentamos operar sin Authorization.
+  anonKey: insforgeAnonKey && looksLikeJwt(insforgeAnonKey) ? insforgeAnonKey : undefined,
 });
 
