@@ -135,14 +135,14 @@ export default function ProduccionSemanalPage() {
               variants={fadeUp}
               whileHover={{ y: -6, transition: { duration: 0.3 } }}
               whileTap={{ scale: 0.99 }}
-              aria-label="Producción"
+              aria-label="Planeación"
               style={{ border: 'none', font: 'inherit', textAlign: 'left', width: '100%', cursor: 'pointer' }}
             >
               <div className={styles.actionIcon}>
                 <Settings size={24} strokeWidth={2} />
               </div>
               <h2 className={styles.actionTitle} style={{ fontFamily: 'var(--font-outfit)' }}>
-                Producción
+                Planeación
               </h2>
               <p className={styles.actionDesc}>
                 Seguimiento y planificación de la producción semanal
@@ -165,7 +165,7 @@ export default function ProduccionSemanalPage() {
               variants={fadeUp}
               whileHover={{ y: -6, transition: { duration: 0.3 } }}
               whileTap={{ scale: 0.99 }}
-              aria-label="Producción terminada"
+              aria-label="Producción"
               title="Próximamente"
               style={{ border: 'none', font: 'inherit', textAlign: 'left', width: '100%', cursor: 'pointer' }}
             >
@@ -175,7 +175,7 @@ export default function ProduccionSemanalPage() {
                 </span>
               </div>
               <h2 className={styles.actionTitle} style={{ fontFamily: 'var(--font-outfit)' }}>
-                Producción terminada
+                Producción
               </h2>
               <p className={styles.actionDesc}>
                 Prendas y lotes marcados como finalizados en la semana
