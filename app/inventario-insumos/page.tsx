@@ -126,7 +126,15 @@ export default function InventarioInsumosPage() {
                         </span>
                       </td>
                       <td data-label="Unidad">
-                        <span className="badge badge-info" style={{ backgroundColor: '#0ea5e9' }}>
+                        <span
+                          className="badge"
+                          style={{
+                            backgroundColor: '#dbeafe',
+                            color: '#1e3a8a',
+                            border: '1px solid #93c5fd',
+                            fontWeight: 600,
+                          }}
+                        >
                           {(insumo.unidad_medida && insumo.unidad_medida.trim()) || 'unidades'}
                         </span>
                       </td>

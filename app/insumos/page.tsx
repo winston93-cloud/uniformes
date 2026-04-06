@@ -544,7 +544,15 @@ export default function InsumosPage() {
                     <td data-label="Nombre" style={{ fontWeight: '600' }}>{insumo.nombre}</td>
                     <td data-label="Presentación"><span className="badge badge-info">{insumo.presentacion?.nombre || '-'}</span></td>
                     <td data-label="Unidad">
-                      <span className="badge badge-info" style={{ backgroundColor: '#0ea5e9' }}>
+                      <span
+                        className="badge"
+                        style={{
+                          backgroundColor: '#dbeafe',
+                          color: '#1e3a8a',
+                          border: '1px solid #93c5fd',
+                          fontWeight: 600,
+                        }}
+                      >
                         {(insumo.unidad_medida && insumo.unidad_medida.trim()) || 'unidades'}
                       </span>
                     </td>
@@ -552,7 +560,24 @@ export default function InsumosPage() {
                       {Number(insumo.cantidad_por_presentacion).toLocaleString('es-MX')}
                     </td>
                     <td data-label="Almacenado">
-                      <span className="badge badge-info" style={{ backgroundColor: insumo.ubicacion_almacenamiento ? '#8b5cf6' : '#94a3b8' }}>
+                      <span
+                        className="badge"
+                        style={
+                          insumo.ubicacion_almacenamiento
+                            ? {
+                                backgroundColor: '#ede9fe',
+                                color: '#5b21b6',
+                                border: '1px solid #c4b5fd',
+                                fontWeight: 600,
+                              }
+                            : {
+                                backgroundColor: '#f1f5f9',
+                                color: '#475569',
+                                border: '1px solid #cbd5e1',
+                                fontWeight: 600,
+                              }
+                        }
+                      >
                         {insumo.ubicacion_almacenamiento?.nombre || '-'}
                       </span>
                     </td>
