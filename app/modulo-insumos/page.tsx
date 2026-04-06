@@ -1,12 +1,9 @@
 'use client';
 
-import { useAuth } from '@/contexts/AuthContext';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import Link from 'next/link';
 
 export default function ModuloInsumosPage() {
-  const { sesion } = useAuth();
-
   return (
     <LayoutWrapper>
       <div className="main-container">
@@ -24,12 +21,15 @@ export default function ModuloInsumosPage() {
           color: 'rgba(255, 255, 255, 0.9)', 
           textAlign: 'center',
           fontSize: '1.1rem',
-          marginBottom: '3rem'
+          marginBottom: '3rem',
+          maxWidth: '520px',
+          marginLeft: 'auto',
+          marginRight: 'auto',
+          lineHeight: 1.5,
         }}>
-          Gestión completa de materiales e insumos para fabricación
+          Catálogo de insumos (materiales, presentaciones y ubicaciones se gestionan desde el mismo formulario).
         </p>
 
-        {/* Botón de regreso */}
         <div style={{ marginBottom: '2rem', textAlign: 'center' }}>
           <Link href="/dashboard">
             <button className="btn btn-secondary" style={{ 
@@ -41,20 +41,18 @@ export default function ModuloInsumosPage() {
           </Link>
         </div>
 
-        <div className="grid-container" style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-          gap: '1.5rem',
-          maxWidth: '1400px',
-          margin: '0 auto'
+        <div style={{
+          maxWidth: '420px',
+          margin: '0 auto',
         }}>
-          {/* Catálogo de Insumos */}
           <Link 
             href="/insumos" 
             className="card"
             style={{
+              display: 'block',
               background: 'linear-gradient(135deg, #7dd3c0 0%, #5fb8a6 100%)',
               border: '2px solid rgba(127, 211, 192, 0.4)',
+              textDecoration: 'none',
             }}
           >
             <div 
@@ -77,6 +75,7 @@ export default function ModuloInsumosPage() {
               fontSize: '1.3rem',
               fontWeight: '600',
               color: 'white',
+              textAlign: 'center',
             }}>
               Catálogo de Insumos
             </h3>
@@ -84,90 +83,9 @@ export default function ModuloInsumosPage() {
               margin: 0,
               fontSize: '0.95rem',
               color: 'rgba(255, 255, 255, 0.9)',
+              textAlign: 'center',
             }}>
-              Gestión de materiales e insumos para fabricación de prendas
-            </p>
-          </Link>
-
-          {/* Presentaciones */}
-          <Link 
-            href="/presentaciones" 
-            className="card"
-            style={{
-              background: 'linear-gradient(135deg, #7dd3c0 0%, #5fb8a6 100%)',
-              border: '2px solid rgba(127, 211, 192, 0.4)',
-            }}
-          >
-            <div 
-              style={{
-                fontSize: '2.5rem',
-                background: 'rgba(255, 255, 255, 0.3)',
-                borderRadius: '12px',
-                width: '60px',
-                height: '60px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto 1rem',
-              }}
-            >
-              📦
-            </div>
-            <h3 style={{ 
-              margin: '0 0 0.5rem 0',
-              fontSize: '1.3rem',
-              fontWeight: '600',
-              color: 'white',
-            }}>
-              Presentaciones
-            </h3>
-            <p style={{ 
-              margin: 0,
-              fontSize: '0.95rem',
-              color: 'rgba(255, 255, 255, 0.9)',
-            }}>
-              Unidades de medida y presentaciones para insumos
-            </p>
-          </Link>
-
-          {/* Ubicaciones de Almacenamiento */}
-          <Link 
-            href="/ubicaciones-almacenamiento" 
-            className="card"
-            style={{
-              background: 'linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%)',
-              border: '2px solid rgba(167, 139, 250, 0.4)',
-            }}
-          >
-            <div 
-              style={{
-                fontSize: '2.5rem',
-                background: 'rgba(255, 255, 255, 0.3)',
-                borderRadius: '12px',
-                width: '60px',
-                height: '60px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto 1rem',
-              }}
-            >
-              📍
-            </div>
-            <h3 style={{ 
-              margin: '0 0 0.5rem 0',
-              fontSize: '1.3rem',
-              fontWeight: '600',
-              color: 'white',
-            }}>
-              Ubicaciones de Almacenamiento
-            </h3>
-            <p style={{ 
-              margin: 0,
-              fontSize: '0.95rem',
-              color: 'rgba(255, 255, 255, 0.9)',
-            }}>
-              Taller, Bodega uno, Bodega dos y más
+              Materiales, presentaciones (bolsa, rollo…) y ubicaciones (taller, bodegas) en un solo lugar.
             </p>
           </Link>
         </div>

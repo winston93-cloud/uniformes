@@ -1415,10 +1415,10 @@ export default function PrendasPage() {
                   Elige una ubicación para añadir una <strong>partida</strong>. La cantidad sugerida es el stock
                   existente menos lo ya asignado.{' '}
                   <a
-                    href="/ubicaciones-almacenamiento"
+                    href="/insumos"
                     style={{ color: '#007bff', textDecoration: 'underline' }}
                   >
-                    Gestionar ubicaciones
+                    Gestionar ubicaciones en Catálogo de Insumos
                   </a>
                 </p>
                 {stockTotalModalNum() > 0 && (

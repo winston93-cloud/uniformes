@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import LayoutWrapper from '@/components/LayoutWrapper';
+import AuxiliarCatalogoModal from '@/components/AuxiliarCatalogoModal';
 import { useInsumos } from '@/lib/hooks/useInsumos';
 import { usePresentaciones } from '@/lib/hooks/usePresentaciones';
 import { useUbicacionesAlmacenamiento } from '@/lib/hooks/useUbicacionesAlmacenamiento';
@@ -48,8 +49,189 @@ export default function InsumosPage() {
   const [modalExitoAbierto, setModalExitoAbierto] = useState(false);
   const inputBusquedaRef = useRef<HTMLInputElement>(null);
   const { insumos, loading, error, createInsumo, updateInsumo, deleteInsumo } = useInsumos();
-  const { presentaciones, loading: loadingPresentaciones } = usePresentaciones();
-  const { ubicaciones, loading: loadingUbicaciones } = useUbicacionesAlmacenamiento();
+  const {
+    presentaciones,
+    loading: loadingPresentaciones,
+    createPresentacion,
+    updatePresentacion,
+    deletePresentacion,
+  } = usePresentaciones();
+  const {
+    ubicaciones,
+    loading: loadingUbicaciones,
+    createUbicacion,
+    updateUbicacion,
+    deleteUbicacion,
+  } = useUbicacionesAlmacenamiento();
+
+  const [auxTipo, setAuxTipo] = useState<null | 'presentacion' | 'ubicacion'>(null);
+  const [auxModo, setAuxModo] = useState<'crear' | 'editar'>('crear');
+  const [auxForm, setAuxForm] = useState({ nombre: '', descripcion: '', activo: true });
+  const [auxError, setAuxError] = useState<string | null>(null);
+  const [auxGuardando, setAuxGuardando] = useState(false);
+
+  const cerrarAuxModal = () => {
+    setAuxTipo(null);
+    setAuxError(null);
+    setAuxGuardando(false);
+  };
+
+  const abrirNuevaPresentacion = () => {
+    setAuxForm({ nombre: '', descripcion: '', activo: true });
+    setAuxModo('crear');
+    setAuxTipo('presentacion');
+    setAuxError(null);
+  };
+
+  const abrirEditarPresentacion = () => {
+    const id = formData.presentacion_id;
+    if (!id) return;
+    const p = presentaciones.find((x) => x.id === id);
+    if (!p) return;
+    setAuxForm({
+      nombre: p.nombre,
+      descripcion: p.descripcion || '',
+      activo: p.activo,
+    });
+    setAuxModo('editar');
+    setAuxTipo('presentacion');
+    setAuxError(null);
+  };
+
+  const eliminarPresentacionSeleccionada = async (desdeModalAux = false) => {
+    const id = formData.presentacion_id;
+    if (!id) return;
+    if (!confirm('¿Eliminar esta presentación? Si está en uso, la base de datos puede rechazar la operación.')) {
+      return;
+    }
+    setAuxGuardando(true);
+    const { error: err } = await deletePresentacion(id);
+    setAuxGuardando(false);
+    if (err) {
+      if (desdeModalAux) setAuxError(err);
+      else {
+        setMensajeError(`❌ ${err}`);
+        setModalErrorAbierto(true);
+      }
+      return;
+    }
+    setFormData((f) => ({ ...f, presentacion_id: '' }));
+    if (desdeModalAux) cerrarAuxModal();
+  };
+
+  const abrirNuevaUbicacion = () => {
+    setAuxForm({ nombre: '', descripcion: '', activo: true });
+    setAuxModo('crear');
+    setAuxTipo('ubicacion');
+    setAuxError(null);
+  };
+
+  const abrirEditarUbicacion = () => {
+    const id = formData.ubicacion_almacenamiento_id;
+    if (!id) return;
+    const u = ubicaciones.find((x) => x.id === id);
+    if (!u) return;
+    setAuxForm({
+      nombre: u.nombre,
+      descripcion: u.descripcion || '',
+      activo: u.activo,
+    });
+    setAuxModo('editar');
+    setAuxTipo('ubicacion');
+    setAuxError(null);
+  };
+
+  const eliminarUbicacionSeleccionada = async (desdeModalAux = false) => {
+    const id = formData.ubicacion_almacenamiento_id;
+    if (!id) return;
+    if (!confirm('¿Eliminar esta ubicación? Si está en uso, la base de datos puede rechazar la operación.')) {
+      return;
+    }
+    setAuxGuardando(true);
+    const { error: err } = await deleteUbicacion(id);
+    setAuxGuardando(false);
+    if (err) {
+      if (desdeModalAux) setAuxError(err);
+      else {
+        setMensajeError(`❌ ${err}`);
+        setModalErrorAbierto(true);
+      }
+      return;
+    }
+    setFormData((f) => ({ ...f, ubicacion_almacenamiento_id: '' }));
+    if (desdeModalAux) cerrarAuxModal();
+  };
+
+  const handleAuxSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuxError(null);
+    const nombreTrim = auxForm.nombre.trim();
+    if (!nombreTrim) {
+      setAuxError('El nombre es obligatorio.');
+      return;
+    }
+    setAuxGuardando(true);
+    try {
+      if (auxTipo === 'presentacion') {
+        const payload = {
+          nombre: nombreTrim.toUpperCase(),
+          descripcion: auxForm.descripcion.trim() || null,
+          activo: auxForm.activo,
+        };
+        if (auxModo === 'crear') {
+          const { data, error: err } = await createPresentacion(payload);
+          if (err) {
+            setAuxError(err);
+            return;
+          }
+          if (data) setFormData((f) => ({ ...f, presentacion_id: data.id }));
+          cerrarAuxModal();
+        } else {
+          const id = formData.presentacion_id;
+          if (!id) {
+            setAuxError('No hay presentación seleccionada.');
+            return;
+          }
+          const { error: err } = await updatePresentacion(id, payload);
+          if (err) {
+            setAuxError(err);
+            return;
+          }
+          cerrarAuxModal();
+        }
+      } else if (auxTipo === 'ubicacion') {
+        const payload = {
+          nombre: nombreTrim,
+          descripcion: auxForm.descripcion.trim() || null,
+          activo: auxForm.activo,
+        };
+        if (auxModo === 'crear') {
+          const { data, error: err } = await createUbicacion(payload);
+          if (err) {
+            setAuxError(err);
+            return;
+          }
+          if (data) setFormData((f) => ({ ...f, ubicacion_almacenamiento_id: data.id }));
+          cerrarAuxModal();
+        } else {
+          const id = formData.ubicacion_almacenamiento_id;
+          if (!id) {
+            setAuxError('No hay ubicación seleccionada.');
+            return;
+          }
+          const { error: err } = await updateUbicacion(id, payload);
+          if (err) {
+            setAuxError(err);
+            return;
+          }
+          cerrarAuxModal();
+        }
+      }
+    } finally {
+      setAuxGuardando(false);
+    }
+  };
+
 
   const [formData, setFormData] = useState({
     nombre: '',
@@ -349,20 +531,61 @@ export default function InsumosPage() {
 
               <div className="form-group">
                 <label className="form-label">Presentación (catálogo) *</label>
-                <select
-                  className="form-select"
-                  value={formData.presentacion_id}
-                  onChange={(e) => setFormData({ ...formData, presentacion_id: e.target.value })}
-                  required
-                  disabled={loadingPresentaciones}
+                <div
+                  style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: '0.5rem',
+                    alignItems: 'stretch',
+                    marginBottom: '0.35rem',
+                  }}
                 >
-                  <option value="">Seleccionar presentación</option>
-                  {presentaciones.filter(p => p.activo).map(pres => (
-                    <option key={pres.id} value={pres.id}>{pres.nombre}</option>
-                  ))}
-                </select>
+                  <select
+                    className="form-select"
+                    value={formData.presentacion_id}
+                    onChange={(e) => setFormData({ ...formData, presentacion_id: e.target.value })}
+                    required
+                    disabled={loadingPresentaciones || auxGuardando}
+                    style={{ flex: '1 1 200px', minWidth: 'min(100%, 12rem)' }}
+                  >
+                    <option value="">Seleccionar presentación</option>
+                    {presentaciones.map((pres) => (
+                      <option key={pres.id} value={pres.id}>
+                        {pres.nombre}
+                        {!pres.activo ? ' (inactiva)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    style={{ padding: '0.45rem 0.85rem', fontSize: '0.88rem', whiteSpace: 'nowrap' }}
+                    onClick={abrirNuevaPresentacion}
+                    disabled={loadingPresentaciones || auxGuardando}
+                  >
+                    + Nueva
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    style={{ padding: '0.45rem 0.85rem', fontSize: '0.88rem', whiteSpace: 'nowrap' }}
+                    onClick={abrirEditarPresentacion}
+                    disabled={!formData.presentacion_id || loadingPresentaciones || auxGuardando}
+                  >
+                    Editar
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-danger"
+                    style={{ padding: '0.45rem 0.85rem', fontSize: '0.88rem', whiteSpace: 'nowrap' }}
+                    onClick={() => void eliminarPresentacionSeleccionada(false)}
+                    disabled={!formData.presentacion_id || loadingPresentaciones || auxGuardando}
+                  >
+                    Eliminar
+                  </button>
+                </div>
                 <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
-                  Tipo de envase o referencia en catálogo (ej. rollo, bolsa). <a href="/presentaciones" style={{ color: '#007bff', textDecoration: 'underline' }}>Gestionar presentaciones</a>
+                  Tipo de envase o referencia (ej. rollo, bolsa). Puedes crear o editar aquí sin salir del formulario.
                 </small>
               </div>
 
@@ -458,22 +681,64 @@ export default function InsumosPage() {
 
               <div className="form-group">
                 <label className="form-label">📍 Dónde está almacenado</label>
-                <select
-                  className="form-select"
-                  value={formData.ubicacion_almacenamiento_id}
-                  onChange={(e) => setFormData({ ...formData, ubicacion_almacenamiento_id: e.target.value })}
-                  disabled={loadingUbicaciones}
+                <div
                   style={{
-                    borderLeft: '4px solid #8b5cf6',
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: '0.5rem',
+                    alignItems: 'stretch',
+                    marginBottom: '0.35rem',
                   }}
                 >
-                  <option value="">Seleccionar ubicación (opcional)</option>
-                  {ubicaciones.filter(u => u.activo).map(ubic => (
-                    <option key={ubic.id} value={ubic.id}>{ubic.nombre}</option>
-                  ))}
-                </select>
+                  <select
+                    className="form-select"
+                    value={formData.ubicacion_almacenamiento_id}
+                    onChange={(e) => setFormData({ ...formData, ubicacion_almacenamiento_id: e.target.value })}
+                    disabled={loadingUbicaciones || auxGuardando}
+                    style={{
+                      borderLeft: '4px solid #8b5cf6',
+                      flex: '1 1 200px',
+                      minWidth: 'min(100%, 12rem)',
+                    }}
+                  >
+                    <option value="">Sin ubicación (opcional)</option>
+                    {ubicaciones.map((ubic) => (
+                      <option key={ubic.id} value={ubic.id}>
+                        {ubic.nombre}
+                        {!ubic.activo ? ' (inactiva)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    style={{ padding: '0.45rem 0.85rem', fontSize: '0.88rem', whiteSpace: 'nowrap' }}
+                    onClick={abrirNuevaUbicacion}
+                    disabled={loadingUbicaciones || auxGuardando}
+                  >
+                    + Nueva
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    style={{ padding: '0.45rem 0.85rem', fontSize: '0.88rem', whiteSpace: 'nowrap' }}
+                    onClick={abrirEditarUbicacion}
+                    disabled={!formData.ubicacion_almacenamiento_id || loadingUbicaciones || auxGuardando}
+                  >
+                    Editar
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-danger"
+                    style={{ padding: '0.45rem 0.85rem', fontSize: '0.88rem', whiteSpace: 'nowrap' }}
+                    onClick={() => void eliminarUbicacionSeleccionada(false)}
+                    disabled={!formData.ubicacion_almacenamiento_id || loadingUbicaciones || auxGuardando}
+                  >
+                    Eliminar
+                  </button>
+                </div>
                 <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
-                  Ubicación física donde se guarda el insumo. <a href="/ubicaciones-almacenamiento" style={{ color: '#007bff', textDecoration: 'underline' }}>Gestionar ubicaciones</a>
+                  Taller, bodega, etc. Opcional; puedes gestionar el catálogo desde aquí.
                 </small>
               </div>
 
@@ -751,6 +1016,35 @@ export default function InsumosPage() {
             </div>
           </div>
         )}
+
+        <AuxiliarCatalogoModal
+          open={auxTipo !== null}
+          titulo={
+            auxTipo === 'presentacion'
+              ? auxModo === 'crear'
+                ? '➕ Nueva presentación'
+                : '✏️ Editar presentación'
+              : auxModo === 'crear'
+                ? '➕ Nueva ubicación'
+                : '✏️ Editar ubicación'
+          }
+          nombre={auxForm.nombre}
+          descripcion={auxForm.descripcion}
+          activo={auxForm.activo}
+          mayusculasNombre={auxTipo === 'presentacion'}
+          onNombreChange={(v) => setAuxForm((f) => ({ ...f, nombre: v }))}
+          onDescripcionChange={(v) => setAuxForm((f) => ({ ...f, descripcion: v }))}
+          onActivoChange={(v) => setAuxForm((f) => ({ ...f, activo: v }))}
+          onSubmit={handleAuxSubmit}
+          onClose={cerrarAuxModal}
+          onDelete={() => {
+            if (auxTipo === 'presentacion') void eliminarPresentacionSeleccionada(true);
+            else void eliminarUbicacionSeleccionada(true);
+          }}
+          mostrarEliminar={auxModo === 'editar'}
+          guardando={auxGuardando}
+          errorLinea={auxError}
+        />
       </div>
     </LayoutWrapper>
   );
