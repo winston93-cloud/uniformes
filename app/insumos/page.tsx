@@ -254,28 +254,54 @@ export default function InsumosPage() {
 
         {/* Formulario Modal */}
         {mostrarFormulario && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.7)',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            zIndex: 1000,
-            padding: '1rem',
-            overflowY: 'auto'
-          }}>
-            <div className="form-container" style={{
-              maxWidth: '900px',
-              width: '100%',
-              maxHeight: '90vh',
+          <div
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.7)',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              zIndex: 1000,
+              padding: '1rem',
               overflowY: 'auto',
-              margin: '2rem auto',
-              position: 'relative'
-            }}>
+            }}
+            onClick={() => {
+              setMostrarFormulario(false);
+              setInsumoEditando(null);
+              setFormData({
+                nombre: '',
+                codigo: '',
+                descripcion: '',
+                presentacion_id: '',
+                cantidad_por_presentacion: '',
+                unidad_medida: 'unidades',
+                costo_compra: '',
+                stock_inicial: '',
+                stock_minimo: '',
+                ubicacion_almacenamiento_id: '',
+                activo: true,
+              });
+              setTimeout(() => {
+                inputBusquedaRef.current?.focus();
+              }, 100);
+            }}
+          >
+            <div
+              className="form-container"
+              style={{
+                maxWidth: '900px',
+                width: '100%',
+                maxHeight: '90vh',
+                overflowY: 'auto',
+                margin: '2rem auto',
+                position: 'relative',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
               <h2 className="form-title">
                 {insumoEditando ? 'Editar Insumo' : 'Nuevo Insumo'}
               </h2>
@@ -625,26 +651,51 @@ export default function InsumosPage() {
 
         {/* Modal de Error */}
         {modalErrorAbierto && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.7)',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            zIndex: 2000
-          }}>
-            <div style={{
-              backgroundColor: 'white',
-              padding: '2rem',
-              borderRadius: '8px',
-              maxWidth: '500px',
-              width: '90%',
-              textAlign: 'center'
-            }}>
+          <div
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.7)',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              zIndex: 2000,
+            }}
+            onClick={() => {
+              setModalErrorAbierto(false);
+              setMensajeError('');
+              setMostrarFormulario(false);
+              setInsumoEditando(null);
+              setFormData({
+                nombre: '',
+                codigo: '',
+                descripcion: '',
+                presentacion_id: '',
+                cantidad_por_presentacion: '',
+                unidad_medida: 'unidades',
+                costo_compra: '',
+                stock_inicial: '',
+                stock_minimo: '',
+                ubicacion_almacenamiento_id: '',
+                activo: true,
+              });
+              setBotonEstado('normal');
+            }}
+          >
+            <div
+              style={{
+                backgroundColor: 'white',
+                padding: '2rem',
+                borderRadius: '8px',
+                maxWidth: '500px',
+                width: '90%',
+                textAlign: 'center',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
               <p style={{ marginBottom: '1.5rem', fontSize: '1.1rem', color: '#dc3545' }}>
                 {mensajeError}
               </p>
@@ -667,26 +718,32 @@ export default function InsumosPage() {
 
         {/* Modal de Éxito */}
         {modalExitoAbierto && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.7)',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            zIndex: 2000
-          }}>
-            <div style={{
-              backgroundColor: 'white',
-              padding: '2rem',
-              borderRadius: '8px',
-              maxWidth: '500px',
-              width: '90%',
-              textAlign: 'center'
-            }}>
+          <div
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.7)',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              zIndex: 2000,
+            }}
+            onClick={() => setModalExitoAbierto(false)}
+          >
+            <div
+              style={{
+                backgroundColor: 'white',
+                padding: '2rem',
+                borderRadius: '8px',
+                maxWidth: '500px',
+                width: '90%',
+                textAlign: 'center',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
               <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>✅</div>
               <p style={{ marginBottom: '1.5rem', fontSize: '1.1rem', color: '#28a745', fontWeight: '600' }}>
                 {mensajeExito}

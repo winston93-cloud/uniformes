@@ -217,26 +217,32 @@ export default function CiclosEscolaresPage() {
 
         {/* Modal Nuevo Ciclo */}
         {mostrarFormulario && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-          }}>
-            <div style={{
-              background: 'white',
-              borderRadius: '15px',
-              padding: '2rem',
-              maxWidth: '500px',
-              width: '90%',
-              boxShadow: '0 10px 40px rgba(0, 0, 0, 0.3)',
-            }}>
+          <div
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0, 0, 0, 0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1000,
+            }}
+            onClick={() => setMostrarFormulario(false)}
+          >
+            <div
+              style={{
+                background: 'white',
+                borderRadius: '15px',
+                padding: '2rem',
+                maxWidth: '500px',
+                width: '90%',
+                boxShadow: '0 10px 40px rgba(0, 0, 0, 0.3)',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
               <h2 style={{ marginBottom: '1.5rem', color: '#667eea' }}>➕ Nuevo Ciclo Escolar</h2>
               
               <form onSubmit={handleSubmit}>

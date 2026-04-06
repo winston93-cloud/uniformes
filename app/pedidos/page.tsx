@@ -2153,6 +2153,15 @@ function PedidosPageContent() {
             zIndex: 10002,
             padding: '1rem'
           }}
+          onClick={() => {
+            setMostrarModalAgregarStock(false);
+            setCantidadAgregar('');
+            setStockActualDetalle(null);
+            setPartidaParaAgregarStock(null);
+            setTimeout(() => {
+              inputPrendaRef.current?.focus();
+            }, 100);
+          }}
         >
           <div 
             style={{
@@ -2163,6 +2172,7 @@ function PedidosPageContent() {
               boxShadow: '0 25px 70px rgba(0,0,0,0.4)',
               overflow: 'hidden'
             }}
+            onClick={(e) => e.stopPropagation()}
           >
             <div style={{
               background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
@@ -2318,12 +2328,18 @@ function PedidosPageContent() {
         <div 
           style={{
             position: 'fixed',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.45)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
             zIndex: 10003,
-            animation: 'fadeIn 0.3s ease-out'
+            animation: 'fadeIn 0.3s ease-out',
           }}
+          onClick={() => setMostrarExitoStock(false)}
         >
           <div 
             style={{
@@ -2333,8 +2349,9 @@ function PedidosPageContent() {
               borderRadius: '20px',
               boxShadow: '0 20px 60px rgba(16, 185, 129, 0.5)',
               textAlign: 'center',
-              minWidth: '400px'
+              minWidth: '400px',
             }}
+            onClick={(e) => e.stopPropagation()}
           >
             <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>✅</div>
             <h3 style={{ 

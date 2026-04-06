@@ -1,0 +1,13 @@
+---
+description: Tras cambios de código, commit y push a main para desplegar en Vercel
+alwaysApply: true
+---
+
+# Git y despliegue (Vercel)
+
+Cuando completes cambios de implementación en este repositorio (código de app, componentes, estilos, migraciones que formen parte del trabajo pedido):
+
+1. **Haz commit** con un mensaje claro en una o varias líneas (qué cambió y por qué).
+2. **Haz push** a la rama remota habitual (`main` / `origin`), salvo que el usuario pida explícitamente no subir o usar otra rama.
+
+Así se dispara el despliegue en Vercel. No dejes solo cambios locales sin subir al terminar la tarea, salvo que el usuario indique lo contrario.

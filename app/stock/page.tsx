@@ -738,25 +738,36 @@ export default function StockPage() {
 
         {/* Modal de Edición de Stock */}
         {mostrarModalEdicion && costoEditando && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 2000
-          }}>
-            <div className="form-container" style={{
-              maxWidth: '600px',
-              width: '90%',
-              maxHeight: '90vh',
-              overflowY: 'auto',
-              position: 'relative'
-            }}>
+          <div
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 2000,
+            }}
+            onClick={() => {
+              setMostrarModalEdicion(false);
+              setCostoEditando(null);
+              setBotonEstado('normal');
+            }}
+          >
+            <div
+              className="form-container"
+              style={{
+                maxWidth: '600px',
+                width: '90%',
+                maxHeight: '90vh',
+                overflowY: 'auto',
+                position: 'relative',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
               <h2 className="form-title">
                 Editar Stock - {costoEditando.prenda?.nombre} ({costoEditando.talla?.nombre})
               </h2>

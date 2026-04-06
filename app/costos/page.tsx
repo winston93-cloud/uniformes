@@ -367,28 +367,35 @@ export default function CostosPage() {
         </div>
 
         {mostrarFormulario && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.7)',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            zIndex: 1000,
-            padding: '1rem',
-            overflowY: 'auto'
-          }}>
-            <div className="form-container" style={{
-              maxWidth: '900px',
-              width: '100%',
-              maxHeight: '90vh',
+          <div
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.7)',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              zIndex: 1000,
+              padding: '1rem',
               overflowY: 'auto',
-              margin: '2rem auto',
-              position: 'relative'
-            }}>
+            }}
+            onClick={() => setMostrarFormulario(false)}
+          >
+            <div
+              className="form-container"
+              style={{
+                maxWidth: '900px',
+                width: '100%',
+                maxHeight: '90vh',
+                overflowY: 'auto',
+                margin: '2rem auto',
+                position: 'relative',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
               <h2 className="form-title">Nuevo Costo de Prenda</h2>
               
               <form onSubmit={handleSubmit}>
@@ -755,28 +762,39 @@ export default function CostosPage() {
 
         {/* Modal de Edición de Costo */}
         {mostrarModalEdicion && costoEditando && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.7)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 2000,
-            padding: '1rem',
-            overflowY: 'auto'
-          }}>
-            <div className="form-container" style={{
-              maxWidth: '600px',
-              width: '100%',
-              maxHeight: '90vh',
+          <div
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.7)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 2000,
+              padding: '1rem',
               overflowY: 'auto',
-              margin: '2rem auto',
-              position: 'relative'
-            }}>
+            }}
+            onClick={() => {
+              setMostrarModalEdicion(false);
+              setCostoEditando(null);
+              setBotonEstado('normal');
+            }}
+          >
+            <div
+              className="form-container"
+              style={{
+                maxWidth: '600px',
+                width: '100%',
+                maxHeight: '90vh',
+                overflowY: 'auto',
+                margin: '2rem auto',
+                position: 'relative',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
               <h2 className="form-title">
                 Editar Costo - {costoEditando.prenda?.nombre} ({costoEditando.talla?.nombre})
               </h2>
@@ -862,27 +880,43 @@ export default function CostosPage() {
 
       {/* Modal de Error */}
       {modalErrorAbierto && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.8)',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 2000,
-          padding: '1rem'
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '12px',
-            padding: '2rem',
-            maxWidth: '500px',
-            width: '100%',
-            boxShadow: '0 10px 40px rgba(0,0,0,0.3)'
-          }}>
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 2000,
+            padding: '1rem',
+          }}
+          onClick={() => {
+            setModalErrorAbierto(false);
+            setMensajeError('');
+            setMostrarFormulario(false);
+            setMostrarModalEdicion(false);
+            setCostoEditando(null);
+            setFormData({ prenda_id: '', tallas_seleccionadas: [], precioMayoreo: '', precioMenudeo: '' });
+            setFormDataEdicion({ precioMayoreo: '', precioMenudeo: '' });
+            setBusquedaPrenda('');
+            setBotonEstado('normal');
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: '2rem',
+              maxWidth: '500px',
+              width: '100%',
+              boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 style={{ 
               color: '#dc3545', 
               marginBottom: '1rem',
@@ -927,28 +961,37 @@ export default function CostosPage() {
 
       {/* Modal de Éxito */}
       {modalExitoAbierto && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.8)',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 2000,
-          padding: '1rem'
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '12px',
-            padding: '2rem',
-            maxWidth: '500px',
-            width: '100%',
-            boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
-            textAlign: 'center'
-          }}>
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 2000,
+            padding: '1rem',
+          }}
+          onClick={() => {
+            setModalExitoAbierto(false);
+            setMensajeExito('');
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: '2rem',
+              maxWidth: '500px',
+              width: '100%',
+              boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
+              textAlign: 'center',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div style={{
               fontSize: '3rem',
               marginBottom: '1rem'

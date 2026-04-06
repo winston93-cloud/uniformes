@@ -620,28 +620,45 @@ export default function PrendasPage() {
         )}
 
         {mostrarFormulario && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.7)',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            zIndex: 1000,
-            padding: '1rem',
-            overflowY: 'auto'
-          }}>
-            <div className="form-container" style={{
-              maxWidth: '900px',
-              width: '100%',
-              maxHeight: '90vh',
+          <div
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.7)',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              zIndex: 1000,
+              padding: '1rem',
               overflowY: 'auto',
-              margin: '2rem auto',
-              position: 'relative'
-            }}>
+            }}
+            onClick={() => {
+              setMostrarFormulario(false);
+              setPrendaEditando(null);
+              setFormData({ nombre: '', codigo: '', descripcion: '', categoria_id: '', activo: true });
+              setTallasSeleccionadas([]);
+              setTallasAsociadas([]);
+              setMensajeError('');
+              setTimeout(() => {
+                inputBusquedaRef.current?.focus();
+              }, 100);
+            }}
+          >
+            <div
+              className="form-container"
+              style={{
+                maxWidth: '900px',
+                width: '100%',
+                maxHeight: '90vh',
+                overflowY: 'auto',
+                margin: '2rem auto',
+                position: 'relative',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
               <h2 className="form-title">
                 {prendaEditando ? 'Editar Prenda' : 'Nueva Prenda'}
               </h2>
@@ -1120,29 +1137,44 @@ export default function PrendasPage() {
 
       {/* Modal de Stock */}
       {modalStockAbierto && prendaEditando && tallaSeleccionadaStock && sesion?.sucursal_id && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.8)',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 2000,
-          padding: '1rem'
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '12px',
-            padding: '2rem',
-            maxWidth: '680px',
-            width: '100%',
-            maxHeight: '92vh',
-            overflowY: 'auto',
-            boxShadow: '0 10px 40px rgba(0,0,0,0.3)'
-          }}>
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 2000,
+            padding: '1rem',
+          }}
+          onClick={() => {
+            setModalStockAbierto(false);
+            setTallaSeleccionadaStock(null);
+            setStockData({
+              stock_inicial: '',
+              stock_minimo: '',
+            });
+            setPartidasUbicacion([]);
+            setUbicacionSelectStock('');
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: '2rem',
+              maxWidth: '680px',
+              width: '100%',
+              maxHeight: '92vh',
+              overflowY: 'auto',
+              boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 style={{ 
               color: '#0891b2', 
               marginBottom: '1rem',
@@ -1532,27 +1564,45 @@ export default function PrendasPage() {
 
       {/* Modal de Error */}
       {modalErrorAbierto && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.8)',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 2000,
-          padding: '1rem'
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '12px',
-            padding: '2rem',
-            maxWidth: '500px',
-            width: '100%',
-            boxShadow: '0 10px 40px rgba(0,0,0,0.3)'
-          }}>
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 2000,
+            padding: '1rem',
+          }}
+          onClick={() => {
+            setModalErrorAbierto(false);
+            setMensajeError('');
+            setMostrarFormulario(false);
+            setPrendaEditando(null);
+            setFormData({ nombre: '', codigo: '', descripcion: '', categoria_id: '', activo: true });
+            setTallasSeleccionadas([]);
+            setTallasAsociadas([]);
+            setBotonEstado('normal');
+            setTimeout(() => {
+              inputBusquedaRef.current?.focus();
+            }, 100);
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: '2rem',
+              maxWidth: '500px',
+              width: '100%',
+              boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 style={{ 
               color: '#dc3545', 
               marginBottom: '1rem',
@@ -1599,26 +1649,32 @@ export default function PrendasPage() {
 
       {/* Modal de Éxito Stock */}
       {modalExitoStockAbierto && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.7)',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 3000
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            padding: '2rem',
-            borderRadius: '8px',
-            maxWidth: '500px',
-            width: '90%',
-            textAlign: 'center'
-          }}>
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 3000,
+          }}
+          onClick={() => setModalExitoStockAbierto(false)}
+        >
+          <div
+            style={{
+              backgroundColor: 'white',
+              padding: '2rem',
+              borderRadius: '8px',
+              maxWidth: '500px',
+              width: '90%',
+              textAlign: 'center',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>✅</div>
             <p style={{ marginBottom: '1.5rem', fontSize: '1.1rem', color: '#28a745', fontWeight: '600' }}>
               {mensajeExitoStock}

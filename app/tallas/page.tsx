@@ -336,27 +336,43 @@ export default function TallasPage() {
 
       {/* Modal de Error */}
       {modalErrorAbierto && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.8)',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 2000,
-          padding: '1rem'
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '12px',
-            padding: '2rem',
-            maxWidth: '500px',
-            width: '100%',
-            boxShadow: '0 10px 40px rgba(0,0,0,0.3)'
-          }}>
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 2000,
+            padding: '1rem',
+          }}
+          onClick={() => {
+            setModalErrorAbierto(false);
+            setMensajeError('');
+            setMostrarFormulario(false);
+            setTallaEditando(null);
+            setFormData({ nombre: '', orden: '', activo: true });
+            setBotonEstado('normal');
+            setTimeout(() => {
+              inputBusquedaRef.current?.focus();
+            }, 100);
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: '2rem',
+              maxWidth: '500px',
+              width: '100%',
+              boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 style={{ 
               color: '#dc3545', 
               marginBottom: '1rem',

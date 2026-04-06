@@ -163,8 +163,15 @@ export default function UbicacionesAlmacenamientoPage() {
         )}
 
         {mostrarFormulario && (
-          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '1rem', overflowY: 'auto' }}>
-            <div className="form-container" style={{ maxWidth: '600px', width: '100%', maxHeight: '90vh', overflowY: 'auto', margin: '2rem auto' }}>
+          <div
+            style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '1rem', overflowY: 'auto' }}
+            onClick={() => {
+              setMostrarFormulario(false);
+              setUbicacionEditando(null);
+              setFormData({ nombre: '', descripcion: '', activo: true });
+            }}
+          >
+            <div className="form-container" style={{ maxWidth: '600px', width: '100%', maxHeight: '90vh', overflowY: 'auto', margin: '2rem auto' }} onClick={(e) => e.stopPropagation()}>
               <h2 className="form-title">{ubicacionEditando ? 'Editar Ubicación' : 'Nueva Ubicación'}</h2>
               <form onSubmit={handleSubmit}>
                 <div className="form-group">
@@ -248,8 +255,14 @@ export default function UbicacionesAlmacenamientoPage() {
         </div>
 
         {modalErrorAbierto && (
-          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 }}>
-            <div style={{ backgroundColor: 'white', padding: '2rem', borderRadius: '8px', maxWidth: '500px', width: '90%', textAlign: 'center' }}>
+          <div
+            style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 }}
+            onClick={() => {
+              setModalErrorAbierto(false);
+              setMensajeError('');
+            }}
+          >
+            <div style={{ backgroundColor: 'white', padding: '2rem', borderRadius: '8px', maxWidth: '500px', width: '90%', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
               <p style={{ marginBottom: '1.5rem', color: '#dc3545' }}>{mensajeError}</p>
               <button className="btn btn-primary" onClick={() => { setModalErrorAbierto(false); setMensajeError(''); }}>Cerrar</button>
             </div>
@@ -257,8 +270,11 @@ export default function UbicacionesAlmacenamientoPage() {
         )}
 
         {modalExitoAbierto && (
-          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 }}>
-            <div style={{ backgroundColor: 'white', padding: '2rem', borderRadius: '8px', maxWidth: '500px', width: '90%', textAlign: 'center' }}>
+          <div
+            style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 }}
+            onClick={() => setModalExitoAbierto(false)}
+          >
+            <div style={{ backgroundColor: 'white', padding: '2rem', borderRadius: '8px', maxWidth: '500px', width: '90%', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
               <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>✅</div>
               <p style={{ color: '#28a745', fontWeight: '600' }}>{mensajeExito}</p>
             </div>
