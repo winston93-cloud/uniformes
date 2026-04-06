@@ -562,18 +562,29 @@ export default function InsumosPage() {
                         {insumo.activo ? '✓ Activo' : '✗ Inactivo'}
                       </span>
                     </td>
-                    <td>
-                      <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
+                    <td data-label="Acciones" style={{ verticalAlign: 'middle' }}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          flexWrap: 'wrap',
+                          gap: '0.5rem',
+                          alignItems: 'center',
+                          justifyContent: 'flex-start',
+                          maxWidth: '100%',
+                        }}
+                      >
                         <button
+                          type="button"
                           className="btn btn-secondary"
-                          style={{ padding: '0.5rem 1rem' }}
+                          style={{ padding: '0.5rem 0.75rem', flex: '1 1 auto', minWidth: 'min(100%, 7.5rem)' }}
                           onClick={() => handleEditar(insumo)}
                         >
                           ✏️ Editar
                         </button>
                         <button
+                          type="button"
                           className="btn btn-danger"
-                          style={{ padding: '0.5rem 1rem' }}
+                          style={{ padding: '0.5rem 0.75rem', flex: '1 1 auto', minWidth: 'min(100%, 7.5rem)' }}
                           onClick={() => handleEliminar(insumo.id)}
                         >
                           🗑️ Eliminar

@@ -457,7 +457,10 @@ body {
   padding: 2rem;
   box-shadow: 0 10px 30px var(--card-shadow);
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   margin-top: 2rem;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .table {
@@ -747,8 +750,11 @@ body {
   }
 
   .table-container {
-    overflow-x: visible;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
     padding: 1rem;
+    max-width: 100%;
+    min-width: 0;
   }
 
   /* Ocultar tabla tradicional en móvil */
