@@ -146,6 +146,20 @@ Tabla intermedia: precio y stock por combinación prenda-talla-sucursal.
 - → detalle_pedidos (1:N, RESTRICT)
 - → movimientos (1:N, RESTRICT)
 - → detalle_transferencias, detalle_cotizacion
+- → **costo_ubicaciones** (1:N): reparto del stock entre varias ubicaciones físicas
+
+### `costo_ubicaciones`
+Cantidad de inventario por ubicación para un mismo registro de `costos` (varias filas por costo).
+
+| Columna | Tipo | Descripción |
+|---------|------|-------------|
+| id | UUID (PK) | Identificador |
+| costo_id | UUID (FK) | → costos.id |
+| ubicacion_almacenamiento_id | UUID (FK) | → ubicaciones_almacenamiento.id |
+| cantidad | INTEGER (≥0) | Unidades en esa ubicación |
+| created_at, updated_at | TIMESTAMP | Auditoría |
+
+**Restricción:** UNIQUE(costo_id, ubicacion_almacenamiento_id).
 
 ---
 

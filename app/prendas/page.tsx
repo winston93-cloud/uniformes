@@ -102,8 +102,12 @@ export default function PrendasPage() {
   const [stockData, setStockData] = useState({
     stock_inicial: '',
     stock_minimo: '',
-    ubicacion_almacenamiento_id: '',
   });
+  /** Partidas de stock por ubicación (modal configurar stock) */
+  const [partidasUbicacion, setPartidasUbicacion] = useState<
+    Array<{ tempId: string; ubicacion_id: string; cantidad: string }>
+  >([]);
+  const [ubicacionSelectStock, setUbicacionSelectStock] = useState('');
   const [mensajeExitoStock, setMensajeExitoStock] = useState<string>('');
   const [modalExitoStockAbierto, setModalExitoStockAbierto] = useState(false);
   
@@ -121,31 +125,65 @@ export default function PrendasPage() {
     }
   }, [mostrarFormulario]);
 
-  // Cargar valores de stock cuando se abre el modal
+  // Cargar valores de stock y partidas por ubicación cuando se abre el modal
   useEffect(() => {
     const cargarStockExistente = async () => {
       if (modalStockAbierto && prendaEditando && tallaSeleccionadaStock && sesion?.sucursal_id) {
         try {
           const { data: costoExistente } = await supabase
             .from('costos')
-            .select('stock_inicial, stock_minimo, ubicacion_almacenamiento_id')
+            .select('id, stock_inicial, stock_minimo, stock, ubicacion_almacenamiento_id')
             .eq('prenda_id', prendaEditando.id)
             .eq('talla_id', tallaSeleccionadaStock.id)
             .eq('sucursal_id', sesion.sucursal_id)
             .single();
 
           if (costoExistente) {
+            const totalMostrar = String(costoExistente.stock ?? costoExistente.stock_inicial ?? 0);
             setStockData({
-              stock_inicial: costoExistente.stock_inicial?.toString() || '',
+              stock_inicial: totalMostrar,
               stock_minimo: costoExistente.stock_minimo?.toString() || '',
-              ubicacion_almacenamiento_id: costoExistente.ubicacion_almacenamiento_id || '',
             });
+
+            const { data: filasUb, error: errUb } = await supabase
+              .from('costo_ubicaciones')
+              .select('id, ubicacion_almacenamiento_id, cantidad')
+              .eq('costo_id', costoExistente.id);
+
+            if (errUb) {
+              console.error('costo_ubicaciones:', errUb);
+            }
+
+            if (!errUb && filasUb && filasUb.length > 0) {
+              setPartidasUbicacion(
+                filasUb.map((f) => ({
+                  tempId: f.id,
+                  ubicacion_id: f.ubicacion_almacenamiento_id,
+                  cantidad: String(f.cantidad ?? 0),
+                }))
+              );
+            } else if (
+              costoExistente.ubicacion_almacenamiento_id &&
+              Number(costoExistente.stock ?? 0) > 0
+            ) {
+              setPartidasUbicacion([
+                {
+                  tempId: `legacy-${costoExistente.id}`,
+                  ubicacion_id: costoExistente.ubicacion_almacenamiento_id,
+                  cantidad: String(costoExistente.stock ?? 0),
+                },
+              ]);
+            } else {
+              setPartidasUbicacion([]);
+            }
+            setUbicacionSelectStock('');
           } else {
             setStockData({
               stock_inicial: '',
               stock_minimo: '',
-              ubicacion_almacenamiento_id: '',
             });
+            setPartidasUbicacion([]);
+            setUbicacionSelectStock('');
           }
         } catch (err) {
           console.error('Error cargando stock:', err);
@@ -198,6 +236,32 @@ export default function PrendasPage() {
     categoria_id: '',
     activo: true,
   });
+
+  const stockTotalModalNum = () => parseInt(stockData.stock_inicial, 10) || 0;
+  const sumPartidasDistribuidas = () =>
+    partidasUbicacion.reduce((s, p) => s + (parseInt(p.cantidad, 10) || 0), 0);
+  const restanteStockModal = () =>
+    Math.max(0, stockTotalModalNum() - sumPartidasDistribuidas());
+
+  const agregarPartidaUbicacion = (ubicacionId: string) => {
+    if (!ubicacionId) return;
+    if (partidasUbicacion.some((p) => p.ubicacion_id === ubicacionId)) return;
+    const total = stockTotalModalNum();
+    const sumOtros = partidasUbicacion.reduce(
+      (s, p) => s + (parseInt(p.cantidad, 10) || 0),
+      0
+    );
+    const restante = Math.max(0, total - sumOtros);
+    setPartidasUbicacion((prev) => [
+      ...prev,
+      {
+        tempId: crypto.randomUUID(),
+        ubicacion_id: ubicacionId,
+        cantidad: String(restante),
+      },
+    ]);
+    setUbicacionSelectStock('');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1073,8 +1137,10 @@ export default function PrendasPage() {
             backgroundColor: 'white',
             borderRadius: '12px',
             padding: '2rem',
-            maxWidth: '600px',
+            maxWidth: '680px',
             width: '100%',
+            maxHeight: '92vh',
+            overflowY: 'auto',
             boxShadow: '0 10px 40px rgba(0,0,0,0.3)'
           }}>
             <h3 style={{ 
@@ -1096,7 +1162,6 @@ export default function PrendasPage() {
               e.preventDefault();
               
               try {
-                // Buscar el costo existente para esta combinación prenda/talla/sucursal
                 const { data: costoExistente, error: errorBusqueda } = await supabase
                   .from('costos')
                   .select('id, stock_inicial, stock_minimo, stock, ubicacion_almacenamiento_id')
@@ -1116,33 +1181,73 @@ export default function PrendasPage() {
                   return;
                 }
 
-                // Actualizar el stock
-                const stockInicial = parseFloat(stockData.stock_inicial) || 0;
-                const stockMinimo = parseFloat(stockData.stock_minimo) || 0;
-                
-                // Si el stock existente guardado cambia, actualizar también el stock actual
-                const actualizarStock = costoExistente.stock_inicial !== stockInicial;
+                const total = parseInt(stockData.stock_inicial, 10) || 0;
+                const stockMinimo = parseInt(stockData.stock_minimo, 10) || 0;
+                const sumDistrib = partidasUbicacion.reduce(
+                  (s, p) => s + (parseInt(p.cantidad, 10) || 0),
+                  0
+                );
 
-                const ubicacionId =
-                  stockData.ubicacion_almacenamiento_id.trim() || null;
+                if (total === 0 && partidasUbicacion.length > 0) {
+                  setMensajeError(
+                    '❌ Con stock en 0 no debe haber cantidades por ubicación. Quita las partidas o indica un stock mayor a 0.'
+                  );
+                  setModalErrorAbierto(true);
+                  return;
+                }
+
+                if (total > 0) {
+                  if (partidasUbicacion.length === 0) {
+                    setMensajeError('❌ Con stock mayor a 0, agrega al menos una ubicación y reparte la cantidad.');
+                    setModalErrorAbierto(true);
+                    return;
+                  }
+                  if (sumDistrib !== total) {
+                    setMensajeError(
+                      `❌ La suma por ubicación (${sumDistrib}) debe ser igual al stock existente (${total}).`
+                    );
+                    setModalErrorAbierto(true);
+                    return;
+                  }
+                }
 
                 const { error: errorActualizacion } = await supabase
                   .from('costos')
                   .update({
-                    stock_inicial: stockInicial,
+                    stock_inicial: total,
                     stock_minimo: stockMinimo,
-                    ubicacion_almacenamiento_id: ubicacionId,
-                    ...(actualizarStock ? { stock: stockInicial } : {}),
+                    stock: total,
+                    ubicacion_almacenamiento_id: null,
                   })
                   .eq('id', costoExistente.id);
 
                 if (errorActualizacion) throw errorActualizacion;
 
-                // Mostrar modal de éxito
+                const { error: delErr } = await supabase
+                  .from('costo_ubicaciones')
+                  .delete()
+                  .eq('costo_id', costoExistente.id);
+                if (delErr) throw delErr;
+
+                if (total > 0 && partidasUbicacion.length > 0) {
+                  const inserts = partidasUbicacion
+                    .map((p) => ({
+                      costo_id: costoExistente.id,
+                      ubicacion_almacenamiento_id: p.ubicacion_id,
+                      cantidad: parseInt(p.cantidad, 10) || 0,
+                    }))
+                    .filter((row) => row.cantidad > 0);
+                  if (inserts.length > 0) {
+                    const { error: insErr } = await supabase
+                      .from('costo_ubicaciones')
+                      .insert(inserts);
+                    if (insErr) throw insErr;
+                  }
+                }
+
                 setMensajeExitoStock('✅ Stock configurado correctamente');
                 setModalExitoStockAbierto(true);
                 
-                // Cerrar después de 2 segundos
                 setTimeout(() => {
                   setModalExitoStockAbierto(false);
                   setMensajeExitoStock('');
@@ -1151,8 +1256,9 @@ export default function PrendasPage() {
                   setStockData({
                     stock_inicial: '',
                     stock_minimo: '',
-                    ubicacion_almacenamiento_id: '',
                   });
+                  setPartidasUbicacion([]);
+                  setUbicacionSelectStock('');
                 }, 2000);
               } catch (err: any) {
                 setMensajeError(`❌ Error al configurar stock: ${err.message}`);
@@ -1187,7 +1293,7 @@ export default function PrendasPage() {
                   }}
                 />
                 <small style={{ color: '#64748b', fontSize: '0.85rem', display: 'block', marginTop: '0.25rem' }}>
-                  Cantidad existente de unidades disponibles
+                  Total de unidades; debe coincidir con la suma repartida por ubicación abajo.
                 </small>
               </div>
 
@@ -1232,17 +1338,16 @@ export default function PrendasPage() {
                     color: '#334155',
                   }}
                 >
-                  📍 Dónde está almacenado
+                  📍 Ubicaciones de almacenamiento
                 </label>
                 <select
                   className="form-select"
-                  value={stockData.ubicacion_almacenamiento_id}
-                  onChange={(e) =>
-                    setStockData({
-                      ...stockData,
-                      ubicacion_almacenamiento_id: e.target.value,
-                    })
-                  }
+                  value={ubicacionSelectStock}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v) agregarPartidaUbicacion(v);
+                    else setUbicacionSelectStock('');
+                  }}
                   disabled={loadingUbicaciones}
                   style={{
                     width: '100%',
@@ -1254,31 +1359,128 @@ export default function PrendasPage() {
                     backgroundColor: 'white',
                   }}
                 >
-                  <option value="">Seleccionar ubicación (opcional)</option>
+                  <option value="">+ Agregar ubicación…</option>
                   {ubicaciones
-                    .filter((u) => u.activo)
+                    .filter(
+                      (u) =>
+                        u.activo &&
+                        !partidasUbicacion.some((p) => p.ubicacion_id === u.id)
+                    )
                     .map((ubic) => (
                       <option key={ubic.id} value={ubic.id}>
                         {ubic.nombre}
                       </option>
                     ))}
                 </select>
-                <small
+                <p
                   style={{
                     color: '#64748b',
                     fontSize: '0.85rem',
-                    display: 'block',
-                    marginTop: '0.25rem',
+                    marginTop: '0.5rem',
+                    marginBottom: '0.75rem',
                   }}
                 >
-                  Ubicación física donde se guarda el inventario de esta talla.{' '}
+                  Elige una ubicación para añadir una <strong>partida</strong>. La cantidad sugerida es el stock
+                  existente menos lo ya asignado.{' '}
                   <a
                     href="/ubicaciones-almacenamiento"
                     style={{ color: '#007bff', textDecoration: 'underline' }}
                   >
                     Gestionar ubicaciones
                   </a>
-                </small>
+                </p>
+                {stockTotalModalNum() > 0 && (
+                  <div
+                    style={{
+                      padding: '0.5rem 0.75rem',
+                      background: '#f0fdfa',
+                      borderRadius: '8px',
+                      fontSize: '0.9rem',
+                      color: '#0f766e',
+                      marginBottom: '0.75rem',
+                    }}
+                  >
+                    Distribuido: <strong>{sumPartidasDistribuidas()}</strong> · Restante:{' '}
+                    <strong>{restanteStockModal()}</strong> · Total stock:{' '}
+                    <strong>{stockTotalModalNum()}</strong>
+                  </div>
+                )}
+                {partidasUbicacion.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                    {partidasUbicacion.map((p) => {
+                      const nombreUb =
+                        ubicaciones.find((u) => u.id === p.ubicacion_id)?.nombre || 'Ubicación';
+                      return (
+                        <div
+                          key={p.tempId}
+                          style={{
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            padding: '0.65rem 0.75rem',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: '8px',
+                            background: '#fafafa',
+                          }}
+                        >
+                          <span style={{ fontWeight: 600, color: '#334155', minWidth: '120px' }}>
+                            {nombreUb}
+                          </span>
+                          <label style={{ fontSize: '0.85rem', color: '#64748b', margin: 0 }}>
+                            Cantidad
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={p.cantidad}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setPartidasUbicacion((prev) =>
+                                prev.map((row) =>
+                                  row.tempId === p.tempId ? { ...row, cantidad: val } : row
+                                )
+                              );
+                            }}
+                            style={{
+                              width: '100px',
+                              padding: '0.45rem 0.5rem',
+                              border: '1px solid #cbd5e1',
+                              borderRadius: '6px',
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPartidasUbicacion((prev) =>
+                                prev.filter((row) => row.tempId !== p.tempId)
+                              )
+                            }
+                            style={{
+                              marginLeft: 'auto',
+                              padding: '0.35rem 0.65rem',
+                              fontSize: '0.85rem',
+                              border: '1px solid #fecaca',
+                              background: '#fff1f2',
+                              color: '#b91c1c',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Quitar
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p style={{ color: '#94a3b8', fontSize: '0.9rem', fontStyle: 'italic' }}>
+                    {stockTotalModalNum() > 0
+                      ? 'Aún no hay ubicaciones. Agrega al menos una con el selector de arriba.'
+                      : 'Con stock 0 no se requieren ubicaciones.'}
+                  </p>
+                )}
               </div>
 
               <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
@@ -1290,8 +1492,9 @@ export default function PrendasPage() {
                     setStockData({
                       stock_inicial: '',
                       stock_minimo: '',
-                      ubicacion_almacenamiento_id: '',
                     });
+                    setPartidasUbicacion([]);
+                    setUbicacionSelectStock('');
                   }}
                   style={{
                     padding: '0.75rem 1.5rem',

@@ -29,6 +29,17 @@ export interface Prenda {
   categoria?: CategoriaPrenda;
 }
 
+/** Reparto de inventario por ubicación para un costo (prenda + talla + sucursal) */
+export interface CostoUbicacion {
+  id: string;
+  costo_id: string;
+  ubicacion_almacenamiento_id: string;
+  cantidad: number;
+  created_at?: string;
+  updated_at?: string;
+  ubicacion?: UbicacionAlmacenamiento | null;
+}
+
 export interface Costo {
   id: string;
   talla_id: string;
@@ -49,6 +60,7 @@ export interface Costo {
   talla?: Talla;
   prenda?: Prenda;
   ubicacion_almacenamiento?: UbicacionAlmacenamiento | null;
+  costo_ubicaciones?: CostoUbicacion[];
 }
 
 export interface Alumno {
@@ -164,6 +176,7 @@ export interface Insumo {
   updated_at?: string;
   presentacion?: Presentacion;
   ubicacion_almacenamiento?: UbicacionAlmacenamiento | null;
+  costo_ubicaciones?: CostoUbicacion[];
 }
 
 export interface Cotizacion {
