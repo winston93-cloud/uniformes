@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import Link from 'next/link';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import { usePresentaciones } from '@/lib/hooks/usePresentaciones';
 import type { Presentacion } from '@/lib/types';
@@ -144,6 +145,26 @@ export default function PresentacionesPage() {
           <h1 style={{ fontSize: '2.5rem', fontWeight: '700', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.2)', marginBottom: '1rem', textAlign: 'center' }}>
             📦 Catálogo de Presentaciones
           </h1>
+          <div
+            style={{
+              maxWidth: '720px',
+              margin: '0 auto',
+              padding: '0.85rem 1.1rem',
+              background: 'rgba(255,255,255,0.92)',
+              borderRadius: '10px',
+              border: '1px solid rgba(14,165,233,0.35)',
+              fontSize: '0.95rem',
+              color: '#334155',
+              lineHeight: 1.5,
+            }}
+          >
+            <strong>Aquí solo defines el nombre del tipo</strong> (ej. HILO ROYAL, BOLSA) para elegirlo en cada insumo.
+            La <strong>cantidad por presentación</strong> y la <strong>unidad</strong> (metros, unidades, kg…) se editan en{' '}
+            <Link href="/insumos" style={{ color: '#0369a1', fontWeight: 600, textDecoration: 'underline' }}>
+              Catálogo de Insumos
+            </Link>
+            , al crear o editar un insumo.
+          </div>
         </div>
 
         {/* Input de búsqueda */}
@@ -220,7 +241,8 @@ export default function PresentacionesPage() {
                   required
                 />
                 <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
-                  Unidad de medida o presentación del insumo
+                  Etiqueta del catálogo (reutilizable en varios insumos). Cantidad y unidad (metros, etc.) van en{' '}
+                  <Link href="/insumos" style={{ color: '#007bff' }}>Insumos → editar insumo</Link>.
                 </small>
               </div>
 
