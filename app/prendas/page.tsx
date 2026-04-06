@@ -8,6 +8,7 @@ import { useCategorias } from '@/lib/hooks/useCategorias';
 import { useTallas } from '@/lib/hooks/useTallas';
 import { useCostos } from '@/lib/hooks/useCostos';
 import { usePrendaTallaInsumos } from '@/lib/hooks/usePrendaTallaInsumos';
+import { useUbicacionesAlmacenamiento } from '@/lib/hooks/useUbicacionesAlmacenamiento';
 import { supabase } from '@/lib/supabase';
 import type { Prenda } from '@/lib/types';
 import ModalInsumosTalla from '@/components/ModalInsumosTalla';
@@ -93,13 +94,15 @@ export default function PrendasPage() {
   const [tallaSeleccionadaModal, setTallaSeleccionadaModal] = useState<{ id: string; nombre: string } | null>(null);
   const [conteoInsumosPorTalla, setConteoInsumosPorTalla] = useState<Record<string, number>>({});
   const { getInsumosByPrendaTalla } = usePrendaTallaInsumos();
-  
+  const { ubicaciones, loading: loadingUbicaciones } = useUbicacionesAlmacenamiento();
+
   // Estados para modal de stock
   const [modalStockAbierto, setModalStockAbierto] = useState(false);
   const [tallaSeleccionadaStock, setTallaSeleccionadaStock] = useState<{ id: string; nombre: string } | null>(null);
   const [stockData, setStockData] = useState({
     stock_inicial: '',
-    stock_minimo: ''
+    stock_minimo: '',
+    ubicacion_almacenamiento_id: '',
   });
   const [mensajeExitoStock, setMensajeExitoStock] = useState<string>('');
   const [modalExitoStockAbierto, setModalExitoStockAbierto] = useState(false);
@@ -125,7 +128,7 @@ export default function PrendasPage() {
         try {
           const { data: costoExistente } = await supabase
             .from('costos')
-            .select('stock_inicial, stock_minimo')
+            .select('stock_inicial, stock_minimo, ubicacion_almacenamiento_id')
             .eq('prenda_id', prendaEditando.id)
             .eq('talla_id', tallaSeleccionadaStock.id)
             .eq('sucursal_id', sesion.sucursal_id)
@@ -134,12 +137,14 @@ export default function PrendasPage() {
           if (costoExistente) {
             setStockData({
               stock_inicial: costoExistente.stock_inicial?.toString() || '',
-              stock_minimo: costoExistente.stock_minimo?.toString() || ''
+              stock_minimo: costoExistente.stock_minimo?.toString() || '',
+              ubicacion_almacenamiento_id: costoExistente.ubicacion_almacenamiento_id || '',
             });
           } else {
             setStockData({
               stock_inicial: '',
-              stock_minimo: ''
+              stock_minimo: '',
+              ubicacion_almacenamiento_id: '',
             });
           }
         } catch (err) {
@@ -1094,7 +1099,7 @@ export default function PrendasPage() {
                 // Buscar el costo existente para esta combinación prenda/talla/sucursal
                 const { data: costoExistente, error: errorBusqueda } = await supabase
                   .from('costos')
-                  .select('id, stock_inicial, stock_minimo, stock')
+                  .select('id, stock_inicial, stock_minimo, stock, ubicacion_almacenamiento_id')
                   .eq('prenda_id', prendaEditando.id)
                   .eq('talla_id', tallaSeleccionadaStock.id)
                   .eq('sucursal_id', sesion.sucursal_id)
@@ -1118,12 +1123,16 @@ export default function PrendasPage() {
                 // Si el stock inicial es diferente al existente, actualizar también el stock actual
                 const actualizarStock = costoExistente.stock_inicial !== stockInicial;
 
+                const ubicacionId =
+                  stockData.ubicacion_almacenamiento_id.trim() || null;
+
                 const { error: errorActualizacion } = await supabase
                   .from('costos')
                   .update({
                     stock_inicial: stockInicial,
                     stock_minimo: stockMinimo,
-                    ...(actualizarStock ? { stock: stockInicial } : {})
+                    ubicacion_almacenamiento_id: ubicacionId,
+                    ...(actualizarStock ? { stock: stockInicial } : {}),
                   })
                   .eq('id', costoExistente.id);
 
@@ -1139,7 +1148,11 @@ export default function PrendasPage() {
                   setMensajeExitoStock('');
                   setModalStockAbierto(false);
                   setTallaSeleccionadaStock(null);
-                  setStockData({ stock_inicial: '', stock_minimo: '' });
+                  setStockData({
+                    stock_inicial: '',
+                    stock_minimo: '',
+                    ubicacion_almacenamiento_id: '',
+                  });
                 }, 2000);
               } catch (err: any) {
                 setMensajeError(`❌ Error al configurar stock: ${err.message}`);
@@ -1209,13 +1222,76 @@ export default function PrendasPage() {
                 </small>
               </div>
 
+              <div style={{ marginBottom: '2rem' }}>
+                <label
+                  className="form-label"
+                  style={{
+                    display: 'block',
+                    marginBottom: '0.5rem',
+                    fontWeight: '600',
+                    color: '#334155',
+                  }}
+                >
+                  📍 Dónde está almacenado
+                </label>
+                <select
+                  className="form-select"
+                  value={stockData.ubicacion_almacenamiento_id}
+                  onChange={(e) =>
+                    setStockData({
+                      ...stockData,
+                      ubicacion_almacenamiento_id: e.target.value,
+                    })
+                  }
+                  disabled={loadingUbicaciones}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '2px solid #e2e8f0',
+                    borderLeft: '4px solid #8b5cf6',
+                    borderRadius: '8px',
+                    fontSize: '1rem',
+                    backgroundColor: 'white',
+                  }}
+                >
+                  <option value="">Seleccionar ubicación (opcional)</option>
+                  {ubicaciones
+                    .filter((u) => u.activo)
+                    .map((ubic) => (
+                      <option key={ubic.id} value={ubic.id}>
+                        {ubic.nombre}
+                      </option>
+                    ))}
+                </select>
+                <small
+                  style={{
+                    color: '#64748b',
+                    fontSize: '0.85rem',
+                    display: 'block',
+                    marginTop: '0.25rem',
+                  }}
+                >
+                  Ubicación física donde se guarda el inventario de esta talla.{' '}
+                  <a
+                    href="/ubicaciones-almacenamiento"
+                    style={{ color: '#007bff', textDecoration: 'underline' }}
+                  >
+                    Gestionar ubicaciones
+                  </a>
+                </small>
+              </div>
+
               <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
                 <button
                   type="button"
                   onClick={() => {
                     setModalStockAbierto(false);
                     setTallaSeleccionadaStock(null);
-                    setStockData({ stock_inicial: '', stock_minimo: '' });
+                    setStockData({
+                      stock_inicial: '',
+                      stock_minimo: '',
+                      ubicacion_almacenamiento_id: '',
+                    });
                   }}
                   style={{
                     padding: '0.75rem 1.5rem',

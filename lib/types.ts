@@ -33,6 +33,7 @@ export interface Costo {
   id: string;
   talla_id: string;
   prenda_id: string;
+  sucursal_id?: string;
   precio_venta: number;
   precio_compra: number;
   precio_mayoreo: number;
@@ -42,10 +43,12 @@ export interface Costo {
   cantidad_venta: number;
   stock_minimo: number;
   activo: boolean;
+  ubicacion_almacenamiento_id?: string | null;
   created_at?: string;
   updated_at?: string;
   talla?: Talla;
   prenda?: Prenda;
+  ubicacion_almacenamiento?: UbicacionAlmacenamiento | null;
 }
 
 export interface Alumno {
