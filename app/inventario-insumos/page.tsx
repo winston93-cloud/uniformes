@@ -15,7 +15,8 @@ export default function InventarioInsumosPage() {
   // Filtrar insumos por búsqueda
   const insumosFiltrados = insumos.filter(insumo =>
     insumo.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-    (insumo.codigo && insumo.codigo.toLowerCase().includes(busqueda.toLowerCase()))
+    (insumo.codigo && insumo.codigo.toLowerCase().includes(busqueda.toLowerCase())) ||
+    (insumo.unidad_medida && insumo.unidad_medida.toLowerCase().includes(busqueda.toLowerCase()))
   );
 
   if (loading) {
@@ -78,6 +79,7 @@ export default function InventarioInsumosPage() {
                 <th>Código</th>
                 <th>Insumo</th>
                 <th>Presentación</th>
+                <th>Unidad</th>
                 <th>Stock Existente</th>
                 <th>Stock Actual</th>
                 <th>Stock Mínimo</th>
@@ -87,7 +89,7 @@ export default function InventarioInsumosPage() {
             <tbody>
               {insumosFiltrados.length === 0 ? (
                 <tr>
-                  <td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                  <td colSpan={8} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
                     {busqueda ? 'No se encontraron insumos con ese criterio.' : 'No hay insumos registrados.'}
                   </td>
                 </tr>
@@ -121,6 +123,11 @@ export default function InventarioInsumosPage() {
                       <td data-label="Presentación">
                         <span className="badge badge-info">
                           {insumo.presentacion?.nombre || '-'}
+                        </span>
+                      </td>
+                      <td data-label="Unidad">
+                        <span className="badge badge-info" style={{ backgroundColor: '#0ea5e9' }}>
+                          {(insumo.unidad_medida && insumo.unidad_medida.trim()) || 'unidades'}
                         </span>
                       </td>
                       <td data-label="Stock Existente" style={{ 

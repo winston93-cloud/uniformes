@@ -152,6 +152,8 @@ export interface Insumo {
   descripcion: string | null;
   presentacion_id: string;
   cantidad_por_presentacion: number; // ej: 500 botones en una bolsa
+  /** Cómo se cuenta esa cantidad: metros, unidades, kg, rollos… */
+  unidad_medida?: string | null;
   costo_compra?: number; // Costo de compra por presentación
   stock_inicial?: number; // Stock existente del insumo (campo `stock_inicial` en BD)
   stock?: number; // Stock actual del insumo

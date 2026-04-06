@@ -103,8 +103,9 @@ Catálogo de materiales/insumos para fabricación.
 | codigo | VARCHAR(50) UNIQUE | Código del insumo |
 | nombre | VARCHAR(255) | Nombre |
 | descripcion | TEXT | Descripción |
-| presentacion_id | UUID (FK) | → presentaciones.id |
+| presentacion_id | UUID (FK) | → presentaciones.id (tipo de envase en catálogo) |
 | cantidad_por_presentacion | DECIMAL | Ej: 500 botones por bolsa |
+| unidad_medida | VARCHAR(80) | Cómo se mide esa cantidad (metros, unidades, kg, etc.) |
 | stock_minimo | DECIMAL | Umbral para alertas |
 | activo | BOOLEAN | Activo |
 | created_at, updated_at | TIMESTAMP | Auditoría |

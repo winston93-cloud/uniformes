@@ -57,6 +57,7 @@ export default function InsumosPage() {
     descripcion: '',
     presentacion_id: '',
     cantidad_por_presentacion: '',
+    unidad_medida: 'unidades',
     costo_compra: '',
     stock_inicial: '',
     stock_minimo: '',
@@ -74,6 +75,7 @@ export default function InsumosPage() {
       descripcion: formData.descripcion || null,
       presentacion_id: formData.presentacion_id,
       cantidad_por_presentacion: parseFloat(formData.cantidad_por_presentacion) || 0,
+      unidad_medida: (formData.unidad_medida || 'unidades').trim() || 'unidades',
       costo_compra: parseFloat(formData.costo_compra) || 0,
       stock_inicial: parseFloat(formData.stock_inicial) || 0,
       stock: parseFloat(formData.stock_inicial) || 0, // Stock actual = stock existente al crear
@@ -94,7 +96,7 @@ export default function InsumosPage() {
       setTimeout(() => {
         setModalExitoAbierto(false);
         setMensajeExito('');
-        setFormData({ nombre: '', codigo: '', descripcion: '', presentacion_id: '', cantidad_por_presentacion: '', costo_compra: '', stock_inicial: '', stock_minimo: '', ubicacion_almacenamiento_id: '', activo: true });
+        setFormData({ nombre: '', codigo: '', descripcion: '', presentacion_id: '', cantidad_por_presentacion: '', unidad_medida: 'unidades', costo_compra: '', stock_inicial: '', stock_minimo: '', ubicacion_almacenamiento_id: '', activo: true });
         setMostrarFormulario(false);
         setInsumoEditando(null);
         setBotonEstado('normal');
@@ -114,7 +116,7 @@ export default function InsumosPage() {
       setTimeout(() => {
         setModalExitoAbierto(false);
         setMensajeExito('');
-        setFormData({ nombre: '', codigo: '', descripcion: '', presentacion_id: '', cantidad_por_presentacion: '', costo_compra: '', stock_inicial: '', stock_minimo: '', ubicacion_almacenamiento_id: '', activo: true });
+        setFormData({ nombre: '', codigo: '', descripcion: '', presentacion_id: '', cantidad_por_presentacion: '', unidad_medida: 'unidades', costo_compra: '', stock_inicial: '', stock_minimo: '', ubicacion_almacenamiento_id: '', activo: true });
         setMostrarFormulario(false);
         setInsumoEditando(null);
         setBotonEstado('normal');
@@ -133,6 +135,7 @@ export default function InsumosPage() {
       descripcion: insumo.descripcion || '',
       presentacion_id: insumo.presentacion_id,
       cantidad_por_presentacion: insumo.cantidad_por_presentacion.toString(),
+      unidad_medida: (insumo.unidad_medida && insumo.unidad_medida.trim()) || 'unidades',
       costo_compra: insumo.costo_compra?.toString() || '0',
       stock_inicial: insumo.stock_inicial?.toString() || '0',
       stock_minimo: insumo.stock_minimo?.toString() || '0',
@@ -157,7 +160,7 @@ export default function InsumosPage() {
 
   const handleNuevo = () => {
     setInsumoEditando(null);
-    setFormData({ nombre: '', codigo: '', descripcion: '', presentacion_id: '', cantidad_por_presentacion: '', costo_compra: '', stock_inicial: '', stock_minimo: '', ubicacion_almacenamiento_id: '', activo: true });
+    setFormData({ nombre: '', codigo: '', descripcion: '', presentacion_id: '', cantidad_por_presentacion: '', unidad_medida: 'unidades', costo_compra: '', stock_inicial: '', stock_minimo: '', ubicacion_almacenamiento_id: '', activo: true });
     setBotonEstado('normal');
     setMensajeError('');
     setMostrarFormulario(true);
@@ -190,6 +193,7 @@ export default function InsumosPage() {
     (insumo.codigo && insumo.codigo.toLowerCase().includes(busqueda.toLowerCase())) ||
     (insumo.descripcion && insumo.descripcion.toLowerCase().includes(busqueda.toLowerCase())) ||
     (insumo.presentacion?.nombre && insumo.presentacion.nombre.toLowerCase().includes(busqueda.toLowerCase())) ||
+    (insumo.unidad_medida && insumo.unidad_medida.toLowerCase().includes(busqueda.toLowerCase())) ||
     (insumo.ubicacion_almacenamiento?.nombre && insumo.ubicacion_almacenamiento.nombre.toLowerCase().includes(busqueda.toLowerCase()))
   );
 
@@ -222,7 +226,7 @@ export default function InsumosPage() {
             className="form-input"
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="🔍 Buscar insumo por nombre, código, descripción o presentación..."
+            placeholder="🔍 Buscar por nombre, código, descripción, presentación o unidad (ej. metros)..."
             style={{
               width: '100%',
               fontSize: '1rem',
@@ -318,7 +322,7 @@ export default function InsumosPage() {
               </div>
 
               <div className="form-group">
-                <label className="form-label">Presentación *</label>
+                <label className="form-label">Presentación (catálogo) *</label>
                 <select
                   className="form-select"
                   value={formData.presentacion_id}
@@ -332,24 +336,40 @@ export default function InsumosPage() {
                   ))}
                 </select>
                 <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
-                  Unidad de medida del insumo. <a href="/presentaciones" style={{ color: '#007bff', textDecoration: 'underline' }}>Gestionar presentaciones</a>
+                  Tipo de envase o referencia en catálogo (ej. rollo, bolsa). <a href="/presentaciones" style={{ color: '#007bff', textDecoration: 'underline' }}>Gestionar presentaciones</a>
                 </small>
               </div>
 
               <div className="form-group">
-                <label className="form-label">Cantidad por Presentación *</label>
+                <label className="form-label">Cantidad por presentación *</label>
                 <input
                   type="number"
                   step="0.01"
                   className="form-input"
                   value={formData.cantidad_por_presentacion}
                   onChange={(e) => setFormData({ ...formData, cantidad_por_presentacion: e.target.value })}
-                  placeholder="Ej: 500 (botones en una bolsa)"
+                  placeholder="Ej: 500 o 10000"
                   required
                   min="0"
                 />
                 <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
-                  Cantidad de unidades que contiene cada presentación (Ej: 500 botones por bolsa, 1 metro por metro)
+                  Cuánto trae cada presentación según el número de arriba (ej. 500 botones por bolsa, 10 000 metros por rollo).
+                </small>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Unidad de medida *</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={formData.unidad_medida}
+                  onChange={(e) => setFormData({ ...formData, unidad_medida: e.target.value })}
+                  placeholder="Ej: metros, unidades, kg, rollos"
+                  required
+                  style={{ borderLeft: '4px solid #0ea5e9' }}
+                />
+                <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
+                  En qué mides esa cantidad (se muestra en el catálogo junto a la cantidad). Ej.: <strong>metros</strong> para hilo, <strong>unidades</strong> para piezas sueltas.
                 </small>
               </div>
 
@@ -475,7 +495,7 @@ export default function InsumosPage() {
                   onClick={() => {
                     setMostrarFormulario(false);
                     setInsumoEditando(null);
-                    setFormData({ nombre: '', codigo: '', descripcion: '', presentacion_id: '', cantidad_por_presentacion: '', costo_compra: '', stock_inicial: '', stock_minimo: '', ubicacion_almacenamiento_id: '', activo: true });
+                    setFormData({ nombre: '', codigo: '', descripcion: '', presentacion_id: '', cantidad_por_presentacion: '', unidad_medida: 'unidades', costo_compra: '', stock_inicial: '', stock_minimo: '', ubicacion_almacenamiento_id: '', activo: true });
                     setTimeout(() => {
                       inputBusquedaRef.current?.focus();
                     }, 100);
@@ -502,6 +522,7 @@ export default function InsumosPage() {
                 <th>Código</th>
                 <th>Nombre</th>
                 <th>Presentación</th>
+                <th>Unidad</th>
                 <th>Cantidad</th>
                 <th>Almacenado</th>
                 <th>Descripción</th>
@@ -512,7 +533,7 @@ export default function InsumosPage() {
             <tbody>
               {insumosFiltrados.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                  <td colSpan={9} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
                     {busqueda ? 'No se encontraron insumos con ese criterio.' : 'No hay insumos registrados. Crea tu primer insumo.'}
                   </td>
                 </tr>
@@ -522,8 +543,13 @@ export default function InsumosPage() {
                     <td data-label="Código" style={{ fontFamily: 'monospace', fontWeight: '600' }}>{insumo.codigo}</td>
                     <td data-label="Nombre" style={{ fontWeight: '600' }}>{insumo.nombre}</td>
                     <td data-label="Presentación"><span className="badge badge-info">{insumo.presentacion?.nombre || '-'}</span></td>
+                    <td data-label="Unidad">
+                      <span className="badge badge-info" style={{ backgroundColor: '#0ea5e9' }}>
+                        {(insumo.unidad_medida && insumo.unidad_medida.trim()) || 'unidades'}
+                      </span>
+                    </td>
                     <td data-label="Cantidad" style={{ fontWeight: '600', color: '#3b82f6' }}>
-                      {insumo.cantidad_por_presentacion} {insumo.cantidad_por_presentacion === 1 ? 'unidad' : 'unidades'}
+                      {Number(insumo.cantidad_por_presentacion).toLocaleString('es-MX')}
                     </td>
                     <td data-label="Almacenado">
                       <span className="badge badge-info" style={{ backgroundColor: insumo.ubicacion_almacenamiento ? '#8b5cf6' : '#94a3b8' }}>
@@ -593,7 +619,7 @@ export default function InsumosPage() {
                   setMensajeError('');
                   setMostrarFormulario(false);
                   setInsumoEditando(null);
-                  setFormData({ nombre: '', codigo: '', descripcion: '', presentacion_id: '', cantidad_por_presentacion: '', costo_compra: '', stock_inicial: '', stock_minimo: '', ubicacion_almacenamiento_id: '', activo: true });
+                  setFormData({ nombre: '', codigo: '', descripcion: '', presentacion_id: '', cantidad_por_presentacion: '', unidad_medida: 'unidades', costo_compra: '', stock_inicial: '', stock_minimo: '', ubicacion_almacenamiento_id: '', activo: true });
                   setBotonEstado('normal');
                 }}
               >
