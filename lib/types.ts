@@ -153,7 +153,7 @@ export interface Insumo {
   presentacion_id: string;
   cantidad_por_presentacion: number; // ej: 500 botones en una bolsa
   costo_compra?: number; // Costo de compra por presentación
-  stock_inicial?: number; // Stock inicial del insumo
+  stock_inicial?: number; // Stock existente del insumo (campo `stock_inicial` en BD)
   stock?: number; // Stock actual del insumo
   stock_minimo?: number; // Cantidad mínima de stock para alertas
   ubicacion_almacenamiento_id?: string | null; // Dónde está almacenado (Taller, Bodega uno, etc.)

@@ -19,7 +19,7 @@ export default function StockPage() {
   const [formData, setFormData] = useState({
     prenda_id: '',
     tallas_seleccionadas: [] as string[],
-    stocksPorTalla: {} as Record<string, string>, // Stock inicial por talla
+    stocksPorTalla: {} as Record<string, string>, // Stock existente por talla
     stocksMinimosPorTalla: {} as Record<string, string>, // Stock mínimo por talla
   });
   
@@ -161,7 +161,7 @@ export default function StockPage() {
           exitosos++;
         }
       } else {
-        // Crear nuevo costo con stock inicial
+        // Crear nuevo costo con stock existente
         const { error } = await supabase
           .from('costos')
           .insert([{
@@ -357,7 +357,7 @@ export default function StockPage() {
 
         {mostrarFormulario && (
           <div className="form-container">
-            <h2 className="form-title">Asignar Stock Inicial</h2>
+            <h2 className="form-title">Asignar Stock Existente</h2>
             
             <form onSubmit={handleSubmit}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem' }}>
@@ -583,14 +583,14 @@ export default function StockPage() {
                   
                   {formData.tallas_seleccionadas.length > 0 && (
                     <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.5rem', display: 'block' }}>
-                      {formData.tallas_seleccionadas.length} talla{formData.tallas_seleccionadas.length !== 1 ? 's' : ''} seleccionada{formData.tallas_seleccionadas.length !== 1 ? 's' : ''}. Especifica el stock inicial para cada talla.
+                      {formData.tallas_seleccionadas.length} talla{formData.tallas_seleccionadas.length !== 1 ? 's' : ''} seleccionada{formData.tallas_seleccionadas.length !== 1 ? 's' : ''}. Especifica el stock existente para cada talla.
                     </small>
                   )}
                 </div>
 
                 {formData.tallas_seleccionadas.length > 0 && (
                   <div className="form-group">
-                    <label className="form-label">Stock Inicial por Talla *</label>
+                    <label className="form-label">Stock Existente por Talla *</label>
                     <div style={{ 
                       border: '1px solid #ddd', 
                       borderRadius: '8px', 
@@ -601,7 +601,7 @@ export default function StockPage() {
                         <thead>
                           <tr style={{ backgroundColor: '#f8f9fa', borderBottom: '2px solid #ddd' }}>
                             <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>Talla</th>
-                            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>Stock Inicial</th>
+                            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>Stock Existente</th>
                             <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>Stock Mínimo</th>
                           </tr>
                         </thead>
@@ -702,7 +702,7 @@ export default function StockPage() {
               {costosFiltrados.length === 0 ? (
                 <tr>
                   <td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
-                    {busquedaTabla ? 'No se encontró stock con ese criterio.' : 'No hay stock registrado. Asigna stock inicial a las prendas.'}
+                    {busquedaTabla ? 'No se encontró stock con ese criterio.' : 'No hay stock registrado. Asigna stock existente a las prendas.'}
                   </td>
                 </tr>
               ) : (
@@ -710,7 +710,7 @@ export default function StockPage() {
                   <tr key={costo.id}>
                     <td data-label="Prenda" style={{ fontWeight: '600' }}>{costo.prenda?.nombre || '-'}</td>
                     <td data-label="Talla"><span className="badge badge-info">{costo.talla?.nombre || '-'}</span></td>
-                    <td data-label="Stock Inicial">{costo.stock_inicial}</td>
+                    <td data-label="Stock Existente">{costo.stock_inicial}</td>
                     <td data-label="Venta" style={{ fontWeight: '600', color: costo.cantidad_venta > 0 ? '#3b82f6' : '#999' }}>
                       {costo.cantidad_venta || 0}
                     </td>
@@ -764,7 +764,7 @@ export default function StockPage() {
               <form onSubmit={handleGuardarEdicion}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem' }}>
                   <div className="form-group">
-                    <label className="form-label">Stock Inicial *</label>
+                    <label className="form-label">Stock Existente *</label>
                     <input
                       type="number"
                       className="form-input"

@@ -78,7 +78,7 @@ export default function InventarioInsumosPage() {
                 <th>Código</th>
                 <th>Insumo</th>
                 <th>Presentación</th>
-                <th>Stock Inicial</th>
+                <th>Stock Existente</th>
                 <th>Stock Actual</th>
                 <th>Stock Mínimo</th>
                 <th>Estado</th>
@@ -123,7 +123,7 @@ export default function InventarioInsumosPage() {
                           {insumo.presentacion?.nombre || '-'}
                         </span>
                       </td>
-                      <td data-label="Stock Inicial" style={{ 
+                      <td data-label="Stock Existente" style={{ 
                         textAlign: 'center',
                         fontWeight: '600',
                         color: '#64748b'

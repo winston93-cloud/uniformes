@@ -1,7 +1,7 @@
 -- ============================================
 -- REINICIALIZAR STOCK DE PRENDAS A CERO
 -- ============================================
--- Esto pondrá en 0 el stock inicial, stock mínimo y stock actual
+-- Esto pondrá en 0 el stock existente (stock_inicial), stock mínimo y stock actual
 -- de todas las prendas en la tabla costos.
 -- NO afecta precios, tallas, prendas ni otros datos.
 -- ============================================
@@ -23,7 +23,7 @@ BEGIN
   
   GET DIAGNOSTICS registros_actualizados = ROW_COUNT;
   
-  RAISE NOTICE '✅ Stock inicializado a 0 en % registros', registros_actualizados;
+  RAISE NOTICE '✅ Stock existente e inventario puestos a 0 en % registros', registros_actualizados;
   RAISE NOTICE '📊 stock_inicial = 0';
   RAISE NOTICE '📊 stock_minimo = 0';
   RAISE NOTICE '📊 stock = 0';

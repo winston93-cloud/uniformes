@@ -76,7 +76,7 @@ export default function InsumosPage() {
       cantidad_por_presentacion: parseFloat(formData.cantidad_por_presentacion) || 0,
       costo_compra: parseFloat(formData.costo_compra) || 0,
       stock_inicial: parseFloat(formData.stock_inicial) || 0,
-      stock: parseFloat(formData.stock_inicial) || 0, // Stock actual = stock inicial
+      stock: parseFloat(formData.stock_inicial) || 0, // Stock actual = stock existente al crear
       stock_minimo: parseFloat(formData.stock_minimo) || 0,
       ubicacion_almacenamiento_id: formData.ubicacion_almacenamiento_id || null,
       activo: formData.activo,
@@ -373,7 +373,7 @@ export default function InsumosPage() {
               </div>
 
               <div className="form-group">
-                <label className="form-label">📦 Stock Inicial</label>
+                <label className="form-label">📦 Stock Existente</label>
                 <input
                   type="number"
                   step="0.01"
@@ -387,7 +387,7 @@ export default function InsumosPage() {
                   }}
                 />
                 <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
-                  Cantidad inicial de insumo disponible (usado para calcular el stock actual). Si no se ingresa, se establece en 0
+                  Cantidad existente de insumo disponible (usado para calcular el stock actual). Si no se ingresa, se establece en 0
                 </small>
               </div>
 

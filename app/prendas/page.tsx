@@ -1120,7 +1120,7 @@ export default function PrendasPage() {
                 const stockInicial = parseFloat(stockData.stock_inicial) || 0;
                 const stockMinimo = parseFloat(stockData.stock_minimo) || 0;
                 
-                // Si el stock inicial es diferente al existente, actualizar también el stock actual
+                // Si el stock existente guardado cambia, actualizar también el stock actual
                 const actualizarStock = costoExistente.stock_inicial !== stockInicial;
 
                 const ubicacionId =
@@ -1167,7 +1167,7 @@ export default function PrendasPage() {
                   fontWeight: '600',
                   color: '#334155'
                 }}>
-                  Stock Inicial *
+                  Stock Existente *
                 </label>
                 <input
                   type="number"
@@ -1187,7 +1187,7 @@ export default function PrendasPage() {
                   }}
                 />
                 <small style={{ color: '#64748b', fontSize: '0.85rem', display: 'block', marginTop: '0.25rem' }}>
-                  Cantidad inicial de unidades disponibles
+                  Cantidad existente de unidades disponibles
                 </small>
               </div>
 

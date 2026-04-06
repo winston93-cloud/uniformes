@@ -111,7 +111,7 @@ export default function ReportesPage() {
     
     autoTable(doc, {
       startY: 35,
-      head: [['Prenda', 'Talla', 'Stock Inicial', 'Stock Actual', 'Estado']],
+      head: [['Prenda', 'Talla', 'Stock Existente', 'Stock Actual', 'Estado']],
       body: datos.map(i => [
         i.prenda?.nombre || '-',
         i.talla?.nombre || '-',

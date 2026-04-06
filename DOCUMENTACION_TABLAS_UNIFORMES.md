@@ -129,7 +129,7 @@ Tabla intermedia: precio y stock por combinación prenda-talla-sucursal.
 | precio_compra | DECIMAL(10,2) | Costo de adquisición |
 | precio_mayoreo | DECIMAL(10,2) | Precio mayoreo |
 | precio_menudeo | DECIMAL(10,2) | Precio menudeo |
-| stock_inicial | INTEGER | Stock inicial |
+| stock_inicial | INTEGER | Stock existente |
 | stock | INTEGER (≥0) | Stock actual |
 | cantidad_venta | INTEGER | Unidades vendidas |
 | stock_minimo | INTEGER | Umbral para alertas |
