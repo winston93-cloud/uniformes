@@ -256,7 +256,12 @@ export default function InsumosPage() {
       codigo: formData.codigo,
       descripcion: formData.descripcion || null,
       presentacion_id: formData.presentacion_id,
-      cantidad_por_presentacion: parseFloat(formData.cantidad_por_presentacion) || 0,
+      /* Campo "Cantidad por presentación" oculto en UI: antes se enviaba
+         parseFloat(formData.cantidad_por_presentacion) || 0 */
+      cantidad_por_presentacion:
+        insumoEditando != null
+          ? insumoEditando.cantidad_por_presentacion
+          : 1,
       unidad_medida: (formData.unidad_medida || 'unidades').trim() || 'unidades',
       costo_compra: parseFloat(formData.costo_compra) || 0,
       stock_inicial: parseFloat(formData.stock_inicial) || 0,
@@ -589,6 +594,7 @@ export default function InsumosPage() {
                 </small>
               </div>
 
+              {/*
               <div className="form-group">
                 <label className="form-label">Cantidad por presentación *</label>
                 <input
@@ -605,6 +611,7 @@ export default function InsumosPage() {
                   Cuánto trae cada presentación según el número de arriba (ej. 500 botones por bolsa, 10 000 metros por rollo).
                 </small>
               </div>
+              */}
 
               <div className="form-group">
                 <label className="form-label">Unidad de medida *</label>
@@ -618,7 +625,7 @@ export default function InsumosPage() {
                   style={{ borderLeft: '4px solid #0ea5e9' }}
                 />
                 <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
-                  En qué mides esa cantidad (se muestra en el catálogo junto a la cantidad). Ej.: <strong>metros</strong> para hilo, <strong>unidades</strong> para piezas sueltas.
+                  En qué mides el insumo (metros, botones, agujas, etc.). Ej.: <strong>metros</strong> para hilo, <strong>unidades</strong> para piezas sueltas.
                 </small>
               </div>
 
@@ -814,7 +821,7 @@ export default function InsumosPage() {
                 <th>Nombre</th>
                 <th>Presentación</th>
                 <th>Unidad</th>
-                <th>Cantidad</th>
+                {/* <th>Cantidad</th> — cantidad por presentación (columna oculta; ver formulario comentado) */}
                 <th>Almacenado</th>
                 <th>Descripción</th>
                 <th>Estado</th>
@@ -824,7 +831,7 @@ export default function InsumosPage() {
             <tbody>
               {insumosFiltrados.length === 0 ? (
                 <tr>
-                  <td colSpan={9} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                  <td colSpan={8} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
                     {busqueda ? 'No se encontraron insumos con ese criterio.' : 'No hay insumos registrados. Crea tu primer insumo.'}
                   </td>
                 </tr>
@@ -847,9 +854,11 @@ export default function InsumosPage() {
                         {(insumo.unidad_medida && insumo.unidad_medida.trim()) || 'unidades'}
                       </span>
                     </td>
+                    {/*
                     <td data-label="Cantidad" style={{ fontWeight: '600', color: '#3b82f6' }}>
                       {Number(insumo.cantidad_por_presentacion).toLocaleString('es-MX')}
                     </td>
+                    */}
                     <td data-label="Almacenado">
                       <span
                         className="badge"
