@@ -191,7 +191,7 @@ export interface Cotizacion {
   total: number;
   /** Checkbox: sumar IVA 16% sobre subtotal de partidas */
   incluir_iva?: boolean;
-  /** Checkbox: aplicar retención ISR (tasa definida en app) sobre subtotal */
+  /** Checkbox: retención ISR RESICO sobre importe del emisor sin IVA (tasa en app) */
   incluir_isr?: boolean;
   observaciones: string | null;
   condiciones_pago: string | null;

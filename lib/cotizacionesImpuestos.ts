@@ -4,8 +4,9 @@
  */
 export const TASA_IVA_TRASLADADO = 0.16; // IVA 16 %
 /**
- * Retención de ISR (RESICO): 1.25 % sobre subtotal.
- * Retención que practica el cliente al emisor; se resta del total de la cotización.
+ * Retención ISR RESICO: 1.25 % sobre el importe que cobra el emisor **sin IVA**
+ * (mismo importe base que el subtotal de partidas; no se calcula sobre el total con IVA).
+ * La practica el cliente al emisor; se resta del total a pagar.
  */
 export const TASA_ISR_RETENCION = 0.0125;
 
@@ -14,13 +15,14 @@ export function calcularMontosImpuestosCotizacion(
   incluirIva: boolean,
   incluirIsr: boolean
 ) {
-  const sub = Math.round(subtotalPartidas * 100) / 100;
+  /** Total que cobra el emisor sin IVA (antes de traslado de IVA). Base para IVA y para ISR RESICO. */
+  const importeSinIva = Math.round(subtotalPartidas * 100) / 100;
   const montoIva = incluirIva
-    ? Math.round(sub * TASA_IVA_TRASLADADO * 100) / 100
+    ? Math.round(importeSinIva * TASA_IVA_TRASLADADO * 100) / 100
     : 0;
   const montoIsrRet = incluirIsr
-    ? Math.round(sub * TASA_ISR_RETENCION * 100) / 100
+    ? Math.round(importeSinIva * TASA_ISR_RETENCION * 100) / 100
     : 0;
-  const total = Math.round((sub + montoIva - montoIsrRet) * 100) / 100;
-  return { subtotal: sub, montoIva, montoIsrRet, total };
+  const total = Math.round((importeSinIva + montoIva - montoIsrRet) * 100) / 100;
+  return { subtotal: importeSinIva, montoIva, montoIsrRet, total };
 }
