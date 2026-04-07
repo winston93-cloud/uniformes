@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase, getSupabaseErrorMessage } from '@/lib/supabase';
 import type { Cotizacion, DetalleCotizacion } from '@/lib/types';
 import { compareCotizacionesPorFechaEntrega } from '@/lib/cotizacionesSort';
+import { calcularMontosImpuestosCotizacion } from '@/lib/cotizacionesImpuestos';
+import { transicionEstadoCotizacionValida } from '@/lib/cotizacionesEstados';
 
 export interface PartidaCotizacion {
   prenda_nombre: string;
@@ -33,6 +35,8 @@ export interface NuevaCotizacion {
   condiciones_pago?: string;
   tiempo_entrega?: string;
   partidas: PartidaCotizacion[];
+  incluir_iva?: boolean;
+  incluir_isr?: boolean;
 }
 
 function isUuid(value: string): boolean {
@@ -146,9 +150,15 @@ export function useCotizaciones() {
       // 1. Generar folio
       const folio = await generarFolio();
 
-      // 2. Calcular totales
-      const subtotal = nuevaCotizacion.partidas.reduce((sum, p) => sum + p.subtotal, 0);
-      const total = subtotal;
+      // 2. Calcular totales (subtotal de partidas + IVA opcional − ISR retención opcional)
+      const subtotalPartidas = nuevaCotizacion.partidas.reduce((sum, p) => sum + p.subtotal, 0);
+      const incluirIva = nuevaCotizacion.incluir_iva === true;
+      const incluirIsr = nuevaCotizacion.incluir_isr === true;
+      const { subtotal, total } = calcularMontosImpuestosCotizacion(
+        subtotalPartidas,
+        incluirIva,
+        incluirIsr
+      );
 
       let alumnoId: string | null = nuevaCotizacion.alumno_id ?? null;
       if (nuevaCotizacion.tipo_cliente === 'alumno' && alumnoId) {
@@ -184,6 +194,8 @@ export function useCotizaciones() {
           tiempo_entrega: nuevaCotizacion.tiempo_entrega || '5-7 días hábiles',
           fecha_entrega: nuevaCotizacion.fecha_entrega || null,
           estado: 'emitido',
+          incluir_iva: incluirIva,
+          incluir_isr: incluirIsr,
         }])
         .select()
         .single();
@@ -211,9 +223,104 @@ export function useCotizaciones() {
     }
   };
 
-  // Actualizar estado de cotización
+  /** Actualiza cotización existente conservando el mismo folio (regenerar PDF / datos sin nuevo folio). */
+  const actualizarCotizacionCompleta = async (
+    cotizacionId: string,
+    datos: NuevaCotizacion
+  ) => {
+    try {
+      const subtotalPartidas = datos.partidas.reduce((sum, p) => sum + p.subtotal, 0);
+      const incluirIva = datos.incluir_iva === true;
+      const incluirIsr = datos.incluir_isr === true;
+      const { subtotal, total } = calcularMontosImpuestosCotizacion(
+        subtotalPartidas,
+        incluirIva,
+        incluirIsr
+      );
+
+      let alumnoId: string | null = datos.alumno_id ?? null;
+      if (datos.tipo_cliente === 'alumno' && alumnoId) {
+        alumnoId = await resolverAlumnoUuidParaCotizacion(
+          alumnoId,
+          datos.alumno_referencia,
+          datos.alumno_nombre || ''
+        );
+      }
+
+      const externoId = datos.externo_id ?? null;
+      if (datos.tipo_cliente === 'externo' && externoId && !isUuid(externoId)) {
+        return {
+          data: null,
+          error: 'Cliente externo inválido. Vuelve a seleccionar el cliente.',
+        };
+      }
+
+      const { data: cotizacion, error: cotError } = await supabase
+        .from('cotizaciones')
+        .update({
+          alumno_id: datos.tipo_cliente === 'alumno' ? alumnoId : null,
+          externo_id: datos.tipo_cliente === 'externo' ? externoId : null,
+          tipo_cliente: datos.tipo_cliente,
+          fecha_vigencia: datos.fecha_vigencia || null,
+          fecha_entrega: datos.fecha_entrega || null,
+          subtotal,
+          total,
+          observaciones: datos.observaciones || null,
+          condiciones_pago: datos.condiciones_pago || '50% anticipo, 50% contra entrega',
+          tiempo_entrega: datos.tiempo_entrega || '5-7 días hábiles',
+          incluir_iva: incluirIva,
+          incluir_isr: incluirIsr,
+          estado: 'emitido',
+        })
+        .eq('id', cotizacionId)
+        .select()
+        .single();
+
+      if (cotError) throw cotError;
+
+      const { error: delErr } = await supabase
+        .from('detalle_cotizacion')
+        .delete()
+        .eq('cotizacion_id', cotizacionId);
+
+      if (delErr) throw delErr;
+
+      const partidas = datos.partidas.map((p, index) => ({
+        cotizacion_id: cotizacionId,
+        ...p,
+        orden: index + 1,
+      }));
+
+      const { error: insErr } = await supabase.from('detalle_cotizacion').insert(partidas);
+      if (insErr) throw insErr;
+
+      await obtenerCotizaciones();
+      return { data: cotizacion, error: null };
+    } catch (err) {
+      console.error('Error al actualizar cotización completa:', err);
+      return { data: null, error: getSupabaseErrorMessage(err) };
+    }
+  };
+
+  // Actualizar estado de cotización (solo avance: no se puede retroceder en el flujo)
   const actualizarEstado = async (id: string, estado: 'emitido' | 'aprobado' | 'trabajando' | 'terminado') => {
     try {
+      const { data: row, error: fetchErr } = await supabase
+        .from('cotizaciones')
+        .select('estado')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (fetchErr) throw fetchErr;
+      if (!row?.estado) {
+        return { error: 'No se encontró la cotización.' };
+      }
+      if (!transicionEstadoCotizacionValida(row.estado, estado)) {
+        return {
+          error: 'No se puede retroceder el estatus: solo se permite avanzar o mantener el actual.',
+        };
+      }
+
       const { error } = await supabase
         .from('cotizaciones')
         .update({ estado })
@@ -272,6 +379,7 @@ export function useCotizaciones() {
     obtenerCotizaciones,
     obtenerCotizacion,
     crearCotizacion,
+    actualizarCotizacionCompleta,
     actualizarEstado,
     actualizarPdfUrl,
     eliminarCotizacion,

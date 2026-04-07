@@ -189,6 +189,10 @@ export interface Cotizacion {
   fecha_vigencia: string | null;
   subtotal: number;
   total: number;
+  /** Checkbox: sumar IVA 16% sobre subtotal de partidas */
+  incluir_iva?: boolean;
+  /** Checkbox: aplicar retención ISR (tasa definida en app) sobre subtotal */
+  incluir_isr?: boolean;
   observaciones: string | null;
   condiciones_pago: string | null;
   tiempo_entrega: string | null;

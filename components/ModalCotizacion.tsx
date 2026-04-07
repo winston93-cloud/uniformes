@@ -10,6 +10,13 @@ import { usePrendas } from '@/lib/hooks/usePrendas';
 import { useCostos } from '@/lib/hooks/useCostos';
 import type { Costo } from '@/lib/types';
 import { compareCotizacionesPorFechaEntrega } from '@/lib/cotizacionesSort';
+import { obtenerEstadosCotizacionPermitidosDesde } from '@/lib/cotizacionesEstados';
+import {
+  calcularMontosImpuestosCotizacion,
+  TASA_IVA_TRASLADADO,
+  TASA_ISR_RETENCION,
+} from '@/lib/cotizacionesImpuestos';
+import type { Cotizacion } from '@/lib/types';
 import { supabase } from '@/lib/supabase';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -115,9 +122,20 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   const [fechaVigencia, setFechaVigencia] = useState('');
 
   const [generando, setGenerando] = useState(false);
+  const [incluirIva, setIncluirIva] = useState(false);
+  const [incluirIsr, setIncluirIsr] = useState(false);
+  /** Si no es null, estamos editando una cotización existente (mismo folio al guardar). */
+  const [cotizacionEditId, setCotizacionEditId] = useState<string | null>(null);
   
   const { cicloEscolar } = useAuth();
-  const { crearCotizacion, cotizaciones, obtenerCotizacion, cargando, actualizarEstado } = useCotizaciones();
+  const {
+    crearCotizacion,
+    cotizaciones,
+    obtenerCotizacion,
+    cargando,
+    actualizarEstado,
+    actualizarCotizacionCompleta,
+  } = useCotizaciones();
   const [actualizandoEstadoId, setActualizandoEstadoId] = useState<string | null>(null);
   const { searchAlumnos } = useAlumnos(cicloEscolar);
   const { searchExternos } = useExternos();
@@ -512,9 +530,12 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     setPartidas(partidasActualizadas);
   };
 
-  // Calcular totales
+  // Calcular totales (partidas + IVA / ISR opcionales)
   const subtotal = partidas.reduce((sum, p) => sum + p.subtotal, 0);
-  const total = subtotal;
+  const totalesCotizacion = useMemo(
+    () => calcularMontosImpuestosCotizacion(subtotal, incluirIva, incluirIsr),
+    [subtotal, incluirIva, incluirIsr]
+  );
 
   // Generar PDF
   const generarPDF = (folioGenerado: string) => {
@@ -576,36 +597,58 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       },
     });
 
-    // Totales
+    // Totales (subtotal partidas + IVA / − ISR según checkboxes)
     const finalY = (doc as any).lastAutoTable.finalY || 95;
     doc.setFont('helvetica', 'bold');
-    doc.text(`Subtotal: $${subtotal.toFixed(2)}`, 140, finalY + 10);
+    doc.setFontSize(10);
+    let yTot = finalY + 10;
+    doc.text(`Subtotal: $${totalesCotizacion.subtotal.toFixed(2)}`, 140, yTot);
+    if (incluirIva) {
+      yTot += 7;
+      doc.setFont('helvetica', 'normal');
+      doc.text(
+        `IVA (${(TASA_IVA_TRASLADADO * 100).toFixed(0)}%): $${totalesCotizacion.montoIva.toFixed(2)}`,
+        140,
+        yTot
+      );
+    }
+    if (incluirIsr) {
+      yTot += 7;
+      doc.text(
+        `Ret. ISR (${(TASA_ISR_RETENCION * 100).toFixed(0)}%): −$${totalesCotizacion.montoIsrRet.toFixed(2)}`,
+        140,
+        yTot
+      );
+    }
+    yTot += 12;
+    doc.setFont('helvetica', 'bold');
     doc.setFontSize(14);
-    doc.text(`TOTAL: $${total.toFixed(2)}`, 140, finalY + 20);
+    doc.text(`TOTAL: $${totalesCotizacion.total.toFixed(2)}`, 140, yTot);
 
     // Condiciones
+    const yCond = yTot + 18;
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
-    doc.text('Condiciones de Pago:', 14, finalY + 35);
+    doc.text('Condiciones de Pago:', 14, yCond);
     doc.setFont('helvetica', 'normal');
-    doc.text(condicionesPago, 14, finalY + 42);
+    doc.text(condicionesPago, 14, yCond + 7);
 
     doc.setFont('helvetica', 'bold');
-    doc.text('Tiempo de Entrega:', 14, finalY + 52);
+    doc.text('Tiempo de Entrega:', 14, yCond + 17);
     doc.setFont('helvetica', 'normal');
-    doc.text(tiempoEntrega, 14, finalY + 59);
+    doc.text(tiempoEntrega, 14, yCond + 24);
 
     doc.setFont('helvetica', 'bold');
-    doc.text('Fecha de Entrega:', 14, finalY + 69);
+    doc.text('Fecha de Entrega:', 14, yCond + 34);
     doc.setFont('helvetica', 'normal');
-    doc.text(fechaEntrega ? new Date(fechaEntrega + 'T12:00:00').toLocaleDateString('es-MX') : '—', 14, finalY + 76);
+    doc.text(fechaEntrega ? new Date(fechaEntrega + 'T12:00:00').toLocaleDateString('es-MX') : '—', 14, yCond + 41);
 
     if (observaciones) {
       doc.setFont('helvetica', 'bold');
-      doc.text('Observaciones:', 14, finalY + 86);
+      doc.text('Observaciones:', 14, yCond + 51);
       doc.setFont('helvetica', 'normal');
       const lineas = doc.splitTextToSize(observaciones, 180);
-      doc.text(lineas, 14, finalY + 93);
+      doc.text(lineas, 14, yCond + 58);
     }
 
     return doc;
@@ -644,27 +687,30 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
         condiciones_pago: condicionesPago,
         tiempo_entrega: tiempoEntrega,
         partidas,
+        incluir_iva: incluirIva,
+        incluir_isr: incluirIsr,
       };
 
-      const { data, error } = await crearCotizacion(nuevaCotizacion);
+      const { data, error } = cotizacionEditId
+        ? await actualizarCotizacionCompleta(cotizacionEditId, nuevaCotizacion)
+        : await crearCotizacion(nuevaCotizacion);
 
       if (error || !data) {
-        throw new Error(error || 'Error al crear cotización');
+        throw new Error(error || 'Error al guardar cotización');
       }
 
-      // Generar y mostrar PDF en pantalla
+      // Generar y mostrar PDF en pantalla (mismo folio al editar)
       const pdf = generarPDF(data.folio);
       const pdfUrl = pdf.output('bloburl');
       window.open(pdfUrl, '_blank');
 
-      alert(`✅ Cotización ${data.folio} generada exitosamente`);
+      alert(
+        cotizacionEditId
+          ? `✅ Cotización ${data.folio} actualizada (folio conservado)`
+          : `✅ Cotización ${data.folio} generada exitosamente`
+      );
 
-      // Limpiar formulario
-      setTipoPrecio(null);
-      setClienteSeleccionado(null);
-      setBusquedaCliente('');
-      setPartidas([]);
-      setObservaciones('');
+      limpiarCotizacionNueva();
       setVista('historial');
     } catch (err) {
       console.error('Error:', err);
@@ -734,8 +780,27 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       });
 
       const finalY = (doc as any).lastAutoTable.finalY || 95;
+      const subPdf = partidasFormateadas.reduce((s, p) => s + p.subtotal, 0);
+      const conIva = cotizacion.incluir_iva === true;
+      const conIsr = cotizacion.incluir_isr === true;
+      const tPdf = calcularMontosImpuestosCotizacion(subPdf, conIva, conIsr);
       doc.setFont('helvetica', 'bold');
-      doc.text(`TOTAL: $${cotizacion.total.toFixed(2)}`, 140, finalY + 20);
+      doc.setFontSize(10);
+      let yP = finalY + 10;
+      doc.text(`Subtotal: $${tPdf.subtotal.toFixed(2)}`, 140, yP);
+      if (conIva) {
+        yP += 7;
+        doc.setFont('helvetica', 'normal');
+        doc.text(`IVA (${(TASA_IVA_TRASLADADO * 100).toFixed(0)}%): $${tPdf.montoIva.toFixed(2)}`, 140, yP);
+      }
+      if (conIsr) {
+        yP += 7;
+        doc.text(`Ret. ISR (${(TASA_ISR_RETENCION * 100).toFixed(0)}%): −$${tPdf.montoIsrRet.toFixed(2)}`, 140, yP);
+      }
+      yP += 10;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.text(`TOTAL: $${cotizacion.total.toFixed(2)}`, 140, yP);
 
       // Abrir PDF en nueva ventana en lugar de descargar
       const pdfUrl = doc.output('bloburl');
@@ -744,6 +809,77 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       console.error('Error al generar PDF:', err);
       alert('Error al generar PDF');
     }
+  };
+
+  const iniciarEdicionDesdeHistorial = async (cot: Cotizacion) => {
+    if (cot.estado !== 'emitido') return;
+    try {
+      const { detalle } = await obtenerCotizacion(cot.id);
+      const partidasFormateadas: PartidaCotizacion[] = detalle.map((d: any) => ({
+        prenda_nombre: d.prenda_nombre,
+        talla: d.talla,
+        color: d.color || '',
+        especificaciones: d.especificaciones || '',
+        cantidad: d.cantidad,
+        precio_unitario: d.precio_unitario,
+        subtotal: d.subtotal,
+        orden: d.orden,
+        tipo_precio_usado: d.tipo_precio_usado || 'menudeo',
+        prenda_id: d.prenda_id || null,
+        costo_id: d.costo_id || null,
+        es_manual: d.es_manual || false,
+      }));
+      setPartidas(partidasFormateadas);
+      setTipoCliente(cot.tipo_cliente);
+      if (cot.tipo_cliente === 'alumno' && cot.alumno && cot.alumno_id) {
+        setClienteSeleccionado({ ...cot.alumno, id: cot.alumno_id });
+      } else if (cot.tipo_cliente === 'externo' && cot.externo && cot.externo_id) {
+        setClienteSeleccionado({ ...cot.externo, id: cot.externo_id });
+      }
+      setTipoPrecio(partidasFormateadas[0]?.tipo_precio_usado || 'menudeo');
+      setObservaciones(cot.observaciones || '');
+      setCondicionesPago(cot.condiciones_pago || '50% anticipo, 50% contra entrega');
+      setTiempoEntrega(cot.tiempo_entrega || '5-7 días hábiles');
+      setFechaEntrega(cot.fecha_entrega ? String(cot.fecha_entrega).split('T')[0] : '');
+      setFechaVigencia(cot.fecha_vigencia ? String(cot.fecha_vigencia).split('T')[0] : '');
+      setIncluirIva(cot.incluir_iva === true);
+      setIncluirIsr(cot.incluir_isr === true);
+      setCotizacionEditId(cot.id);
+      setBusquedaCliente(cot.alumno?.nombre || cot.externo?.nombre || '');
+      setCotizacionDirecta(partidasFormateadas.some((p) => p.es_manual));
+      setVista('nueva');
+    } catch (e) {
+      console.error(e);
+      alert('No se pudo cargar la cotización para editar');
+    }
+  };
+
+  const limpiarCotizacionNueva = () => {
+    setCotizacionEditId(null);
+    setIncluirIva(false);
+    setIncluirIsr(false);
+    setTipoPrecio(null);
+    setClienteSeleccionado(null);
+    setBusquedaCliente('');
+    setPartidas([]);
+    setObservaciones('');
+    setCondicionesPago('50% anticipo, 50% contra entrega');
+    setTiempoEntrega('5-7 días hábiles');
+    setFechaEntrega('');
+    setFechaVigencia('');
+    setCotizacionDirecta(false);
+    setPrendaSeleccionada(null);
+    setBusquedaPrenda('');
+    setCostosDisponibles([]);
+    setColorGlobal('');
+    setEspecificacionesGlobales('');
+    setSubPartidas([
+      { id: crypto.randomUUID(), costo_id: '', talla: '', cantidad: 0, precio_unitario: 0 },
+    ]);
+    setPrendaManual('');
+    setTallaManual('');
+    setPrecioManual('');
+    setCantidadManual('1');
   };
 
   return (
@@ -836,7 +972,11 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
         {/* Tabs */}
         <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', borderBottom: '2px solid #eee' }}>
           <button
-            onClick={() => setVista('nueva')}
+            type="button"
+            onClick={() => {
+              limpiarCotizacionNueva();
+              setVista('nueva');
+            }}
             style={{
               padding: '1rem 2rem',
               background: vista === 'nueva' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'transparent',
@@ -870,6 +1010,23 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
         {/* Contenido */}
         {vista === 'nueva' ? (
           <div>
+            {cotizacionEditId && (
+              <div
+                style={{
+                  marginBottom: '1rem',
+                  padding: '0.85rem 1rem',
+                  background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)',
+                  border: '2px solid #34d399',
+                  borderRadius: '10px',
+                  color: '#065f46',
+                  fontWeight: 600,
+                  fontSize: '0.95rem',
+                }}
+              >
+                ✏️ Editando cotización en estado <strong>Emitido</strong>: al guardar se conserva el mismo folio y se
+                actualizan datos y partidas.
+              </div>
+            )}
             {/* Fila superior: Tipo de Precio | Tipo de Cliente | Cotización Directa */}
             <div style={{ 
               display: 'grid', 
@@ -2019,13 +2176,21 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                   color: 'white',
                   borderRadius: '8px',
                   display: 'flex',
+                  flexWrap: 'wrap',
                   justifyContent: 'flex-end',
-                  gap: '2rem',
-                  fontSize: '1.2rem',
+                  alignItems: 'center',
+                  gap: '1rem 2rem',
+                  fontSize: '1.05rem',
                   fontWeight: 'bold',
                 }}>
-                  <div>Subtotal: ${subtotal.toFixed(2)}</div>
-                  <div>TOTAL: ${total.toFixed(2)}</div>
+                  <div>Subtotal: ${totalesCotizacion.subtotal.toFixed(2)}</div>
+                  {incluirIva && (
+                    <div>IVA: ${totalesCotizacion.montoIva.toFixed(2)}</div>
+                  )}
+                  {incluirIsr && (
+                    <div>Ret. ISR: −${totalesCotizacion.montoIsrRet.toFixed(2)}</div>
+                  )}
+                  <div style={{ fontSize: '1.2rem' }}>TOTAL: ${totalesCotizacion.total.toFixed(2)}</div>
                 </div>
               </div>
             )}
@@ -2094,8 +2259,54 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
               />
             </div>
 
+            <div
+              style={{
+                marginBottom: '1.25rem',
+                padding: '1rem',
+                background: '#f8fafc',
+                borderRadius: '10px',
+                border: '1px solid #e2e8f0',
+              }}
+            >
+              <div style={{ fontWeight: 'bold', marginBottom: '0.75rem', color: '#334155' }}>
+                Impuestos (opcional)
+              </div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={incluirIva}
+                  onChange={(e) => setIncluirIva(e.target.checked)}
+                />
+                <span>
+                  Incluir IVA ({(TASA_IVA_TRASLADADO * 100).toFixed(0)}% sobre subtotal de partidas)
+                </span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={incluirIsr}
+                  onChange={(e) => setIncluirIsr(e.target.checked)}
+                />
+                <span>
+                  Aplicar retención ISR ({(TASA_ISR_RETENCION * 100).toFixed(0)}% sobre subtotal; se resta del total)
+                </span>
+              </label>
+              <div style={{ marginTop: '0.75rem', fontSize: '0.9rem', color: '#64748b' }}>
+                Subtotal partidas: <strong>${totalesCotizacion.subtotal.toFixed(2)}</strong>
+                {incluirIva && (
+                  <> · IVA: <strong>${totalesCotizacion.montoIva.toFixed(2)}</strong></>
+                )}
+                {incluirIsr && (
+                  <> · Ret. ISR: <strong>−${totalesCotizacion.montoIsrRet.toFixed(2)}</strong></>
+                )}
+                {' · '}
+                <strong style={{ color: '#667eea' }}>Total: ${totalesCotizacion.total.toFixed(2)}</strong>
+              </div>
+            </div>
+
             {/* Botón generar */}
             <button
+              type="button"
               onClick={handleCrearCotizacion}
               disabled={generando || !clienteSeleccionado || partidas.length === 0}
               style={{
@@ -2111,7 +2322,11 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                 boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
               }}
             >
-              {generando ? '⏳ Generando...' : '📄 Generar Cotización'}
+              {generando
+                ? '⏳ Generando...'
+                : cotizacionEditId
+                  ? '💾 Guardar cambios (mismo folio)'
+                  : '📄 Generar Cotización'}
             </button>
           </div>
         ) : (
@@ -2245,6 +2460,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                   <tbody>
                     {cotizacionesFiltradas.map((cot) => {
                       const est = estilosEstadoCotizacion(cot.estado);
+                      const opcionesEstado = obtenerEstadosCotizacionPermitidosDesde(cot.estado);
+                      const estatusBloqueado = opcionesEstado.length <= 1;
                       return (
                       <tr key={cot.id} style={{ borderBottom: '1px solid #eee' }}>
                         <td style={{ padding: '0.75rem', fontWeight: 'bold', color: '#667eea', fontSize: '0.9rem' }}>
@@ -2301,7 +2518,12 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                             </span>
                             <select
                               value={cot.estado}
-                              disabled={actualizandoEstadoId === cot.id}
+                              disabled={actualizandoEstadoId === cot.id || estatusBloqueado}
+                              title={
+                                estatusBloqueado
+                                  ? 'En Terminado no se puede cambiar el estatus'
+                                  : 'Solo puedes avanzar el estatus, no retroceder'
+                              }
                               onChange={async (e) => {
                                 const nuevo = e.target.value as 'emitido' | 'aprobado' | 'trabajando' | 'terminado';
                                 if (nuevo === cot.estado) return;
@@ -2319,18 +2541,24 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                                 border: `2px solid ${est.wrapBorder}`,
                                 fontSize: '0.88rem',
                                 fontWeight: 800,
-                                background: '#ffffff',
-                                cursor: actualizandoEstadoId === cot.id ? 'wait' : 'pointer',
+                                background: estatusBloqueado ? '#f1f5f9' : '#ffffff',
+                                cursor:
+                                  actualizandoEstadoId === cot.id
+                                    ? 'wait'
+                                    : estatusBloqueado
+                                      ? 'not-allowed'
+                                      : 'pointer',
                                 color: est.text,
                                 boxShadow: '0 2px 6px rgba(15, 23, 42, 0.06)',
                                 outline: 'none',
                               }}
                               aria-label={`Estatus de cotización ${cot.folio}`}
                             >
-                              <option value="emitido">Emitido</option>
-                              <option value="aprobado">Aprobado</option>
-                              <option value="trabajando">Trabajando</option>
-                              <option value="terminado">Terminado</option>
+                              {opcionesEstado.map((opt) => (
+                                <option key={opt.value} value={opt.value}>
+                                  {opt.label}
+                                </option>
+                              ))}
                             </select>
                             {actualizandoEstadoId === cot.id && (
                               <span
@@ -2348,20 +2576,49 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                           </div>
                         </td>
                         <td style={{ padding: '1rem', textAlign: 'center' }}>
-                          <button
-                            onClick={() => verPDF(cot)}
+                          <div
                             style={{
-                              background: '#667eea',
-                              color: 'white',
-                              border: 'none',
-                              padding: '0.5rem 1rem',
-                              borderRadius: '4px',
-                              cursor: 'pointer',
-                              fontWeight: 'bold',
+                              display: 'inline-flex',
+                              flexWrap: 'wrap',
+                              gap: '0.5rem',
+                              justifyContent: 'center',
+                              alignItems: 'center',
                             }}
                           >
-                            📄 Ver PDF
-                          </button>
+                            <button
+                              type="button"
+                              onClick={() => verPDF(cot)}
+                              style={{
+                                background: '#667eea',
+                                color: 'white',
+                                border: 'none',
+                                padding: '0.5rem 1rem',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                fontWeight: 'bold',
+                              }}
+                            >
+                              📄 Ver PDF
+                            </button>
+                            {cot.estado === 'emitido' ? (
+                              <button
+                                type="button"
+                                onClick={() => iniciarEdicionDesdeHistorial(cot)}
+                                style={{
+                                  background: '#059669',
+                                  color: 'white',
+                                  border: 'none',
+                                  padding: '0.5rem 1rem',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer',
+                                  fontWeight: 'bold',
+                                }}
+                                title="Editar datos conservando el mismo folio"
+                              >
+                                ✏️ Modificar
+                              </button>
+                            ) : null}
+                          </div>
                         </td>
                       </tr>
                     );
