@@ -4,6 +4,13 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { DatosFiscalesCliente } from '@/lib/types';
 import { isUuid, resolverAlumnoUuidParaCotizacion } from '@/lib/resolverAlumnoCotizacion';
+import {
+  MAX_BYTES_CONSTANCIA_PDF,
+  eliminarConstanciaPdfEnStorage,
+  rutaConstanciaPdfEnBucket,
+  subirConstanciaPdf,
+  urlDescargaConstanciaPdf,
+} from '@/lib/storageConstanciaFiscal';
 
 /** Claves frecuentes c_RegimenFiscal (SAT). El valor puede ampliarse según contabilidad. */
 const REGIMENES_SAT: { value: string; label: string }[] = [
@@ -74,6 +81,8 @@ export default function ModalDatosFiscalesCliente({ open, onClose, tipoCliente, 
   const [codigoPostal, setCodigoPostal] = useState('');
   const [usoCfdi, setUsoCfdi] = useState('G03');
   const [emailFiscal, setEmailFiscal] = useState('');
+  const [constanciaPdfPath, setConstanciaPdfPath] = useState<string | null>(null);
+  const [archivoConstanciaPendiente, setArchivoConstanciaPendiente] = useState<File | null>(null);
 
   const nombreMostrarCliente = cliente
     ? String((cliente as { nombre?: string }).nombre || (cliente as { alumno_nombre?: string }).alumno_nombre || '')
@@ -135,6 +144,7 @@ export default function ModalDatosFiscalesCliente({ open, onClose, tipoCliente, 
         setCodigoPostal(d.codigo_postal);
         setUsoCfdi(d.uso_cfdi);
         setEmailFiscal(d.email_fiscal || '');
+        setConstanciaPdfPath(d.constancia_pdf_path || null);
       } else {
         setRegistroId(null);
         setRfc('');
@@ -143,7 +153,9 @@ export default function ModalDatosFiscalesCliente({ open, onClose, tipoCliente, 
         setCodigoPostal('');
         setUsoCfdi('G03');
         setEmailFiscal('');
+        setConstanciaPdfPath(null);
       }
+      setArchivoConstanciaPendiente(null);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'No se pudieron cargar los datos fiscales.');
     } finally {
@@ -192,6 +204,8 @@ export default function ModalDatosFiscalesCliente({ open, onClose, tipoCliente, 
         updated_at: new Date().toISOString(),
       };
 
+      let idFinal = registroId;
+
       if (registroId) {
         const { error: uErr } = await supabase
           .from('datos_fiscales_cliente')
@@ -210,8 +224,23 @@ export default function ModalDatosFiscalesCliente({ open, onClose, tipoCliente, 
           .select('id')
           .single();
         if (iErr) throw iErr;
-        if (ins) setRegistroId((ins as { id: string }).id);
+        idFinal = (ins as { id: string }).id;
+        setRegistroId(idFinal);
       }
+
+      if (archivoConstanciaPendiente && idFinal) {
+        const { error: upErr } = await subirConstanciaPdf(idFinal, archivoConstanciaPendiente);
+        if (upErr) throw new Error(upErr);
+        const path = rutaConstanciaPdfEnBucket(idFinal);
+        const { error: pathErr } = await supabase
+          .from('datos_fiscales_cliente')
+          .update({ constancia_pdf_path: path, updated_at: new Date().toISOString() })
+          .eq('id', idFinal);
+        if (pathErr) throw pathErr;
+        setConstanciaPdfPath(path);
+        setArchivoConstanciaPendiente(null);
+      }
+
       onClose();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Error al guardar.');
@@ -226,6 +255,10 @@ export default function ModalDatosFiscalesCliente({ open, onClose, tipoCliente, 
     setEliminando(true);
     setError(null);
     try {
+      if (constanciaPdfPath) {
+        const { error: stErr } = await eliminarConstanciaPdfEnStorage(constanciaPdfPath);
+        if (stErr) console.warn('Storage:', stErr);
+      }
       const { error: dErr } = await supabase.from('datos_fiscales_cliente').delete().eq('id', registroId);
       if (dErr) throw dErr;
       onClose();
@@ -233,6 +266,38 @@ export default function ModalDatosFiscalesCliente({ open, onClose, tipoCliente, 
       setError(e instanceof Error ? e.message : 'Error al eliminar.');
     } finally {
       setEliminando(false);
+    }
+  };
+
+  const descargarConstancia = async () => {
+    if (!constanciaPdfPath) return;
+    setError(null);
+    const { url, error: uErr } = await urlDescargaConstanciaPdf(constanciaPdfPath);
+    if (uErr || !url) {
+      setError(uErr || 'No se pudo generar el enlace de descarga.');
+      return;
+    }
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const quitarConstanciaGuardada = async () => {
+    if (!registroId || !constanciaPdfPath) return;
+    if (!confirm('¿Quitar el PDF de la constancia guardado?')) return;
+    setGuardando(true);
+    setError(null);
+    try {
+      const { error: stErr } = await eliminarConstanciaPdfEnStorage(constanciaPdfPath);
+      if (stErr) throw new Error(stErr);
+      const { error: uErr } = await supabase
+        .from('datos_fiscales_cliente')
+        .update({ constancia_pdf_path: null, updated_at: new Date().toISOString() })
+        .eq('id', registroId);
+      if (uErr) throw uErr;
+      setConstanciaPdfPath(null);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Error al quitar el archivo.');
+    } finally {
+      setGuardando(false);
     }
   };
 
@@ -412,12 +477,108 @@ export default function ModalDatosFiscalesCliente({ open, onClose, tipoCliente, 
                 style={{
                   width: '100%',
                   padding: '0.65rem',
-                  marginBottom: '1.25rem',
+                  marginBottom: '1rem',
                   borderRadius: '8px',
                   border: '2px solid #e2e8f0',
                   fontSize: '1rem',
                 }}
               />
+
+              <label style={{ display: 'block', fontWeight: 700, marginBottom: '0.35rem', color: '#334155' }}>
+                Constancia de situación fiscal (PDF)
+              </label>
+              <p style={{ margin: '0 0 0.5rem', fontSize: '0.82rem', color: '#64748b', lineHeight: 1.45 }}>
+                Adjunta el PDF emitido por el SAT. Máximo 5 MB. Podrás descargarlo después para el programa de
+                facturación.
+              </p>
+              <input
+                type="file"
+                accept="application/pdf,.pdf"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (!f) {
+                    setArchivoConstanciaPendiente(null);
+                    return;
+                  }
+                  if (f.type !== 'application/pdf') {
+                    setError('Solo se permiten archivos PDF.');
+                    setArchivoConstanciaPendiente(null);
+                    e.target.value = '';
+                    return;
+                  }
+                  if (f.size > MAX_BYTES_CONSTANCIA_PDF) {
+                    setError('El PDF no puede superar 5 MB.');
+                    setArchivoConstanciaPendiente(null);
+                    e.target.value = '';
+                    return;
+                  }
+                  setError(null);
+                  setArchivoConstanciaPendiente(f);
+                }}
+                style={{ marginBottom: '0.5rem', fontSize: '0.9rem', width: '100%' }}
+              />
+              {archivoConstanciaPendiente && (
+                <div style={{ fontSize: '0.85rem', color: '#065f46', marginBottom: '0.5rem' }}>
+                  Pendiente de subir al guardar: <strong>{archivoConstanciaPendiente.name}</strong>
+                  {constanciaPdfPath && (
+                    <span style={{ display: 'block', marginTop: '0.25rem', color: '#b45309' }}>
+                      Al guardar se sustituye el PDF actual.
+                    </span>
+                  )}
+                </div>
+              )}
+              {constanciaPdfPath && (
+                <div
+                  style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: '0.5rem',
+                    alignItems: 'center',
+                    marginBottom: '1.25rem',
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => void descargarConstancia()}
+                    style={{
+                      padding: '0.5rem 0.9rem',
+                      borderRadius: '8px',
+                      border: '2px solid #667eea',
+                      background: '#eef2ff',
+                      color: '#4338ca',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      fontSize: '0.9rem',
+                    }}
+                  >
+                    ⬇️ Descargar constancia (PDF)
+                  </button>
+                  {registroId && !archivoConstanciaPendiente && (
+                    <button
+                      type="button"
+                      onClick={() => void quitarConstanciaGuardada()}
+                      disabled={guardando || eliminando}
+                      style={{
+                        padding: '0.5rem 0.9rem',
+                        borderRadius: '8px',
+                        border: '1px solid #cbd5e1',
+                        background: 'white',
+                        color: '#64748b',
+                        fontWeight: 600,
+                        cursor: guardando ? 'wait' : 'pointer',
+                        fontSize: '0.85rem',
+                      }}
+                    >
+                      Quitar PDF
+                    </button>
+                  )}
+                </div>
+              )}
+              {!constanciaPdfPath && !archivoConstanciaPendiente && (
+                <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '1.25rem' }}>
+                  Sin archivo adjunto.
+                </p>
+              )}
 
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', justifyContent: 'flex-end' }}>
                 {registroId && (

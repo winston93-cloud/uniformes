@@ -98,6 +98,8 @@ export interface DatosFiscalesCliente {
   codigo_postal: string;
   uso_cfdi: string;
   email_fiscal: string | null;
+  /** Ruta en bucket `datos-fiscales-clientes` (PDF constancia situación fiscal). */
+  constancia_pdf_path?: string | null;
   created_at?: string;
   updated_at?: string;
 }
