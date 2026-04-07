@@ -18,6 +18,7 @@ import {
 } from '@/lib/cotizacionesImpuestos';
 import type { Cotizacion } from '@/lib/types';
 import { supabase } from '@/lib/supabase';
+import ModalDatosFiscalesCliente from '@/components/ModalDatosFiscalesCliente';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -126,6 +127,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   const [incluirIsr, setIncluirIsr] = useState(false);
   /** Si no es null, estamos editando una cotización existente (mismo folio al guardar). */
   const [cotizacionEditId, setCotizacionEditId] = useState<string | null>(null);
+  const [modalDatosFiscalesAbierto, setModalDatosFiscalesAbierto] = useState(false);
   
   const { cicloEscolar } = useAuth();
   const {
@@ -859,6 +861,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   };
 
   const limpiarCotizacionNueva = () => {
+    setModalDatosFiscalesAbierto(false);
     setCotizacionEditId(null);
     setIncluirIva(false);
     setIncluirIsr(false);
@@ -1370,6 +1373,37 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                   >
                     Cambiar
                   </button>
+                </div>
+              )}
+
+              {cotizacionEditId && clienteSeleccionado && (
+                <div style={{ marginTop: '0.85rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => setModalDatosFiscalesAbierto(true)}
+                    style={{
+                      padding: '0.6rem 1.1rem',
+                      borderRadius: '8px',
+                      border: '2px solid #0f766e',
+                      background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)',
+                      color: '#065f46',
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      fontSize: '0.95rem',
+                    }}
+                  >
+                    📋 Agregar datos fiscales
+                  </button>
+                  <span
+                    style={{
+                      display: 'block',
+                      marginTop: '0.35rem',
+                      fontSize: '0.8rem',
+                      color: '#64748b',
+                    }}
+                  >
+                    RFC, régimen fiscal, CP y uso CFDI (SAT); se guardan en el cliente de esta cotización.
+                  </span>
                 </div>
               )}
             </div>
@@ -2978,6 +3012,18 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
         </div>,
         document.body
       )}
+
+      {mounted &&
+        modalDatosFiscalesAbierto &&
+        createPortal(
+          <ModalDatosFiscalesCliente
+            open={modalDatosFiscalesAbierto}
+            onClose={() => setModalDatosFiscalesAbierto(false)}
+            tipoCliente={tipoCliente}
+            cliente={clienteSeleccionado as Record<string, unknown> | null}
+          />,
+          document.body
+        )}
     </div>
   );
 }
