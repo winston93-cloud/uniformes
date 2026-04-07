@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, type MouseEvent } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { DatosFiscalesCliente } from '@/lib/types';
 import { isUuid, resolverAlumnoUuidParaCotizacion } from '@/lib/resolverAlumnoCotizacion';
@@ -269,7 +269,9 @@ export default function ModalDatosFiscalesCliente({ open, onClose, tipoCliente, 
     }
   };
 
-  const descargarConstancia = async () => {
+  const descargarConstancia = async (e?: MouseEvent<HTMLButtonElement>) => {
+    e?.stopPropagation();
+    e?.preventDefault();
     if (!constanciaPdfPath) return;
     setError(null);
     const { url, error: uErr } = await urlDescargaConstanciaPdf(constanciaPdfPath);
@@ -277,7 +279,24 @@ export default function ModalDatosFiscalesCliente({ open, onClose, tipoCliente, 
       setError(uErr || 'No se pudo generar el enlace de descarga.');
       return;
     }
-    window.open(url, '_blank', 'noopener,noreferrer');
+    try {
+      const res = await fetch(url, { method: 'GET', mode: 'cors' });
+      if (!res.ok) throw new Error(`No se pudo descargar (${res.status})`);
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const baseNombre = normalizarRfc(rfc) || 'cliente';
+      a.href = blobUrl;
+      a.download = `constancia-situacion-fiscal-${baseNombre}.pdf`;
+      a.style.display = 'none';
+      a.rel = 'noopener';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 120_000);
+    } catch {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
   };
 
   const quitarConstanciaGuardada = async () => {
@@ -488,8 +507,10 @@ export default function ModalDatosFiscalesCliente({ open, onClose, tipoCliente, 
                 Constancia de situación fiscal (PDF)
               </label>
               <p style={{ margin: '0 0 0.5rem', fontSize: '0.82rem', color: '#64748b', lineHeight: 1.45 }}>
-                Adjunta el PDF emitido por el SAT. Máximo 5 MB. Podrás descargarlo después para el programa de
-                facturación.
+                Adjunta el PDF emitido por el SAT. Máximo 5 MB. La descarga{' '}
+                <strong>no borra</strong> el archivo: puedes descargarlo <strong>las veces que necesites</strong>{' '}
+                para el programa de facturación; solo se elimina con &quot;Quitar PDF&quot; o al borrar todo el
+                registro fiscal.
               </p>
               <input
                 type="file"
@@ -539,7 +560,8 @@ export default function ModalDatosFiscalesCliente({ open, onClose, tipoCliente, 
                 >
                   <button
                     type="button"
-                    onClick={() => void descargarConstancia()}
+                    onMouseDown={(ev) => ev.stopPropagation()}
+                    onClick={(ev) => void descargarConstancia(ev)}
                     style={{
                       padding: '0.5rem 0.9rem',
                       borderRadius: '8px',

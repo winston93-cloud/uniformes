@@ -33,10 +33,13 @@ export async function eliminarConstanciaPdfEnStorage(pathRelativo: string): Prom
   return { error: null };
 }
 
-/** URL firmada para abrir/descargar el PDF (válida unos minutos). */
+/**
+ * URL firmada solo lectura: no modifica Storage ni la tabla `datos_fiscales_cliente`.
+ * Puedes llamarla las veces que haga falta para descargar el mismo archivo.
+ */
 export async function urlDescargaConstanciaPdf(
   pathRelativo: string,
-  segundosValidez = 600
+  segundosValidez = 3600
 ): Promise<{ url: string | null; error: string | null }> {
   const { data, error } = await supabase.storage
     .from(BUCKET_CONSTANCIAS_FISCALES)
