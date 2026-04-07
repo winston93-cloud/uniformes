@@ -615,7 +615,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     if (incluirIsr) {
       yTot += 7;
       doc.text(
-        `Ret. ISR (${(TASA_ISR_RETENCION * 100).toFixed(0)}%): −$${totalesCotizacion.montoIsrRet.toFixed(2)}`,
+        `Ret. ISR RESICO (${(TASA_ISR_RETENCION * 100).toFixed(2)}%): −$${totalesCotizacion.montoIsrRet.toFixed(2)}`,
         140,
         yTot
       );
@@ -795,7 +795,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       }
       if (conIsr) {
         yP += 7;
-        doc.text(`Ret. ISR (${(TASA_ISR_RETENCION * 100).toFixed(0)}%): −$${tPdf.montoIsrRet.toFixed(2)}`, 140, yP);
+        doc.text(`Ret. ISR RESICO (${(TASA_ISR_RETENCION * 100).toFixed(2)}%): −$${tPdf.montoIsrRet.toFixed(2)}`, 140, yP);
       }
       yP += 10;
       doc.setFont('helvetica', 'bold');
@@ -2288,7 +2288,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                   onChange={(e) => setIncluirIsr(e.target.checked)}
                 />
                 <span>
-                  Aplicar retención ISR ({(TASA_ISR_RETENCION * 100).toFixed(0)}% sobre subtotal; se resta del total)
+                  Aplicar retención ISR RESICO ({(TASA_ISR_RETENCION * 100).toFixed(2)}% sobre subtotal; retención al emisor, se resta del total)
                 </span>
               </label>
               <div style={{ marginTop: '0.75rem', fontSize: '0.9rem', color: '#64748b' }}>

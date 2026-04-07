@@ -3,8 +3,11 @@
  * Ajusta tasas según contabilidad; valores orientativos para la UI/PDF.
  */
 export const TASA_IVA_TRASLADADO = 0.16; // IVA 16 %
-/** Retención de ISR sobre subtotal (orientativo; ajustar según régimen). */
-export const TASA_ISR_RETENCION = 0.1;
+/**
+ * Retención de ISR (RESICO): 1.25 % sobre subtotal.
+ * Retención que practica el cliente al emisor; se resta del total de la cotización.
+ */
+export const TASA_ISR_RETENCION = 0.0125;
 
 export function calcularMontosImpuestosCotizacion(
   subtotalPartidas: number,
