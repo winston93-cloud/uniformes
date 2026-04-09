@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronLeft, ChevronRight, X, Check, FileText, Pencil } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Check, FileText, Pencil, FileDown } from 'lucide-react';
 import { useCotizaciones } from '@/lib/hooks/useCotizaciones';
 import { supabase } from '@/lib/supabase';
 import type { Cotizacion, DetalleCotizacion, Costo } from '@/lib/types';
@@ -11,6 +11,10 @@ import {
   compareItemsProduccionPorFechaEntrega,
 } from '@/lib/cotizacionesSort';
 import { getWeekForDate, toISODate } from '@/lib/produccion-semanal-week';
+import {
+  abrirPlanTrabajoSemanalPdf,
+  type FilaPlanTrabajoPdf,
+} from '@/lib/plan-trabajo-semanal-pdf';
 
 /** Fila guardada en InsForge para esta semana (permite conservar partidas sin reexpandir cotizaciones). */
 type PlanItemSemana = {
@@ -118,7 +122,13 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
   const [loadingGastos, setLoadingGastos] = useState(false);
   const [guardandoPlan, setGuardandoPlan] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  /** Tras generar plan: datos para mensaje en UI y PDF (sin alert). */
+  const [planGeneradoPdf, setPlanGeneradoPdf] = useState<null | {
+    tituloSemana: string;
+    filas: FilaPlanTrabajoPdf[];
+    gastosFijos: number;
+    gananciasTotal: number;
+  }>(null);
   const [seleccionGuardadaMsg, setSeleccionGuardadaMsg] = useState<string | null>(null);
   /** detalle_id → fecha_inicio (lunes) de la semana donde ya está en un plan InsForge */
   const [ocupadosGlobal, setOcupadosGlobal] = useState<Record<string, string>>({});
@@ -209,8 +219,13 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
 
   const handleClosePrincipal = () => {
     setModalPartidasAbierto(false);
+    setPlanGeneradoPdf(null);
     onClose();
   };
+
+  useEffect(() => {
+    setPlanGeneradoPdf(null);
+  }, [semanaOffset]);
 
   /** Precarga partidas al abrir el modal de partidas (filtra cotizaciones sin partidas en esta semana). */
   useEffect(() => {
@@ -425,7 +440,6 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
     setGuardandoSeleccion(true);
     setSeleccionGuardadaMsg(null);
     setError(null);
-    setSuccess(null);
     try {
       const itemsPayload = seleccionInfo.rows.map((r) => ({
         cotizacion_id: r.cotizacion_id,
@@ -476,7 +490,6 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
   const handleGenerarPlan = async () => {
     setGuardandoPlan(true);
     setError(null);
-    setSuccess(null);
     try {
       if (!minimoAlcanzado) return;
       const payload = {
@@ -503,9 +516,24 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.success) throw new Error(json?.error || 'No se pudo guardar el plan');
 
-      setSuccess('Plan generado y guardado.');
+      const porId = new Map(cotizaciones.map((c) => [c.id, c] as const));
+      const filas: FilaPlanTrabajoPdf[] = seleccionInfo.rows.map((r) => {
+        const cot = porId.get(r.cotizacion_id);
+        return {
+          cotizacion: r.cotizacion_folio,
+          cliente: cot ? nombreCliente(cot) : '—',
+          modelo: r.modelo,
+          piezas: r.piezas,
+          fechaEntrega: fmtFechaCot(cot?.fecha_entrega),
+        };
+      });
+      setPlanGeneradoPdf({
+        tituloSemana: `Semana ${formatWeekRange(monday, sunday)}`,
+        filas,
+        gastosFijos: Number(gastosFijosTotal.toFixed(2)),
+        gananciasTotal: Number(seleccionInfo.gananciasTotal.toFixed(2)),
+      });
       handleGuardar();
-      onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error al generar plan');
     } finally {
@@ -517,7 +545,6 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
 
   const abrirModalPartidas = () => {
     setError(null);
-    setSuccess(null);
     setModalPartidasAbierto(true);
   };
 
@@ -604,6 +631,42 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
           </div>
           {semanaNav}
         </div>
+
+        {planGeneradoPdf && (
+          <div
+            role="status"
+            aria-live="polite"
+            style={{
+              margin: '0 1.5rem',
+              padding: '1rem 1.1rem',
+              background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)',
+              border: '1px solid #6ee7b7',
+              borderRadius: 12,
+              boxShadow: '0 1px 3px rgba(6, 95, 70, 0.08)',
+            }}
+          >
+            <p style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#065f46' }}>
+              Plan de trabajo guardado correctamente
+            </p>
+            <p style={{ margin: '0.4rem 0 0', fontSize: '0.9rem', color: '#047857', lineHeight: 1.45 }}>
+              {planGeneradoPdf.tituloSemana} quedó registrada con estado <strong>GENERADO</strong> en el sistema.
+            </p>
+            <div style={{ marginTop: '0.85rem', display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
+              <button
+                type="button"
+                className="btn btn-success"
+                onClick={() => abrirPlanTrabajoSemanalPdf(planGeneradoPdf)}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}
+              >
+                <FileDown size={18} aria-hidden />
+                Ver plan en PDF
+              </button>
+              <button type="button" className="btn btn-secondary" onClick={() => setPlanGeneradoPdf(null)}>
+                Ocultar aviso
+              </button>
+            </div>
+          </div>
+        )}
 
         <div
           className="modal-body"
@@ -765,9 +828,6 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
         </div>
         {error && !modalPartidasAbierto && (
           <div style={{ color: '#b91c1c', fontSize: '0.9rem', padding: '0 1.5rem 1rem' }}>{error}</div>
-        )}
-        {success && !modalPartidasAbierto && (
-          <div style={{ color: '#047857', fontSize: '0.9rem', padding: '0 1.5rem 1rem' }}>{success}</div>
         )}
       </div>
     </div>
@@ -1080,11 +1140,6 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
         {error && (
           <div style={{ marginTop: '0.5rem', color: '#b91c1c', fontSize: '0.9rem', padding: '0 1.5rem 1rem' }}>
             {error}
-          </div>
-        )}
-        {success && (
-          <div style={{ marginTop: '0.5rem', color: '#047857', fontSize: '0.9rem', padding: '0 1.5rem 1rem' }}>
-            {success}
           </div>
         )}
       </div>
