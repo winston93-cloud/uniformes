@@ -487,11 +487,37 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
     }
   };
 
+  /** El botón no puede ir disabled solo por reglas de negocio: el clic explica qué falta. */
+  const intentarGenerarPlan = () => {
+    if (guardandoPlan) return;
+    setError(null);
+    if (loadingGastos) {
+      setError('Espera a que termine la validación de gastos fijos.');
+      return;
+    }
+    if (gastosFijosTotal <= 0) {
+      setError(
+        'Configura primero los gastos fijos semanales (tarjeta «Gastos fijos semanales» en esta pantalla). Sin ese monto no se puede generar el plan.'
+      );
+      return;
+    }
+    if (seleccionInfo.gananciasTotal < gastosFijosTotal) {
+      setError(
+        'Las ganancias estimadas de las partidas aún no cubren los gastos fijos de la semana. Añade partidas en «Editar selección» o revisa precios y costos.'
+      );
+      return;
+    }
+    void handleGenerarPlan();
+  };
+
   const handleGenerarPlan = async () => {
     setGuardandoPlan(true);
     setError(null);
     try {
-      if (!minimoAlcanzado) return;
+      if (!minimoAlcanzado) {
+        setError('No se cumplen las condiciones para generar el plan. Revisa gastos fijos y partidas seleccionadas.');
+        return;
+      }
       const payload = {
         semanaOffset,
         gastos_fijos_total: Number(gastosFijosTotal.toFixed(2)),
@@ -814,9 +840,26 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
             <button
               type="button"
               className="btn btn-success"
-              onClick={handleGenerarPlan}
-              disabled={!minimoAlcanzado || guardandoPlan}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+              onClick={intentarGenerarPlan}
+              disabled={guardandoPlan}
+              aria-disabled={guardandoPlan}
+              title={
+                guardandoPlan
+                  ? undefined
+                  : gastosFijosTotal <= 0
+                    ? 'Configura gastos fijos semanales primero (pulsa para ver el aviso)'
+                    : !minimoAlcanzado
+                      ? 'Aún no cubres el mínimo de ganancias (pulsa para ver el aviso)'
+                      : 'Generar y guardar el plan de trabajo'
+              }
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                ...(!guardandoPlan && !minimoAlcanzado
+                  ? { opacity: 0.58, cursor: 'pointer' }
+                  : {}),
+              }}
             >
               <Check size={18} aria-hidden />
               {guardandoPlan ? 'Generando…' : 'Generar plan de trabajo'}
