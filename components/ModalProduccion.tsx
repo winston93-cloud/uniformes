@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronLeft, ChevronRight, X, Check, FileText } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Check, FileText, ListPlus } from 'lucide-react';
 import { useCotizaciones } from '@/lib/hooks/useCotizaciones';
 import { supabase } from '@/lib/supabase';
 import type { Cotizacion, DetalleCotizacion, Costo } from '@/lib/types';
@@ -98,6 +98,7 @@ function cotizacionTienePartidaDisponibleAqui(
 
 export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionProps) {
   const [mounted, setMounted] = useState(false);
+  const [modalPartidasAbierto, setModalPartidasAbierto] = useState(false);
   const [semanaOffset, setSemanaOffset] = useState(0);
   const [cotizacionExpandida, setCotizacionExpandida] = useState<string | null>(null);
   const [detallesExpandidos, setDetallesExpandidos] = useState<Record<string, DetalleCotizacion[]>>({});
@@ -199,9 +200,14 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
     }
   }, [cotizacionesVisibles, cotizacionExpandida]);
 
-  /** Precarga partidas de todas las cotizaciones para poder filtrar filas vacías en esta semana. */
+  const handleClosePrincipal = () => {
+    setModalPartidasAbierto(false);
+    onClose();
+  };
+
+  /** Precarga partidas al abrir el modal de partidas (filtra cotizaciones sin partidas en esta semana). */
   useEffect(() => {
-    if (!mounted || !cotizacionesIdsKey) return;
+    if (!mounted || !modalPartidasAbierto || !cotizacionesIdsKey) return;
     let cancelled = false;
     (async () => {
       await Promise.all(
@@ -240,7 +246,7 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
     return () => {
       cancelled = true;
     };
-  }, [mounted, cotizacionesIdsKey, cotizacionesProduccion, obtenerCotizacion]);
+  }, [mounted, modalPartidasAbierto, cotizacionesIdsKey, cotizacionesProduccion, obtenerCotizacion]);
 
   useEffect(() => {
     if (!mounted) return;
@@ -486,8 +492,139 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
 
   if (!mounted) return null;
 
-  const modalContent = (
-    <div className="modal-overlay" onClick={onClose}>
+  const abrirModalPartidas = () => {
+    setError(null);
+    setSuccess(null);
+    setModalPartidasAbierto(true);
+  };
+
+  const semanaNav = (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '0.5rem',
+        padding: '0.5rem 0',
+        borderTop: '1px solid #e5e7eb',
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => setSemanaOffset((s) => s - 1)}
+        style={{
+          background: '#f3f4f6',
+          border: 'none',
+          borderRadius: '8px',
+          padding: '0.5rem 1rem',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.25rem',
+        }}
+        aria-label="Semana anterior"
+      >
+        <ChevronLeft size={20} />
+        Anterior
+      </button>
+      <span style={{ fontWeight: 600, fontSize: '0.95rem', textAlign: 'center' }}>
+        Semana {formatWeekRange(monday, sunday)}
+      </span>
+      <button
+        type="button"
+        onClick={() => setSemanaOffset((s) => s + 1)}
+        style={{
+          background: '#f3f4f6',
+          border: 'none',
+          borderRadius: '8px',
+          padding: '0.5rem 1rem',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.25rem',
+        }}
+        aria-label="Semana siguiente"
+      >
+        Siguiente
+        <ChevronRight size={20} />
+      </button>
+    </div>
+  );
+
+  const modalPrincipal = (
+    <div className="modal-overlay" onClick={handleClosePrincipal}>
+      <div
+        className="modal-content"
+        style={{
+          maxWidth: 'min(520px, 100vw - 1.5rem)',
+          width: '100%',
+          maxHeight: '90vh',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="modal-header" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+            <div>
+              <h2 style={{ margin: 0, fontSize: 'clamp(1.1rem, 2.5vw, 1.35rem)' }}>Producción semanal</h2>
+              <p style={{ margin: '0.35rem 0 0', fontSize: '0.85rem', color: '#6b7280', lineHeight: 1.4 }}>
+                Elige la semana y usa <strong>Agregar partidas</strong> para ver cotizaciones y armar el plan.
+              </p>
+            </div>
+            <button type="button" className="modal-close" onClick={handleClosePrincipal} aria-label="Cerrar">
+              <X size={20} />
+            </button>
+          </div>
+          {semanaNav}
+        </div>
+
+        <div
+          className="modal-body"
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '1.25rem',
+            minHeight: '200px',
+            textAlign: 'center',
+          }}
+        >
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={abrirModalPartidas}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              fontSize: '1rem',
+              padding: '0.75rem 1.35rem',
+            }}
+          >
+            <ListPlus size={22} aria-hidden />
+            Agregar partidas
+          </button>
+        </div>
+
+        <div className="modal-footer" style={{ justifyContent: 'flex-end' }}>
+          <button type="button" className="btn btn-secondary" onClick={handleClosePrincipal}>
+            Cerrar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const modalPartidas = modalPartidasAbierto && (
+    <div
+      className="modal-overlay"
+      style={{ zIndex: 10050 }}
+      onClick={() => setModalPartidasAbierto(false)}
+    >
       <div
         className="modal-content"
         style={{
@@ -502,66 +639,23 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
         <div className="modal-header" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '0.75rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
             <div>
-              <h2 style={{ margin: 0, fontSize: 'clamp(1.1rem, 2.5vw, 1.35rem)' }}>Producción semanal</h2>
+              <h2 style={{ margin: 0, fontSize: 'clamp(1.1rem, 2.5vw, 1.35rem)' }}>Agregar partidas</h2>
               <p style={{ margin: '0.35rem 0 0', fontSize: '0.85rem', color: '#6b7280', lineHeight: 1.4 }}>
                 Cotizaciones <strong>aprobadas</strong> y <strong>terminadas</strong> (orden: fecha de entrega). Expande
                 una cotización y elige las partidas. Puedes guardar aunque no alcances el mínimo; si llegan más
                 cotizaciones en la semana, añade partidas y vuelve a guardar: se suman al plan de esta semana.
               </p>
+              <p style={{ margin: '0.5rem 0 0', fontSize: '0.8rem', color: '#9ca3af' }}>
+                Semana {formatWeekRange(monday, sunday)}
+              </p>
             </div>
-            <button type="button" className="modal-close" onClick={onClose} aria-label="Cerrar">
+            <button
+              type="button"
+              className="modal-close"
+              onClick={() => setModalPartidasAbierto(false)}
+              aria-label="Cerrar selección de partidas"
+            >
               <X size={20} />
-            </button>
-          </div>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              flexWrap: 'wrap',
-              gap: '0.5rem',
-              padding: '0.5rem 0',
-              borderTop: '1px solid #e5e7eb',
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => setSemanaOffset((s) => s - 1)}
-              style={{
-                background: '#f3f4f6',
-                border: 'none',
-                borderRadius: '8px',
-                padding: '0.5rem 1rem',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.25rem',
-              }}
-              aria-label="Semana anterior"
-            >
-              <ChevronLeft size={20} />
-              Anterior
-            </button>
-            <span style={{ fontWeight: 600, fontSize: '0.95rem', textAlign: 'center' }}>
-              Semana {formatWeekRange(monday, sunday)}
-            </span>
-            <button
-              type="button"
-              onClick={() => setSemanaOffset((s) => s + 1)}
-              style={{
-                background: '#f3f4f6',
-                border: 'none',
-                borderRadius: '8px',
-                padding: '0.5rem 1rem',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.25rem',
-              }}
-              aria-label="Semana siguiente"
-            >
-              Siguiente
-              <ChevronRight size={20} />
             </button>
           </div>
         </div>
@@ -657,68 +751,68 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
                           );
                         }
                         return (
-                        <div style={{ paddingTop: '0.75rem', overflowX: 'auto' }}>
-                          <table
-                            style={{
-                              width: '100%',
-                              minWidth: '560px',
-                              borderCollapse: 'collapse',
-                              fontSize: '0.85rem',
-                            }}
-                          >
-                            <thead>
-                              <tr style={{ background: '#f3f4f6', textAlign: 'left' }}>
-                                <th style={{ padding: '0.5rem', width: 36 }} aria-label="Seleccionar" />
-                                <th style={{ padding: '0.5rem' }}>Cliente</th>
-                                <th style={{ padding: '0.5rem' }}>Modelo</th>
-                                <th style={{ padding: '0.5rem', textAlign: 'right' }}>Piezas</th>
-                                <th style={{ padding: '0.5rem' }}>Fecha entrega</th>
-                                <th style={{ padding: '0.5rem' }}>Tiempo entrega</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {detallesMostrar.map((d) => {
-                                const sel = estaSeleccionado(d.id);
-                                return (
-                                  <tr
-                                    key={d.id}
-                                    style={{
-                                      background: sel ? '#ecfdf5' : '#fff',
-                                      borderBottom: '1px solid #f3f4f6',
-                                    }}
-                                  >
-                                    <td style={{ padding: '0.45rem 0.5rem', verticalAlign: 'middle' }}>
-                                      <input
-                                        type="checkbox"
-                                        checked={sel}
-                                        onChange={() => toggleSeleccion(d, cot)}
-                                        aria-label={`Seleccionar ${d.prenda_nombre}`}
-                                        style={{ width: 18, height: 18, cursor: 'pointer' }}
-                                      />
-                                    </td>
-                                    <td style={{ padding: '0.45rem 0.5rem', verticalAlign: 'middle' }}>
-                                      {nombreCliente(cot)}
-                                    </td>
-                                    <td style={{ padding: '0.45rem 0.5rem', verticalAlign: 'middle' }}>
-                                      <strong>{d.prenda_nombre}</strong>
-                                      {d.talla ? ` · ${d.talla}` : ''}
-                                      {d.color ? ` · ${d.color}` : ''}
-                                    </td>
-                                    <td style={{ padding: '0.45rem 0.5rem', textAlign: 'right', verticalAlign: 'middle' }}>
-                                      {d.cantidad}
-                                    </td>
-                                    <td style={{ padding: '0.45rem 0.5rem', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
-                                      {fmtFechaCot(cot.fecha_entrega)}
-                                    </td>
-                                    <td style={{ padding: '0.45rem 0.5rem', verticalAlign: 'middle' }}>
-                                      {cot.tiempo_entrega || '—'}
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
+                          <div style={{ paddingTop: '0.75rem', overflowX: 'auto' }}>
+                            <table
+                              style={{
+                                width: '100%',
+                                minWidth: '560px',
+                                borderCollapse: 'collapse',
+                                fontSize: '0.85rem',
+                              }}
+                            >
+                              <thead>
+                                <tr style={{ background: '#f3f4f6', textAlign: 'left' }}>
+                                  <th style={{ padding: '0.5rem', width: 36 }} aria-label="Seleccionar" />
+                                  <th style={{ padding: '0.5rem' }}>Cliente</th>
+                                  <th style={{ padding: '0.5rem' }}>Modelo</th>
+                                  <th style={{ padding: '0.5rem', textAlign: 'right' }}>Piezas</th>
+                                  <th style={{ padding: '0.5rem' }}>Fecha entrega</th>
+                                  <th style={{ padding: '0.5rem' }}>Tiempo entrega</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {detallesMostrar.map((d) => {
+                                  const sel = estaSeleccionado(d.id);
+                                  return (
+                                    <tr
+                                      key={d.id}
+                                      style={{
+                                        background: sel ? '#ecfdf5' : '#fff',
+                                        borderBottom: '1px solid #f3f4f6',
+                                      }}
+                                    >
+                                      <td style={{ padding: '0.45rem 0.5rem', verticalAlign: 'middle' }}>
+                                        <input
+                                          type="checkbox"
+                                          checked={sel}
+                                          onChange={() => toggleSeleccion(d, cot)}
+                                          aria-label={`Seleccionar ${d.prenda_nombre}`}
+                                          style={{ width: 18, height: 18, cursor: 'pointer' }}
+                                        />
+                                      </td>
+                                      <td style={{ padding: '0.45rem 0.5rem', verticalAlign: 'middle' }}>
+                                        {nombreCliente(cot)}
+                                      </td>
+                                      <td style={{ padding: '0.45rem 0.5rem', verticalAlign: 'middle' }}>
+                                        <strong>{d.prenda_nombre}</strong>
+                                        {d.talla ? ` · ${d.talla}` : ''}
+                                        {d.color ? ` · ${d.color}` : ''}
+                                      </td>
+                                      <td style={{ padding: '0.45rem 0.5rem', textAlign: 'right', verticalAlign: 'middle' }}>
+                                        {d.cantidad}
+                                      </td>
+                                      <td style={{ padding: '0.45rem 0.5rem', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                                        {fmtFechaCot(cot.fecha_entrega)}
+                                      </td>
+                                      <td style={{ padding: '0.45rem 0.5rem', verticalAlign: 'middle' }}>
+                                        {cot.tiempo_entrega || '—'}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
                         );
                       })()}
                     </div>
@@ -815,8 +909,8 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
             </span>
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-            <button type="button" className="btn btn-secondary" onClick={onClose}>
-              Cancelar
+            <button type="button" className="btn btn-secondary" onClick={() => setModalPartidasAbierto(false)}>
+              Volver
             </button>
             <button
               type="button"
@@ -853,5 +947,10 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
     </div>
   );
 
-  return createPortal(modalContent, document.body);
+  return (
+    <>
+      {createPortal(modalPrincipal, document.body)}
+      {modalPartidas && createPortal(modalPartidas, document.body)}
+    </>
+  );
 }
