@@ -570,7 +570,8 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
             <div>
               <h2 style={{ margin: 0, fontSize: 'clamp(1.1rem, 2.5vw, 1.35rem)' }}>Producción semanal</h2>
               <p style={{ margin: '0.35rem 0 0', fontSize: '0.85rem', color: '#6b7280', lineHeight: 1.4 }}>
-                Elige la semana y usa <strong>Agregar partidas</strong> para ver cotizaciones y armar el plan.
+                Elige la semana y abre <strong>Agregar partidas</strong>: ahí verás las cotizaciones, podrás{' '}
+                <strong>guardar la selección</strong> y <strong>generar el plan de trabajo</strong>.
               </p>
             </div>
             <button type="button" className="modal-close" onClick={handleClosePrincipal} aria-label="Cerrar">
