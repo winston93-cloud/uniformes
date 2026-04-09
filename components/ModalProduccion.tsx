@@ -82,18 +82,36 @@ function fmtFechaCot(fecha: string | null | undefined) {
   }
 }
 
-/** Al menos una partida libre o ya asignada al plan de esta semana (no todas en otra semana). */
+/**
+ * Partida seleccionable en la semana que se está viendo.
+ * Semanas futuras (offset > 0): también las asignadas a semanas anteriores a la vista,
+ * para poder planearlas en una siguiente semana (al guardar se mueven de plan; ver API plan).
+ * Semana actual o pasada: solo libres o ya en el plan de esa semana.
+ */
+function detalleDisponibleParaSemanaVista(
+  detalleId: string,
+  fechaInicioVista: string,
+  ocupados: Record<string, string>,
+  vistaEsSemanaFutura: boolean
+): boolean {
+  const asignadoA = ocupados[detalleId];
+  if (!asignadoA) return true;
+  if (asignadoA === fechaInicioVista) return true;
+  if (vistaEsSemanaFutura && asignadoA < fechaInicioVista) return true;
+  return false;
+}
+
+/** Al menos una partida que se pueda ver/seleccionar en esta vista de semana. */
 function cotizacionTienePartidaDisponibleAqui(
   detalles: DetalleCotizacion[] | undefined,
   fechaInicioSemana: string,
-  ocupados: Record<string, string>
+  ocupados: Record<string, string>,
+  vistaEsSemanaFutura: boolean
 ): boolean {
   if (!detalles || detalles.length === 0) return false;
-  return detalles.some((d) => {
-    const asignadoA = ocupados[d.id];
-    if (!asignadoA) return true;
-    return asignadoA === fechaInicioSemana;
-  });
+  return detalles.some((d) =>
+    detalleDisponibleParaSemanaVista(d.id, fechaInicioSemana, ocupados, vistaEsSemanaFutura)
+  );
 }
 
 export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionProps) {
@@ -128,11 +146,10 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
 
   const fechaInicioSemanaActual = useMemo(() => toISODate(monday), [monday]);
 
-  const detalleDisponibleEnEstaSemana = (detalleId: string) => {
-    const asignadoA = ocupadosGlobal[detalleId];
-    if (!asignadoA) return true;
-    return asignadoA === fechaInicioSemanaActual;
-  };
+  const vistaEsSemanaFutura = semanaOffset > 0;
+
+  const detalleDisponibleEnEstaSemana = (detalleId: string) =>
+    detalleDisponibleParaSemanaVista(detalleId, fechaInicioSemanaActual, ocupadosGlobal, vistaEsSemanaFutura);
 
   /** Aprobadas (flujo principal) y terminadas (pueden cargarse al plan con las partidas que elijas). */
   const cotizacionesProduccion = useMemo(() => {
@@ -152,7 +169,12 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
     return cotizacionesProduccion.filter((cot) => {
       const detalles = detallesExpandidos[cot.id];
       if (!detalles) return true;
-      return cotizacionTienePartidaDisponibleAqui(detalles, fechaInicioSemanaActual, ocupadosGlobal);
+      return cotizacionTienePartidaDisponibleAqui(
+        detalles,
+        fechaInicioSemanaActual,
+        ocupadosGlobal,
+        vistaEsSemanaFutura
+      );
     });
   }, [
     cotizacionesProduccion,
@@ -160,6 +182,7 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
     ocupadosGlobal,
     fechaInicioSemanaActual,
     loadingContext,
+    vistaEsSemanaFutura,
   ]);
 
   const nombreCliente = (cot: Cotizacion) =>
@@ -370,6 +393,7 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
     costoPorId,
     ocupadosGlobal,
     fechaInicioSemanaActual,
+    vistaEsSemanaFutura,
     planItemsCache,
   ]);
 
