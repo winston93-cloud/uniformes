@@ -373,6 +373,22 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
     planItemsCache,
   ]);
 
+  /** Filas para la tabla del modal principal (mismas columnas que al elegir partidas). */
+  const filasResumenSemana = useMemo(() => {
+    const porId = new Map(cotizaciones.map((c) => [c.id, c] as const));
+    return seleccionInfo.rows.map((r) => {
+      const cot = porId.get(r.cotizacion_id);
+      return {
+        key: r.detalle_id,
+        cotizacion: r.cotizacion_folio,
+        cliente: cot ? nombreCliente(cot) : '—',
+        modelo: r.modelo,
+        piezas: r.piezas,
+        fechaEntrega: cot?.fecha_entrega,
+      };
+    });
+  }, [seleccionInfo.rows, cotizaciones]);
+
   const minimoAlcanzado = seleccionInfo.gananciasTotal >= gastosFijosTotal && gastosFijosTotal > 0;
 
   /** 0–100 % del mínimo (gastos fijos); solo para barra y etiqueta, sin mostrar pesos. */
@@ -557,7 +573,7 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
       <div
         className="modal-content"
         style={{
-          maxWidth: 'min(520px, 100vw - 1.5rem)',
+          maxWidth: 'min(960px, 100vw - 1.5rem)',
           width: '100%',
           maxHeight: '90vh',
           display: 'flex',
@@ -587,28 +603,73 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
             flex: 1,
             display: 'flex',
             flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '1.25rem',
+            gap: '1rem',
             minHeight: '200px',
-            textAlign: 'center',
+            overflow: 'hidden',
           }}
         >
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={abrirModalPartidas}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              fontSize: '1rem',
-              padding: '0.75rem 1.35rem',
-            }}
-          >
-            <ListPlus size={22} aria-hidden />
-            Agregar partidas
-          </button>
+          <div style={{ overflowX: 'auto', flex: 1, minHeight: 0 }}>
+            <table
+              style={{
+                width: '100%',
+                minWidth: '520px',
+                borderCollapse: 'collapse',
+                fontSize: '0.85rem',
+              }}
+            >
+              <thead>
+                <tr style={{ background: '#f3f4f6', textAlign: 'left' }}>
+                  <th style={{ padding: '0.5rem' }}>Cotización</th>
+                  <th style={{ padding: '0.5rem' }}>Cliente</th>
+                  <th style={{ padding: '0.5rem' }}>Modelo</th>
+                  <th style={{ padding: '0.5rem', textAlign: 'right' }}>Piezas</th>
+                  <th style={{ padding: '0.5rem' }}>Fecha de entrega</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filasResumenSemana.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} style={{ padding: '1.25rem', textAlign: 'center', color: '#6b7280' }}>
+                      No hay partidas en el plan de esta semana. Usa <strong>Agregar partidas</strong> para incluirlas.
+                    </td>
+                  </tr>
+                ) : (
+                  filasResumenSemana.map((fila) => (
+                    <tr key={fila.key} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                      <td style={{ padding: '0.45rem 0.5rem', verticalAlign: 'middle' }}>
+                        <strong>{fila.cotizacion}</strong>
+                      </td>
+                      <td style={{ padding: '0.45rem 0.5rem', verticalAlign: 'middle' }}>{fila.cliente}</td>
+                      <td style={{ padding: '0.45rem 0.5rem', verticalAlign: 'middle' }}>{fila.modelo}</td>
+                      <td style={{ padding: '0.45rem 0.5rem', textAlign: 'right', verticalAlign: 'middle' }}>
+                        {fila.piezas}
+                      </td>
+                      <td style={{ padding: '0.45rem 0.5rem', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                        {fmtFechaCot(fila.fechaEntrega)}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+          <div style={{ textAlign: 'center', flexShrink: 0 }}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={abrirModalPartidas}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                fontSize: '1rem',
+                padding: '0.75rem 1.35rem',
+              }}
+            >
+              <ListPlus size={22} aria-hidden />
+              Agregar partidas
+            </button>
+          </div>
         </div>
 
         <div className="modal-footer" style={{ justifyContent: 'flex-end' }}>
@@ -756,7 +817,7 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
                             <table
                               style={{
                                 width: '100%',
-                                minWidth: '560px',
+                                minWidth: '600px',
                                 borderCollapse: 'collapse',
                                 fontSize: '0.85rem',
                               }}
@@ -764,11 +825,11 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
                               <thead>
                                 <tr style={{ background: '#f3f4f6', textAlign: 'left' }}>
                                   <th style={{ padding: '0.5rem', width: 36 }} aria-label="Seleccionar" />
+                                  <th style={{ padding: '0.5rem' }}>Cotización</th>
                                   <th style={{ padding: '0.5rem' }}>Cliente</th>
                                   <th style={{ padding: '0.5rem' }}>Modelo</th>
                                   <th style={{ padding: '0.5rem', textAlign: 'right' }}>Piezas</th>
-                                  <th style={{ padding: '0.5rem' }}>Fecha entrega</th>
-                                  <th style={{ padding: '0.5rem' }}>Tiempo entrega</th>
+                                  <th style={{ padding: '0.5rem' }}>Fecha de entrega</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -792,6 +853,9 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
                                         />
                                       </td>
                                       <td style={{ padding: '0.45rem 0.5rem', verticalAlign: 'middle' }}>
+                                        <strong>{cot.folio}</strong>
+                                      </td>
+                                      <td style={{ padding: '0.45rem 0.5rem', verticalAlign: 'middle' }}>
                                         {nombreCliente(cot)}
                                       </td>
                                       <td style={{ padding: '0.45rem 0.5rem', verticalAlign: 'middle' }}>
@@ -804,9 +868,6 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
                                       </td>
                                       <td style={{ padding: '0.45rem 0.5rem', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
                                         {fmtFechaCot(cot.fecha_entrega)}
-                                      </td>
-                                      <td style={{ padding: '0.45rem 0.5rem', verticalAlign: 'middle' }}>
-                                        {cot.tiempo_entrega || '—'}
                                       </td>
                                     </tr>
                                   );
