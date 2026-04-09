@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronLeft, ChevronRight, X, Check, FileText, ListPlus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Check, FileText, Pencil } from 'lucide-react';
 import { useCotizaciones } from '@/lib/hooks/useCotizaciones';
 import { supabase } from '@/lib/supabase';
 import type { Cotizacion, DetalleCotizacion, Costo } from '@/lib/types';
@@ -586,8 +586,9 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
             <div>
               <h2 style={{ margin: 0, fontSize: 'clamp(1.1rem, 2.5vw, 1.35rem)' }}>Producción semanal</h2>
               <p style={{ margin: '0.35rem 0 0', fontSize: '0.85rem', color: '#6b7280', lineHeight: 1.4 }}>
-                Elige la semana y abre <strong>Agregar partidas</strong>: ahí verás las cotizaciones, podrás{' '}
-                <strong>guardar la selección</strong> y <strong>generar el plan de trabajo</strong>.
+                Elige la semana. Usa <strong>Editar selección</strong> para elegir partidas y{' '}
+                <strong>Guardar selección</strong> en esa pantalla; cuando el mínimo de ganancias se cumpla,{' '}
+                <strong>Generar plan de trabajo</strong> desde aquí.
               </p>
             </div>
             <button type="button" className="modal-close" onClick={handleClosePrincipal} aria-label="Cerrar">
@@ -630,7 +631,7 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
                 {filasResumenSemana.length === 0 ? (
                   <tr>
                     <td colSpan={5} style={{ padding: '1.25rem', textAlign: 'center', color: '#6b7280' }}>
-                      No hay partidas en el plan de esta semana. Usa <strong>Agregar partidas</strong> para incluirlas.
+                      No hay partidas en el plan de esta semana. Pulsa <strong>Editar selección</strong> para incluirlas.
                     </td>
                   </tr>
                 ) : (
@@ -653,30 +654,114 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
               </tbody>
             </table>
           </div>
-          <div style={{ textAlign: 'center', flexShrink: 0 }}>
+          <div
+            style={{
+              flexShrink: 0,
+              paddingTop: '0.5rem',
+              borderTop: '1px solid #e5e7eb',
+              textAlign: 'center',
+            }}
+          >
+            <span style={{ fontSize: '0.9rem', fontWeight: 800, color: minimoAlcanzado ? '#047857' : '#b91c1c' }}>
+              {loadingGastos ? (
+                'Validando gastos fijos…'
+              ) : gastosFijosTotal <= 0 ? (
+                'Configura gastos fijos semanales para poder generar el plan'
+              ) : minimoAlcanzado ? (
+                'Mínimo alcanzado: puedes generar el plan de trabajo'
+              ) : (
+                'Aún no alcanzas el mínimo de ganancias para cubrir gastos fijos semanales'
+              )}
+            </span>
+            {!loadingGastos && gastosFijosTotal > 0 && (
+              <div
+                style={{
+                  marginTop: '0.65rem',
+                  maxWidth: 'min(100%, 340px)',
+                  marginLeft: 'auto',
+                  marginRight: 'auto',
+                }}
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={Math.round(progresoPct)}
+                aria-label="Porcentaje de avance hacia el mínimo semanal"
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '0.35rem',
+                  }}
+                >
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>Avance hacia el mínimo</span>
+                  <span
+                    style={{
+                      fontSize: '1.05rem',
+                      fontWeight: 800,
+                      color: minimoAlcanzado ? '#047857' : '#d97706',
+                      fontVariantNumeric: 'tabular-nums',
+                    }}
+                  >
+                    {Math.round(progresoPct)}%
+                  </span>
+                </div>
+                <div
+                  style={{
+                    height: 12,
+                    background: '#e5e7eb',
+                    borderRadius: 999,
+                    overflow: 'hidden',
+                    boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.06)',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: `${progresoPct}%`,
+                      height: '100%',
+                      background: minimoAlcanzado ? '#10b981' : '#f59e0b',
+                      transition: 'width 0.35s ease',
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="modal-footer" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
             <button
               type="button"
               className="btn btn-primary"
               onClick={abrirModalPartidas}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                fontSize: '1rem',
-                padding: '0.75rem 1.35rem',
-              }}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
             >
-              <ListPlus size={22} aria-hidden />
-              Agregar partidas
+              <Pencil size={18} aria-hidden />
+              Editar selección
+            </button>
+            <button
+              type="button"
+              className="btn btn-success"
+              onClick={handleGenerarPlan}
+              disabled={!minimoAlcanzado || guardandoPlan}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+            >
+              <Check size={18} aria-hidden />
+              {guardandoPlan ? 'Generando…' : 'Generar plan de trabajo'}
             </button>
           </div>
-        </div>
-
-        <div className="modal-footer" style={{ justifyContent: 'flex-end' }}>
           <button type="button" className="btn btn-secondary" onClick={handleClosePrincipal}>
             Cerrar
           </button>
         </div>
+        {error && !modalPartidasAbierto && (
+          <div style={{ color: '#b91c1c', fontSize: '0.9rem', padding: '0 1.5rem 1rem' }}>{error}</div>
+        )}
+        {success && !modalPartidasAbierto && (
+          <div style={{ color: '#047857', fontSize: '0.9rem', padding: '0 1.5rem 1rem' }}>{success}</div>
+        )}
       </div>
     </div>
   );
@@ -701,7 +786,7 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
         <div className="modal-header" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '0.75rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
             <div>
-              <h2 style={{ margin: 0, fontSize: 'clamp(1.1rem, 2.5vw, 1.35rem)' }}>Agregar partidas</h2>
+              <h2 style={{ margin: 0, fontSize: 'clamp(1.1rem, 2.5vw, 1.35rem)' }}>Editar selección</h2>
               <p style={{ margin: '0.35rem 0 0', fontSize: '0.85rem', color: '#6b7280', lineHeight: 1.4 }}>
                 Cotizaciones <strong>aprobadas</strong> y <strong>terminadas</strong> (orden: fecha de entrega). Expande
                 una cotización y elige las partidas. Puedes guardar aunque no alcances el mínimo; si llegan más
@@ -981,16 +1066,6 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
               disabled={loadingContext || guardandoSeleccion}
             >
               {guardandoSeleccion ? 'Guardando…' : 'Guardar selección'}
-            </button>
-            <button
-              type="button"
-              className="btn btn-success"
-              onClick={handleGenerarPlan}
-              disabled={!minimoAlcanzado || guardandoPlan}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-            >
-              <Check size={18} />
-              {guardandoPlan ? 'Generando...' : 'Generar plan de trabajo'}
             </button>
           </div>
         </div>
