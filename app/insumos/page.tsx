@@ -6,6 +6,7 @@ import AuxiliarCatalogoModal from '@/components/AuxiliarCatalogoModal';
 import { useInsumos } from '@/lib/hooks/useInsumos';
 import { usePresentaciones } from '@/lib/hooks/usePresentaciones';
 import { useUbicacionesAlmacenamiento } from '@/lib/hooks/useUbicacionesAlmacenamiento';
+import { supabase } from '@/lib/supabase';
 import type { Insumo } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -38,6 +39,28 @@ const generarCodigo = (nombre: string, insumos: Insumo[]): string => {
   return `${prefijo}-${String(siguienteNumero).padStart(3, '0')}`;
 };
 
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+function cantidadPartidaStr(n: number): string {
+  const r = round2(n);
+  return Number.isInteger(r) ? String(r) : r.toFixed(2);
+}
+
+function textoAlmacenInsumo(insumo: Insumo): string {
+  const partes = insumo.insumo_ubicaciones;
+  if (partes && partes.length > 0) {
+    return partes
+      .map((p) => {
+        const nom = p.ubicacion?.nombre || '?';
+        const q = Number(p.cantidad);
+        const s = Number.isInteger(q) ? String(q) : q.toFixed(2);
+        return `${nom} (${s})`;
+      })
+      .join(', ');
+  }
+  return insumo.ubicacion_almacenamiento?.nombre || '-';
+}
+
 export default function InsumosPage() {
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [insumoEditando, setInsumoEditando] = useState<Insumo | null>(null);
@@ -69,6 +92,12 @@ export default function InsumosPage() {
   const [auxForm, setAuxForm] = useState({ nombre: '', descripcion: '', activo: true });
   const [auxError, setAuxError] = useState<string | null>(null);
   const [auxGuardando, setAuxGuardando] = useState(false);
+
+  const [ubicacionCatalogoSeleccionada, setUbicacionCatalogoSeleccionada] = useState('');
+  const [partidasUbicacion, setPartidasUbicacion] = useState<
+    Array<{ tempId: string; ubicacion_id: string; cantidad: string }>
+  >([]);
+  const [ubicacionSelectPartida, setUbicacionSelectPartida] = useState('');
 
   const cerrarAuxModal = () => {
     setAuxTipo(null);
@@ -127,7 +156,7 @@ export default function InsumosPage() {
   };
 
   const abrirEditarUbicacion = () => {
-    const id = formData.ubicacion_almacenamiento_id;
+    const id = ubicacionCatalogoSeleccionada;
     if (!id) return;
     const u = ubicaciones.find((x) => x.id === id);
     if (!u) return;
@@ -142,7 +171,7 @@ export default function InsumosPage() {
   };
 
   const eliminarUbicacionSeleccionada = async (desdeModalAux = false) => {
-    const id = formData.ubicacion_almacenamiento_id;
+    const id = ubicacionCatalogoSeleccionada;
     if (!id) return;
     if (!confirm('¿Eliminar esta ubicación? Si está en uso, la base de datos puede rechazar la operación.')) {
       return;
@@ -158,7 +187,7 @@ export default function InsumosPage() {
       }
       return;
     }
-    setFormData((f) => ({ ...f, ubicacion_almacenamiento_id: '' }));
+    setUbicacionCatalogoSeleccionada('');
     if (desdeModalAux) cerrarAuxModal();
   };
 
@@ -211,10 +240,10 @@ export default function InsumosPage() {
             setAuxError(err);
             return;
           }
-          if (data) setFormData((f) => ({ ...f, ubicacion_almacenamiento_id: data.id }));
+          if (data) setUbicacionCatalogoSeleccionada(data.id);
           cerrarAuxModal();
         } else {
-          const id = formData.ubicacion_almacenamiento_id;
+          const id = ubicacionCatalogoSeleccionada;
           if (!id) {
             setAuxError('No hay ubicación seleccionada.');
             return;
@@ -243,32 +272,182 @@ export default function InsumosPage() {
     costo_compra: '',
     stock_inicial: '',
     stock_minimo: '',
-    ubicacion_almacenamiento_id: '',
     activo: true,
   });
+
+  const stockTotalInsumoForm = () => parseFloat(formData.stock_inicial) || 0;
+  const sumPartidasDistribuidas = () =>
+    partidasUbicacion.reduce((s, p) => s + (parseFloat(p.cantidad) || 0), 0);
+
+  const agregarPartidaUbicacion = (ubicacionId: string) => {
+    if (!ubicacionId) return;
+    if (partidasUbicacion.some((p) => p.ubicacion_id === ubicacionId)) return;
+    const total = stockTotalInsumoForm();
+    const sumOtros = partidasUbicacion.reduce(
+      (s, p) => s + (parseFloat(p.cantidad) || 0),
+      0
+    );
+    const restante = Math.max(0, round2(total - sumOtros));
+    setPartidasUbicacion((prev) => [
+      ...prev,
+      {
+        tempId: crypto.randomUUID(),
+        ubicacion_id: ubicacionId,
+        cantidad: cantidadPartidaStr(restante),
+      },
+    ]);
+    setUbicacionSelectPartida('');
+  };
+
+  useEffect(() => {
+    const loadPartidas = async () => {
+      if (!mostrarFormulario || !insumoEditando) {
+        setPartidasUbicacion([]);
+        setUbicacionCatalogoSeleccionada('');
+        setUbicacionSelectPartida('');
+        return;
+      }
+      try {
+        const { data: filasUb, error: errUb } = await supabase
+          .from('insumo_ubicaciones')
+          .select('id, ubicacion_almacenamiento_id, cantidad')
+          .eq('insumo_id', insumoEditando.id);
+
+        if (errUb) {
+          console.error('insumo_ubicaciones:', errUb);
+          setPartidasUbicacion([]);
+        } else if (filasUb && filasUb.length > 0) {
+          setPartidasUbicacion(
+            filasUb.map((f) => ({
+              tempId: f.id,
+              ubicacion_id: f.ubicacion_almacenamiento_id,
+              cantidad: cantidadPartidaStr(Number(f.cantidad ?? 0)),
+            }))
+          );
+        } else if (
+          insumoEditando.ubicacion_almacenamiento_id &&
+          Number(insumoEditando.stock ?? insumoEditando.stock_inicial ?? 0) > 0
+        ) {
+          setPartidasUbicacion([
+            {
+              tempId: `legacy-${insumoEditando.id}`,
+              ubicacion_id: insumoEditando.ubicacion_almacenamiento_id,
+              cantidad: cantidadPartidaStr(
+                Number(insumoEditando.stock ?? insumoEditando.stock_inicial ?? 0)
+              ),
+            },
+          ]);
+        } else {
+          setPartidasUbicacion([]);
+        }
+        setUbicacionCatalogoSeleccionada(insumoEditando.ubicacion_almacenamiento_id || '');
+        setUbicacionSelectPartida('');
+      } catch (e) {
+        console.error(e);
+        setPartidasUbicacion([]);
+      }
+    };
+    loadPartidas();
+  }, [mostrarFormulario, insumoEditando?.id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setBotonEstado('normal');
-    
+
+    const totalStock = parseFloat(formData.stock_inicial) || 0;
+    const stockMinimo = parseFloat(formData.stock_minimo) || 0;
+    const sumDistrib = partidasUbicacion.reduce(
+      (s, p) => s + (parseFloat(p.cantidad) || 0),
+      0
+    );
+
+    if (totalStock === 0 && partidasUbicacion.length > 0) {
+      setMensajeError(
+        '❌ Con stock en 0 no debe haber cantidades por ubicación. Quita las partidas o indica stock mayor a 0.'
+      );
+      setModalErrorAbierto(true);
+      return;
+    }
+    if (totalStock > 0) {
+      if (partidasUbicacion.length === 0) {
+        setMensajeError(
+          '❌ Con stock mayor a 0, agrega al menos una ubicación y reparte la cantidad.'
+        );
+        setModalErrorAbierto(true);
+        return;
+      }
+      if (round2(sumDistrib) !== round2(totalStock)) {
+        setMensajeError(
+          `❌ La suma por ubicación (${cantidadPartidaStr(sumDistrib)}) debe ser igual al stock existente (${cantidadPartidaStr(totalStock)}).`
+        );
+        setModalErrorAbierto(true);
+        return;
+      }
+    }
+
     const insumoData = {
       nombre: formData.nombre,
       codigo: formData.codigo,
       descripcion: formData.descripcion || null,
       presentacion_id: formData.presentacion_id.trim() ? formData.presentacion_id : null,
-      /* Campo "Cantidad por presentación" oculto en UI: antes se enviaba
-         parseFloat(formData.cantidad_por_presentacion) || 0 */
       cantidad_por_presentacion:
         insumoEditando != null
           ? insumoEditando.cantidad_por_presentacion
           : 1,
       unidad_medida: (formData.unidad_medida || 'unidades').trim() || 'unidades',
       costo_compra: parseFloat(formData.costo_compra) || 0,
-      stock_inicial: parseFloat(formData.stock_inicial) || 0,
-      stock: parseFloat(formData.stock_inicial) || 0, // Stock actual = stock existente al crear
-      stock_minimo: parseFloat(formData.stock_minimo) || 0,
-      ubicacion_almacenamiento_id: formData.ubicacion_almacenamiento_id || null,
+      stock_inicial: totalStock,
+      stock: totalStock,
+      stock_minimo: stockMinimo,
+      ubicacion_almacenamiento_id: null as string | null,
       activo: formData.activo,
+    };
+
+    const aplicarPartidas = async (insumoId: string) => {
+      const { error: delErr } = await supabase
+        .from('insumo_ubicaciones')
+        .delete()
+        .eq('insumo_id', insumoId);
+      if (delErr) throw delErr;
+      if (totalStock > 0 && partidasUbicacion.length > 0) {
+        const inserts = partidasUbicacion
+          .map((p) => ({
+            insumo_id: insumoId,
+            ubicacion_almacenamiento_id: p.ubicacion_id,
+            cantidad: round2(parseFloat(p.cantidad) || 0),
+          }))
+          .filter((row) => row.cantidad > 0);
+        if (inserts.length > 0) {
+          const { error: insErr } = await supabase.from('insumo_ubicaciones').insert(inserts);
+          if (insErr) throw insErr;
+        }
+      }
+    };
+
+    const resetTrasExito = () => {
+      setModalExitoAbierto(false);
+      setMensajeExito('');
+      setFormData({
+        nombre: '',
+        codigo: '',
+        descripcion: '',
+        presentacion_id: '',
+        cantidad_por_presentacion: '',
+        unidad_medida: 'unidades',
+        costo_compra: '',
+        stock_inicial: '',
+        stock_minimo: '',
+        activo: true,
+      });
+      setPartidasUbicacion([]);
+      setUbicacionCatalogoSeleccionada('');
+      setUbicacionSelectPartida('');
+      setMostrarFormulario(false);
+      setInsumoEditando(null);
+      setBotonEstado('normal');
+      setTimeout(() => {
+        inputBusquedaRef.current?.focus();
+      }, 100);
     };
 
     if (insumoEditando) {
@@ -278,44 +457,46 @@ export default function InsumosPage() {
         setModalErrorAbierto(true);
         return;
       }
+      try {
+        await aplicarPartidas(insumoEditando.id);
+      } catch (err: any) {
+        setMensajeError(`❌ Insumo guardado pero falló el reparto por ubicación: ${err.message}`);
+        setModalErrorAbierto(true);
+        return;
+      }
       setMensajeExito('✅ Insumo actualizado correctamente');
       setModalExitoAbierto(true);
-      setTimeout(() => {
-        setModalExitoAbierto(false);
-        setMensajeExito('');
-        setFormData({ nombre: '', codigo: '', descripcion: '', presentacion_id: '', cantidad_por_presentacion: '', unidad_medida: 'unidades', costo_compra: '', stock_inicial: '', stock_minimo: '', ubicacion_almacenamiento_id: '', activo: true });
-        setMostrarFormulario(false);
-        setInsumoEditando(null);
-        setBotonEstado('normal');
-        setTimeout(() => {
-          inputBusquedaRef.current?.focus();
-        }, 100);
-      }, 2000);
+      setTimeout(resetTrasExito, 2000);
     } else {
-      const { error } = await createInsumo(insumoData);
+      const { data, error } = await createInsumo(insumoData);
       if (error) {
         setMensajeError(`❌ Error al crear: ${error}`);
         setModalErrorAbierto(true);
         return;
       }
+      if (!data?.id) {
+        setMensajeError('❌ No se obtuvo el id del insumo creado.');
+        setModalErrorAbierto(true);
+        return;
+      }
+      try {
+        await aplicarPartidas(data.id);
+      } catch (err: any) {
+        setMensajeError(`❌ Insumo creado pero falló el reparto por ubicación: ${err.message}`);
+        setModalErrorAbierto(true);
+        return;
+      }
       setMensajeExito('✅ Insumo creado correctamente');
       setModalExitoAbierto(true);
-      setTimeout(() => {
-        setModalExitoAbierto(false);
-        setMensajeExito('');
-        setFormData({ nombre: '', codigo: '', descripcion: '', presentacion_id: '', cantidad_por_presentacion: '', unidad_medida: 'unidades', costo_compra: '', stock_inicial: '', stock_minimo: '', ubicacion_almacenamiento_id: '', activo: true });
-        setMostrarFormulario(false);
-        setInsumoEditando(null);
-        setBotonEstado('normal');
-        setTimeout(() => {
-          inputBusquedaRef.current?.focus();
-        }, 100);
-      }, 2000);
+      setTimeout(resetTrasExito, 2000);
     }
   };
 
   const handleEditar = (insumo: Insumo) => {
     setInsumoEditando(insumo);
+    const totalMostrar = String(
+      insumo.stock ?? insumo.stock_inicial ?? 0
+    );
     setFormData({
       nombre: insumo.nombre,
       codigo: insumo.codigo,
@@ -324,9 +505,8 @@ export default function InsumosPage() {
       cantidad_por_presentacion: insumo.cantidad_por_presentacion.toString(),
       unidad_medida: (insumo.unidad_medida && insumo.unidad_medida.trim()) || 'unidades',
       costo_compra: insumo.costo_compra?.toString() || '0',
-      stock_inicial: insumo.stock_inicial?.toString() || '0',
+      stock_inicial: totalMostrar,
       stock_minimo: insumo.stock_minimo?.toString() || '0',
-      ubicacion_almacenamiento_id: insumo.ubicacion_almacenamiento_id || '',
       activo: insumo.activo,
     });
     setBotonEstado('normal');
@@ -347,7 +527,21 @@ export default function InsumosPage() {
 
   const handleNuevo = () => {
     setInsumoEditando(null);
-    setFormData({ nombre: '', codigo: '', descripcion: '', presentacion_id: '', cantidad_por_presentacion: '', unidad_medida: 'unidades', costo_compra: '', stock_inicial: '', stock_minimo: '', ubicacion_almacenamiento_id: '', activo: true });
+    setPartidasUbicacion([]);
+    setUbicacionCatalogoSeleccionada('');
+    setUbicacionSelectPartida('');
+    setFormData({
+      nombre: '',
+      codigo: '',
+      descripcion: '',
+      presentacion_id: '',
+      cantidad_por_presentacion: '',
+      unidad_medida: 'unidades',
+      costo_compra: '',
+      stock_inicial: '',
+      stock_minimo: '',
+      activo: true,
+    });
     setBotonEstado('normal');
     setMensajeError('');
     setMostrarFormulario(true);
@@ -375,14 +569,18 @@ export default function InsumosPage() {
   }, [loading]);
 
   // Filtrar insumos según la búsqueda
-  const insumosFiltrados = insumos.filter(insumo =>
-    insumo.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-    (insumo.codigo && insumo.codigo.toLowerCase().includes(busqueda.toLowerCase())) ||
-    (insumo.descripcion && insumo.descripcion.toLowerCase().includes(busqueda.toLowerCase())) ||
-    (insumo.presentacion?.nombre && insumo.presentacion.nombre.toLowerCase().includes(busqueda.toLowerCase())) ||
-    (insumo.unidad_medida && insumo.unidad_medida.toLowerCase().includes(busqueda.toLowerCase())) ||
-    (insumo.ubicacion_almacenamiento?.nombre && insumo.ubicacion_almacenamiento.nombre.toLowerCase().includes(busqueda.toLowerCase()))
-  );
+  const insumosFiltrados = insumos.filter((insumo) => {
+    const q = busqueda.toLowerCase();
+    const textoUb = textoAlmacenInsumo(insumo).toLowerCase();
+    return (
+      insumo.nombre.toLowerCase().includes(q) ||
+      (insumo.codigo && insumo.codigo.toLowerCase().includes(q)) ||
+      (insumo.descripcion && insumo.descripcion.toLowerCase().includes(q)) ||
+      (insumo.presentacion?.nombre && insumo.presentacion.nombre.toLowerCase().includes(q)) ||
+      (insumo.unidad_medida && insumo.unidad_medida.toLowerCase().includes(q)) ||
+      textoUb.includes(q)
+    );
+  });
 
   if (loading) {
     return (
@@ -459,6 +657,9 @@ export default function InsumosPage() {
             onClick={() => {
               setMostrarFormulario(false);
               setInsumoEditando(null);
+              setPartidasUbicacion([]);
+              setUbicacionCatalogoSeleccionada('');
+              setUbicacionSelectPartida('');
               setFormData({
                 nombre: '',
                 codigo: '',
@@ -469,7 +670,6 @@ export default function InsumosPage() {
                 costo_compra: '',
                 stock_inicial: '',
                 stock_minimo: '',
-                ubicacion_almacenamiento_id: '',
                 activo: true,
               });
               setTimeout(() => {
@@ -662,7 +862,7 @@ export default function InsumosPage() {
                   }}
                 />
                 <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
-                  Cantidad existente de insumo disponible (usado para calcular el stock actual). Si no se ingresa, se establece en 0
+                  Total disponible; debe coincidir con la suma repartida por ubicación abajo. Si es 0, no se exigen ubicaciones.
                 </small>
               </div>
 
@@ -686,7 +886,7 @@ export default function InsumosPage() {
               </div>
 
               <div className="form-group">
-                <label className="form-label">📍 Dónde está almacenado</label>
+                <label className="form-label">📍 Catálogo de ubicaciones (talleres / bodegas)</label>
                 <div
                   style={{
                     display: 'flex',
@@ -698,8 +898,8 @@ export default function InsumosPage() {
                 >
                   <select
                     className="form-select"
-                    value={formData.ubicacion_almacenamiento_id}
-                    onChange={(e) => setFormData({ ...formData, ubicacion_almacenamiento_id: e.target.value })}
+                    value={ubicacionCatalogoSeleccionada}
+                    onChange={(e) => setUbicacionCatalogoSeleccionada(e.target.value)}
                     disabled={loadingUbicaciones || auxGuardando}
                     style={{
                       borderLeft: '4px solid #8b5cf6',
@@ -707,7 +907,7 @@ export default function InsumosPage() {
                       minWidth: 'min(100%, 12rem)',
                     }}
                   >
-                    <option value="">Sin ubicación (opcional)</option>
+                    <option value="">Elige ubicación para Editar / Eliminar…</option>
                     {ubicaciones.map((ubic) => (
                       <option key={ubic.id} value={ubic.id}>
                         {ubic.nombre}
@@ -729,7 +929,7 @@ export default function InsumosPage() {
                     className="btn btn-secondary"
                     style={{ padding: '0.45rem 0.85rem', fontSize: '0.88rem', whiteSpace: 'nowrap' }}
                     onClick={abrirEditarUbicacion}
-                    disabled={!formData.ubicacion_almacenamiento_id || loadingUbicaciones || auxGuardando}
+                    disabled={!ubicacionCatalogoSeleccionada || loadingUbicaciones || auxGuardando}
                   >
                     Editar
                   </button>
@@ -738,14 +938,154 @@ export default function InsumosPage() {
                     className="btn btn-danger"
                     style={{ padding: '0.45rem 0.85rem', fontSize: '0.88rem', whiteSpace: 'nowrap' }}
                     onClick={() => void eliminarUbicacionSeleccionada(false)}
-                    disabled={!formData.ubicacion_almacenamiento_id || loadingUbicaciones || auxGuardando}
+                    disabled={!ubicacionCatalogoSeleccionada || loadingUbicaciones || auxGuardando}
                   >
                     Eliminar
                   </button>
                 </div>
                 <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
-                  Taller, bodega, etc. Opcional; puedes gestionar el catálogo desde aquí.
+                  Mismo patrón que proveedor: gestiona el catálogo. El reparto del stock por bodega va en la sección siguiente.
                 </small>
+              </div>
+
+              <div className="form-group">
+                <label
+                  className="form-label"
+                  style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#334155' }}
+                >
+                  📦 Reparto por ubicación
+                </label>
+                <select
+                  className="form-select"
+                  value={ubicacionSelectPartida}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v) agregarPartidaUbicacion(v);
+                    else setUbicacionSelectPartida('');
+                  }}
+                  disabled={loadingUbicaciones || auxGuardando}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '2px solid #e2e8f0',
+                    borderLeft: '4px solid #8b5cf6',
+                    borderRadius: '8px',
+                    fontSize: '1rem',
+                    backgroundColor: 'white',
+                  }}
+                >
+                  <option value="">+ Agregar ubicación al reparto…</option>
+                  {ubicaciones
+                    .filter(
+                      (u) =>
+                        u.activo &&
+                        !partidasUbicacion.some((p) => p.ubicacion_id === u.id)
+                    )
+                    .map((ubic) => (
+                      <option key={ubic.id} value={ubic.id}>
+                        {ubic.nombre}
+                      </option>
+                    ))}
+                </select>
+                <p
+                  style={{
+                    color: '#64748b',
+                    fontSize: '0.85rem',
+                    marginTop: '0.5rem',
+                    marginBottom: '0.75rem',
+                  }}
+                >
+                  Elige una ubicación para añadir una <strong>partida</strong>. La cantidad sugerida es el stock total menos lo
+                  ya asignado (puedes ajustar cada cantidad).
+                </p>
+                {stockTotalInsumoForm() > 0 && (
+                  <div
+                    style={{
+                      padding: '0.5rem 0.75rem',
+                      background: '#f0fdfa',
+                      borderRadius: '8px',
+                      fontSize: '0.9rem',
+                      color: '#0f766e',
+                      marginBottom: '0.75rem',
+                    }}
+                  >
+                    Distribuido: <strong>{cantidadPartidaStr(sumPartidasDistribuidas())}</strong> · Restante:{' '}
+                    <strong>{cantidadPartidaStr(Math.max(0, round2(stockTotalInsumoForm() - sumPartidasDistribuidas())))}</strong>{' '}
+                    · Total stock: <strong>{cantidadPartidaStr(stockTotalInsumoForm())}</strong>
+                  </div>
+                )}
+                {partidasUbicacion.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                    {partidasUbicacion.map((p) => {
+                      const nombreUb =
+                        ubicaciones.find((u) => u.id === p.ubicacion_id)?.nombre || 'Ubicación';
+                      return (
+                        <div
+                          key={p.tempId}
+                          style={{
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            padding: '0.65rem 0.75rem',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: '8px',
+                            background: '#fafafa',
+                          }}
+                        >
+                          <span style={{ fontWeight: 600, color: '#334155', minWidth: '120px' }}>{nombreUb}</span>
+                          <label style={{ fontSize: '0.85rem', color: '#64748b', margin: 0 }}>Cantidad</label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={p.cantidad}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setPartidasUbicacion((prev) =>
+                                prev.map((row) =>
+                                  row.tempId === p.tempId ? { ...row, cantidad: val } : row
+                                )
+                              );
+                            }}
+                            style={{
+                              width: '110px',
+                              padding: '0.45rem 0.5rem',
+                              border: '1px solid #cbd5e1',
+                              borderRadius: '6px',
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPartidasUbicacion((prev) =>
+                                prev.filter((row) => row.tempId !== p.tempId)
+                              )
+                            }
+                            style={{
+                              marginLeft: 'auto',
+                              padding: '0.35rem 0.65rem',
+                              fontSize: '0.85rem',
+                              border: '1px solid #fecaca',
+                              background: '#fff1f2',
+                              color: '#b91c1c',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Quitar
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p style={{ color: '#94a3b8', fontSize: '0.9rem', fontStyle: 'italic' }}>
+                    {stockTotalInsumoForm() > 0
+                      ? 'Aún no hay ubicaciones en el reparto. Agrega al menos una con el selector de arriba.'
+                      : 'Con stock 0 no se requieren ubicaciones en el reparto.'}
+                  </p>
+                )}
               </div>
 
               <div className="form-group">
@@ -792,7 +1132,21 @@ export default function InsumosPage() {
                   onClick={() => {
                     setMostrarFormulario(false);
                     setInsumoEditando(null);
-                    setFormData({ nombre: '', codigo: '', descripcion: '', presentacion_id: '', cantidad_por_presentacion: '', unidad_medida: 'unidades', costo_compra: '', stock_inicial: '', stock_minimo: '', ubicacion_almacenamiento_id: '', activo: true });
+                    setPartidasUbicacion([]);
+                    setUbicacionCatalogoSeleccionada('');
+                    setUbicacionSelectPartida('');
+                    setFormData({
+                      nombre: '',
+                      codigo: '',
+                      descripcion: '',
+                      presentacion_id: '',
+                      cantidad_por_presentacion: '',
+                      unidad_medida: 'unidades',
+                      costo_compra: '',
+                      stock_inicial: '',
+                      stock_minimo: '',
+                      activo: true,
+                    });
                     setTimeout(() => {
                       inputBusquedaRef.current?.focus();
                     }, 100);
@@ -858,26 +1212,22 @@ export default function InsumosPage() {
                       {Number(insumo.cantidad_por_presentacion).toLocaleString('es-MX')}
                     </td>
                     */}
-                    <td data-label="Almacenado">
+                    <td data-label="Almacenado" title={textoAlmacenInsumo(insumo)}>
                       <span
                         className="badge"
-                        style={
-                          insumo.ubicacion_almacenamiento
-                            ? {
-                                backgroundColor: '#ede9fe',
-                                color: '#5b21b6',
-                                border: '1px solid #c4b5fd',
-                                fontWeight: 600,
-                              }
-                            : {
-                                backgroundColor: '#f1f5f9',
-                                color: '#475569',
-                                border: '1px solid #cbd5e1',
-                                fontWeight: 600,
-                              }
-                        }
+                        style={{
+                          backgroundColor: '#ede9fe',
+                          color: '#5b21b6',
+                          border: '1px solid #c4b5fd',
+                          fontWeight: 600,
+                          maxWidth: '14rem',
+                          display: 'inline-block',
+                          whiteSpace: 'normal',
+                          textAlign: 'left',
+                          lineHeight: 1.35,
+                        }}
                       >
-                        {insumo.ubicacion_almacenamiento?.nombre || '-'}
+                        {textoAlmacenInsumo(insumo)}
                       </span>
                     </td>
                     <td data-label="Descripción">{insumo.descripcion || '-'}</td>
@@ -942,6 +1292,9 @@ export default function InsumosPage() {
               setMensajeError('');
               setMostrarFormulario(false);
               setInsumoEditando(null);
+              setPartidasUbicacion([]);
+              setUbicacionCatalogoSeleccionada('');
+              setUbicacionSelectPartida('');
               setFormData({
                 nombre: '',
                 codigo: '',
@@ -952,7 +1305,6 @@ export default function InsumosPage() {
                 costo_compra: '',
                 stock_inicial: '',
                 stock_minimo: '',
-                ubicacion_almacenamiento_id: '',
                 activo: true,
               });
               setBotonEstado('normal');
@@ -979,7 +1331,21 @@ export default function InsumosPage() {
                   setMensajeError('');
                   setMostrarFormulario(false);
                   setInsumoEditando(null);
-                  setFormData({ nombre: '', codigo: '', descripcion: '', presentacion_id: '', cantidad_por_presentacion: '', unidad_medida: 'unidades', costo_compra: '', stock_inicial: '', stock_minimo: '', ubicacion_almacenamiento_id: '', activo: true });
+                  setPartidasUbicacion([]);
+                  setUbicacionCatalogoSeleccionada('');
+                  setUbicacionSelectPartida('');
+                  setFormData({
+                    nombre: '',
+                    codigo: '',
+                    descripcion: '',
+                    presentacion_id: '',
+                    cantidad_por_presentacion: '',
+                    unidad_medida: 'unidades',
+                    costo_compra: '',
+                    stock_inicial: '',
+                    stock_minimo: '',
+                    activo: true,
+                  });
                   setBotonEstado('normal');
                 }}
               >

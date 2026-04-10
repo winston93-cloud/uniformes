@@ -188,13 +188,24 @@ export interface Insumo {
   stock_inicial?: number; // Stock existente del insumo (campo `stock_inicial` en BD)
   stock?: number; // Stock actual del insumo
   stock_minimo?: number; // Cantidad mínima de stock para alertas
-  ubicacion_almacenamiento_id?: string | null; // Dónde está almacenado (Taller, Bodega uno, etc.)
+  ubicacion_almacenamiento_id?: string | null; // Legacy: una sola ubicación; si hay insumo_ubicaciones, suele ser null
   activo: boolean;
   created_at?: string;
   updated_at?: string;
   presentacion?: Presentacion;
   ubicacion_almacenamiento?: UbicacionAlmacenamiento | null;
-  costo_ubicaciones?: CostoUbicacion[];
+  insumo_ubicaciones?: InsumoUbicacion[];
+}
+
+/** Reparto de inventario por ubicación para un insumo */
+export interface InsumoUbicacion {
+  id: string;
+  insumo_id: string;
+  ubicacion_almacenamiento_id: string;
+  cantidad: number;
+  created_at?: string;
+  updated_at?: string;
+  ubicacion?: UbicacionAlmacenamiento | null;
 }
 
 export interface Cotizacion {

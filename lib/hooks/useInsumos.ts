@@ -12,7 +12,18 @@ export function useInsumos() {
       setLoading(true);
       const { data, error } = await supabase
         .from('insumos')
-        .select('*, presentacion:presentaciones(*), ubicacion_almacenamiento:ubicaciones_almacenamiento(*)')
+        .select(`
+          *,
+          presentacion:presentaciones(*),
+          ubicacion_almacenamiento:ubicaciones_almacenamiento(*),
+          insumo_ubicaciones (
+            id,
+            insumo_id,
+            cantidad,
+            ubicacion_almacenamiento_id,
+            ubicacion:ubicaciones_almacenamiento ( id, nombre )
+          )
+        `)
         .order('created_at', { ascending: false});
 
       if (error) throw error;
@@ -34,6 +45,13 @@ export function useInsumos() {
         event: '*', 
         schema: 'public', 
         table: 'insumos' 
+      }, () => {
+        fetchInsumos();
+      })
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'insumo_ubicaciones',
       }, () => {
         fetchInsumos();
       })
@@ -146,7 +164,18 @@ export function useInsumos() {
     try {
       const { data, error } = await supabase
         .from('insumos')
-        .select('*, presentacion:presentaciones(*), ubicacion_almacenamiento:ubicaciones_almacenamiento(*)')
+        .select(`
+          *,
+          presentacion:presentaciones(*),
+          ubicacion_almacenamiento:ubicaciones_almacenamiento(*),
+          insumo_ubicaciones (
+            id,
+            insumo_id,
+            cantidad,
+            ubicacion_almacenamiento_id,
+            ubicacion:ubicaciones_almacenamiento ( id, nombre )
+          )
+        `)
         .or(`nombre.ilike.%${query}%,codigo.ilike.%${query}%,descripcion.ilike.%${query}%`)
         .order('nombre', { ascending: true });
 
