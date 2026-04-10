@@ -1,9 +1,9 @@
--- Restaurar cantidad por ubicación (misma idea que costo_ubicaciones / Prendas → Configurar stock).
+-- Migracion: columna cantidad en insumo_ubicaciones (reparto por bodega, validacion en app)
 
 ALTER TABLE public.insumo_ubicaciones
   ADD COLUMN IF NOT EXISTS cantidad DECIMAL(10, 2) NOT NULL DEFAULT 0;
 
--- Si la columna ya existía sin CHECK, añadir solo si no hay restricción en cantidad
+-- CHECK cantidad >= 0 solo si aun no existe esta restriccion
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -19,7 +19,7 @@ BEGIN
 END $$;
 
 COMMENT ON COLUMN public.insumo_ubicaciones.cantidad IS
-  'Unidades en esta ubicación; la suma por insumo debe coincidir con insumos.stock (validación en la app)';
+  'Unidades en esta ubicacion; la suma por insumo debe coincidir con insumos.stock';
 
 COMMENT ON TABLE public.insumo_ubicaciones IS
-  'Cantidad por ubicación por insumo; el total de inventario sigue en insumos.stock';
+  'Cantidad por ubicacion por insumo; el total sigue en insumos.stock';
