@@ -16,7 +16,7 @@ export default function InventarioInsumosPage() {
   const insumosFiltrados = insumos.filter(insumo =>
     insumo.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
     (insumo.codigo && insumo.codigo.toLowerCase().includes(busqueda.toLowerCase())) ||
-    (insumo.unidad_medida && insumo.unidad_medida.toLowerCase().includes(busqueda.toLowerCase()))
+    (insumo.presentacion?.nombre && insumo.presentacion.nombre.toLowerCase().includes(busqueda.toLowerCase()))
   );
 
   if (loading) {
@@ -62,7 +62,7 @@ export default function InventarioInsumosPage() {
             className="form-input"
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="🔍 Buscar insumo por nombre o código..."
+            placeholder="🔍 Buscar por nombre, código o proveedor..."
             style={{
               width: '100%',
               fontSize: '1rem',
@@ -78,8 +78,7 @@ export default function InventarioInsumosPage() {
               <tr>
                 <th>Código</th>
                 <th>Insumo</th>
-                <th>Presentación</th>
-                <th>Unidad</th>
+                <th>Proveedor</th>
                 <th>Stock Existente</th>
                 <th>Stock Actual</th>
                 <th>Stock Mínimo</th>
@@ -89,7 +88,7 @@ export default function InventarioInsumosPage() {
             <tbody>
               {insumosFiltrados.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                  <td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
                     {busqueda ? 'No se encontraron insumos con ese criterio.' : 'No hay insumos registrados.'}
                   </td>
                 </tr>
@@ -120,22 +119,9 @@ export default function InventarioInsumosPage() {
                       <td data-label="Insumo" style={{ fontWeight: '600' }}>
                         {insumo.nombre}
                       </td>
-                      <td data-label="Presentación">
+                      <td data-label="Proveedor">
                         <span className="badge badge-info">
                           {insumo.presentacion?.nombre || '-'}
-                        </span>
-                      </td>
-                      <td data-label="Unidad">
-                        <span
-                          className="badge"
-                          style={{
-                            backgroundColor: '#dbeafe',
-                            color: '#1e3a8a',
-                            border: '1px solid #93c5fd',
-                            fontWeight: 600,
-                          }}
-                        >
-                          {(insumo.unidad_medida && insumo.unidad_medida.trim()) || 'unidades'}
                         </span>
                       </td>
                       <td data-label="Stock Existente" style={{ 

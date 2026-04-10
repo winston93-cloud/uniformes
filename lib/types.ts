@@ -179,7 +179,8 @@ export interface Insumo {
   codigo: string;
   nombre: string;
   descripcion: string | null;
-  presentacion_id: string;
+  /** Catálogo `presentaciones`; en la UI se muestra como «Proveedor». Opcional. */
+  presentacion_id: string | null;
   cantidad_por_presentacion: number; // ej: 500 botones en una bolsa
   /** Cómo se cuenta esa cantidad: metros, unidades, kg, rollos… */
   unidad_medida?: string | null;

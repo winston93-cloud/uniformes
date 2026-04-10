@@ -13,7 +13,7 @@ export interface PrendaTallaInsumo {
   insumo?: {
     id: string;
     nombre: string;
-    presentacion_id: string;
+    presentacion_id: string | null;
     presentacion?: {
       nombre: string;
       descripcion: string;
