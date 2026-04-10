@@ -24,7 +24,7 @@ CREATE INDEX IF NOT EXISTS idx_sucursales_es_matriz ON sucursales(es_matriz) WHE
 -- Insertar sucursal matriz por defecto
 INSERT INTO sucursales (codigo, nombre, direccion, es_matriz, activo)
 VALUES 
-  ('MAT-MAD', 'Matriz Madero', 'Calle Madero #123', true, true)
+  ('MAT-MAD', 'Matriz Madero', NULL, true, true)
 ON CONFLICT (codigo) DO NOTHING;
 
 -- Agregar columna sucursal_id a tabla costos (stock por sucursal)
