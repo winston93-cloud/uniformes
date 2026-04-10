@@ -39,10 +39,24 @@ const generarCodigo = (nombre: string, insumos: Insumo[]): string => {
   return `${prefijo}-${String(siguienteNumero).padStart(3, '0')}`;
 };
 
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+function cantidadPartidaStr(n: number): string {
+  const r = round2(n);
+  return Number.isInteger(r) ? String(r) : r.toFixed(2);
+}
+
 function textoAlmacenInsumo(insumo: Insumo): string {
   const partes = insumo.insumo_ubicaciones;
   if (partes && partes.length > 0) {
-    return partes.map((p) => p.ubicacion?.nombre || '?').join(', ');
+    return partes
+      .map((p) => {
+        const nom = p.ubicacion?.nombre || '?';
+        const q = Number(p.cantidad ?? 0);
+        const s = Number.isInteger(q) ? String(q) : q.toFixed(2);
+        return `${nom} (${s})`;
+      })
+      .join(', ');
   }
   return insumo.ubicacion_almacenamiento?.nombre || '-';
 }
@@ -80,9 +94,9 @@ export default function InsumosPage() {
   const [auxGuardando, setAuxGuardando] = useState(false);
 
   const [ubicacionCatalogoSeleccionada, setUbicacionCatalogoSeleccionada] = useState('');
-  /** Ubicaciones vinculadas a este insumo (solo catálogo; sin cantidad por bodega) */
+  /** Partidas por ubicación (misma lógica que Prendas → Configurar stock) */
   const [ubicacionesInsumo, setUbicacionesInsumo] = useState<
-    Array<{ tempId: string; ubicacion_id: string }>
+    Array<{ tempId: string; ubicacion_id: string; cantidad: string }>
   >([]);
 
   const cerrarAuxModal = () => {
@@ -262,6 +276,10 @@ export default function InsumosPage() {
     activo: true,
   });
 
+  const stockTotalInsumoForm = () => parseFloat(formData.stock_inicial) || 0;
+  const sumUbicacionesInsumo = () =>
+    ubicacionesInsumo.reduce((s, p) => s + (parseFloat(p.cantidad) || 0), 0);
+
   const agregarUbicacionSeleccionadaAlInsumo = () => {
     const id = ubicacionCatalogoSeleccionada;
     if (!id) {
@@ -269,9 +287,19 @@ export default function InsumosPage() {
       return;
     }
     if (ubicacionesInsumo.some((u) => u.ubicacion_id === id)) return;
+    const total = stockTotalInsumoForm();
+    const sumOtros = ubicacionesInsumo.reduce(
+      (s, p) => s + (parseFloat(p.cantidad) || 0),
+      0
+    );
+    const restante = Math.max(0, round2(total - sumOtros));
     setUbicacionesInsumo((prev) => [
       ...prev,
-      { tempId: crypto.randomUUID(), ubicacion_id: id },
+      {
+        tempId: crypto.randomUUID(),
+        ubicacion_id: id,
+        cantidad: cantidadPartidaStr(restante),
+      },
     ]);
   };
 
@@ -285,7 +313,7 @@ export default function InsumosPage() {
       try {
         const { data: filasUb, error: errUb } = await supabase
           .from('insumo_ubicaciones')
-          .select('id, ubicacion_almacenamiento_id')
+          .select('id, ubicacion_almacenamiento_id, cantidad')
           .eq('insumo_id', insumoEditando.id);
 
         if (errUb) {
@@ -296,13 +324,20 @@ export default function InsumosPage() {
             filasUb.map((f) => ({
               tempId: f.id,
               ubicacion_id: f.ubicacion_almacenamiento_id,
+              cantidad: cantidadPartidaStr(Number(f.cantidad ?? 0)),
             }))
           );
-        } else if (insumoEditando.ubicacion_almacenamiento_id) {
+        } else if (
+          insumoEditando.ubicacion_almacenamiento_id &&
+          Number(insumoEditando.stock ?? insumoEditando.stock_inicial ?? 0) > 0
+        ) {
           setUbicacionesInsumo([
             {
               tempId: `legacy-${insumoEditando.id}`,
               ubicacion_id: insumoEditando.ubicacion_almacenamiento_id,
+              cantidad: cantidadPartidaStr(
+                Number(insumoEditando.stock ?? insumoEditando.stock_inicial ?? 0)
+              ),
             },
           ]);
         } else {
@@ -323,6 +358,34 @@ export default function InsumosPage() {
 
     const totalStock = parseFloat(formData.stock_inicial) || 0;
     const stockMinimo = parseFloat(formData.stock_minimo) || 0;
+    const sumDistrib = ubicacionesInsumo.reduce(
+      (s, p) => s + (parseFloat(p.cantidad) || 0),
+      0
+    );
+
+    if (totalStock === 0 && ubicacionesInsumo.length > 0) {
+      setMensajeError(
+        '❌ Con stock en 0 no debe haber cantidades por ubicación. Quita las partidas o indica stock mayor a 0.'
+      );
+      setModalErrorAbierto(true);
+      return;
+    }
+    if (totalStock > 0) {
+      if (ubicacionesInsumo.length === 0) {
+        setMensajeError(
+          '❌ Con stock mayor a 0, agrega al menos una ubicación y reparte la cantidad.'
+        );
+        setModalErrorAbierto(true);
+        return;
+      }
+      if (round2(sumDistrib) !== round2(totalStock)) {
+        setMensajeError(
+          `❌ La suma por ubicación (${cantidadPartidaStr(sumDistrib)}) debe ser igual al stock existente (${cantidadPartidaStr(totalStock)}).`
+        );
+        setModalErrorAbierto(true);
+        return;
+      }
+    }
 
     const insumoData = {
       nombre: formData.nombre,
@@ -348,13 +411,18 @@ export default function InsumosPage() {
         .delete()
         .eq('insumo_id', insumoId);
       if (delErr) throw delErr;
-      if (ubicacionesInsumo.length > 0) {
-        const inserts = ubicacionesInsumo.map((p) => ({
-          insumo_id: insumoId,
-          ubicacion_almacenamiento_id: p.ubicacion_id,
-        }));
-        const { error: insErr } = await supabase.from('insumo_ubicaciones').insert(inserts);
-        if (insErr) throw insErr;
+      if (totalStock > 0 && ubicacionesInsumo.length > 0) {
+        const inserts = ubicacionesInsumo
+          .map((p) => ({
+            insumo_id: insumoId,
+            ubicacion_almacenamiento_id: p.ubicacion_id,
+            cantidad: round2(parseFloat(p.cantidad) || 0),
+          }))
+          .filter((row) => row.cantidad > 0);
+        if (inserts.length > 0) {
+          const { error: insErr } = await supabase.from('insumo_ubicaciones').insert(inserts);
+          if (insErr) throw insErr;
+        }
       }
     };
 
@@ -793,7 +861,7 @@ export default function InsumosPage() {
                   }}
                 />
                 <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
-                  Cantidad total del insumo (inventario). Las ubicaciones de abajo solo indican dónde puede estar; no reparten cantidades.
+                  Total del inventario. Con stock &gt; 0 debes repartirlo en las ubicaciones de abajo; la suma debe coincidir con este número (igual que en Prendas → Configurar stock).
                 </small>
               </div>
 
@@ -884,9 +952,30 @@ export default function InsumosPage() {
                   </button>
                 </div>
                 <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
-                  Un solo listado: administras el catálogo (Nueva / Editar / Eliminar) y con <strong>Al insumo</strong> enlazas
-                  esa ubicación a este material, sin cantidades por bodega.
+                  Administras el catálogo con Nueva / Editar / Eliminar. Con <strong>Al insumo</strong> agregas una partida: se
+                  sugiere el <strong>restante</strong> del stock no asignado (puedes cambiarlo). Cada nueva ubicación trae en el
+                  input lo que falta por repartir.
                 </small>
+                {stockTotalInsumoForm() > 0 && (
+                  <div
+                    style={{
+                      marginTop: '0.75rem',
+                      padding: '0.5rem 0.75rem',
+                      background: '#f0fdfa',
+                      borderRadius: '8px',
+                      fontSize: '0.9rem',
+                      color: '#0f766e',
+                    }}
+                  >
+                    Distribuido: <strong>{cantidadPartidaStr(sumUbicacionesInsumo())}</strong> · Restante:{' '}
+                    <strong>
+                      {cantidadPartidaStr(
+                        Math.max(0, round2(stockTotalInsumoForm() - sumUbicacionesInsumo()))
+                      )}
+                    </strong>{' '}
+                    · Total stock: <strong>{cantidadPartidaStr(stockTotalInsumoForm())}</strong>
+                  </div>
+                )}
                 {ubicacionesInsumo.length > 0 ? (
                   <div
                     style={{
@@ -897,7 +986,7 @@ export default function InsumosPage() {
                     }}
                   >
                     <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#334155' }}>
-                      Vinculadas a este insumo:
+                      Reparto por ubicación:
                     </span>
                     {ubicacionesInsumo.map((p) => {
                       const nombreUb =
@@ -907,15 +996,37 @@ export default function InsumosPage() {
                           key={p.tempId}
                           style={{
                             display: 'flex',
+                            flexWrap: 'wrap',
                             alignItems: 'center',
                             gap: '0.5rem',
-                            padding: '0.5rem 0.75rem',
+                            padding: '0.65rem 0.75rem',
                             border: '1px solid #e2e8f0',
                             borderRadius: '8px',
                             background: '#fafafa',
                           }}
                         >
-                          <span style={{ fontWeight: 600, color: '#334155', flex: 1 }}>{nombreUb}</span>
+                          <span style={{ fontWeight: 600, color: '#334155', minWidth: '120px' }}>{nombreUb}</span>
+                          <label style={{ fontSize: '0.85rem', color: '#64748b', margin: 0 }}>Cantidad</label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={p.cantidad}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setUbicacionesInsumo((prev) =>
+                                prev.map((row) =>
+                                  row.tempId === p.tempId ? { ...row, cantidad: val } : row
+                                )
+                              );
+                            }}
+                            style={{
+                              width: '110px',
+                              padding: '0.45rem 0.5rem',
+                              border: '1px solid #cbd5e1',
+                              borderRadius: '6px',
+                            }}
+                          />
                           <button
                             type="button"
                             onClick={() =>
@@ -924,6 +1035,7 @@ export default function InsumosPage() {
                               )
                             }
                             style={{
+                              marginLeft: 'auto',
                               padding: '0.35rem 0.65rem',
                               fontSize: '0.85rem',
                               border: '1px solid #fecaca',
@@ -941,7 +1053,9 @@ export default function InsumosPage() {
                   </div>
                 ) : (
                   <p style={{ color: '#94a3b8', fontSize: '0.9rem', fontStyle: 'italic', marginTop: '0.75rem' }}>
-                    Ninguna ubicación enlazada. Elige una en el catálogo y pulsa «Al insumo».
+                    {stockTotalInsumoForm() > 0
+                      ? 'Aún no hay ubicaciones. Elige una en el catálogo y pulsa «Al insumo» (se sugerirá el stock completo o el restante).'
+                      : 'Con stock 0 no se requieren ubicaciones.'}
                   </p>
                 )}
               </div>

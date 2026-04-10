@@ -197,11 +197,12 @@ export interface Insumo {
   insumo_ubicaciones?: InsumoUbicacion[];
 }
 
-/** Ubicaciones donde aplica el insumo (sin cantidad por fila; stock total en insumos) */
+/** Cantidad del insumo por ubicación (suma por insumo = stock total en insumos) */
 export interface InsumoUbicacion {
   id: string;
   insumo_id: string;
   ubicacion_almacenamiento_id: string;
+  cantidad: number;
   created_at?: string;
   updated_at?: string;
   ubicacion?: UbicacionAlmacenamiento | null;
