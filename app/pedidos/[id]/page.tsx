@@ -185,13 +185,16 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
             transform: scale(0.85);
             transform-origin: top left;
           }
+          .recibo-scale-wrap {
+            transform: none !important;
+          }
           .no-imprimir {
             display: none !important;
           }
         }
       `}</style>
 
-      <div style={{ maxWidth: '900px', margin: '0 auto', padding: '2rem' }}>
+      <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '2rem' }}>
         {/* Botones de acción */}
         <div className="no-imprimir" style={{ marginBottom: '1rem', display: 'flex', gap: '1rem' }}>
           <button
@@ -223,7 +226,17 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
           </button>
         </div>
 
-        {/* Recibo */}
+        {/* Recibo: +30% en pantalla (zoom); al imprimir se anula el escalado del wrap */}
+        <div
+          className="recibo-scale-wrap"
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            paddingBottom: '3rem',
+            transform: 'scale(1.3)',
+            transformOrigin: 'top center',
+          }}
+        >
         <div 
           id="recibo-impresion"
           style={{
@@ -490,6 +503,7 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
               Sistema de Gestión de Uniformes
             </p>
           </div>
+        </div>
         </div>
       </div>
     </LayoutWrapper>
