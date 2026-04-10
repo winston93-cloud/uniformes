@@ -19,7 +19,6 @@ export function useInsumos() {
           insumo_ubicaciones (
             id,
             insumo_id,
-            cantidad,
             ubicacion_almacenamiento_id,
             ubicacion:ubicaciones_almacenamiento ( id, nombre )
           )
@@ -171,7 +170,6 @@ export function useInsumos() {
           insumo_ubicaciones (
             id,
             insumo_id,
-            cantidad,
             ubicacion_almacenamiento_id,
             ubicacion:ubicaciones_almacenamiento ( id, nombre )
           )

@@ -39,24 +39,10 @@ const generarCodigo = (nombre: string, insumos: Insumo[]): string => {
   return `${prefijo}-${String(siguienteNumero).padStart(3, '0')}`;
 };
 
-const round2 = (n: number) => Math.round(n * 100) / 100;
-
-function cantidadPartidaStr(n: number): string {
-  const r = round2(n);
-  return Number.isInteger(r) ? String(r) : r.toFixed(2);
-}
-
 function textoAlmacenInsumo(insumo: Insumo): string {
   const partes = insumo.insumo_ubicaciones;
   if (partes && partes.length > 0) {
-    return partes
-      .map((p) => {
-        const nom = p.ubicacion?.nombre || '?';
-        const q = Number(p.cantidad);
-        const s = Number.isInteger(q) ? String(q) : q.toFixed(2);
-        return `${nom} (${s})`;
-      })
-      .join(', ');
+    return partes.map((p) => p.ubicacion?.nombre || '?').join(', ');
   }
   return insumo.ubicacion_almacenamiento?.nombre || '-';
 }
@@ -94,10 +80,10 @@ export default function InsumosPage() {
   const [auxGuardando, setAuxGuardando] = useState(false);
 
   const [ubicacionCatalogoSeleccionada, setUbicacionCatalogoSeleccionada] = useState('');
-  const [partidasUbicacion, setPartidasUbicacion] = useState<
-    Array<{ tempId: string; ubicacion_id: string; cantidad: string }>
+  /** Ubicaciones vinculadas a este insumo (solo catálogo; sin cantidad por bodega) */
+  const [ubicacionesInsumo, setUbicacionesInsumo] = useState<
+    Array<{ tempId: string; ubicacion_id: string }>
   >([]);
-  const [ubicacionSelectPartida, setUbicacionSelectPartida] = useState('');
 
   const cerrarAuxModal = () => {
     setAuxTipo(null);
@@ -188,6 +174,7 @@ export default function InsumosPage() {
       return;
     }
     setUbicacionCatalogoSeleccionada('');
+    setUbicacionesInsumo((prev) => prev.filter((p) => p.ubicacion_id !== id));
     if (desdeModalAux) cerrarAuxModal();
   };
 
@@ -275,79 +262,59 @@ export default function InsumosPage() {
     activo: true,
   });
 
-  const stockTotalInsumoForm = () => parseFloat(formData.stock_inicial) || 0;
-  const sumPartidasDistribuidas = () =>
-    partidasUbicacion.reduce((s, p) => s + (parseFloat(p.cantidad) || 0), 0);
-
-  const agregarPartidaUbicacion = (ubicacionId: string) => {
-    if (!ubicacionId) return;
-    if (partidasUbicacion.some((p) => p.ubicacion_id === ubicacionId)) return;
-    const total = stockTotalInsumoForm();
-    const sumOtros = partidasUbicacion.reduce(
-      (s, p) => s + (parseFloat(p.cantidad) || 0),
-      0
-    );
-    const restante = Math.max(0, round2(total - sumOtros));
-    setPartidasUbicacion((prev) => [
+  const agregarUbicacionSeleccionadaAlInsumo = () => {
+    const id = ubicacionCatalogoSeleccionada;
+    if (!id) {
+      alert('Elige una ubicación en el listado.');
+      return;
+    }
+    if (ubicacionesInsumo.some((u) => u.ubicacion_id === id)) return;
+    setUbicacionesInsumo((prev) => [
       ...prev,
-      {
-        tempId: crypto.randomUUID(),
-        ubicacion_id: ubicacionId,
-        cantidad: cantidadPartidaStr(restante),
-      },
+      { tempId: crypto.randomUUID(), ubicacion_id: id },
     ]);
-    setUbicacionSelectPartida('');
   };
 
   useEffect(() => {
-    const loadPartidas = async () => {
+    const cargarUbicacionesInsumo = async () => {
       if (!mostrarFormulario || !insumoEditando) {
-        setPartidasUbicacion([]);
+        setUbicacionesInsumo([]);
         setUbicacionCatalogoSeleccionada('');
-        setUbicacionSelectPartida('');
         return;
       }
       try {
         const { data: filasUb, error: errUb } = await supabase
           .from('insumo_ubicaciones')
-          .select('id, ubicacion_almacenamiento_id, cantidad')
+          .select('id, ubicacion_almacenamiento_id')
           .eq('insumo_id', insumoEditando.id);
 
         if (errUb) {
           console.error('insumo_ubicaciones:', errUb);
-          setPartidasUbicacion([]);
+          setUbicacionesInsumo([]);
         } else if (filasUb && filasUb.length > 0) {
-          setPartidasUbicacion(
+          setUbicacionesInsumo(
             filasUb.map((f) => ({
               tempId: f.id,
               ubicacion_id: f.ubicacion_almacenamiento_id,
-              cantidad: cantidadPartidaStr(Number(f.cantidad ?? 0)),
             }))
           );
-        } else if (
-          insumoEditando.ubicacion_almacenamiento_id &&
-          Number(insumoEditando.stock ?? insumoEditando.stock_inicial ?? 0) > 0
-        ) {
-          setPartidasUbicacion([
+        } else if (insumoEditando.ubicacion_almacenamiento_id) {
+          setUbicacionesInsumo([
             {
               tempId: `legacy-${insumoEditando.id}`,
               ubicacion_id: insumoEditando.ubicacion_almacenamiento_id,
-              cantidad: cantidadPartidaStr(
-                Number(insumoEditando.stock ?? insumoEditando.stock_inicial ?? 0)
-              ),
             },
           ]);
         } else {
-          setPartidasUbicacion([]);
+          setUbicacionesInsumo([]);
         }
         setUbicacionCatalogoSeleccionada(insumoEditando.ubicacion_almacenamiento_id || '');
-        setUbicacionSelectPartida('');
       } catch (e) {
         console.error(e);
-        setPartidasUbicacion([]);
+        setUbicacionesInsumo([]);
       }
     };
-    loadPartidas();
+    cargarUbicacionesInsumo();
   }, [mostrarFormulario, insumoEditando?.id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -356,34 +323,6 @@ export default function InsumosPage() {
 
     const totalStock = parseFloat(formData.stock_inicial) || 0;
     const stockMinimo = parseFloat(formData.stock_minimo) || 0;
-    const sumDistrib = partidasUbicacion.reduce(
-      (s, p) => s + (parseFloat(p.cantidad) || 0),
-      0
-    );
-
-    if (totalStock === 0 && partidasUbicacion.length > 0) {
-      setMensajeError(
-        '❌ Con stock en 0 no debe haber cantidades por ubicación. Quita las partidas o indica stock mayor a 0.'
-      );
-      setModalErrorAbierto(true);
-      return;
-    }
-    if (totalStock > 0) {
-      if (partidasUbicacion.length === 0) {
-        setMensajeError(
-          '❌ Con stock mayor a 0, agrega al menos una ubicación y reparte la cantidad.'
-        );
-        setModalErrorAbierto(true);
-        return;
-      }
-      if (round2(sumDistrib) !== round2(totalStock)) {
-        setMensajeError(
-          `❌ La suma por ubicación (${cantidadPartidaStr(sumDistrib)}) debe ser igual al stock existente (${cantidadPartidaStr(totalStock)}).`
-        );
-        setModalErrorAbierto(true);
-        return;
-      }
-    }
 
     const insumoData = {
       nombre: formData.nombre,
@@ -403,24 +342,19 @@ export default function InsumosPage() {
       activo: formData.activo,
     };
 
-    const aplicarPartidas = async (insumoId: string) => {
+    const aplicarUbicacionesInsumo = async (insumoId: string) => {
       const { error: delErr } = await supabase
         .from('insumo_ubicaciones')
         .delete()
         .eq('insumo_id', insumoId);
       if (delErr) throw delErr;
-      if (totalStock > 0 && partidasUbicacion.length > 0) {
-        const inserts = partidasUbicacion
-          .map((p) => ({
-            insumo_id: insumoId,
-            ubicacion_almacenamiento_id: p.ubicacion_id,
-            cantidad: round2(parseFloat(p.cantidad) || 0),
-          }))
-          .filter((row) => row.cantidad > 0);
-        if (inserts.length > 0) {
-          const { error: insErr } = await supabase.from('insumo_ubicaciones').insert(inserts);
-          if (insErr) throw insErr;
-        }
+      if (ubicacionesInsumo.length > 0) {
+        const inserts = ubicacionesInsumo.map((p) => ({
+          insumo_id: insumoId,
+          ubicacion_almacenamiento_id: p.ubicacion_id,
+        }));
+        const { error: insErr } = await supabase.from('insumo_ubicaciones').insert(inserts);
+        if (insErr) throw insErr;
       }
     };
 
@@ -439,9 +373,8 @@ export default function InsumosPage() {
         stock_minimo: '',
         activo: true,
       });
-      setPartidasUbicacion([]);
+      setUbicacionesInsumo([]);
       setUbicacionCatalogoSeleccionada('');
-      setUbicacionSelectPartida('');
       setMostrarFormulario(false);
       setInsumoEditando(null);
       setBotonEstado('normal');
@@ -458,9 +391,9 @@ export default function InsumosPage() {
         return;
       }
       try {
-        await aplicarPartidas(insumoEditando.id);
+        await aplicarUbicacionesInsumo(insumoEditando.id);
       } catch (err: any) {
-        setMensajeError(`❌ Insumo guardado pero falló el reparto por ubicación: ${err.message}`);
+        setMensajeError(`❌ Insumo guardado pero falló guardar ubicaciones: ${err.message}`);
         setModalErrorAbierto(true);
         return;
       }
@@ -480,9 +413,9 @@ export default function InsumosPage() {
         return;
       }
       try {
-        await aplicarPartidas(data.id);
+        await aplicarUbicacionesInsumo(data.id);
       } catch (err: any) {
-        setMensajeError(`❌ Insumo creado pero falló el reparto por ubicación: ${err.message}`);
+        setMensajeError(`❌ Insumo creado pero falló guardar ubicaciones: ${err.message}`);
         setModalErrorAbierto(true);
         return;
       }
@@ -527,9 +460,8 @@ export default function InsumosPage() {
 
   const handleNuevo = () => {
     setInsumoEditando(null);
-    setPartidasUbicacion([]);
+    setUbicacionesInsumo([]);
     setUbicacionCatalogoSeleccionada('');
-    setUbicacionSelectPartida('');
     setFormData({
       nombre: '',
       codigo: '',
@@ -657,9 +589,8 @@ export default function InsumosPage() {
             onClick={() => {
               setMostrarFormulario(false);
               setInsumoEditando(null);
-              setPartidasUbicacion([]);
+              setUbicacionesInsumo([]);
               setUbicacionCatalogoSeleccionada('');
-              setUbicacionSelectPartida('');
               setFormData({
                 nombre: '',
                 codigo: '',
@@ -862,7 +793,7 @@ export default function InsumosPage() {
                   }}
                 />
                 <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
-                  Total disponible; debe coincidir con la suma repartida por ubicación abajo. Si es 0, no se exigen ubicaciones.
+                  Cantidad total del insumo (inventario). Las ubicaciones de abajo solo indican dónde puede estar; no reparten cantidades.
                 </small>
               </div>
 
@@ -886,7 +817,7 @@ export default function InsumosPage() {
               </div>
 
               <div className="form-group">
-                <label className="form-label">📍 Catálogo de ubicaciones (talleres / bodegas)</label>
+                <label className="form-label">📍 Ubicaciones (talleres / bodegas)</label>
                 <div
                   style={{
                     display: 'flex',
@@ -907,7 +838,7 @@ export default function InsumosPage() {
                       minWidth: 'min(100%, 12rem)',
                     }}
                   >
-                    <option value="">Elige ubicación para Editar / Eliminar…</option>
+                    <option value="">Elige una ubicación del catálogo…</option>
                     {ubicaciones.map((ubic) => (
                       <option key={ubic.id} value={ubic.id}>
                         {ubic.nombre}
@@ -942,81 +873,33 @@ export default function InsumosPage() {
                   >
                     Eliminar
                   </button>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    style={{ padding: '0.45rem 0.85rem', fontSize: '0.88rem', whiteSpace: 'nowrap' }}
+                    onClick={agregarUbicacionSeleccionadaAlInsumo}
+                    disabled={!ubicacionCatalogoSeleccionada || loadingUbicaciones || auxGuardando}
+                  >
+                    ➕ Al insumo
+                  </button>
                 </div>
                 <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
-                  Mismo patrón que proveedor: gestiona el catálogo. El reparto del stock por bodega va en la sección siguiente.
+                  Un solo listado: administras el catálogo (Nueva / Editar / Eliminar) y con <strong>Al insumo</strong> enlazas
+                  esa ubicación a este material, sin cantidades por bodega.
                 </small>
-              </div>
-
-              <div className="form-group">
-                <label
-                  className="form-label"
-                  style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#334155' }}
-                >
-                  📦 Reparto por ubicación
-                </label>
-                <select
-                  className="form-select"
-                  value={ubicacionSelectPartida}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    if (v) agregarPartidaUbicacion(v);
-                    else setUbicacionSelectPartida('');
-                  }}
-                  disabled={loadingUbicaciones || auxGuardando}
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    border: '2px solid #e2e8f0',
-                    borderLeft: '4px solid #8b5cf6',
-                    borderRadius: '8px',
-                    fontSize: '1rem',
-                    backgroundColor: 'white',
-                  }}
-                >
-                  <option value="">+ Agregar ubicación al reparto…</option>
-                  {ubicaciones
-                    .filter(
-                      (u) =>
-                        u.activo &&
-                        !partidasUbicacion.some((p) => p.ubicacion_id === u.id)
-                    )
-                    .map((ubic) => (
-                      <option key={ubic.id} value={ubic.id}>
-                        {ubic.nombre}
-                      </option>
-                    ))}
-                </select>
-                <p
-                  style={{
-                    color: '#64748b',
-                    fontSize: '0.85rem',
-                    marginTop: '0.5rem',
-                    marginBottom: '0.75rem',
-                  }}
-                >
-                  Elige una ubicación para añadir una <strong>partida</strong>. La cantidad sugerida es el stock total menos lo
-                  ya asignado (puedes ajustar cada cantidad).
-                </p>
-                {stockTotalInsumoForm() > 0 && (
+                {ubicacionesInsumo.length > 0 ? (
                   <div
                     style={{
-                      padding: '0.5rem 0.75rem',
-                      background: '#f0fdfa',
-                      borderRadius: '8px',
-                      fontSize: '0.9rem',
-                      color: '#0f766e',
-                      marginBottom: '0.75rem',
+                      marginTop: '0.85rem',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.5rem',
                     }}
                   >
-                    Distribuido: <strong>{cantidadPartidaStr(sumPartidasDistribuidas())}</strong> · Restante:{' '}
-                    <strong>{cantidadPartidaStr(Math.max(0, round2(stockTotalInsumoForm() - sumPartidasDistribuidas())))}</strong>{' '}
-                    · Total stock: <strong>{cantidadPartidaStr(stockTotalInsumoForm())}</strong>
-                  </div>
-                )}
-                {partidasUbicacion.length > 0 ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-                    {partidasUbicacion.map((p) => {
+                    <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#334155' }}>
+                      Vinculadas a este insumo:
+                    </span>
+                    {ubicacionesInsumo.map((p) => {
                       const nombreUb =
                         ubicaciones.find((u) => u.id === p.ubicacion_id)?.nombre || 'Ubicación';
                       return (
@@ -1024,46 +907,23 @@ export default function InsumosPage() {
                           key={p.tempId}
                           style={{
                             display: 'flex',
-                            flexWrap: 'wrap',
                             alignItems: 'center',
                             gap: '0.5rem',
-                            padding: '0.65rem 0.75rem',
+                            padding: '0.5rem 0.75rem',
                             border: '1px solid #e2e8f0',
                             borderRadius: '8px',
                             background: '#fafafa',
                           }}
                         >
-                          <span style={{ fontWeight: 600, color: '#334155', minWidth: '120px' }}>{nombreUb}</span>
-                          <label style={{ fontSize: '0.85rem', color: '#64748b', margin: 0 }}>Cantidad</label>
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={p.cantidad}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setPartidasUbicacion((prev) =>
-                                prev.map((row) =>
-                                  row.tempId === p.tempId ? { ...row, cantidad: val } : row
-                                )
-                              );
-                            }}
-                            style={{
-                              width: '110px',
-                              padding: '0.45rem 0.5rem',
-                              border: '1px solid #cbd5e1',
-                              borderRadius: '6px',
-                            }}
-                          />
+                          <span style={{ fontWeight: 600, color: '#334155', flex: 1 }}>{nombreUb}</span>
                           <button
                             type="button"
                             onClick={() =>
-                              setPartidasUbicacion((prev) =>
+                              setUbicacionesInsumo((prev) =>
                                 prev.filter((row) => row.tempId !== p.tempId)
                               )
                             }
                             style={{
-                              marginLeft: 'auto',
                               padding: '0.35rem 0.65rem',
                               fontSize: '0.85rem',
                               border: '1px solid #fecaca',
@@ -1080,10 +940,8 @@ export default function InsumosPage() {
                     })}
                   </div>
                 ) : (
-                  <p style={{ color: '#94a3b8', fontSize: '0.9rem', fontStyle: 'italic' }}>
-                    {stockTotalInsumoForm() > 0
-                      ? 'Aún no hay ubicaciones en el reparto. Agrega al menos una con el selector de arriba.'
-                      : 'Con stock 0 no se requieren ubicaciones en el reparto.'}
+                  <p style={{ color: '#94a3b8', fontSize: '0.9rem', fontStyle: 'italic', marginTop: '0.75rem' }}>
+                    Ninguna ubicación enlazada. Elige una en el catálogo y pulsa «Al insumo».
                   </p>
                 )}
               </div>
@@ -1132,9 +990,8 @@ export default function InsumosPage() {
                   onClick={() => {
                     setMostrarFormulario(false);
                     setInsumoEditando(null);
-                    setPartidasUbicacion([]);
+                    setUbicacionesInsumo([]);
                     setUbicacionCatalogoSeleccionada('');
-                    setUbicacionSelectPartida('');
                     setFormData({
                       nombre: '',
                       codigo: '',
@@ -1292,9 +1149,8 @@ export default function InsumosPage() {
               setMensajeError('');
               setMostrarFormulario(false);
               setInsumoEditando(null);
-              setPartidasUbicacion([]);
+              setUbicacionesInsumo([]);
               setUbicacionCatalogoSeleccionada('');
-              setUbicacionSelectPartida('');
               setFormData({
                 nombre: '',
                 codigo: '',
@@ -1331,9 +1187,8 @@ export default function InsumosPage() {
                   setMensajeError('');
                   setMostrarFormulario(false);
                   setInsumoEditando(null);
-                  setPartidasUbicacion([]);
+                  setUbicacionesInsumo([]);
                   setUbicacionCatalogoSeleccionada('');
-                  setUbicacionSelectPartida('');
                   setFormData({
                     nombre: '',
                     codigo: '',
