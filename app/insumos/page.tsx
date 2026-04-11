@@ -362,8 +362,9 @@ export default function InsumosPage() {
     e.preventDefault();
     setBotonEstado('normal');
 
-    const totalStock = parseNumeroFormateado(formData.stock_inicial);
-    const stockMinimo = parseNumeroFormateado(formData.stock_minimo);
+    // Stock existente y mínimo permiten 0 (alta sin inventario / sin umbral de alerta). Nunca negativos (CHECK en BD).
+    const totalStock = Math.max(0, round2(parseNumeroFormateado(formData.stock_inicial)));
+    const stockMinimo = Math.max(0, round2(parseNumeroFormateado(formData.stock_minimo)));
     const partidasConInventario = ubicacionesInsumo.filter(
       (p) => round2(parseNumeroFormateado(p.cantidad)) > 0
     );
@@ -881,7 +882,8 @@ export default function InsumosPage() {
                   }}
                 />
                 <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
-                  Total del inventario. Con stock &gt; 0 debes repartirlo en las ubicaciones de abajo; la suma debe coincidir con este número (igual que en Prendas → Configurar stock).
+                  Total del inventario (puede ser <strong>0</strong> en el alta). Con stock &gt; 0 debes repartirlo en las
+                  ubicaciones de abajo; la suma debe coincidir con este número (igual que en Prendas → Configurar stock).
                 </small>
               </div>
 
@@ -905,7 +907,8 @@ export default function InsumosPage() {
                   }}
                 />
                 <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
-                  Cuando el stock actual caiga por debajo de este valor, se generará una <strong>alerta automática</strong> en el dashboard. Si no se ingresa, se establece en 0
+                  Puede ser <strong>0</strong> (sin alerta por mínimo). Si hay valor, cuando el stock actual caiga por debajo
+                  se generará una <strong>alerta</strong> en el dashboard. Vacío equivale a 0.
                 </small>
               </div>
 
