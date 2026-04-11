@@ -286,8 +286,14 @@ export default function InsumosPage() {
       alert('Elige una ubicación en el listado.');
       return;
     }
-    if (ubicacionesInsumo.some((u) => u.ubicacion_id === id)) return;
     const total = stockTotalInsumoForm();
+    if (total <= 0) {
+      alert(
+        'Con stock en 0 no hace falta agregar ubicaciones. Si ya agregaste alguna con cantidad 0, quítala con «Quitar» o borra el campo de stock y vuelve a intentar.'
+      );
+      return;
+    }
+    if (ubicacionesInsumo.some((u) => u.ubicacion_id === id)) return;
     const sumOtros = ubicacionesInsumo.reduce(
       (s, p) => s + parseNumeroFormateado(p.cantidad),
       0
@@ -358,20 +364,25 @@ export default function InsumosPage() {
 
     const totalStock = parseNumeroFormateado(formData.stock_inicial);
     const stockMinimo = parseNumeroFormateado(formData.stock_minimo);
+    const partidasConInventario = ubicacionesInsumo.filter(
+      (p) => round2(parseNumeroFormateado(p.cantidad)) > 0
+    );
     const sumDistrib = ubicacionesInsumo.reduce(
       (s, p) => s + parseNumeroFormateado(p.cantidad),
       0
     );
 
-    if (totalStock === 0 && ubicacionesInsumo.length > 0) {
-      setMensajeError(
-        '❌ Con stock en 0 no debe haber cantidades por ubicación. Quita las partidas o indica stock mayor a 0.'
-      );
-      setModalErrorAbierto(true);
-      return;
-    }
-    if (totalStock > 0) {
-      if (ubicacionesInsumo.length === 0) {
+    // Stock 0: permitir guardar aunque queden filas en UI con cantidad 0 (p. ej. tras usar «Al insumo» antes de corregir).
+    if (totalStock === 0) {
+      if (partidasConInventario.length > 0) {
+        setMensajeError(
+          '❌ Con stock en 0 no puede haber cantidades por ubicación mayores a 0. Ajusta las partidas o indica el stock total correcto.'
+        );
+        setModalErrorAbierto(true);
+        return;
+      }
+    } else if (totalStock > 0) {
+      if (partidasConInventario.length === 0) {
         setMensajeError(
           '❌ Con stock mayor a 0, agrega al menos una ubicación y reparte la cantidad.'
         );
@@ -960,7 +971,17 @@ export default function InsumosPage() {
                     className="btn btn-primary"
                     style={{ padding: '0.45rem 0.85rem', fontSize: '0.88rem', whiteSpace: 'nowrap' }}
                     onClick={agregarUbicacionSeleccionadaAlInsumo}
-                    disabled={!ubicacionCatalogoSeleccionada || loadingUbicaciones || auxGuardando}
+                    disabled={
+                      !ubicacionCatalogoSeleccionada ||
+                      loadingUbicaciones ||
+                      auxGuardando ||
+                      stockTotalInsumoForm() <= 0
+                    }
+                    title={
+                      stockTotalInsumoForm() <= 0
+                        ? 'Indica stock mayor a 0 para repartir en ubicaciones'
+                        : undefined
+                    }
                   >
                     ➕ Al insumo
                   </button>
