@@ -15,6 +15,23 @@ import ModalInsumosTalla from '@/components/ModalInsumosTalla';
 
 export const dynamic = 'force-dynamic';
 
+/** Solo dígitos → número (para inputs con separador de miles). */
+function parseEnteroFormateado(value: string): number {
+  const d = value.replace(/\D/g, '');
+  if (!d) return 0;
+  const n = parseInt(d, 10);
+  return Number.isFinite(n) ? n : 0;
+}
+
+/** Mientras escribe: conserva dígitos y muestra comas de miles (ej. 1000 → 1,000). */
+function formatearEnteroMilesAlEscribir(value: string): string {
+  const d = value.replace(/\D/g, '');
+  if (!d) return '';
+  const n = parseInt(d, 10);
+  if (!Number.isFinite(n)) return '';
+  return n.toLocaleString('en-US');
+}
+
 // Función para generar código automático basado en el nombre
 const generarCodigo = (nombre: string): string => {
   if (!nombre || nombre.trim() === '') return '';
@@ -139,10 +156,11 @@ export default function PrendasPage() {
             .single();
 
           if (costoExistente) {
-            const totalMostrar = String(costoExistente.stock ?? costoExistente.stock_inicial ?? 0);
+            const totalNum = Number(costoExistente.stock ?? costoExistente.stock_inicial ?? 0);
+            const minNum = Number(costoExistente.stock_minimo ?? 0);
             setStockData({
-              stock_inicial: totalMostrar,
-              stock_minimo: costoExistente.stock_minimo?.toString() || '',
+              stock_inicial: Number.isFinite(totalNum) ? totalNum.toLocaleString('en-US') : '',
+              stock_minimo: Number.isFinite(minNum) ? minNum.toLocaleString('en-US') : '',
             });
 
             const { data: filasUb, error: errUb } = await supabase
@@ -156,11 +174,14 @@ export default function PrendasPage() {
 
             if (!errUb && filasUb && filasUb.length > 0) {
               setPartidasUbicacion(
-                filasUb.map((f) => ({
-                  tempId: f.id,
-                  ubicacion_id: f.ubicacion_almacenamiento_id,
-                  cantidad: String(f.cantidad ?? 0),
-                }))
+                filasUb.map((f) => {
+                  const c = Number(f.cantidad ?? 0);
+                  return {
+                    tempId: f.id,
+                    ubicacion_id: f.ubicacion_almacenamiento_id,
+                    cantidad: Number.isFinite(c) ? c.toLocaleString('en-US') : '0',
+                  };
+                })
               );
             } else if (
               costoExistente.ubicacion_almacenamiento_id &&
@@ -170,7 +191,10 @@ export default function PrendasPage() {
                 {
                   tempId: `legacy-${costoExistente.id}`,
                   ubicacion_id: costoExistente.ubicacion_almacenamiento_id,
-                  cantidad: String(costoExistente.stock ?? 0),
+                  cantidad: (() => {
+                    const c = Number(costoExistente.stock ?? 0);
+                    return Number.isFinite(c) ? c.toLocaleString('en-US') : '0';
+                  })(),
                 },
               ]);
             } else {
@@ -237,9 +261,9 @@ export default function PrendasPage() {
     activo: true,
   });
 
-  const stockTotalModalNum = () => parseInt(stockData.stock_inicial, 10) || 0;
+  const stockTotalModalNum = () => parseEnteroFormateado(stockData.stock_inicial);
   const sumPartidasDistribuidas = () =>
-    partidasUbicacion.reduce((s, p) => s + (parseInt(p.cantidad, 10) || 0), 0);
+    partidasUbicacion.reduce((s, p) => s + parseEnteroFormateado(p.cantidad), 0);
   const restanteStockModal = () =>
     Math.max(0, stockTotalModalNum() - sumPartidasDistribuidas());
 
@@ -248,7 +272,7 @@ export default function PrendasPage() {
     if (partidasUbicacion.some((p) => p.ubicacion_id === ubicacionId)) return;
     const total = stockTotalModalNum();
     const sumOtros = partidasUbicacion.reduce(
-      (s, p) => s + (parseInt(p.cantidad, 10) || 0),
+      (s, p) => s + parseEnteroFormateado(p.cantidad),
       0
     );
     const restante = Math.max(0, total - sumOtros);
@@ -257,7 +281,7 @@ export default function PrendasPage() {
       {
         tempId: crypto.randomUUID(),
         ubicacion_id: ubicacionId,
-        cantidad: String(restante),
+        cantidad: restante.toLocaleString('en-US'),
       },
     ]);
     setUbicacionSelectStock('');
@@ -1213,10 +1237,10 @@ export default function PrendasPage() {
                   return;
                 }
 
-                const total = parseInt(stockData.stock_inicial, 10) || 0;
-                const stockMinimo = parseInt(stockData.stock_minimo, 10) || 0;
+                const total = parseEnteroFormateado(stockData.stock_inicial);
+                const stockMinimo = parseEnteroFormateado(stockData.stock_minimo);
                 const sumDistrib = partidasUbicacion.reduce(
-                  (s, p) => s + (parseInt(p.cantidad, 10) || 0),
+                  (s, p) => s + parseEnteroFormateado(p.cantidad),
                   0
                 );
 
@@ -1266,7 +1290,7 @@ export default function PrendasPage() {
                     .map((p) => ({
                       costo_id: costoExistente.id,
                       ubicacion_almacenamiento_id: p.ubicacion_id,
-                      cantidad: parseInt(p.cantidad, 10) || 0,
+                      cantidad: parseEnteroFormateado(p.cantidad),
                     }))
                     .filter((row) => row.cantidad > 0);
                   if (inserts.length > 0) {
@@ -1308,13 +1332,18 @@ export default function PrendasPage() {
                   Stock Existente *
                 </label>
                 <input
-                  type="number"
-                  min="0"
-                  step="1"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="off"
                   className="form-input"
                   value={stockData.stock_inicial}
-                  onChange={(e) => setStockData({ ...stockData, stock_inicial: e.target.value })}
-                  placeholder="Ej: 50"
+                  onChange={(e) =>
+                    setStockData({
+                      ...stockData,
+                      stock_inicial: formatearEnteroMilesAlEscribir(e.target.value),
+                    })
+                  }
+                  placeholder="Ej: 1,000"
                   required
                   style={{
                     width: '100%',
@@ -1339,12 +1368,17 @@ export default function PrendasPage() {
                   Stock Mínimo *
                 </label>
                 <input
-                  type="number"
-                  min="0"
-                  step="1"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="off"
                   className="form-input"
                   value={stockData.stock_minimo}
-                  onChange={(e) => setStockData({ ...stockData, stock_minimo: e.target.value })}
+                  onChange={(e) =>
+                    setStockData({
+                      ...stockData,
+                      stock_minimo: formatearEnteroMilesAlEscribir(e.target.value),
+                    })
+                  }
                   placeholder="Ej: 10"
                   required
                   style={{
@@ -1432,9 +1466,10 @@ export default function PrendasPage() {
                       marginBottom: '0.75rem',
                     }}
                   >
-                    Distribuido: <strong>{sumPartidasDistribuidas()}</strong> · Restante:{' '}
-                    <strong>{restanteStockModal()}</strong> · Total stock:{' '}
-                    <strong>{stockTotalModalNum()}</strong>
+                    Distribuido:{' '}
+                    <strong>{sumPartidasDistribuidas().toLocaleString('en-US')}</strong> · Restante:{' '}
+                    <strong>{restanteStockModal().toLocaleString('en-US')}</strong> · Total stock:{' '}
+                    <strong>{stockTotalModalNum().toLocaleString('en-US')}</strong>
                   </div>
                 )}
                 {partidasUbicacion.length > 0 ? (
@@ -1463,12 +1498,12 @@ export default function PrendasPage() {
                             Cantidad
                           </label>
                           <input
-                            type="number"
-                            min="0"
-                            step="1"
+                            type="text"
+                            inputMode="numeric"
+                            autoComplete="off"
                             value={p.cantidad}
                             onChange={(e) => {
-                              const val = e.target.value;
+                              const val = formatearEnteroMilesAlEscribir(e.target.value);
                               setPartidasUbicacion((prev) =>
                                 prev.map((row) =>
                                   row.tempId === p.tempId ? { ...row, cantidad: val } : row
