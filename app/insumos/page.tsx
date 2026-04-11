@@ -8,6 +8,11 @@ import { usePresentaciones } from '@/lib/hooks/usePresentaciones';
 import { useUbicacionesAlmacenamiento } from '@/lib/hooks/useUbicacionesAlmacenamiento';
 import { supabase } from '@/lib/supabase';
 import type { Insumo } from '@/lib/types';
+import {
+  parseNumeroFormateado,
+  formatearNumeroMilesDecimalesAlEscribir,
+  formatoNumeroDesdeDb,
+} from '@/lib/formatNumericInput';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,11 +46,6 @@ const generarCodigo = (nombre: string, insumos: Insumo[]): string => {
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-function cantidadPartidaStr(n: number): string {
-  const r = round2(n);
-  return Number.isInteger(r) ? String(r) : r.toFixed(2);
-}
-
 function textoAlmacenInsumo(insumo: Insumo): string {
   const partes = insumo.insumo_ubicaciones;
   if (partes && partes.length > 0) {
@@ -53,7 +53,7 @@ function textoAlmacenInsumo(insumo: Insumo): string {
       .map((p) => {
         const nom = p.ubicacion?.nombre || '?';
         const q = Number(p.cantidad ?? 0);
-        const s = Number.isInteger(q) ? String(q) : q.toFixed(2);
+        const s = formatoNumeroDesdeDb(q);
         return `${nom} (${s})`;
       })
       .join(', ');
@@ -276,9 +276,9 @@ export default function InsumosPage() {
     activo: true,
   });
 
-  const stockTotalInsumoForm = () => parseFloat(formData.stock_inicial) || 0;
+  const stockTotalInsumoForm = () => parseNumeroFormateado(formData.stock_inicial);
   const sumUbicacionesInsumo = () =>
-    ubicacionesInsumo.reduce((s, p) => s + (parseFloat(p.cantidad) || 0), 0);
+    ubicacionesInsumo.reduce((s, p) => s + parseNumeroFormateado(p.cantidad), 0);
 
   const agregarUbicacionSeleccionadaAlInsumo = () => {
     const id = ubicacionCatalogoSeleccionada;
@@ -289,7 +289,7 @@ export default function InsumosPage() {
     if (ubicacionesInsumo.some((u) => u.ubicacion_id === id)) return;
     const total = stockTotalInsumoForm();
     const sumOtros = ubicacionesInsumo.reduce(
-      (s, p) => s + (parseFloat(p.cantidad) || 0),
+      (s, p) => s + parseNumeroFormateado(p.cantidad),
       0
     );
     const restante = Math.max(0, round2(total - sumOtros));
@@ -298,7 +298,7 @@ export default function InsumosPage() {
       {
         tempId: crypto.randomUUID(),
         ubicacion_id: id,
-        cantidad: cantidadPartidaStr(restante),
+        cantidad: formatoNumeroDesdeDb(restante),
       },
     ]);
   };
@@ -324,7 +324,7 @@ export default function InsumosPage() {
             filasUb.map((f) => ({
               tempId: f.id,
               ubicacion_id: f.ubicacion_almacenamiento_id,
-              cantidad: cantidadPartidaStr(Number(f.cantidad ?? 0)),
+              cantidad: formatoNumeroDesdeDb(Number(f.cantidad ?? 0)),
             }))
           );
         } else if (
@@ -335,7 +335,7 @@ export default function InsumosPage() {
             {
               tempId: `legacy-${insumoEditando.id}`,
               ubicacion_id: insumoEditando.ubicacion_almacenamiento_id,
-              cantidad: cantidadPartidaStr(
+              cantidad: formatoNumeroDesdeDb(
                 Number(insumoEditando.stock ?? insumoEditando.stock_inicial ?? 0)
               ),
             },
@@ -356,10 +356,10 @@ export default function InsumosPage() {
     e.preventDefault();
     setBotonEstado('normal');
 
-    const totalStock = parseFloat(formData.stock_inicial) || 0;
-    const stockMinimo = parseFloat(formData.stock_minimo) || 0;
+    const totalStock = parseNumeroFormateado(formData.stock_inicial);
+    const stockMinimo = parseNumeroFormateado(formData.stock_minimo);
     const sumDistrib = ubicacionesInsumo.reduce(
-      (s, p) => s + (parseFloat(p.cantidad) || 0),
+      (s, p) => s + parseNumeroFormateado(p.cantidad),
       0
     );
 
@@ -380,7 +380,7 @@ export default function InsumosPage() {
       }
       if (round2(sumDistrib) !== round2(totalStock)) {
         setMensajeError(
-          `❌ La suma por ubicación (${cantidadPartidaStr(sumDistrib)}) debe ser igual al stock existente (${cantidadPartidaStr(totalStock)}).`
+          `❌ La suma por ubicación (${formatoNumeroDesdeDb(sumDistrib)}) debe ser igual al stock existente (${formatoNumeroDesdeDb(totalStock)}).`
         );
         setModalErrorAbierto(true);
         return;
@@ -397,7 +397,7 @@ export default function InsumosPage() {
           ? insumoEditando.cantidad_por_presentacion
           : 1,
       unidad_medida: (formData.unidad_medida || 'unidades').trim() || 'unidades',
-      costo_compra: parseFloat(formData.costo_compra) || 0,
+      costo_compra: parseNumeroFormateado(formData.costo_compra),
       stock_inicial: totalStock,
       stock: totalStock,
       stock_minimo: stockMinimo,
@@ -416,7 +416,7 @@ export default function InsumosPage() {
           .map((p) => ({
             insumo_id: insumoId,
             ubicacion_almacenamiento_id: p.ubicacion_id,
-            cantidad: round2(parseFloat(p.cantidad) || 0),
+            cantidad: round2(parseNumeroFormateado(p.cantidad)),
           }))
           .filter((row) => row.cantidad > 0);
         if (inserts.length > 0) {
@@ -495,9 +495,8 @@ export default function InsumosPage() {
 
   const handleEditar = (insumo: Insumo) => {
     setInsumoEditando(insumo);
-    const totalMostrar = String(
-      insumo.stock ?? insumo.stock_inicial ?? 0
-    );
+    const totalNum = Number(insumo.stock ?? insumo.stock_inicial ?? 0);
+    const minNum = Number(insumo.stock_minimo ?? 0);
     setFormData({
       nombre: insumo.nombre,
       codigo: insumo.codigo,
@@ -505,9 +504,9 @@ export default function InsumosPage() {
       presentacion_id: insumo.presentacion_id ?? '',
       cantidad_por_presentacion: insumo.cantidad_por_presentacion.toString(),
       unidad_medida: (insumo.unidad_medida && insumo.unidad_medida.trim()) || 'unidades',
-      costo_compra: insumo.costo_compra?.toString() || '0',
-      stock_inicial: totalMostrar,
-      stock_minimo: insumo.stock_minimo?.toString() || '0',
+      costo_compra: formatoNumeroDesdeDb(Number(insumo.costo_compra ?? 0)),
+      stock_inicial: formatoNumeroDesdeDb(totalNum),
+      stock_minimo: formatoNumeroDesdeDb(minNum),
       activo: insumo.activo,
     });
     setBotonEstado('normal');
@@ -830,13 +829,18 @@ export default function InsumosPage() {
               <div className="form-group">
                 <label className="form-label">💰 Costo de Compra</label>
                 <input
-                  type="number"
-                  step="0.01"
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
                   className="form-input"
                   value={formData.costo_compra}
-                  onChange={(e) => setFormData({ ...formData, costo_compra: e.target.value })}
-                  placeholder="Ej: 150.00"
-                  min="0"
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      costo_compra: formatearNumeroMilesDecimalesAlEscribir(e.target.value),
+                    })
+                  }
+                  placeholder="Ej: 1,500.00"
                   style={{
                     borderLeft: '4px solid #10b981',
                   }}
@@ -849,13 +853,18 @@ export default function InsumosPage() {
               <div className="form-group">
                 <label className="form-label">📦 Stock Existente</label>
                 <input
-                  type="number"
-                  step="0.01"
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
                   className="form-input"
                   value={formData.stock_inicial}
-                  onChange={(e) => setFormData({ ...formData, stock_inicial: e.target.value })}
-                  placeholder="Ej: 100.00 (opcional, por defecto 0)"
-                  min="0"
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      stock_inicial: formatearNumeroMilesDecimalesAlEscribir(e.target.value),
+                    })
+                  }
+                  placeholder="Ej: 10,000.5 (opcional, por defecto 0)"
                   style={{
                     borderLeft: '4px solid #3b82f6',
                   }}
@@ -868,13 +877,18 @@ export default function InsumosPage() {
               <div className="form-group">
                 <label className="form-label">⚠️ Stock Mínimo</label>
                 <input
-                  type="number"
-                  step="0.01"
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
                   className="form-input"
                   value={formData.stock_minimo}
-                  onChange={(e) => setFormData({ ...formData, stock_minimo: e.target.value })}
-                  placeholder="Ej: 10.00 (opcional, por defecto 0)"
-                  min="0"
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      stock_minimo: formatearNumeroMilesDecimalesAlEscribir(e.target.value),
+                    })
+                  }
+                  placeholder="Ej: 100.5 (opcional, por defecto 0)"
                   style={{
                     borderLeft: '4px solid #f59e0b',
                   }}
@@ -967,13 +981,14 @@ export default function InsumosPage() {
                       color: '#0f766e',
                     }}
                   >
-                    Distribuido: <strong>{cantidadPartidaStr(sumUbicacionesInsumo())}</strong> · Restante:{' '}
+                    Distribuido:{' '}
+                    <strong>{formatoNumeroDesdeDb(sumUbicacionesInsumo())}</strong> · Restante:{' '}
                     <strong>
-                      {cantidadPartidaStr(
+                      {formatoNumeroDesdeDb(
                         Math.max(0, round2(stockTotalInsumoForm() - sumUbicacionesInsumo()))
                       )}
                     </strong>{' '}
-                    · Total stock: <strong>{cantidadPartidaStr(stockTotalInsumoForm())}</strong>
+                    · Total stock: <strong>{formatoNumeroDesdeDb(stockTotalInsumoForm())}</strong>
                   </div>
                 )}
                 {ubicacionesInsumo.length > 0 ? (
@@ -1008,12 +1023,12 @@ export default function InsumosPage() {
                           <span style={{ fontWeight: 600, color: '#334155', minWidth: '120px' }}>{nombreUb}</span>
                           <label style={{ fontSize: '0.85rem', color: '#64748b', margin: 0 }}>Cantidad</label>
                           <input
-                            type="number"
-                            min="0"
-                            step="0.01"
+                            type="text"
+                            inputMode="decimal"
+                            autoComplete="off"
                             value={p.cantidad}
                             onChange={(e) => {
-                              const val = e.target.value;
+                              const val = formatearNumeroMilesDecimalesAlEscribir(e.target.value);
                               setUbicacionesInsumo((prev) =>
                                 prev.map((row) =>
                                   row.tempId === p.tempId ? { ...row, cantidad: val } : row

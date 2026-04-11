@@ -12,25 +12,12 @@ import { useUbicacionesAlmacenamiento } from '@/lib/hooks/useUbicacionesAlmacena
 import { supabase } from '@/lib/supabase';
 import type { Prenda } from '@/lib/types';
 import ModalInsumosTalla from '@/components/ModalInsumosTalla';
+import {
+  parseEnteroFormateado,
+  formatearEnteroMilesAlEscribir,
+} from '@/lib/formatNumericInput';
 
 export const dynamic = 'force-dynamic';
-
-/** Solo dígitos → número (para inputs con separador de miles). */
-function parseEnteroFormateado(value: string): number {
-  const d = value.replace(/\D/g, '');
-  if (!d) return 0;
-  const n = parseInt(d, 10);
-  return Number.isFinite(n) ? n : 0;
-}
-
-/** Mientras escribe: conserva dígitos y muestra comas de miles (ej. 1000 → 1,000). */
-function formatearEnteroMilesAlEscribir(value: string): string {
-  const d = value.replace(/\D/g, '');
-  if (!d) return '';
-  const n = parseInt(d, 10);
-  if (!Number.isFinite(n)) return '';
-  return n.toLocaleString('en-US');
-}
 
 // Función para generar código automático basado en el nombre
 const generarCodigo = (nombre: string): string => {
