@@ -8,6 +8,7 @@ import Link from 'next/link';
 import TarjetaInsumosFaltantes from '@/components/TarjetaInsumosFaltantes';
 import TarjetaAlertasStock from '@/components/TarjetaAlertasStock';
 import TarjetaAlertasStockPrendas from '@/components/TarjetaAlertasStockPrendas';
+import UserCard from '@/components/UserCard';
 
 export default function Dashboard() {
   const router = useRouter();
@@ -436,6 +437,8 @@ export default function Dashboard() {
               Catálogo y gestión de sucursales del sistema
             </p>
           </Link>
+
+          <UserCard />
 
           {/* Transferencias - Módulo Multi-Sucursal */}
           <Link 

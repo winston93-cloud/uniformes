@@ -309,6 +309,32 @@ export interface DetalleTransferencia {
   talla?: Talla;
 }
 
+/** Catálogo de roles para gobernanza (tabla `roles_uniformes`). */
+export interface RolUniforme {
+  id: string;
+  nombre: string;
+  descripcion: string | null;
+  orden: number;
+  activo: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+/** Estado del perfil en `usuarios_uniformes` (pre-login Supabase). */
+export type EstadoUsuarioUniforme = 'pendiente_validacion' | 'activo' | 'inactivo';
+
+/** Perfil de aplicación separado del login real (escalable a InsForge / Supabase Auth). */
+export interface UsuarioUniforme {
+  id: string;
+  nombre: string;
+  correo: string;
+  rol_id: string;
+  estado: EstadoUsuarioUniforme;
+  created_at?: string;
+  updated_at?: string;
+  rol?: RolUniforme;
+}
+
 // Contexto de sesión del usuario
 export interface SesionUsuario {
   usuario_id: number;

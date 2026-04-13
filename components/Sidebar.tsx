@@ -19,6 +19,7 @@ const menuItems = [
   { href: '/inventario', label: 'Inventario', icon: '📦' },
   { href: '/alumnos', label: 'Alumnos', icon: '👨‍🎓' },
   { href: '/externos', label: 'Clientes Externos', icon: '👤' },
+  { href: '/usuarios', label: 'Usuarios', icon: '👥' },
   { href: '/cortes', label: 'Cortes de Caja', icon: '💵' },
   { href: '/reportes', label: 'Reportes', icon: '📈' },
   { href: '/produccion-semanal', label: 'Producción Semanal', icon: '📅' },
