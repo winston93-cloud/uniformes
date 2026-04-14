@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
+import { REFETCH_PEDIDOS_EVENT } from '@/lib/refetchPedidosEvent';
 
 interface Pedido {
   id: string;
@@ -37,7 +38,7 @@ export function usePedidos(sucursal_id?: string) {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchPedidos = async () => {
+  const fetchPedidos = useCallback(async () => {
     try {
       setLoading(true);
       let query = supabase
@@ -67,7 +68,7 @@ export function usePedidos(sucursal_id?: string) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [sucursal_id]);
 
   const crearPedido = async (pedido: Omit<Pedido, 'id' | 'created_at' | 'updated_at'>, detalles: Omit<DetallePedido, 'id' | 'pedido_id'>[], pedido_sucursal_id?: string, usuario_id?: number | string) => {
     try {
@@ -151,7 +152,15 @@ export function usePedidos(sucursal_id?: string) {
 
   useEffect(() => {
     fetchPedidos();
-  }, [sucursal_id]);
+  }, [fetchPedidos]);
+
+  useEffect(() => {
+    const onRefetch = () => {
+      void fetchPedidos();
+    };
+    window.addEventListener(REFETCH_PEDIDOS_EVENT, onRefetch);
+    return () => window.removeEventListener(REFETCH_PEDIDOS_EVENT, onRefetch);
+  }, [fetchPedidos]);
 
   return {
     pedidos,

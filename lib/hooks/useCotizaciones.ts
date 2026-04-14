@@ -7,6 +7,7 @@ import { compareCotizacionesPorFechaEntrega } from '@/lib/cotizacionesSort';
 import { calcularMontosImpuestosCotizacion } from '@/lib/cotizacionesImpuestos';
 import { transicionEstadoCotizacionValida } from '@/lib/cotizacionesEstados';
 import { isUuid, resolverAlumnoUuidParaCotizacion } from '@/lib/resolverAlumnoCotizacion';
+import { REFETCH_PEDIDOS_EVENT } from '@/lib/refetchPedidosEvent';
 
 export interface PartidaCotizacion {
   prenda_nombre: string;
@@ -295,6 +296,9 @@ export function useCotizaciones() {
 
       if (error) throw error;
       await obtenerCotizaciones();
+      if (estado === 'terminado' && typeof window !== 'undefined') {
+        window.dispatchEvent(new Event(REFETCH_PEDIDOS_EVENT));
+      }
       return { error: null };
     } catch (err) {
       console.error('Error al actualizar estado:', err);
