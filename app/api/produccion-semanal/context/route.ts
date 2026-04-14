@@ -5,8 +5,8 @@ import { getWeekForDate, toISODate } from '@/lib/produccion-semanal-week';
 export const runtime = 'nodejs';
 
 /**
- * Contexto del modal de producción: semana actual + mapa detalle_id → fecha_inicio de la semana
- * donde ya está en plan + ítems guardados de esa semana.
+ * Contexto del modal de producción: semana vista + piezas ya asignadas en *otras* semanas
+ * por partida + ítems guardados del plan de esta semana.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
 
     const { data: allItems, error: itemsErr } = await insforge.database
       .from('produccion_plan_semanal_items')
-      .select('detalle_id, plan_id');
+      .select('detalle_id, plan_id, piezas');
 
     if (itemsErr) {
       return NextResponse.json({ success: false, error: itemsErr.message }, { status: 500 });
@@ -41,11 +41,15 @@ export async function GET(request: NextRequest) {
       planFecha.set(row.id, row.fecha_inicio);
     }
 
-    const ocupados: Record<string, string> = {};
+    /** Suma de piezas por detalle_id en planes cuya semana NO es la que se está editando. */
+    const piezasEnOtrasSemanas: Record<string, number> = {};
     for (const it of allItems || []) {
-      const row = it as { detalle_id: string; plan_id: string };
+      const row = it as { detalle_id: string; plan_id: string; piezas?: number };
       const fi = planFecha.get(row.plan_id);
-      if (fi) ocupados[row.detalle_id] = fi;
+      if (!fi || fi === fecha_inicio) continue;
+      const n = Number(row.piezas) || 0;
+      if (n <= 0) continue;
+      piezasEnOtrasSemanas[row.detalle_id] = (piezasEnOtrasSemanas[row.detalle_id] ?? 0) + n;
     }
 
     const planSem = (allPlans || []).find((p: any) => p.fecha_inicio === fecha_inicio);
@@ -65,7 +69,9 @@ export async function GET(request: NextRequest) {
       success: true,
       fecha_inicio,
       fecha_fin,
-      ocupados,
+      /** @deprecated Preferir piezasEnOtrasSemanas; se mantiene vacío por compatibilidad. */
+      ocupados: {} as Record<string, string>,
+      piezasEnOtrasSemanas,
       planItems,
     });
   } catch (err) {

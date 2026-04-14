@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { insforge, assertInsforgeConfigured } from '@/lib/insforge';
 import { getWeekForDate, toISODate } from '@/lib/produccion-semanal-week';
+import { supabase, getSupabaseErrorMessage } from '@/lib/supabase';
 
 export const runtime = 'nodejs';
 
@@ -15,13 +16,20 @@ const ItemSchema = z.object({
   costo_unitario: z.number().nonnegative(),
 });
 
-const BodySchema = z.object({
-  semanaOffset: z.number().int(),
-  gastos_fijos_total: z.number().nonnegative(),
-  ganancias_total: z.number(),
-  estado: z.enum(['BORRADOR', 'GENERADO']).default('GENERADO'),
-  items: z.array(ItemSchema),
-});
+const BodySchema = z
+  .object({
+    semanaOffset: z.number().int(),
+    gastos_fijos_total: z.number().nonnegative(),
+    ganancias_total: z.number(),
+    estado: z.enum(['BORRADOR', 'GENERADO']).default('GENERADO'),
+    items: z.array(ItemSchema),
+  })
+  .superRefine((data, ctx) => {
+    const ids = data.items.map((i) => i.detalle_id);
+    if (new Set(ids).size !== ids.length) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'detalle_id duplicado en items' });
+    }
+  });
 
 export async function POST(request: NextRequest) {
   try {
@@ -103,17 +111,71 @@ export async function POST(request: NextRequest) {
       planId = planInserted!.id as string;
     }
 
-    const detalleIds = items.map((it) => it.detalle_id).filter(Boolean);
+    const detalleIds = [...new Set(items.map((it) => it.detalle_id).filter(Boolean))];
 
-    /** Quitar estas partidas de planes de *otras* semanas (una partida solo en un plan). */
-    if (detalleIds.length > 0) {
-      const { error: delOtroErr } = await insforge.database
+    /** Suma de piezas en otras semanas por partida (límite junto con esta semana = cantidad en cotización). */
+    const { data: allPlansForSum, error: plansSumErr } = await insforge.database
+      .from('produccion_plan_semanal')
+      .select('id, fecha_inicio');
+    if (plansSumErr) {
+      return NextResponse.json({ success: false, error: `Error listando planes: ${plansSumErr.message}` }, { status: 500 });
+    }
+    const otherPlanIds = (allPlansForSum || [])
+      .filter((p: { fecha_inicio: string }) => p.fecha_inicio !== fecha_inicio)
+      .map((p: { id: string }) => p.id);
+
+    const sumOtrasSemanas: Record<string, number> = {};
+    if (otherPlanIds.length > 0 && detalleIds.length > 0) {
+      const { data: otherItems, error: oiErr } = await insforge.database
         .from('produccion_plan_semanal_items')
-        .delete()
-        .in('detalle_id', detalleIds)
-        .neq('plan_id', planId);
-      if (delOtroErr) {
-        return NextResponse.json({ success: false, error: `Error reasignando partidas: ${delOtroErr.message}` }, { status: 500 });
+        .select('detalle_id, piezas')
+        .in('plan_id', otherPlanIds)
+        .in('detalle_id', detalleIds);
+      if (oiErr) {
+        return NextResponse.json({ success: false, error: `Error leyendo otras semanas: ${oiErr.message}` }, { status: 500 });
+      }
+      for (const row of otherItems || []) {
+        const r = row as { detalle_id: string; piezas?: number };
+        const n = Number(r.piezas) || 0;
+        if (n <= 0) continue;
+        sumOtrasSemanas[r.detalle_id] = (sumOtrasSemanas[r.detalle_id] ?? 0) + n;
+      }
+    }
+
+    if (detalleIds.length > 0) {
+      const { data: detRows, error: detErr } = await supabase
+        .from('detalle_cotizacion')
+        .select('id, cantidad')
+        .in('id', detalleIds);
+      if (detErr) {
+        return NextResponse.json(
+          { success: false, error: `No se pudo validar partidas: ${getSupabaseErrorMessage(detErr)}` },
+          { status: 500 }
+        );
+      }
+      const cantidadPorId = new Map<string, number>();
+      for (const row of detRows || []) {
+        const r = row as { id: string; cantidad?: number };
+        cantidadPorId.set(r.id, Math.max(0, Math.floor(Number(r.cantidad) || 0)));
+      }
+      for (const it of items) {
+        const maxCant = cantidadPorId.get(it.detalle_id);
+        if (maxCant === undefined) {
+          return NextResponse.json(
+            { success: false, error: `Partida no encontrada en cotización: ${it.detalle_id}` },
+            { status: 400 }
+          );
+        }
+        const otras = sumOtrasSemanas[it.detalle_id] ?? 0;
+        if (it.piezas + otras > maxCant) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: `Piezas de partida ${it.modelo}: máximo ${maxCant} en cotización; ${otras} ya en otras semanas; esta semana como mucho ${Math.max(0, maxCant - otras)}.`,
+            },
+            { status: 400 }
+          );
+        }
       }
     }
 

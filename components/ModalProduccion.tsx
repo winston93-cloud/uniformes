@@ -10,7 +10,7 @@ import {
   compareCotizacionesPorFechaEntrega,
   compareItemsProduccionPorFechaEntrega,
 } from '@/lib/cotizacionesSort';
-import { getWeekForDate, toISODate } from '@/lib/produccion-semanal-week';
+import { getWeekForDate } from '@/lib/produccion-semanal-week';
 import {
   abrirPlanTrabajoSemanalPdf,
   type FilaPlanTrabajoPdf,
@@ -86,28 +86,34 @@ function fmtFechaCot(fecha: string | null | undefined) {
   }
 }
 
-/**
- * Partida seleccionable en la semana que se está viendo: libre en todos los planes,
- * o ya asignada solo al plan de esta semana (mismo lunes). Si está en otra semana, no se muestra.
- */
-function detalleDisponibleParaSemanaVista(
+/** Máximo de piezas que pueden planearse en la semana vista (restante tras otras semanas). */
+function maxPiezasEstaSemana(
   detalleId: string,
-  fechaInicioVista: string,
-  ocupados: Record<string, string>
-): boolean {
-  const asignadoA = ocupados[detalleId];
-  if (!asignadoA) return true;
-  return asignadoA === fechaInicioVista;
+  cantidadLinea: number,
+  piezasEnOtrasSemanas: Record<string, number>
+): number {
+  const o = piezasEnOtrasSemanas[detalleId] ?? 0;
+  return Math.max(0, Math.floor(Number(cantidadLinea) || 0) - o);
 }
 
-/** Al menos una partida disponible para esta semana (no toda la cotización en otras semanas). */
+function detalleTieneCupoOPiezasEnEstaSemana(
+  d: DetalleCotizacion,
+  piezasEnOtrasSemanas: Record<string, number>,
+  piezasEstaSemana: Record<string, number>
+): boolean {
+  const maxAqui = maxPiezasEstaSemana(d.id, d.cantidad, piezasEnOtrasSemanas);
+  const ya = piezasEstaSemana[d.id] ?? 0;
+  return maxAqui > 0 || ya > 0;
+}
+
+/** Al menos una partida con piezas libres o ya asignadas a esta semana. */
 function cotizacionTienePartidaDisponibleAqui(
   detalles: DetalleCotizacion[] | undefined,
-  fechaInicioSemana: string,
-  ocupados: Record<string, string>
+  piezasEnOtrasSemanas: Record<string, number>,
+  piezasEstaSemana: Record<string, number>
 ): boolean {
   if (!detalles || detalles.length === 0) return false;
-  return detalles.some((d) => detalleDisponibleParaSemanaVista(d.id, fechaInicioSemana, ocupados));
+  return detalles.some((d) => detalleTieneCupoOPiezasEnEstaSemana(d, piezasEnOtrasSemanas, piezasEstaSemana));
 }
 
 export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionProps) {
@@ -117,7 +123,8 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
   const [cotizacionExpandida, setCotizacionExpandida] = useState<string | null>(null);
   const [detallesExpandidos, setDetallesExpandidos] = useState<Record<string, DetalleCotizacion[]>>({});
   const [costoPorId, setCostoPorId] = useState<Record<string, Costo>>({});
-  const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set());
+  /** detalle_id → piezas asignadas al plan de la semana que se edita (0 = no entra en el plan). */
+  const [piezasPorDetalle, setPiezasPorDetalle] = useState<Record<string, number>>({});
   const [gastosFijosTotal, setGastosFijosTotal] = useState(0);
   const [loadingGastos, setLoadingGastos] = useState(false);
   const [guardandoPlan, setGuardandoPlan] = useState(false);
@@ -130,8 +137,8 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
     gananciasTotal: number;
   }>(null);
   const [seleccionGuardadaMsg, setSeleccionGuardadaMsg] = useState<string | null>(null);
-  /** detalle_id → fecha_inicio (lunes) de la semana donde ya está en un plan InsForge */
-  const [ocupadosGlobal, setOcupadosGlobal] = useState<Record<string, string>>({});
+  /** Piezas ya comprometidas en planes de otras semanas (por detalle_id). */
+  const [piezasEnOtrasSemanas, setPiezasEnOtrasSemanas] = useState<Record<string, number>>({});
   const [loadingContext, setLoadingContext] = useState(false);
   const [guardandoSeleccion, setGuardandoSeleccion] = useState(false);
   /** Ítems ya persistidos en esta semana (evita perder partidas al guardar solo lo expandido). */
@@ -145,11 +152,6 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
     base.setDate(base.getDate() + semanaOffset * 7);
     return getWeekForDate(base);
   }, [semanaOffset]);
-
-  const fechaInicioSemanaActual = useMemo(() => toISODate(monday), [monday]);
-
-  const detalleDisponibleEnEstaSemana = (detalleId: string) =>
-    detalleDisponibleParaSemanaVista(detalleId, fechaInicioSemanaActual, ocupadosGlobal);
 
   /** Solo aprobadas: el plan semanal no incluye cotizaciones ya terminadas. */
   const cotizacionesProduccion = useMemo(() => {
@@ -169,13 +171,13 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
     return cotizacionesProduccion.filter((cot) => {
       const detalles = detallesExpandidos[cot.id];
       if (!detalles) return true;
-      return cotizacionTienePartidaDisponibleAqui(detalles, fechaInicioSemanaActual, ocupadosGlobal);
+      return cotizacionTienePartidaDisponibleAqui(detalles, piezasEnOtrasSemanas, piezasPorDetalle);
     });
   }, [
     cotizacionesProduccion,
     detallesExpandidos,
-    ocupadosGlobal,
-    fechaInicioSemanaActual,
+    piezasEnOtrasSemanas,
+    piezasPorDetalle,
     loadingContext,
   ]);
 
@@ -195,13 +197,18 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
         const res = await fetch(`/api/produccion-semanal/context?semanaOffset=${semanaOffset}`);
         const json = await res.json().catch(() => null);
         if (cancelled || !json?.success) return;
-        setOcupadosGlobal((json.ocupados as Record<string, string>) || {});
+        const otras = (json.piezasEnOtrasSemanas as Record<string, number> | undefined) || {};
+        setPiezasEnOtrasSemanas(otras);
         const rawItems = (json.planItems as PlanItemSemana[] | undefined) || [];
         setPlanItemsCache(rawItems);
-        const ids = rawItems.map((x) => x.detalle_id);
-        setSeleccionados(new Set(ids));
+        const nextPiezas: Record<string, number> = {};
+        for (const x of rawItems) {
+          const n = Number(x.piezas) || 0;
+          if (n > 0) nextPiezas[x.detalle_id] = n;
+        }
+        setPiezasPorDetalle(nextPiezas);
       } catch {
-        if (!cancelled) setOcupadosGlobal({});
+        if (!cancelled) setPiezasEnOtrasSemanas({});
       } finally {
         if (!cancelled) setLoadingContext(false);
       }
@@ -329,35 +336,44 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
     }
   };
 
-  const toggleSeleccion = (detalle: DetalleCotizacion, cotizacion: Cotizacion) => {
-    const key = detalle.id;
-    setSeleccionados((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) {
-        next.delete(key);
-      } else {
-        next.add(key);
+  const detalleExpandidoPorId = useMemo(() => {
+    const m = new Map<string, { detalle: DetalleCotizacion; cot: Cotizacion }>();
+    for (const cot of cotizacionesProduccion) {
+      for (const d of detallesExpandidos[cot.id] || []) {
+        m.set(d.id, { detalle: d, cot });
       }
+    }
+    return m;
+  }, [cotizacionesProduccion, detallesExpandidos]);
+
+  const setPiezasLinea = (detalle: DetalleCotizacion, raw: number) => {
+    const maxAqui = maxPiezasEstaSemana(detalle.id, detalle.cantidad, piezasEnOtrasSemanas);
+    const v = Math.max(0, Math.min(maxAqui, Math.round(Number(raw) || 0)));
+    setPiezasPorDetalle((prev) => {
+      const next = { ...prev };
+      if (v <= 0) delete next[detalle.id];
+      else next[detalle.id] = v;
       return next;
     });
   };
 
-  const estaSeleccionado = (detalleId: string) => seleccionados.has(detalleId);
-
   const seleccionInfo = useMemo(() => {
-    const desdeExpandido = new Map<string, SeleccionRow>();
-    for (const cot of cotizacionesProduccion) {
-      const detalles = detallesExpandidos[cot.id] || [];
-      for (const d of detalles as any[]) {
-        if (!seleccionados.has(d.id)) continue;
-        if (!detalleDisponibleEnEstaSemana(d.id)) continue;
+    const rows: SeleccionRow[] = [];
+
+    for (const detalleId of Object.keys(piezasPorDetalle)) {
+      const piezas = piezasPorDetalle[detalleId];
+      if (!piezas || piezas <= 0) continue;
+
+      const hit = detalleExpandidoPorId.get(detalleId);
+      if (hit) {
+        const d = hit.detalle as any;
+        const cot = hit.cot;
         const precio = Number(d.precio_unitario) || 0;
         const costoId = d.costo_id as string | undefined;
         const costoUnit = costoId && costoPorId[costoId] ? Number((costoPorId[costoId] as any).precio_compra) || 0 : 0;
-        const piezas = Number(d.cantidad) || 0;
         const ganU = Number((precio - costoUnit).toFixed(2));
         const ganT = Number((ganU * piezas).toFixed(2));
-        desdeExpandido.set(d.id, {
+        rows.push({
           cotizacion_id: cot.id,
           cotizacion_folio: cot.folio,
           detalle_id: d.id,
@@ -368,32 +384,18 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
           ganancia_unitaria: ganU,
           ganancia_total: ganT,
         });
-      }
-    }
-
-    const rows: SeleccionRow[] = [];
-    for (const detalleId of seleccionados) {
-      if (!detalleDisponibleEnEstaSemana(detalleId)) continue;
-      const exp = desdeExpandido.get(detalleId);
-      if (exp) {
-        rows.push(exp);
         continue;
       }
+
       const cached = planItemsCache.find((p) => p.detalle_id === detalleId);
-      if (cached) rows.push(rowDesdePlanItemGuardado(cached));
+      if (cached) {
+        rows.push(rowDesdePlanItemGuardado({ ...cached, piezas }));
+      }
     }
 
     const gananciasTotal = rows.reduce((s, r) => s + r.ganancia_total, 0);
     return { rows, gananciasTotal };
-  }, [
-    cotizacionesProduccion,
-    detallesExpandidos,
-    seleccionados,
-    costoPorId,
-    ocupadosGlobal,
-    fechaInicioSemanaActual,
-    planItemsCache,
-  ]);
+  }, [piezasPorDetalle, detalleExpandidoPorId, costoPorId, planItemsCache]);
 
   /** Filas para la tabla del modal principal (mismas columnas que al elegir partidas). */
   const filasResumenSemana = useMemo(() => {
@@ -468,17 +470,22 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
       const ctxRes = await fetch(`/api/produccion-semanal/context?semanaOffset=${semanaOffset}`);
       const ctx = await ctxRes.json().catch(() => null);
       if (ctx?.success) {
-        setOcupadosGlobal((ctx.ocupados as Record<string, string>) || {});
+        setPiezasEnOtrasSemanas((ctx.piezasEnOtrasSemanas as Record<string, number> | undefined) || {});
         const rawItems = (ctx.planItems as PlanItemSemana[] | undefined) || [];
         setPlanItemsCache(rawItems);
-        setSeleccionados(new Set(rawItems.map((x) => x.detalle_id)));
+        const nextPiezas: Record<string, number> = {};
+        for (const x of rawItems) {
+          const n = Number(x.piezas) || 0;
+          if (n > 0) nextPiezas[x.detalle_id] = n;
+        }
+        setPiezasPorDetalle(nextPiezas);
       }
 
       handleGuardar();
       setSeleccionGuardadaMsg(
         itemsPayload.length === 0
           ? 'Plan de esta semana vaciado.'
-          : 'Selección guardada para esta semana. Ya no aparecerá en otras semanas.'
+          : 'Selección guardada. Las piezas que no asignaste aquí siguen disponibles para semanas posteriores.'
       );
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error al guardar');
@@ -898,9 +905,9 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
             <div>
               <h2 style={{ margin: 0, fontSize: 'clamp(1.1rem, 2.5vw, 1.35rem)' }}>Editar selección</h2>
               <p style={{ margin: '0.35rem 0 0', fontSize: '0.85rem', color: '#6b7280', lineHeight: 1.4 }}>
-                Cotizaciones <strong>aprobadas</strong> (orden: fecha de entrega). Expande
-                una cotización y elige las partidas. Puedes guardar aunque no alcances el mínimo; si llegan más
-                cotizaciones en la semana, añade partidas y vuelve a guardar: se suman al plan de esta semana.
+                Cotizaciones <strong>aprobadas</strong> (orden: fecha de entrega). Expande una cotización e indica
+                cuántas piezas van a <strong>esta semana</strong> (pueden ser menos que el pedido). El resto queda
+                libre para otras semanas. Puedes guardar aunque no alcances el mínimo.
               </p>
               <p style={{ margin: '0.5rem 0 0', fontSize: '0.8rem', color: '#9ca3af' }}>
                 Semana {formatWeekRange(monday, sunday)}
@@ -925,8 +932,8 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
             </p>
           ) : cotizacionesVisibles.length === 0 ? (
             <p style={{ textAlign: 'center', color: '#6b7280', padding: '2rem' }}>
-              No hay partidas disponibles para <strong>esta semana</strong>: las de tus cotizaciones aprobadas ya están
-              en el plan de otra semana.
+              No hay piezas libres para <strong>esta semana</strong>: en tus cotizaciones aprobadas ya asignaste todas las
+              piezas a otras semanas (o no hay partidas).
             </p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -997,13 +1004,15 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
                         <p style={{ padding: '1rem', color: '#6b7280' }}>Cargando conceptos...</p>
                       ) : (() => {
                         const detallesRaw = detallesExpandidos[cot.id] || [];
-                        const detallesMostrar = detallesRaw.filter((d) => detalleDisponibleEnEstaSemana(d.id));
+                        const detallesMostrar = detallesRaw.filter((d) =>
+                          detalleTieneCupoOPiezasEnEstaSemana(d, piezasEnOtrasSemanas, piezasPorDetalle)
+                        );
                         if (detallesMostrar.length === 0) {
                           return (
                             <p style={{ padding: '1rem 0', color: '#6b7280', fontSize: '0.9rem' }}>
                               {detallesRaw.length === 0
                                 ? 'Sin conceptos en esta cotización.'
-                                : 'No hay partidas disponibles para esta semana.'}
+                                : 'No hay piezas libres para esta semana (revisa otras semanas o el pedido total).'}
                             </p>
                           );
                         }
@@ -1012,41 +1021,34 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
                             <table
                               style={{
                                 width: '100%',
-                                minWidth: '600px',
+                                minWidth: '720px',
                                 borderCollapse: 'collapse',
                                 fontSize: '0.85rem',
                               }}
                             >
                               <thead>
                                 <tr style={{ background: '#f3f4f6', textAlign: 'left' }}>
-                                  <th style={{ padding: '0.5rem', width: 36 }} aria-label="Seleccionar" />
                                   <th style={{ padding: '0.5rem' }}>Cotización</th>
                                   <th style={{ padding: '0.5rem' }}>Cliente</th>
                                   <th style={{ padding: '0.5rem' }}>Modelo</th>
-                                  <th style={{ padding: '0.5rem', textAlign: 'right' }}>Piezas</th>
+                                  <th style={{ padding: '0.5rem', textAlign: 'right' }}>Pedido</th>
+                                  <th style={{ padding: '0.5rem', textAlign: 'center' }}>Esta semana</th>
                                   <th style={{ padding: '0.5rem' }}>Fecha de entrega</th>
                                 </tr>
                               </thead>
                               <tbody>
                                 {detallesMostrar.map((d) => {
-                                  const sel = estaSeleccionado(d.id);
+                                  const maxAqui = maxPiezasEstaSemana(d.id, d.cantidad, piezasEnOtrasSemanas);
+                                  const val = piezasPorDetalle[d.id] ?? 0;
+                                  const activa = val > 0;
                                   return (
                                     <tr
                                       key={d.id}
                                       style={{
-                                        background: sel ? '#ecfdf5' : '#fff',
+                                        background: activa ? '#ecfdf5' : '#fff',
                                         borderBottom: '1px solid #f3f4f6',
                                       }}
                                     >
-                                      <td style={{ padding: '0.45rem 0.5rem', verticalAlign: 'middle' }}>
-                                        <input
-                                          type="checkbox"
-                                          checked={sel}
-                                          onChange={() => toggleSeleccion(d, cot)}
-                                          aria-label={`Seleccionar ${d.prenda_nombre}`}
-                                          style={{ width: 18, height: 18, cursor: 'pointer' }}
-                                        />
-                                      </td>
                                       <td style={{ padding: '0.45rem 0.5rem', verticalAlign: 'middle' }}>
                                         <strong>{cot.folio}</strong>
                                       </td>
@@ -1060,6 +1062,29 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
                                       </td>
                                       <td style={{ padding: '0.45rem 0.5rem', textAlign: 'right', verticalAlign: 'middle' }}>
                                         {d.cantidad}
+                                        {maxAqui < (Number(d.cantidad) || 0) ? (
+                                          <span style={{ display: 'block', fontSize: '0.72rem', color: '#6b7280' }}>
+                                            máx. aquí: {maxAqui}
+                                          </span>
+                                        ) : null}
+                                      </td>
+                                      <td style={{ padding: '0.45rem 0.5rem', textAlign: 'center', verticalAlign: 'middle' }}>
+                                        <input
+                                          type="number"
+                                          min={0}
+                                          max={maxAqui}
+                                          value={val}
+                                          onChange={(e) => setPiezasLinea(d, e.target.value === '' ? 0 : Number(e.target.value))}
+                                          aria-label={`Piezas esta semana para ${d.prenda_nombre}`}
+                                          style={{
+                                            width: 72,
+                                            padding: '0.35rem 0.5rem',
+                                            borderRadius: 8,
+                                            border: '1px solid #d1d5db',
+                                            textAlign: 'center',
+                                            fontWeight: 600,
+                                          }}
+                                        />
                                       </td>
                                       <td style={{ padding: '0.45rem 0.5rem', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
                                         {fmtFechaCot(cot.fecha_entrega)}
