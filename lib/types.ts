@@ -228,6 +228,8 @@ export interface Cotizacion {
   fecha_entrega: string | null;
   pdf_url: string | null;
   estado: 'emitido' | 'aprobado' | 'trabajando' | 'terminado';
+  /** Set en BD al descontar insumos al pasar a trabajando (idempotencia). */
+  insumos_trabajando_aplicado?: boolean;
   usuario_id: string | null;
   created_at?: string;
   updated_at?: string;
