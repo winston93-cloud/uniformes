@@ -68,6 +68,9 @@ DECLARE
   v_pendiente INTEGER;
   v_lines INTEGER := 0;
   v_sum_sub NUMERIC(12, 2);
+  -- check_total_positivo en pedidos exige subtotal > 0 y total > 0 antes de existir detalles
+  v_ins_sub NUMERIC(12, 2);
+  v_ins_tot NUMERIC(12, 2);
 BEGIN
   IF NEW.estado IS DISTINCT FROM 'terminado' THEN
     RETURN NEW;
@@ -109,6 +112,9 @@ BEGIN
 
   v_folio := generar_folio_pedido();
 
+  v_ins_sub := GREATEST(COALESCE(NEW.subtotal, 0), 0.01);
+  v_ins_tot := GREATEST(COALESCE(NEW.total, NEW.subtotal, 0), 0.01);
+
   INSERT INTO pedidos (
     tipo_cliente,
     cliente_nombre,
@@ -130,8 +136,8 @@ BEGIN
     NEW.alumno_id,
     NEW.externo_id,
     'COMPLETADO',
-    0,
-    0,
+    v_ins_sub,
+    v_ins_tot,
     'Venta por cotización terminada ' || NEW.folio
       || '. Sin salida de inventario de prendas desde almacén.',
     v_folio,
