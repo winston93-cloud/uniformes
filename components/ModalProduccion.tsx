@@ -151,9 +151,9 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
   const detalleDisponibleEnEstaSemana = (detalleId: string) =>
     detalleDisponibleParaSemanaVista(detalleId, fechaInicioSemanaActual, ocupadosGlobal);
 
-  /** Aprobadas (flujo principal) y terminadas (pueden cargarse al plan con las partidas que elijas). */
+  /** Solo aprobadas: el plan semanal no incluye cotizaciones ya terminadas. */
   const cotizacionesProduccion = useMemo(() => {
-    return [...cotizaciones.filter((c) => c.estado === 'aprobado' || c.estado === 'terminado')].sort(
+    return [...cotizaciones.filter((c) => c.estado === 'aprobado')].sort(
       compareCotizacionesPorFechaEntrega
     );
   }, [cotizaciones]);
@@ -898,7 +898,7 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
             <div>
               <h2 style={{ margin: 0, fontSize: 'clamp(1.1rem, 2.5vw, 1.35rem)' }}>Editar selección</h2>
               <p style={{ margin: '0.35rem 0 0', fontSize: '0.85rem', color: '#6b7280', lineHeight: 1.4 }}>
-                Cotizaciones <strong>aprobadas</strong> y <strong>terminadas</strong> (orden: fecha de entrega). Expande
+                Cotizaciones <strong>aprobadas</strong> (orden: fecha de entrega). Expande
                 una cotización y elige las partidas. Puedes guardar aunque no alcances el mínimo; si llegan más
                 cotizaciones en la semana, añade partidas y vuelve a guardar: se suman al plan de esta semana.
               </p>
@@ -920,8 +920,8 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
         <div className="modal-body" style={{ flex: 1, overflowY: 'auto' }}>
           {cotizacionesProduccion.length === 0 ? (
             <p style={{ textAlign: 'center', color: '#6b7280', padding: '2rem' }}>
-              No hay cotizaciones en estado <strong>Aprobado</strong> o <strong>Terminado</strong>. Cambia el estatus en
-              el historial de cotizaciones.
+              No hay cotizaciones en estado <strong>Aprobado</strong>. Cambia el estatus en el historial de
+              cotizaciones.
             </p>
           ) : cotizacionesVisibles.length === 0 ? (
             <p style={{ textAlign: 'center', color: '#6b7280', padding: '2rem' }}>
@@ -971,11 +971,11 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
                           fontWeight: 700,
                           textTransform: 'uppercase',
                           letterSpacing: '0.02em',
-                          background: cot.estado === 'aprobado' ? '#dbeafe' : '#f3f4f6',
-                          color: cot.estado === 'aprobado' ? '#1d4ed8' : '#4b5563',
+                          background: '#dbeafe',
+                          color: '#1d4ed8',
                         }}
                       >
-                        {cot.estado === 'aprobado' ? 'Aprobado' : 'Terminado'}
+                        Aprobado
                       </span>
                       <span style={{ color: '#6b7280', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
                         Entrega: {fmtFechaCot(cot.fecha_entrega)}
