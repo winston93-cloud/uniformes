@@ -147,7 +147,6 @@ BEGIN
   LOOP
     v_prenda_id := NULL;
     v_talla_id := NULL;
-    v_costo_id := NULL;
 
     IF d.costo_id IS NOT NULL THEN
       SELECT c.prenda_id, c.talla_id
