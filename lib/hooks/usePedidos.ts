@@ -5,6 +5,9 @@ import { supabase } from '@/lib/supabase';
 
 interface Pedido {
   id: string;
+  /** Folio de venta (ej. PED-YYYYMM-0001), p. ej. generado al cerrar cotización terminada */
+  folio?: string | null;
+  cotizacion_id?: string | null;
   fecha: string;
   cliente_id: string;
   cliente_tipo: 'alumno' | 'externo';

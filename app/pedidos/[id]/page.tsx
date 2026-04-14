@@ -21,6 +21,7 @@ interface DetallePedido {
 
 interface Pedido {
   id: string;
+  folio?: string | null;
   tipo_cliente: string;
   cliente_nombre: string;
   estado: string;
@@ -270,7 +271,7 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
           <div style={{ marginBottom: '0.4rem', fontSize: '0.6rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.1rem' }}>
               <span><strong>Folio:</strong></span>
-              <span>#{pedido.id.slice(0, 8).toUpperCase()}</span>
+              <span>{pedido.folio || `#${pedido.id.slice(0, 8).toUpperCase()}`}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.1rem' }}>
               <span><strong>Fecha:</strong></span>

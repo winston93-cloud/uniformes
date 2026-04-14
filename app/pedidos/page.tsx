@@ -16,6 +16,7 @@ import { usePedidos } from '@/lib/hooks/usePedidos';
 // Interfaces de tipos
 interface Pedido {
   id: string;
+  folio?: string | null;
   fecha: string;
   cliente_id: string;
   cliente_tipo: 'alumno' | 'externo';
@@ -1831,7 +1832,7 @@ function PedidosPageContent() {
           <table className="table">
             <thead>
               <tr>
-                <th>ID</th>
+                <th>Folio</th>
                 <th>Fecha</th>
                 <th>Cliente</th>
                 <th>Tipo</th>
@@ -1843,7 +1844,9 @@ function PedidosPageContent() {
             <tbody>
               {pedidos.map((pedido) => (
                 <tr key={pedido.id}>
-                  <td data-label="ID" style={{ fontFamily: 'monospace' }}>#{pedido.id}</td>
+                  <td data-label="Folio" style={{ fontFamily: 'monospace', fontWeight: 600 }}>
+                    {pedido.folio || `— ${String(pedido.id).slice(0, 8)}…`}
+                  </td>
                   <td data-label="Fecha">{pedido.fecha}</td>
                   <td data-label="Cliente" style={{ fontWeight: '600' }}>{pedido.cliente_nombre || pedido.cliente || 'N/A'}</td>
                   <td data-label="Tipo">
@@ -1993,7 +1996,7 @@ function PedidosPageContent() {
               alignItems: 'center'
             }}>
               <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '700' }}>
-                📋 Pedido #{pedidoSeleccionado.id}
+                📋 Pedido {pedidoSeleccionado.folio || `#${pedidoSeleccionado.id}`}
               </h2>
               <button
                 onClick={() => setMostrarModal(false)}
