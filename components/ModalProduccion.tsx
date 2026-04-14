@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight, X, Check, FileText, Pencil, FileDown } from 'lucide-react';
 import { useCotizaciones } from '@/lib/hooks/useCotizaciones';
@@ -10,7 +10,11 @@ import {
   compareCotizacionesPorFechaEntrega,
   compareItemsProduccionPorFechaEntrega,
 } from '@/lib/cotizacionesSort';
-import { getWeekForDate } from '@/lib/produccion-semanal-week';
+import {
+  cotizacionPrioritariaParaPlan,
+  finVentanaPrioridadPlan,
+  getWeekForDate,
+} from '@/lib/produccion-semanal-week';
 import {
   abrirPlanTrabajoSemanalPdf,
   type FilaPlanTrabajoPdf,
@@ -346,17 +350,6 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
     return m;
   }, [cotizacionesProduccion, detallesExpandidos]);
 
-  const setPiezasLinea = (detalle: DetalleCotizacion, raw: number) => {
-    const maxAqui = maxPiezasEstaSemana(detalle.id, detalle.cantidad, piezasEnOtrasSemanas);
-    const v = Math.max(0, Math.min(maxAqui, Math.round(Number(raw) || 0)));
-    setPiezasPorDetalle((prev) => {
-      const next = { ...prev };
-      if (v <= 0) delete next[detalle.id];
-      else next[detalle.id] = v;
-      return next;
-    });
-  };
-
   const seleccionInfo = useMemo(() => {
     const rows: SeleccionRow[] = [];
 
@@ -396,6 +389,70 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
     const gananciasTotal = rows.reduce((s, r) => s + r.ganancia_total, 0);
     return { rows, gananciasTotal };
   }, [piezasPorDetalle, detalleExpandidoPorId, costoPorId, planItemsCache]);
+
+  const hayCotizacionPosterior = useMemo(
+    () =>
+      cotizacionesProduccion.some((c) => !cotizacionPrioritariaParaPlan(c.fecha_entrega, monday)),
+    [cotizacionesProduccion, monday]
+  );
+
+  const hayCotizacionPrioridad = useMemo(
+    () =>
+      cotizacionesProduccion.some((c) => cotizacionPrioritariaParaPlan(c.fecha_entrega, monday)),
+    [cotizacionesProduccion, monday]
+  );
+
+  /** Hasta incluir al menos una partida de cotizaciones prioritarias (entrega en plan o semana siguiente), no se editan las posteriores. */
+  const reglaPrioridadSemanasCumplida = useMemo(() => {
+    if (!hayCotizacionPosterior) return true;
+    if (!hayCotizacionPrioridad) return true;
+    const cotPorId = new Map(cotizacionesProduccion.map((c) => [c.id, c] as const));
+    return seleccionInfo.rows.some((r) => {
+      const cot = cotPorId.get(r.cotizacion_id);
+      return cot && cotizacionPrioritariaParaPlan(cot.fecha_entrega, monday);
+    });
+  }, [
+    hayCotizacionPosterior,
+    hayCotizacionPrioridad,
+    seleccionInfo.rows,
+    cotizacionesProduccion,
+    monday,
+  ]);
+
+  /** Hay piezas en cotizaciones “posteriores” sin haber cumplido la regla de prioridad. */
+  const seleccionInvalidaSinPrioridad = useMemo(() => {
+    if (reglaPrioridadSemanasCumplida) return false;
+    const cotPorId = new Map(cotizacionesProduccion.map((c) => [c.id, c] as const));
+    return seleccionInfo.rows.some((r) => {
+      const cot = cotPorId.get(r.cotizacion_id);
+      return cot && !cotizacionPrioritariaParaPlan(cot.fecha_entrega, monday);
+    });
+  }, [reglaPrioridadSemanasCumplida, seleccionInfo.rows, cotizacionesProduccion, monday]);
+
+  const fechaFinVentanaPrioridadFmt = useMemo(
+    () => finVentanaPrioridadPlan(monday).toLocaleDateString('es-MX'),
+    [monday]
+  );
+
+  const setPiezasLinea = useCallback(
+    (cot: Cotizacion, detalle: DetalleCotizacion, raw: number) => {
+      if (
+        !reglaPrioridadSemanasCumplida &&
+        !cotizacionPrioritariaParaPlan(cot.fecha_entrega, monday)
+      ) {
+        return;
+      }
+      const maxAqui = maxPiezasEstaSemana(detalle.id, detalle.cantidad, piezasEnOtrasSemanas);
+      const v = Math.max(0, Math.min(maxAqui, Math.round(Number(raw) || 0)));
+      setPiezasPorDetalle((prev) => {
+        const next = { ...prev };
+        if (v <= 0) delete next[detalle.id];
+        else next[detalle.id] = v;
+        return next;
+      });
+    },
+    [reglaPrioridadSemanasCumplida, monday, piezasEnOtrasSemanas]
+  );
 
   /** Filas para la tabla del modal principal (mismas columnas que al elegir partidas). */
   const filasResumenSemana = useMemo(() => {
@@ -452,6 +509,12 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
         precio_unitario: r.precio_unitario,
         costo_unitario: r.costo_unitario,
       }));
+
+      if (seleccionInvalidaSinPrioridad) {
+        throw new Error(
+          `Primero asigna al menos una pieza a una cotización con entrega en la semana del plan o la siguiente (hasta ${fechaFinVentanaPrioridadFmt}). Después podrás planear entregas más lejanas.`
+        );
+      }
 
       const res = await fetch('/api/produccion-semanal/plan', {
         method: 'POST',
@@ -514,6 +577,12 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
       );
       return;
     }
+    if (seleccionInvalidaSinPrioridad) {
+      setError(
+        `Primero incluye partidas de cotizaciones con entrega en esta semana de plan o la siguiente (hasta ${fechaFinVentanaPrioridadFmt}). Luego podrás incluir entregas más lejanas.`
+      );
+      return;
+    }
     void handleGenerarPlan();
   };
 
@@ -523,6 +592,12 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
     try {
       if (!minimoAlcanzado) {
         setError('No se cumplen las condiciones para generar el plan. Revisa gastos fijos y partidas seleccionadas.');
+        return;
+      }
+      if (seleccionInvalidaSinPrioridad) {
+        setError(
+          `Primero incluye partidas de cotizaciones prioritarias (entrega hasta ${fechaFinVentanaPrioridadFmt}).`
+        );
         return;
       }
       const payload = {
@@ -905,13 +980,33 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
             <div>
               <h2 style={{ margin: 0, fontSize: 'clamp(1.1rem, 2.5vw, 1.35rem)' }}>Editar selección</h2>
               <p style={{ margin: '0.35rem 0 0', fontSize: '0.85rem', color: '#6b7280', lineHeight: 1.4 }}>
-                Cotizaciones <strong>aprobadas</strong> (orden: fecha de entrega). Expande una cotización e indica
-                cuántas piezas van a <strong>esta semana</strong> (pueden ser menos que el pedido). El resto queda
-                libre para otras semanas. Puedes guardar aunque no alcances el mínimo.
+                Cotizaciones <strong>aprobadas</strong> (orden ascendente por fecha de entrega). Expande e indica
+                piezas para <strong>esta semana de plan</strong> (pueden ser menos que el pedido; el resto va a otras
+                semanas). Mientras haya entregas más lejanas, primero debes asignar al menos una pieza a cotizaciones
+                con entrega en la semana del plan o la siguiente (hasta el {fechaFinVentanaPrioridadFmt}).
               </p>
               <p style={{ margin: '0.5rem 0 0', fontSize: '0.8rem', color: '#9ca3af' }}>
                 Semana {formatWeekRange(monday, sunday)}
               </p>
+              {hayCotizacionPosterior && hayCotizacionPrioridad && !reglaPrioridadSemanasCumplida && (
+                <div
+                  role="status"
+                  style={{
+                    marginTop: '0.65rem',
+                    padding: '0.65rem 0.85rem',
+                    background: '#fffbeb',
+                    border: '1px solid #fcd34d',
+                    borderRadius: 10,
+                    fontSize: '0.82rem',
+                    color: '#92400e',
+                    lineHeight: 1.45,
+                  }}
+                >
+                  <strong>Regla de prioridad:</strong> asigna primero al menos una pieza en cotizaciones con entrega
+                  hasta el <strong>{fechaFinVentanaPrioridadFmt}</strong>. Después podrás editar las de entregas
+                  posteriores.
+                </div>
+              )}
             </div>
             <button
               type="button"
@@ -970,6 +1065,26 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
                       <span style={{ color: '#374151', maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {nombreCliente(cot)}
                       </span>
+                      {!cotizacionPrioritariaParaPlan(cot.fecha_entrega, monday) &&
+                        hayCotizacionPosterior &&
+                        hayCotizacionPrioridad &&
+                        !reglaPrioridadSemanasCumplida && (
+                          <span
+                            style={{
+                              padding: '0.2rem 0.55rem',
+                              borderRadius: '999px',
+                              fontSize: '0.68rem',
+                              fontWeight: 700,
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.02em',
+                              background: '#fef3c7',
+                              color: '#b45309',
+                            }}
+                            title={`Entrega posterior al ${fechaFinVentanaPrioridadFmt}; desbloquea con una partida prioritaria.`}
+                          >
+                            Entrega posterior
+                          </span>
+                        )}
                       <span
                         style={{
                           padding: '0.2rem 0.55rem',
@@ -1041,12 +1156,19 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
                                   const maxAqui = maxPiezasEstaSemana(d.id, d.cantidad, piezasEnOtrasSemanas);
                                   const val = piezasPorDetalle[d.id] ?? 0;
                                   const activa = val > 0;
+                                  const prioritaria = cotizacionPrioritariaParaPlan(cot.fecha_entrega, monday);
+                                  const bloquearPorRegla =
+                                    hayCotizacionPosterior &&
+                                    hayCotizacionPrioridad &&
+                                    !reglaPrioridadSemanasCumplida &&
+                                    !prioritaria;
                                   return (
                                     <tr
                                       key={d.id}
                                       style={{
                                         background: activa ? '#ecfdf5' : '#fff',
                                         borderBottom: '1px solid #f3f4f6',
+                                        opacity: bloquearPorRegla ? 0.55 : 1,
                                       }}
                                     >
                                       <td style={{ padding: '0.45rem 0.5rem', verticalAlign: 'middle' }}>
@@ -1074,7 +1196,19 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
                                           min={0}
                                           max={maxAqui}
                                           value={val}
-                                          onChange={(e) => setPiezasLinea(d, e.target.value === '' ? 0 : Number(e.target.value))}
+                                          disabled={bloquearPorRegla || maxAqui <= 0}
+                                          onChange={(e) =>
+                                            setPiezasLinea(
+                                              cot,
+                                              d,
+                                              e.target.value === '' ? 0 : Number(e.target.value)
+                                            )
+                                          }
+                                          title={
+                                            bloquearPorRegla
+                                              ? `Primero asigna piezas a cotizaciones con entrega hasta ${fechaFinVentanaPrioridadFmt}`
+                                              : undefined
+                                          }
                                           aria-label={`Piezas esta semana para ${d.prenda_nombre}`}
                                           style={{
                                             width: 72,
