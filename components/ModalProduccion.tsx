@@ -1033,7 +1033,7 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
                 >
                   <strong>Regla de prioridad:</strong> distribuye <strong>todas las piezas</strong> de cada partida de
                   cotizaciones con entrega hasta el <strong>{fechaFinVentanaPrioridadFmt}</strong> (entre esta semana y
-                  otras). Después podrás editar entregas posteriores.
+                  la siguiente). Después podrás editar entregas posteriores.
                 </div>
               )}
             </div>
