@@ -120,6 +120,26 @@ function cotizacionTienePartidaDisponibleAqui(
   return detalles.some((d) => detalleTieneCupoOPiezasEnEstaSemana(d, piezasEnOtrasSemanas, piezasEstaSemana));
 }
 
+/** Cada partida de cotizaciones prioritarias tiene asignadas (esta u otras semanas) todas las piezas del pedido. */
+function todasPartidasPrioridadPlaneadas(
+  cotizacionesPrioritarias: Cotizacion[],
+  detallesExpandidos: Record<string, DetalleCotizacion[]>,
+  piezasPorDetalle: Record<string, number>,
+  piezasEnOtrasSemanas: Record<string, number>
+): boolean {
+  for (const cot of cotizacionesPrioritarias) {
+    const detalles = detallesExpandidos[cot.id];
+    if (detalles === undefined) return false;
+    for (const d of detalles) {
+      const cant = Math.max(0, Math.floor(Number(d.cantidad) || 0));
+      const asign =
+        (piezasPorDetalle[d.id] ?? 0) + (piezasEnOtrasSemanas[d.id] ?? 0);
+      if (asign < cant) return false;
+    }
+  }
+  return true;
+}
+
 export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionProps) {
   const [mounted, setMounted] = useState(false);
   const [modalPartidasAbierto, setModalPartidasAbierto] = useState(false);
@@ -402,21 +422,29 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
     [cotizacionesProduccion, monday]
   );
 
-  /** Hasta incluir al menos una partida de cotizaciones prioritarias (entrega en plan o semana siguiente), no se editan las posteriores. */
+  const cotizacionesPrioritarias = useMemo(
+    () =>
+      cotizacionesProduccion.filter((c) => cotizacionPrioritariaParaPlan(c.fecha_entrega, monday)),
+    [cotizacionesProduccion, monday]
+  );
+
+  /** Todas las partidas de cotizaciones con entrega en la semana del plan o la siguiente deben estar totalmente planeadas (suma en todas las semanas = pedido). */
   const reglaPrioridadSemanasCumplida = useMemo(() => {
     if (!hayCotizacionPosterior) return true;
     if (!hayCotizacionPrioridad) return true;
-    const cotPorId = new Map(cotizacionesProduccion.map((c) => [c.id, c] as const));
-    return seleccionInfo.rows.some((r) => {
-      const cot = cotPorId.get(r.cotizacion_id);
-      return cot && cotizacionPrioritariaParaPlan(cot.fecha_entrega, monday);
-    });
+    return todasPartidasPrioridadPlaneadas(
+      cotizacionesPrioritarias,
+      detallesExpandidos,
+      piezasPorDetalle,
+      piezasEnOtrasSemanas
+    );
   }, [
     hayCotizacionPosterior,
     hayCotizacionPrioridad,
-    seleccionInfo.rows,
-    cotizacionesProduccion,
-    monday,
+    cotizacionesPrioritarias,
+    detallesExpandidos,
+    piezasPorDetalle,
+    piezasEnOtrasSemanas,
   ]);
 
   /** Hay piezas en cotizaciones “posteriores” sin haber cumplido la regla de prioridad. */
@@ -512,7 +540,7 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
 
       if (seleccionInvalidaSinPrioridad) {
         throw new Error(
-          `Primero asigna al menos una pieza a una cotización con entrega en la semana del plan o la siguiente (hasta ${fechaFinVentanaPrioridadFmt}). Después podrás planear entregas más lejanas.`
+          `Antes de guardar entregas posteriores, todas las partidas de cotizaciones con entrega hasta el ${fechaFinVentanaPrioridadFmt} deben tener planeadas todas sus piezas (entre esta y otras semanas).`
         );
       }
 
@@ -579,7 +607,7 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
     }
     if (seleccionInvalidaSinPrioridad) {
       setError(
-        `Primero incluye partidas de cotizaciones con entrega en esta semana de plan o la siguiente (hasta ${fechaFinVentanaPrioridadFmt}). Luego podrás incluir entregas más lejanas.`
+        `Completa el planeamiento de todas las partidas prioritarias (entrega hasta ${fechaFinVentanaPrioridadFmt}) antes de incluir entregas más lejanas.`
       );
       return;
     }
@@ -596,7 +624,7 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
       }
       if (seleccionInvalidaSinPrioridad) {
         setError(
-          `Primero incluye partidas de cotizaciones prioritarias (entrega hasta ${fechaFinVentanaPrioridadFmt}).`
+          `Completa todas las partidas prioritarias (entrega hasta ${fechaFinVentanaPrioridadFmt}) antes de generar el plan con entregas posteriores.`
         );
         return;
       }
@@ -982,8 +1010,9 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
               <p style={{ margin: '0.35rem 0 0', fontSize: '0.85rem', color: '#6b7280', lineHeight: 1.4 }}>
                 Cotizaciones <strong>aprobadas</strong> (orden ascendente por fecha de entrega). Expande e indica
                 piezas para <strong>esta semana de plan</strong> (pueden ser menos que el pedido; el resto va a otras
-                semanas). Mientras haya entregas más lejanas, primero debes asignar al menos una pieza a cotizaciones
-                con entrega en la semana del plan o la siguiente (hasta el {fechaFinVentanaPrioridadFmt}).
+                semanas). Si hay entregas más lejanas, antes debes tener <strong>planeadas todas las piezas</strong> de{' '}
+                <strong>cada partida</strong> de las cotizaciones con entrega en la semana del plan o la siguiente (hasta
+                el {fechaFinVentanaPrioridadFmt}), sumando lo que pongas aquí y en otras semanas.
               </p>
               <p style={{ margin: '0.5rem 0 0', fontSize: '0.8rem', color: '#9ca3af' }}>
                 Semana {formatWeekRange(monday, sunday)}
@@ -1002,9 +1031,9 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
                     lineHeight: 1.45,
                   }}
                 >
-                  <strong>Regla de prioridad:</strong> asigna primero al menos una pieza en cotizaciones con entrega
-                  hasta el <strong>{fechaFinVentanaPrioridadFmt}</strong>. Después podrás editar las de entregas
-                  posteriores.
+                  <strong>Regla de prioridad:</strong> distribuye <strong>todas las piezas</strong> de cada partida de
+                  cotizaciones con entrega hasta el <strong>{fechaFinVentanaPrioridadFmt}</strong> (entre esta semana y
+                  otras). Después podrás editar entregas posteriores.
                 </div>
               )}
             </div>
@@ -1080,7 +1109,7 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
                               background: '#fef3c7',
                               color: '#b45309',
                             }}
-                            title={`Entrega posterior al ${fechaFinVentanaPrioridadFmt}; desbloquea con una partida prioritaria.`}
+                            title={`Entrega posterior al ${fechaFinVentanaPrioridadFmt}; desbloquea cuando todas las partidas prioritarias estén totalmente planeadas.`}
                           >
                             Entrega posterior
                           </span>
@@ -1206,7 +1235,7 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
                                           }
                                           title={
                                             bloquearPorRegla
-                                              ? `Primero asigna piezas a cotizaciones con entrega hasta ${fechaFinVentanaPrioridadFmt}`
+                                              ? `Completa todas las piezas de las cotizaciones con entrega hasta ${fechaFinVentanaPrioridadFmt}`
                                               : undefined
                                           }
                                           aria-label={`Piezas esta semana para ${d.prenda_nombre}`}
