@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo, useRef, useState, useEffect } from 'react';
+import { useMemo, useRef, useState, useEffect, useCallback } from 'react';
+import { flushSync } from 'react-dom';
 import { usePrendaTallaInsumos } from '@/lib/hooks/usePrendaTallaInsumos';
 import { useInsumos } from '@/lib/hooks/useInsumos';
 
@@ -71,6 +72,13 @@ export default function ModalInsumosTalla({
 
   insumosListaRef.current = insumosMostrar;
 
+  const aplicarHighlight = useCallback((idx: number) => {
+    indiceHighlightRef.current = idx;
+    flushSync(() => {
+      setIndiceSeleccionadoInsumo(idx);
+    });
+  }, []);
+
   const handleAgregarInsumo = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -85,8 +93,7 @@ export default function ModalInsumosTalla({
       setInsumoSeleccionado('');
       setBusquedaInsumo('');
       setCantidad('');
-      indiceHighlightRef.current = -1;
-      setIndiceSeleccionadoInsumo(-1);
+      aplicarHighlight(-1);
       alert('Insumo agregado exitosamente');
     } catch (error: any) {
       console.error('Error:', error);
@@ -129,19 +136,63 @@ export default function ModalInsumosTalla({
     return insumo?.presentacion?.nombre || 'unidad';
   };
 
-  const seleccionarInsumo = (insumo: any) => {
-    setInsumoSeleccionado(insumo.id);
-    const etiqueta = `${insumo.nombre}${insumo.codigo ? ` (${insumo.codigo})` : ''} (${insumo.presentacion?.nombre || 'Sin presentación'})`;
-    setBusquedaInsumo(etiqueta);
-    setDropdownInsumoVisible(false);
-    indiceHighlightRef.current = -1;
-    setIndiceSeleccionadoInsumo(-1);
-    // Auto-focus a cantidad
-    setTimeout(() => {
-      const el = document.getElementById('cantidad-insumo-talla');
-      if (el instanceof HTMLInputElement) el.focus();
-    }, 50);
-  };
+  const seleccionarInsumo = useCallback(
+    (insumo: any) => {
+      setInsumoSeleccionado(insumo.id);
+      const etiqueta = `${insumo.nombre}${insumo.codigo ? ` (${insumo.codigo})` : ''} (${insumo.presentacion?.nombre || 'Sin presentación'})`;
+      setBusquedaInsumo(etiqueta);
+      setDropdownInsumoVisible(false);
+      aplicarHighlight(-1);
+      setTimeout(() => {
+        const el = document.getElementById('cantidad-insumo-talla');
+        if (el instanceof HTMLInputElement) el.focus();
+      }, 50);
+    },
+    [aplicarHighlight]
+  );
+
+  const manejarTeclasCombo = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (document.activeElement !== inputInsumoRef.current) return;
+
+      const list = insumosListaRef.current;
+      const down = e.key === 'ArrowDown' || e.code === 'ArrowDown';
+      const up = e.key === 'ArrowUp' || e.code === 'ArrowUp';
+
+      if (down || up) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (list.length === 0) return;
+        setDropdownInsumoVisible(true);
+        let idx = indiceHighlightRef.current;
+        if (down) {
+          if (idx < 0) idx = 0;
+          else idx = Math.min(idx + 1, list.length - 1);
+        } else {
+          if (idx <= 0) idx = -1;
+          else idx = idx - 1;
+        }
+        aplicarHighlight(idx);
+        return;
+      }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        const idx = indiceHighlightRef.current;
+        if (idx >= 0 && list[idx]) {
+          seleccionarInsumo(list[idx]);
+        }
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        setDropdownInsumoVisible(false);
+        aplicarHighlight(-1);
+      }
+    },
+    [aplicarHighlight, seleccionarInsumo]
+  );
 
   if (!isOpen) return null;
 
@@ -234,7 +285,10 @@ export default function ModalInsumosTalla({
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#475569', fontSize: '0.9rem' }}>
                     Insumo *
                   </label>
-                  <div style={{ position: 'relative' }}>
+                  <div
+                    style={{ position: 'relative' }}
+                    onKeyDownCapture={manejarTeclasCombo}
+                  >
                     <input
                       ref={inputInsumoRef}
                       type="text"
@@ -244,56 +298,17 @@ export default function ModalInsumosTalla({
                         setBusquedaInsumo(e.target.value);
                         setInsumoSeleccionado('');
                         setDropdownInsumoVisible(true);
-                        indiceHighlightRef.current = -1;
-                        setIndiceSeleccionadoInsumo(-1);
+                        aplicarHighlight(-1);
                       }}
                       onFocus={() => {
                         setDropdownInsumoVisible(true);
-                        indiceHighlightRef.current = -1;
-                        setIndiceSeleccionadoInsumo(-1);
+                        aplicarHighlight(-1);
                       }}
                       onBlur={() => {
                         setTimeout(() => {
                           setDropdownInsumoVisible(false);
-                          indiceHighlightRef.current = -1;
-                          setIndiceSeleccionadoInsumo(-1);
+                          aplicarHighlight(-1);
                         }, 150);
-                      }}
-                      onKeyDown={(e) => {
-                        const list = insumosListaRef.current;
-                        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          if (list.length === 0) return;
-                          setDropdownInsumoVisible(true);
-                          let idx = indiceHighlightRef.current;
-                          if (e.key === 'ArrowDown') {
-                            if (idx < 0) idx = 0;
-                            else idx = Math.min(idx + 1, list.length - 1);
-                          } else {
-                            if (idx <= 0) idx = -1;
-                            else idx = idx - 1;
-                          }
-                          indiceHighlightRef.current = idx;
-                          setIndiceSeleccionadoInsumo(idx);
-                          return;
-                        }
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          const idx = indiceHighlightRef.current;
-                          if (idx >= 0 && list[idx]) {
-                            seleccionarInsumo(list[idx]);
-                          }
-                          return;
-                        }
-                        if (e.key === 'Escape') {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setDropdownInsumoVisible(false);
-                          indiceHighlightRef.current = -1;
-                          setIndiceSeleccionadoInsumo(-1);
-                        }
                       }}
                       placeholder="Buscar insumo..."
                       aria-label="Buscar insumo"
@@ -312,6 +327,7 @@ export default function ModalInsumosTalla({
                     {dropdownInsumoVisible && insumosMostrar.length > 0 && (
                       <div
                         role="listbox"
+                        onMouseDown={(e) => e.preventDefault()}
                         style={{
                           position: 'absolute',
                           top: 'calc(100% + 6px)',
@@ -337,14 +353,12 @@ export default function ModalInsumosTalla({
                               aria-selected={activo}
                               onMouseDown={(e) => e.preventDefault()}
                               onClick={() => seleccionarInsumo(insumo)}
-                              onMouseEnter={() => {
-                                indiceHighlightRef.current = idx;
-                                setIndiceSeleccionadoInsumo(idx);
-                              }}
+                              onMouseEnter={() => aplicarHighlight(idx)}
                               style={{
                                 padding: '0.65rem 0.75rem',
                                 cursor: 'pointer',
-                                background: activo ? '#eef2ff' : 'white',
+                                background: activo ? '#e0e7ff' : 'white',
+                                boxShadow: activo ? 'inset 4px 0 0 0 #667eea' : 'none',
                                 borderBottom: idx === insumosMostrar.length - 1 ? 'none' : '1px solid #f1f5f9',
                               }}
                             >
