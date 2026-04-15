@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useMemo, useRef, useState, useEffect } from 'react';
 import { usePrendaTallaInsumos } from '@/lib/hooks/usePrendaTallaInsumos';
 import { useInsumos } from '@/lib/hooks/useInsumos';
 
@@ -25,6 +25,10 @@ export default function ModalInsumosTalla({
   const { insumos: todosInsumos } = useInsumos();
   
   const [insumoSeleccionado, setInsumoSeleccionado] = useState('');
+  const [busquedaInsumo, setBusquedaInsumo] = useState('');
+  const [dropdownInsumoVisible, setDropdownInsumoVisible] = useState(false);
+  const [indiceSeleccionadoInsumo, setIndiceSeleccionadoInsumo] = useState(-1);
+  const inputInsumoRef = useRef<HTMLInputElement | null>(null);
   const [cantidad, setCantidad] = useState('');
   const [guardando, setGuardando] = useState(false);
   const [editando, setEditando] = useState<string | null>(null);
@@ -33,6 +37,10 @@ export default function ModalInsumosTalla({
   useEffect(() => {
     if (isOpen) {
       refetch();
+      setInsumoSeleccionado('');
+      setBusquedaInsumo('');
+      setDropdownInsumoVisible(false);
+      setIndiceSeleccionadoInsumo(-1);
     }
   }, [isOpen]);
 
@@ -97,6 +105,32 @@ export default function ModalInsumosTalla({
   const insumosDisponibles = todosInsumos.filter(insumo => 
     insumo.activo && !insumosAsignados.some(ia => ia.insumo_id === insumo.id)
   );
+
+  const insumosMostrar = useMemo(() => {
+    const q = busquedaInsumo.trim().toLowerCase();
+    const filtrados = insumosDisponibles
+      .filter((insumo: any) => {
+        if (!q) return true;
+        const nombre = String(insumo.nombre || '').toLowerCase();
+        const codigo = String(insumo.codigo || '').toLowerCase();
+        return nombre.includes(q) || codigo.includes(q);
+      })
+      .sort((a: any, b: any) => String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es'));
+    return filtrados.slice(0, 10);
+  }, [insumosDisponibles, busquedaInsumo]);
+
+  const seleccionarInsumo = (insumo: any) => {
+    setInsumoSeleccionado(insumo.id);
+    const etiqueta = `${insumo.nombre}${insumo.codigo ? ` (${insumo.codigo})` : ''} (${insumo.presentacion?.nombre || 'Sin presentación'})`;
+    setBusquedaInsumo(etiqueta);
+    setDropdownInsumoVisible(false);
+    setIndiceSeleccionadoInsumo(-1);
+    // Auto-focus a cantidad
+    setTimeout(() => {
+      const el = document.getElementById('cantidad-insumo-talla');
+      if (el instanceof HTMLInputElement) el.focus();
+    }, 50);
+  };
 
   return (
     <div 
@@ -187,26 +221,108 @@ export default function ModalInsumosTalla({
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#475569', fontSize: '0.9rem' }}>
                     Insumo *
                   </label>
-                  <select
-                    value={insumoSeleccionado}
-                    onChange={(e) => setInsumoSeleccionado(e.target.value)}
-                    required
-                    style={{
-                      width: '100%',
-                      padding: '0.75rem',
-                      border: '2px solid #e2e8f0',
-                      borderRadius: '8px',
-                      fontSize: '0.95rem',
-                      backgroundColor: 'white'
-                    }}
-                  >
-                    <option value="">Seleccionar insumo...</option>
-                    {insumosDisponibles.map(insumo => (
-                      <option key={insumo.id} value={insumo.id}>
-                        {insumo.nombre} ({insumo.presentacion?.nombre || 'Sin presentación'})
-                      </option>
-                    ))}
-                  </select>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      ref={inputInsumoRef}
+                      type="text"
+                      value={busquedaInsumo}
+                      onChange={(e) => {
+                        setBusquedaInsumo(e.target.value);
+                        setInsumoSeleccionado('');
+                        setDropdownInsumoVisible(true);
+                        setIndiceSeleccionadoInsumo(-1);
+                      }}
+                      onFocus={() => {
+                        setDropdownInsumoVisible(true);
+                        setIndiceSeleccionadoInsumo(-1);
+                      }}
+                      onBlur={() => {
+                        setTimeout(() => {
+                          setDropdownInsumoVisible(false);
+                          setIndiceSeleccionadoInsumo(-1);
+                        }, 150);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'ArrowDown') {
+                          e.preventDefault();
+                          setDropdownInsumoVisible(true);
+                          setIndiceSeleccionadoInsumo((prev) =>
+                            prev < insumosMostrar.length - 1 ? prev + 1 : prev
+                          );
+                        } else if (e.key === 'ArrowUp') {
+                          e.preventDefault();
+                          setIndiceSeleccionadoInsumo((prev) => (prev > 0 ? prev - 1 : -1));
+                        } else if (e.key === 'Enter') {
+                          e.preventDefault();
+                          if (indiceSeleccionadoInsumo >= 0 && insumosMostrar[indiceSeleccionadoInsumo]) {
+                            seleccionarInsumo(insumosMostrar[indiceSeleccionadoInsumo]);
+                          }
+                        } else if (e.key === 'Escape') {
+                          e.preventDefault();
+                          setDropdownInsumoVisible(false);
+                          setIndiceSeleccionadoInsumo(-1);
+                        }
+                      }}
+                      placeholder="Buscar insumo..."
+                      aria-label="Buscar insumo"
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem',
+                        border: '2px solid #e2e8f0',
+                        borderRadius: '8px',
+                        fontSize: '0.95rem',
+                        backgroundColor: 'white'
+                      }}
+                    />
+
+                    {dropdownInsumoVisible && insumosMostrar.length > 0 && (
+                      <div
+                        role="listbox"
+                        style={{
+                          position: 'absolute',
+                          top: 'calc(100% + 6px)',
+                          left: 0,
+                          right: 0,
+                          zIndex: 20,
+                          background: 'white',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '8px',
+                          boxShadow: '0 12px 30px rgba(0,0,0,0.12)',
+                          maxHeight: '260px',
+                          overflowY: 'auto',
+                        }}
+                      >
+                        {insumosMostrar.map((insumo: any, idx: number) => {
+                          const activo = idx === indiceSeleccionadoInsumo;
+                          const etiqueta = `${insumo.nombre}${insumo.codigo ? ` (${insumo.codigo})` : ''}`;
+                          const sub = insumo.presentacion?.nombre || 'Sin presentación';
+                          return (
+                            <div
+                              key={insumo.id}
+                              role="option"
+                              aria-selected={activo}
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => seleccionarInsumo(insumo)}
+                              onMouseEnter={() => setIndiceSeleccionadoInsumo(idx)}
+                              style={{
+                                padding: '0.65rem 0.75rem',
+                                cursor: 'pointer',
+                                background: activo ? '#eef2ff' : 'white',
+                                borderBottom: idx === insumosMostrar.length - 1 ? 'none' : '1px solid #f1f5f9',
+                              }}
+                            >
+                              <div style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.92rem' }}>
+                                {etiqueta}
+                              </div>
+                              <div style={{ fontSize: '0.82rem', color: '#64748b' }}>
+                                {sub}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div>
@@ -214,6 +330,7 @@ export default function ModalInsumosTalla({
                     Cantidad *
                   </label>
                   <input
+                    id="cantidad-insumo-talla"
                     type="number"
                     value={cantidad}
                     onChange={(e) => setCantidad(e.target.value)}
