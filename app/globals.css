@@ -1170,3 +1170,64 @@ body {
     padding: 0;
   }
 }
+
+/* Pedidos — select de acciones (alineado con gradientes institucionales) */
+.pedidos-acciones-wrap {
+  display: inline-flex;
+  align-items: stretch;
+  vertical-align: middle;
+  padding: 2px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-middle) 50%, #6366f1 100%);
+  box-shadow:
+    0 4px 14px rgba(30, 58, 138, 0.28),
+    0 1px 0 rgba(255, 255, 255, 0.15) inset;
+}
+
+.pedidos-acciones-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  border: none;
+  border-radius: 12px;
+  padding: 0.5rem 2.35rem 0.5rem 0.9rem;
+  min-width: 188px;
+  max-width: min(280px, 100%);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #0f172a;
+  background-color: #ffffff;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%234f46e5' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.65rem center;
+  background-size: 14px;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  transition: box-shadow 0.2s ease, transform 0.15s ease;
+}
+
+.pedidos-acciones-select:hover {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    0 0 0 1px rgba(99, 102, 241, 0.15);
+}
+
+.pedidos-acciones-select:focus {
+  outline: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    0 0 0 3px rgba(99, 102, 241, 0.35);
+}
+
+.pedidos-acciones-select option {
+  font-weight: 600;
+  padding: 0.5rem;
+}
+
+.pedidos-acciones-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}

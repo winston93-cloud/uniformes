@@ -1906,9 +1906,13 @@ function PedidosPageContent() {
                     </span>
                   </td>
                   <td>
-                    {/* Acciones: select según estado */}
+                    <div className="pedidos-acciones-cell">
+                    {/* Acciones: select según estado (estilo en globals.css) */}
                     {pedido.estado !== 'CANCELADO' && pedido.estado !== 'CANCELADO_PARCIAL' && (
+                      <span className="pedidos-acciones-wrap">
                       <select
+                        className="pedidos-acciones-select"
+                        aria-label="Acciones del pedido"
                         defaultValue=""
                         onChange={async (e) => {
                           const v = e.target.value;
@@ -1971,13 +1975,6 @@ function PedidosPageContent() {
                             await abrirCancelacion(pedido);
                           }
                         }}
-                        style={{
-                          padding: '0.5rem 0.75rem',
-                          borderRadius: '8px',
-                          border: '1px solid #cbd5e1',
-                          background: 'white',
-                          fontWeight: 700,
-                        }}
                       >
                         <option value="">Acciones…</option>
                         {pedido.estado === 'PENDIENTE' && <option value="COMPLETAR">✓ Completar (descuenta pendientes)</option>}
@@ -1988,16 +1985,18 @@ function PedidosPageContent() {
                           <option value="CANCELAR">⛔ Cancelación (total/parcial)</option>
                         )}
                       </select>
+                      </span>
                     )}
                     
                     {/* Botón Ver - Siempre visible para ver el recibo */}
                     <button 
                       className="btn btn-secondary" 
-                      style={{ padding: '0.5rem 1rem', marginLeft: '0.5rem' }}
+                      style={{ padding: '0.5rem 1rem' }}
                       onClick={() => router.push(`/pedidos/${pedido.id}`)}
                     >
                       👁️ Ver
                     </button>
+                    </div>
                   </td>
                 </tr>
               ))}
