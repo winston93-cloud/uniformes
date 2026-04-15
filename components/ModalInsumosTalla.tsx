@@ -28,6 +28,9 @@ export default function ModalInsumosTalla({
   const [busquedaInsumo, setBusquedaInsumo] = useState('');
   const [dropdownInsumoVisible, setDropdownInsumoVisible] = useState(false);
   const [indiceSeleccionadoInsumo, setIndiceSeleccionadoInsumo] = useState(-1);
+  /** Índice resaltado sincrónico para flechas/Enter (el state puede ir un tick atrás). */
+  const indiceHighlightRef = useRef(-1);
+  const insumosListaRef = useRef<any[]>([]);
   const inputInsumoRef = useRef<HTMLInputElement | null>(null);
   const [cantidad, setCantidad] = useState('');
   const [guardando, setGuardando] = useState(false);
@@ -41,10 +44,32 @@ export default function ModalInsumosTalla({
       setBusquedaInsumo('');
       setDropdownInsumoVisible(false);
       setIndiceSeleccionadoInsumo(-1);
+      indiceHighlightRef.current = -1;
     }
   }, [isOpen]);
 
-  if (!isOpen) return null;
+  const insumosDisponibles = useMemo(
+    () =>
+      todosInsumos.filter(
+        (insumo) => insumo.activo && !insumosAsignados.some((ia) => ia.insumo_id === insumo.id)
+      ),
+    [todosInsumos, insumosAsignados]
+  );
+
+  const insumosMostrar = useMemo(() => {
+    const q = busquedaInsumo.trim().toLowerCase();
+    const filtrados = insumosDisponibles
+      .filter((insumo: any) => {
+        if (!q) return true;
+        const nombre = String(insumo.nombre || '').toLowerCase();
+        const codigo = String(insumo.codigo || '').toLowerCase();
+        return nombre.includes(q) || codigo.includes(q);
+      })
+      .sort((a: any, b: any) => String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es'));
+    return filtrados.slice(0, 10);
+  }, [insumosDisponibles, busquedaInsumo]);
+
+  insumosListaRef.current = insumosMostrar;
 
   const handleAgregarInsumo = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,7 +83,10 @@ export default function ModalInsumosTalla({
       setGuardando(true);
       await createInsumo(insumoSeleccionado, parseFloat(cantidad));
       setInsumoSeleccionado('');
+      setBusquedaInsumo('');
       setCantidad('');
+      indiceHighlightRef.current = -1;
+      setIndiceSeleccionadoInsumo(-1);
       alert('Insumo agregado exitosamente');
     } catch (error: any) {
       console.error('Error:', error);
@@ -101,29 +129,12 @@ export default function ModalInsumosTalla({
     return insumo?.presentacion?.nombre || 'unidad';
   };
 
-  // Filtrar insumos que no están ya asignados
-  const insumosDisponibles = todosInsumos.filter(insumo => 
-    insumo.activo && !insumosAsignados.some(ia => ia.insumo_id === insumo.id)
-  );
-
-  const insumosMostrar = useMemo(() => {
-    const q = busquedaInsumo.trim().toLowerCase();
-    const filtrados = insumosDisponibles
-      .filter((insumo: any) => {
-        if (!q) return true;
-        const nombre = String(insumo.nombre || '').toLowerCase();
-        const codigo = String(insumo.codigo || '').toLowerCase();
-        return nombre.includes(q) || codigo.includes(q);
-      })
-      .sort((a: any, b: any) => String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es'));
-    return filtrados.slice(0, 10);
-  }, [insumosDisponibles, busquedaInsumo]);
-
   const seleccionarInsumo = (insumo: any) => {
     setInsumoSeleccionado(insumo.id);
     const etiqueta = `${insumo.nombre}${insumo.codigo ? ` (${insumo.codigo})` : ''} (${insumo.presentacion?.nombre || 'Sin presentación'})`;
     setBusquedaInsumo(etiqueta);
     setDropdownInsumoVisible(false);
+    indiceHighlightRef.current = -1;
     setIndiceSeleccionadoInsumo(-1);
     // Auto-focus a cantidad
     setTimeout(() => {
@@ -131,6 +142,8 @@ export default function ModalInsumosTalla({
       if (el instanceof HTMLInputElement) el.focus();
     }, 50);
   };
+
+  if (!isOpen) return null;
 
   return (
     <div 
@@ -225,46 +238,67 @@ export default function ModalInsumosTalla({
                     <input
                       ref={inputInsumoRef}
                       type="text"
+                      autoComplete="off"
                       value={busquedaInsumo}
                       onChange={(e) => {
                         setBusquedaInsumo(e.target.value);
                         setInsumoSeleccionado('');
                         setDropdownInsumoVisible(true);
+                        indiceHighlightRef.current = -1;
                         setIndiceSeleccionadoInsumo(-1);
                       }}
                       onFocus={() => {
                         setDropdownInsumoVisible(true);
+                        indiceHighlightRef.current = -1;
                         setIndiceSeleccionadoInsumo(-1);
                       }}
                       onBlur={() => {
                         setTimeout(() => {
                           setDropdownInsumoVisible(false);
+                          indiceHighlightRef.current = -1;
                           setIndiceSeleccionadoInsumo(-1);
                         }, 150);
                       }}
                       onKeyDown={(e) => {
-                        if (e.key === 'ArrowDown') {
+                        const list = insumosListaRef.current;
+                        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
                           e.preventDefault();
+                          e.stopPropagation();
+                          if (list.length === 0) return;
                           setDropdownInsumoVisible(true);
-                          setIndiceSeleccionadoInsumo((prev) =>
-                            prev < insumosMostrar.length - 1 ? prev + 1 : prev
-                          );
-                        } else if (e.key === 'ArrowUp') {
-                          e.preventDefault();
-                          setIndiceSeleccionadoInsumo((prev) => (prev > 0 ? prev - 1 : -1));
-                        } else if (e.key === 'Enter') {
-                          e.preventDefault();
-                          if (indiceSeleccionadoInsumo >= 0 && insumosMostrar[indiceSeleccionadoInsumo]) {
-                            seleccionarInsumo(insumosMostrar[indiceSeleccionadoInsumo]);
+                          let idx = indiceHighlightRef.current;
+                          if (e.key === 'ArrowDown') {
+                            if (idx < 0) idx = 0;
+                            else idx = Math.min(idx + 1, list.length - 1);
+                          } else {
+                            if (idx <= 0) idx = -1;
+                            else idx = idx - 1;
                           }
-                        } else if (e.key === 'Escape') {
+                          indiceHighlightRef.current = idx;
+                          setIndiceSeleccionadoInsumo(idx);
+                          return;
+                        }
+                        if (e.key === 'Enter') {
                           e.preventDefault();
+                          e.stopPropagation();
+                          const idx = indiceHighlightRef.current;
+                          if (idx >= 0 && list[idx]) {
+                            seleccionarInsumo(list[idx]);
+                          }
+                          return;
+                        }
+                        if (e.key === 'Escape') {
+                          e.preventDefault();
+                          e.stopPropagation();
                           setDropdownInsumoVisible(false);
+                          indiceHighlightRef.current = -1;
                           setIndiceSeleccionadoInsumo(-1);
                         }
                       }}
                       placeholder="Buscar insumo..."
                       aria-label="Buscar insumo"
+                      aria-autocomplete="list"
+                      aria-expanded={dropdownInsumoVisible && insumosMostrar.length > 0}
                       style={{
                         width: '100%',
                         padding: '0.75rem',
@@ -303,7 +337,10 @@ export default function ModalInsumosTalla({
                               aria-selected={activo}
                               onMouseDown={(e) => e.preventDefault()}
                               onClick={() => seleccionarInsumo(insumo)}
-                              onMouseEnter={() => setIndiceSeleccionadoInsumo(idx)}
+                              onMouseEnter={() => {
+                                indiceHighlightRef.current = idx;
+                                setIndiceSeleccionadoInsumo(idx);
+                              }}
                               style={{
                                 padding: '0.65rem 0.75rem',
                                 cursor: 'pointer',
