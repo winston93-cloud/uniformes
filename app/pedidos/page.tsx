@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import ModalDevolucion from '@/components/ModalDevolucion';
-import ModalCancelacionPedido from '@/components/ModalCancelacionPedido';
 import { supabase } from '@/lib/supabase';
 import { useCostos } from '@/lib/hooks/useCostos';
 import { useAlumnos } from '@/lib/hooks/useAlumnos';
@@ -23,7 +22,7 @@ interface Pedido {
   cliente_tipo: 'alumno' | 'externo';
   cliente_nombre: string;
   total: number;
-  estado: 'PENDIENTE' | 'COMPLETADO' | 'CANCELADO';
+  estado: 'PENDIENTE' | 'COMPLETADO' | 'CANCELADO' | 'CANCELADO_PARCIAL';
   tipo_cliente?: string;
   subtotal?: number;
   observaciones?: string;
@@ -69,7 +68,6 @@ function PedidosPageContent() {
   const [mostrarFormulario, setMostrarFormulario] = useState(true); // Abrir automáticamente al entrar
   const [mostrarModal, setMostrarModal] = useState(false);
   const [mostrarModalDevolucion, setMostrarModalDevolucion] = useState(false);
-  const [mostrarModalCancelacion, setMostrarModalCancelacion] = useState(false);
   const [pedidoSeleccionado, setPedidoSeleccionado] = useState<any>(null);
   const [mostrarAyuda, setMostrarAyuda] = useState(false);
   const [indiceClienteSeleccionado, setIndiceClienteSeleccionado] = useState(-1);
@@ -699,21 +697,13 @@ function PedidosPageContent() {
   };
 
   const cambiarEstado = async (id: string, nuevoEstado: Pedido['estado']) => {
-    if (nuevoEstado === 'CANCELADO') {
-      if (!confirm('¿Estás seguro de que deseas cancelar este pedido?')) {
-        return;
-      }
-    }
-    
     console.log('🔄 Cambiando estado del pedido:', id, 'a', nuevoEstado);
     const resultado = await actualizarEstadoPedido(id, nuevoEstado, (sesion as any)?.usuario_id ?? null);
-    
+
     if (resultado.success) {
       console.log('✅ Estado actualizado correctamente');
       if (nuevoEstado === 'COMPLETADO') {
         alert('✅ Pedido marcado como COMPLETADO');
-      } else if (nuevoEstado === 'CANCELADO') {
-        alert('✅ Pedido cancelado correctamente');
       } else {
         alert('✅ Pedido actualizado correctamente');
       }
@@ -721,40 +711,6 @@ function PedidosPageContent() {
       console.error('❌ Error al actualizar estado:', resultado.error);
       alert('❌ Error al actualizar el estado del pedido');
     }
-  };
-
-  const abrirCancelacion = async (pedido: any) => {
-    // cargar detalles enriquecidos (incluye pendiente)
-    const { data: detalles, error } = await supabase
-      .from('detalle_pedidos')
-      .select(
-        `
-          *,
-          prenda:prendas(id, nombre, codigo),
-          talla:tallas(id, nombre)
-        `
-      )
-      .eq('pedido_id', pedido.id);
-
-    if (error || !detalles) {
-      console.error('❌ Error al cargar detalles:', error);
-      alert('Error al cargar detalles del pedido: ' + (error?.message || 'Desconocido'));
-      return;
-    }
-
-    const detallesEnriquecidos = detalles.map((det: any) => {
-      const prendaObj = Array.isArray(det.prenda) ? det.prenda[0] : det.prenda;
-      const tallaObj = Array.isArray(det.talla) ? det.talla[0] : det.talla;
-      return {
-        ...det,
-        prenda_nombre: prendaObj?.nombre || 'Sin nombre',
-        prenda_codigo: prendaObj?.codigo || '',
-        talla_nombre: tallaObj?.nombre || 'N/A',
-      };
-    });
-
-    setPedidoSeleccionado({ ...pedido, detalles: detallesEnriquecidos });
-    setMostrarModalCancelacion(true);
   };
 
   const verDetallePedido = async (pedido: Pedido) => {
@@ -1971,18 +1927,12 @@ function PedidosPageContent() {
                             }
                             return;
                           }
-                          if (v === 'CANCELAR') {
-                            await abrirCancelacion(pedido);
-                          }
                         }}
                       >
                         <option value="">Acciones…</option>
                         {pedido.estado === 'PENDIENTE' && <option value="COMPLETAR">✓ Completar (descuenta pendientes)</option>}
                         {(pedido.estado === 'PENDIENTE' || pedido.estado === 'COMPLETADO') && (
                           <option value="DEVOLUCION">🔄 Devolución / Cambio</option>
-                        )}
-                        {(pedido.estado === 'PENDIENTE' || pedido.estado === 'COMPLETADO') && (
-                          <option value="CANCELAR">⛔ Cancelación (total/parcial)</option>
                         )}
                       </select>
                       </span>
@@ -2185,19 +2135,6 @@ function PedidosPageContent() {
         pedido={pedidoSeleccionado}
         onSuccess={() => {
           // Recargar pedidos después de registrar la devolución
-          window.location.reload();
-        }}
-      />
-
-      {/* Modal de Cancelación */}
-      <ModalCancelacionPedido
-        isOpen={mostrarModalCancelacion}
-        onClose={() => {
-          setMostrarModalCancelacion(false);
-          setPedidoSeleccionado(null);
-        }}
-        pedido={pedidoSeleccionado}
-        onSuccess={() => {
           window.location.reload();
         }}
       />
