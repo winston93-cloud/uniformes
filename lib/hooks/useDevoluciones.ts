@@ -172,68 +172,13 @@ export function useDevoluciones(sucursal_id?: string) {
         console.error('❌ Error al insertar detalles:', detallesError);
         throw detallesError;
       }
-
-      // 4. DEVOLVER STOCK al inventario (suma)
-      for (const detalle of data.detalles) {
-        const { data: costoData, error: costoError } = await supabase
-          .from('costos')
-          .select('stock')
-          .eq('prenda_id', detalle.prenda_id)
-          .eq('talla_id', detalle.talla_id)
-          .eq('sucursal_id', data.sucursal_id)
-          .single();
-
-        if (costoError) {
-          console.error('⚠️ No se encontró el costo para devolver stock:', costoError);
-          continue;
-        }
-
-        // DEVOLVER = SUMAR al stock
-        const nuevoStock = (costoData.stock || 0) + detalle.cantidad_devuelta;
-        
-        const { error: updateError } = await supabase
-          .from('costos')
-          .update({ stock: nuevoStock })
-          .eq('prenda_id', detalle.prenda_id)
-          .eq('talla_id', detalle.talla_id)
-          .eq('sucursal_id', data.sucursal_id);
-
-        if (updateError) {
-          console.error('❌ Error al devolver stock:', updateError);
-        } else {
-          console.log(`✅ Stock devuelto: +${detalle.cantidad_devuelta} → Total: ${nuevoStock}`);
-        }
-
-        // 5. Si es CAMBIO: restar del nuevo stock
-        if (detalle.es_cambio && detalle.prenda_cambio_id && detalle.talla_cambio_id) {
-          const { data: costoCambioData, error: costoCambioError } = await supabase
-            .from('costos')
-            .select('stock')
-            .eq('prenda_id', detalle.prenda_cambio_id)
-            .eq('talla_id', detalle.talla_cambio_id)
-            .eq('sucursal_id', data.sucursal_id)
-            .single();
-
-          if (costoCambioError) {
-            console.error('⚠️ No se encontró el costo para el cambio:', costoCambioError);
-            continue;
-          }
-
-          const nuevoStockCambio = (costoCambioData.stock || 0) - (detalle.cantidad_cambio || 0);
-
-          const { error: updateCambioError } = await supabase
-            .from('costos')
-            .update({ stock: nuevoStockCambio })
-            .eq('prenda_id', detalle.prenda_cambio_id)
-            .eq('talla_id', detalle.talla_cambio_id)
-            .eq('sucursal_id', data.sucursal_id);
-
-          if (updateCambioError) {
-            console.error('❌ Error al actualizar stock de cambio:', updateCambioError);
-          } else {
-            console.log(`✅ Stock cambio: -${detalle.cantidad_cambio} → Total: ${nuevoStockCambio}`);
-          }
-        }
+      // 4. Procesar devolución de forma atómica (stock + movimientos + cambios)
+      const { data: proc, error: procErr } = await supabase.rpc('procesar_devolucion_atomica', {
+        p_devolucion_id: devolucion.id,
+      });
+      if (procErr) throw procErr;
+      if (proc && proc.success === false) {
+        throw new Error(proc.error || 'Error al procesar devolución');
       }
 
       // 6. Recargar devoluciones

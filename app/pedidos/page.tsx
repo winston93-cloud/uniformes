@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import ModalDevolucion from '@/components/ModalDevolucion';
+import ModalCancelacionPedido from '@/components/ModalCancelacionPedido';
 import { supabase } from '@/lib/supabase';
 import { useCostos } from '@/lib/hooks/useCostos';
 import { useAlumnos } from '@/lib/hooks/useAlumnos';
@@ -68,6 +69,7 @@ function PedidosPageContent() {
   const [mostrarFormulario, setMostrarFormulario] = useState(true); // Abrir automáticamente al entrar
   const [mostrarModal, setMostrarModal] = useState(false);
   const [mostrarModalDevolucion, setMostrarModalDevolucion] = useState(false);
+  const [mostrarModalCancelacion, setMostrarModalCancelacion] = useState(false);
   const [pedidoSeleccionado, setPedidoSeleccionado] = useState<any>(null);
   const [mostrarAyuda, setMostrarAyuda] = useState(false);
   const [indiceClienteSeleccionado, setIndiceClienteSeleccionado] = useState(-1);
@@ -704,15 +706,55 @@ function PedidosPageContent() {
     }
     
     console.log('🔄 Cambiando estado del pedido:', id, 'a', nuevoEstado);
-    const resultado = await actualizarEstadoPedido(id, nuevoEstado);
+    const resultado = await actualizarEstadoPedido(id, nuevoEstado, (sesion as any)?.usuario_id ?? null);
     
     if (resultado.success) {
       console.log('✅ Estado actualizado correctamente');
-      alert('✅ Pedido cancelado correctamente');
+      if (nuevoEstado === 'COMPLETADO') {
+        alert('✅ Pedido marcado como COMPLETADO');
+      } else if (nuevoEstado === 'CANCELADO') {
+        alert('✅ Pedido cancelado correctamente');
+      } else {
+        alert('✅ Pedido actualizado correctamente');
+      }
     } else {
       console.error('❌ Error al actualizar estado:', resultado.error);
       alert('❌ Error al actualizar el estado del pedido');
     }
+  };
+
+  const abrirCancelacion = async (pedido: any) => {
+    // cargar detalles enriquecidos (incluye pendiente)
+    const { data: detalles, error } = await supabase
+      .from('detalle_pedidos')
+      .select(
+        `
+          *,
+          prenda:prendas(id, nombre, codigo),
+          talla:tallas(id, nombre)
+        `
+      )
+      .eq('pedido_id', pedido.id);
+
+    if (error || !detalles) {
+      console.error('❌ Error al cargar detalles:', error);
+      alert('Error al cargar detalles del pedido: ' + (error?.message || 'Desconocido'));
+      return;
+    }
+
+    const detallesEnriquecidos = detalles.map((det: any) => {
+      const prendaObj = Array.isArray(det.prenda) ? det.prenda[0] : det.prenda;
+      const tallaObj = Array.isArray(det.talla) ? det.talla[0] : det.talla;
+      return {
+        ...det,
+        prenda_nombre: prendaObj?.nombre || 'Sin nombre',
+        prenda_codigo: prendaObj?.codigo || '',
+        talla_nombre: tallaObj?.nombre || 'N/A',
+      };
+    });
+
+    setPedidoSeleccionado({ ...pedido, detalles: detallesEnriquecidos });
+    setMostrarModalCancelacion(true);
   };
 
   const verDetallePedido = async (pedido: Pedido) => {
@@ -1864,80 +1906,88 @@ function PedidosPageContent() {
                     </span>
                   </td>
                   <td>
-                    {/* Botón Completado - Solo para pedidos pendientes */}
-                    {pedido.estado === 'PENDIENTE' && (
-                      <button
-                        className="btn btn-success"
-                        style={{ padding: '0.5rem 1rem', marginRight: '0.5rem' }}
-                        onClick={() => cambiarEstado(pedido.id, 'COMPLETADO')}
-                        title="Marcar como completado cuando se entreguen los artículos pendientes"
-                      >
-                        ✓ Completado
-                      </button>
-                    )}
-                    
-                    {/* Botón Devolución - Solo para pedidos completados */}
-                    {pedido.estado === 'COMPLETADO' && (
-                      <button 
-                        className="btn btn-warning" 
-                        style={{ padding: '0.5rem 1rem', marginLeft: '0.5rem' }}
-                        onClick={async () => {
-                          // Cargar detalles del pedido con JOIN de prendas y tallas
-                          const { data: detalles, error } = await supabase
-                            .from('detalle_pedidos')
-                            .select(`
-                              *,
-                              prenda:prendas(id, nombre, codigo),
-                              talla:tallas(id, nombre)
-                            `)
-                            .eq('pedido_id', pedido.id);
+                    {/* Acciones: select según estado */}
+                    {pedido.estado !== 'CANCELADO' && pedido.estado !== 'CANCELADO_PARCIAL' && (
+                      <select
+                        defaultValue=""
+                        onChange={async (e) => {
+                          const v = e.target.value;
+                          e.currentTarget.value = '';
+                          if (!v) return;
+                          if (v === 'COMPLETAR') {
+                            await cambiarEstado(pedido.id, 'COMPLETADO');
+                            return;
+                          }
+                          if (v === 'DEVOLUCION') {
+                            // Cargar detalles del pedido con JOIN de prendas y tallas (incluye pendiente)
+                            const { data: detalles, error } = await supabase
+                              .from('detalle_pedidos')
+                              .select(
+                                `
+                                  *,
+                                  prenda:prendas(id, nombre, codigo),
+                                  talla:tallas(id, nombre)
+                                `
+                              )
+                              .eq('pedido_id', pedido.id);
 
-                          if (!error && detalles) {
-                            console.log('📦 Detalles cargados:', detalles);
-                            
-                            // Mapear detalles con nombres correctos
-                            const detallesEnriquecidos = detalles.map((det: any) => {
-                              const prendaObj = Array.isArray(det.prenda) ? det.prenda[0] : det.prenda;
-                              const tallaObj = Array.isArray(det.talla) ? det.talla[0] : det.talla;
-                              
-                              const prendaNombre = prendaObj?.nombre || 'Sin nombre';
-                              const prendaCodigo = prendaObj?.codigo || '';
-                              const tallaNombre = tallaObj?.nombre || 'N/A';
-                              const precioUnitario = det.precio_unitario || det.precio || 0;
-                              const cantidad = det.cantidad || 1;
-                              
-                              // Descripción completa y detallada
-                              const descripcionCompleta = `${prendaNombre}${prendaCodigo ? ` (${prendaCodigo})` : ''} - Talla: ${tallaNombre}${det.especificaciones ? ` - ${det.especificaciones}` : ''}`;
-                              
-                              return {
-                                id: det.id,
-                                detalle_pedido_id: det.id,
-                                prenda_id: det.prenda_id,
-                                talla_id: det.talla_id,
-                                prenda_nombre: prendaNombre,
-                                prenda_codigo: prendaCodigo,
-                                talla_nombre: tallaNombre,
-                                descripcion: descripcionCompleta,
-                                precio: precioUnitario,
-                                precio_unitario: precioUnitario,
-                                cantidad: cantidad,
-                                cantidad_original: cantidad,
-                                subtotal: det.subtotal || (precioUnitario * cantidad),
-                                especificaciones: det.especificaciones || '',
-                              };
-                            });
+                            if (!error && detalles) {
+                              const detallesEnriquecidos = detalles.map((det: any) => {
+                                const prendaObj = Array.isArray(det.prenda) ? det.prenda[0] : det.prenda;
+                                const tallaObj = Array.isArray(det.talla) ? det.talla[0] : det.talla;
+                                const prendaNombre = prendaObj?.nombre || 'Sin nombre';
+                                const prendaCodigo = prendaObj?.codigo || '';
+                                const tallaNombre = tallaObj?.nombre || 'N/A';
+                                const precioUnitario = det.precio_unitario || det.precio || 0;
+                                const cantidad = det.cantidad || 1;
+                                const pendiente = det.pendiente || 0;
+                                return {
+                                  id: det.id,
+                                  detalle_pedido_id: det.id,
+                                  prenda_id: det.prenda_id,
+                                  talla_id: det.talla_id,
+                                  prenda_nombre: prendaNombre,
+                                  prenda_codigo: prendaCodigo,
+                                  talla_nombre: tallaNombre,
+                                  precio: precioUnitario,
+                                  precio_unitario: precioUnitario,
+                                  cantidad: cantidad,
+                                  cantidad_original: cantidad,
+                                  pendiente,
+                                  subtotal: det.subtotal || precioUnitario * cantidad,
+                                  especificaciones: det.especificaciones || '',
+                                };
+                              });
 
-                            console.log('✅ Detalles enriquecidos:', detallesEnriquecidos);
-                            setPedidoSeleccionado({ ...pedido, detalles: detallesEnriquecidos });
-                            setMostrarModalDevolucion(true);
-                          } else {
-                            console.error('❌ Error al cargar detalles:', error);
-                            alert('Error al cargar detalles del pedido: ' + (error?.message || 'Desconocido'));
+                              setPedidoSeleccionado({ ...pedido, detalles: detallesEnriquecidos });
+                              setMostrarModalDevolucion(true);
+                            } else {
+                              console.error('❌ Error al cargar detalles:', error);
+                              alert('Error al cargar detalles del pedido: ' + (error?.message || 'Desconocido'));
+                            }
+                            return;
+                          }
+                          if (v === 'CANCELAR') {
+                            await abrirCancelacion(pedido);
                           }
                         }}
+                        style={{
+                          padding: '0.5rem 0.75rem',
+                          borderRadius: '8px',
+                          border: '1px solid #cbd5e1',
+                          background: 'white',
+                          fontWeight: 700,
+                        }}
                       >
-                        🔄 Devolución
-                      </button>
+                        <option value="">Acciones…</option>
+                        {pedido.estado === 'PENDIENTE' && <option value="COMPLETAR">✓ Completar (descuenta pendientes)</option>}
+                        {(pedido.estado === 'PENDIENTE' || pedido.estado === 'COMPLETADO') && (
+                          <option value="DEVOLUCION">🔄 Devolución / Cambio</option>
+                        )}
+                        {(pedido.estado === 'PENDIENTE' || pedido.estado === 'COMPLETADO') && (
+                          <option value="CANCELAR">⛔ Cancelación (total/parcial)</option>
+                        )}
+                      </select>
                     )}
                     
                     {/* Botón Ver - Siempre visible para ver el recibo */}
@@ -2136,6 +2186,19 @@ function PedidosPageContent() {
         pedido={pedidoSeleccionado}
         onSuccess={() => {
           // Recargar pedidos después de registrar la devolución
+          window.location.reload();
+        }}
+      />
+
+      {/* Modal de Cancelación */}
+      <ModalCancelacionPedido
+        isOpen={mostrarModalCancelacion}
+        onClose={() => {
+          setMostrarModalCancelacion(false);
+          setPedidoSeleccionado(null);
+        }}
+        pedido={pedidoSeleccionado}
+        onSuccess={() => {
           window.location.reload();
         }}
       />

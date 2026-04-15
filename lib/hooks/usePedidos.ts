@@ -14,7 +14,7 @@ interface Pedido {
   cliente_tipo: 'alumno' | 'externo';
   cliente_nombre: string;
   total: number;
-  estado: 'PENDIENTE' | 'COMPLETADO' | 'CANCELADO';
+  estado: 'PENDIENTE' | 'COMPLETADO' | 'CANCELADO' | 'CANCELADO_PARCIAL';
   observaciones?: string;
   modalidad_pago: 'TOTAL' | 'ANTICIPO';
   efectivo_recibido: number | string;
@@ -133,14 +133,30 @@ export function usePedidos(sucursal_id?: string) {
     }
   };
 
-  const actualizarEstadoPedido = async (id: string, nuevoEstado: Pedido['estado']) => {
+  const actualizarEstadoPedido = async (
+    id: string,
+    nuevoEstado: Pedido['estado'],
+    usuario_id?: string | null
+  ) => {
     try {
-      const { error } = await supabase
-        .from('pedidos')
-        .update({ estado: nuevoEstado })
-        .eq('id', id);
+      // COMPLETADO: debe descontar pendientes en BD de forma atómica
+      if (nuevoEstado === 'COMPLETADO') {
+        const { data, error } = await supabase.rpc('completar_pedido_atomico', {
+          p_pedido_id: id,
+          p_usuario_id: usuario_id ?? null,
+        });
+        if (error) throw error;
+        if (data && data.success === false) {
+          throw new Error(data.error || 'Error al completar pedido');
+        }
+      } else {
+        const { error } = await supabase
+          .from('pedidos')
+          .update({ estado: nuevoEstado })
+          .eq('id', id);
 
-      if (error) throw error;
+        if (error) throw error;
+      }
 
       await fetchPedidos();
       return { success: true };

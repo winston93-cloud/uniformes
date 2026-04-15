@@ -23,6 +23,7 @@ interface DetalleDevolucionForm {
   talla_nombre: string;
   cantidad_original: number;
   cantidad_devuelta: number;
+  pendiente?: number;
   precio_unitario: number;
   seleccionado: boolean;
   especificaciones?: string;
@@ -56,27 +57,47 @@ export default function ModalDevolucion({ isOpen, onClose, pedido, onSuccess }: 
       const detallesIniciales: DetalleDevolucionForm[] = pedido.detalles.map((det: any) => ({
         detalle_pedido_id: det.id,
         prenda_id: det.prenda_id,
-        prenda_nombre: det.prenda,
+        prenda_nombre: det.prenda_nombre || det.prenda || 'Prenda',
         talla_id: det.talla_id,
-        talla_nombre: det.talla,
+        talla_nombre: det.talla_nombre || det.talla || 'Talla',
         cantidad_original: det.cantidad,
-        cantidad_devuelta: det.cantidad, // Por defecto, devolver todo
+        pendiente: det.pendiente ?? 0,
+        cantidad_devuelta: 0, // se ajusta abajo según lo entregado
         precio_unitario: det.precio,
         seleccionado: tipoDevolucion === 'COMPLETA', // Si es completa, seleccionar todo
         es_cambio: false,
       }));
-      setDetalles(detallesIniciales);
+      const detallesAjustados = detallesIniciales.map((d) => {
+        const maxEntregado =
+          pedido?.estado === 'PENDIENTE'
+            ? Math.max(0, d.cantidad_original - (d.pendiente || 0))
+            : d.cantidad_original;
+        return {
+          ...d,
+          cantidad_devuelta: tipoDevolucion === 'COMPLETA' ? maxEntregado : 0,
+          seleccionado: tipoDevolucion === 'COMPLETA' ? maxEntregado > 0 : false,
+        };
+      });
+      setDetalles(detallesAjustados);
     }
   }, [isOpen, pedido, tipoDevolucion]);
 
   // Actualizar selección cuando cambia el tipo
   useEffect(() => {
     if (tipoDevolucion === 'COMPLETA') {
-      setDetalles(prev => prev.map(d => ({ ...d, seleccionado: true, cantidad_devuelta: d.cantidad_original })));
+      setDetalles((prev) =>
+        prev.map((d) => {
+          const maxEntregado =
+            pedido?.estado === 'PENDIENTE'
+              ? Math.max(0, d.cantidad_original - (d.pendiente || 0))
+              : d.cantidad_original;
+          return { ...d, seleccionado: maxEntregado > 0, cantidad_devuelta: maxEntregado };
+        })
+      );
     } else {
       setDetalles(prev => prev.map(d => ({ ...d, seleccionado: false, cantidad_devuelta: 0 })));
     }
-  }, [tipoDevolucion]);
+  }, [tipoDevolucion, pedido?.estado]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -146,7 +167,13 @@ export default function ModalDevolucion({ isOpen, onClose, pedido, onSuccess }: 
 
   const actualizarCantidad = (index: number, cantidad: number) => {
     setDetalles(prev => prev.map((d, i) => 
-      i === index ? { ...d, cantidad_devuelta: Math.min(cantidad, d.cantidad_original) } : d
+      i === index ? (() => {
+        const maxEntregado =
+          pedido?.estado === 'PENDIENTE'
+            ? Math.max(0, d.cantidad_original - (d.pendiente || 0))
+            : d.cantidad_original;
+        return { ...d, cantidad_devuelta: Math.min(cantidad, maxEntregado) };
+      })() : d
     ));
   };
 
@@ -283,7 +310,11 @@ export default function ModalDevolucion({ isOpen, onClose, pedido, onSuccess }: 
                           <input
                             type="number"
                             min="1"
-                            max={det.cantidad_original}
+                            max={
+                              pedido?.estado === 'PENDIENTE'
+                                ? Math.max(0, det.cantidad_original - (det.pendiente || 0))
+                                : det.cantidad_original
+                            }
                             value={det.cantidad_devuelta}
                             onChange={(e) => actualizarCantidad(index, parseInt(e.target.value) || 0)}
                             style={{ width: '100px', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd', marginLeft: '0.5rem' }}
