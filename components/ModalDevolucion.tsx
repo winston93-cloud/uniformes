@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDevoluciones, type CrearDevolucionData } from '@/lib/hooks/useDevoluciones';
@@ -10,7 +10,7 @@ import { useTallas } from '@/lib/hooks/useTallas';
 interface ModalDevolucionProps {
   isOpen: boolean;
   onClose: () => void;
-  pedido: any; // El pedido completo con sus detalles
+  pedido: any;
   onSuccess?: () => void;
 }
 
@@ -27,8 +27,6 @@ interface DetalleDevolucionForm {
   precio_unitario: number;
   seleccionado: boolean;
   especificaciones?: string;
-  
-  // Para cambios
   es_cambio: boolean;
   prenda_cambio_id?: string;
   talla_cambio_id?: string;
@@ -36,6 +34,62 @@ interface DetalleDevolucionForm {
   precio_cambio?: number;
   observaciones_detalle?: string;
 }
+
+const overlay: CSSProperties = {
+  position: 'fixed',
+  inset: 0,
+  zIndex: 10050,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: '1rem',
+  background: 'linear-gradient(145deg, rgba(15, 23, 42, 0.78) 0%, rgba(30, 58, 138, 0.55) 100%)',
+  backdropFilter: 'blur(10px)',
+  WebkitBackdropFilter: 'blur(10px)',
+};
+
+const panel: CSSProperties = {
+  width: '100%',
+  maxWidth: 920,
+  maxHeight: 'min(92vh, 900px)',
+  display: 'flex',
+  flexDirection: 'column',
+  background: '#fff',
+  borderRadius: 20,
+  overflow: 'hidden',
+  boxShadow:
+    '0 25px 50px -12px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255,255,255,0.08) inset',
+};
+
+const headerGradient: CSSProperties = {
+  padding: '1.25rem 1.5rem',
+  background: 'linear-gradient(135deg, #0d9488 0%, #0e7490 40%, #1e3a8a 100%)',
+  color: '#fff',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: '1rem',
+};
+
+const labelSm: CSSProperties = {
+  display: 'block',
+  fontSize: '0.7rem',
+  fontWeight: 700,
+  letterSpacing: '0.06em',
+  textTransform: 'uppercase',
+  color: '#64748b',
+  marginBottom: '0.35rem',
+};
+
+const inputBase: CSSProperties = {
+  width: '100%',
+  padding: '0.65rem 0.85rem',
+  borderRadius: 12,
+  border: '1px solid #e2e8f0',
+  fontSize: '0.95rem',
+  background: '#fff',
+  outline: 'none',
+};
 
 export default function ModalDevolucion({ isOpen, onClose, pedido, onSuccess }: ModalDevolucionProps) {
   const { sesion } = useAuth();
@@ -51,7 +105,6 @@ export default function ModalDevolucion({ isOpen, onClose, pedido, onSuccess }: 
   const [detalles, setDetalles] = useState<DetalleDevolucionForm[]>([]);
   const [guardando, setGuardando] = useState(false);
 
-  // Inicializar detalles cuando se abre el modal
   useEffect(() => {
     if (isOpen && pedido && pedido.detalles) {
       const detallesIniciales: DetalleDevolucionForm[] = pedido.detalles.map((det: any) => ({
@@ -62,9 +115,9 @@ export default function ModalDevolucion({ isOpen, onClose, pedido, onSuccess }: 
         talla_nombre: det.talla_nombre || det.talla || 'Talla',
         cantidad_original: det.cantidad,
         pendiente: det.pendiente ?? 0,
-        cantidad_devuelta: 0, // se ajusta abajo según lo entregado
+        cantidad_devuelta: 0,
         precio_unitario: det.precio,
-        seleccionado: tipoDevolucion === 'COMPLETA', // Si es completa, seleccionar todo
+        seleccionado: tipoDevolucion === 'COMPLETA',
         es_cambio: false,
       }));
       const detallesAjustados = detallesIniciales.map((d) => {
@@ -82,7 +135,6 @@ export default function ModalDevolucion({ isOpen, onClose, pedido, onSuccess }: 
     }
   }, [isOpen, pedido, tipoDevolucion]);
 
-  // Actualizar selección cuando cambia el tipo
   useEffect(() => {
     if (tipoDevolucion === 'COMPLETA') {
       setDetalles((prev) =>
@@ -95,7 +147,7 @@ export default function ModalDevolucion({ isOpen, onClose, pedido, onSuccess }: 
         })
       );
     } else {
-      setDetalles(prev => prev.map(d => ({ ...d, seleccionado: false, cantidad_devuelta: 0 })));
+      setDetalles((prev) => prev.map((d) => ({ ...d, seleccionado: false, cantidad_devuelta: 0 })));
     }
   }, [tipoDevolucion, pedido?.estado]);
 
@@ -107,7 +159,7 @@ export default function ModalDevolucion({ isOpen, onClose, pedido, onSuccess }: 
       return;
     }
 
-    const detallesSeleccionados = detalles.filter(d => d.seleccionado && d.cantidad_devuelta > 0);
+    const detallesSeleccionados = detalles.filter((d) => d.seleccionado && d.cantidad_devuelta > 0);
 
     if (detallesSeleccionados.length === 0) {
       alert('Debes seleccionar al menos un artículo para devolver');
@@ -130,7 +182,7 @@ export default function ModalDevolucion({ isOpen, onClose, pedido, onSuccess }: 
       observaciones,
       reembolso_aplicado: reembolsoAplicado,
       monto_reembolsado: reembolsoAplicado ? montoReembolsado : 0,
-      detalles: detallesSeleccionados.map(det => ({
+      detalles: detallesSeleccionados.map((det) => ({
         detalle_pedido_id: det.detalle_pedido_id,
         prenda_id: det.prenda_id,
         talla_id: det.talla_id,
@@ -160,220 +212,455 @@ export default function ModalDevolucion({ isOpen, onClose, pedido, onSuccess }: 
   };
 
   const toggleSeleccion = (index: number) => {
-    setDetalles(prev => prev.map((d, i) => 
-      i === index ? { ...d, seleccionado: !d.seleccionado } : d
-    ));
+    setDetalles((prev) =>
+      prev.map((d, i) => (i === index ? { ...d, seleccionado: !d.seleccionado } : d))
+    );
   };
 
   const actualizarCantidad = (index: number, cantidad: number) => {
-    setDetalles(prev => prev.map((d, i) => 
-      i === index ? (() => {
-        const maxEntregado =
-          pedido?.estado === 'PENDIENTE'
-            ? Math.max(0, d.cantidad_original - (d.pendiente || 0))
-            : d.cantidad_original;
-        return { ...d, cantidad_devuelta: Math.min(cantidad, maxEntregado) };
-      })() : d
-    ));
+    setDetalles((prev) =>
+      prev.map((d, i) =>
+        i === index
+          ? (() => {
+              const maxEntregado =
+                pedido?.estado === 'PENDIENTE'
+                  ? Math.max(0, d.cantidad_original - (d.pendiente || 0))
+                  : d.cantidad_original;
+              return { ...d, cantidad_devuelta: Math.min(cantidad, maxEntregado) };
+            })()
+          : d
+      )
+    );
+  };
+
+  const bumpQty = (index: number, delta: number) => {
+    const d = detalles[index];
+    if (!d) return;
+    const maxEntregado =
+      pedido?.estado === 'PENDIENTE'
+        ? Math.max(0, d.cantidad_original - (d.pendiente || 0))
+        : d.cantidad_original;
+    actualizarCantidad(index, d.cantidad_devuelta + delta);
   };
 
   const toggleCambio = (index: number) => {
-    setDetalles(prev => prev.map((d, i) => 
-      i === index ? { ...d, es_cambio: !d.es_cambio } : d
-    ));
+    setDetalles((prev) =>
+      prev.map((d, i) => (i === index ? { ...d, es_cambio: !d.es_cambio } : d))
+    );
   };
 
   const totalDevolucion = detalles
-    .filter(d => d.seleccionado)
-    .reduce((sum, d) => sum + (d.cantidad_devuelta * d.precio_unitario), 0);
+    .filter((d) => d.seleccionado)
+    .reduce((sum, d) => sum + d.cantidad_devuelta * d.precio_unitario, 0);
 
   if (!isOpen) return null;
 
   return createPortal(
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '900px', maxHeight: '90vh', overflowY: 'auto' }}>
-        <div className="modal-header">
-          <h2>🔄 Registrar Devolución</h2>
-          <button className="modal-close" onClick={onClose}>×</button>
-        </div>
-
-        <form onSubmit={handleSubmit}>
-          <div className="modal-body">
-            {/* Info del pedido */}
-            <div style={{ background: '#f8f9fa', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem' }}>
-              <h3 style={{ marginBottom: '0.5rem', fontSize: '1rem' }}>📦 Pedido: {pedido?.cliente || pedido?.cliente_nombre}</h3>
-              <p style={{ fontSize: '0.9rem', color: '#666', margin: 0 }}>
-                Total: ${(pedido?.total || 0).toFixed(2)} | Fecha: {new Date(pedido?.created_at || pedido?.fecha).toLocaleDateString('es-MX')}
+    <div style={overlay} onClick={onClose} role="presentation">
+      <div style={panel} onClick={(e) => e.stopPropagation()}>
+        <header style={headerGradient}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', minWidth: 0 }}>
+            <div
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 14,
+                background: 'rgba(255,255,255,0.18)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1.35rem',
+                flexShrink: 0,
+              }}
+              aria-hidden
+            >
+              ↩️
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <h2 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
+                Devolución y cambios
+              </h2>
+              <p style={{ margin: '0.2rem 0 0', fontSize: '0.85rem', opacity: 0.92 }}>
+                Ajusta inventario: devolución al almacén y salida del artículo de cambio si aplica.
               </p>
             </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              flexShrink: 0,
+              width: 40,
+              height: 40,
+              borderRadius: 12,
+              border: 'none',
+              background: 'rgba(255,255,255,0.18)',
+              color: '#fff',
+              fontSize: '1.35rem',
+              lineHeight: 1,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            aria-label="Cerrar"
+          >
+            ×
+          </button>
+        </header>
 
-            {/* Tipo de devolución */}
-            <div style={{ marginBottom: '1.5rem' }}>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
-                Tipo de Devolución *
-              </label>
-              <select
-                value={tipoDevolucion}
-                onChange={(e) => setTipoDevolucion(e.target.value as any)}
-                style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #ddd' }}
-                required
-              >
-                <option value="COMPLETA">🔄 Devolución Completa</option>
-                <option value="PARCIAL">📦 Devolución Parcial</option>
-                <option value="CAMBIO_TALLA">📏 Cambio de Talla</option>
-                <option value="CAMBIO_PRENDA">👕 Cambio de Prenda</option>
-              </select>
+        <form style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }} onSubmit={handleSubmit}>
+          <div
+            style={{
+              padding: '1.25rem 1.5rem',
+              overflowY: 'auto',
+              flex: 1,
+              background: 'linear-gradient(180deg, #f0fdfa 0%, #fff 140px)',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '1rem',
+                marginBottom: '1.25rem',
+                padding: '1rem 1.15rem',
+                borderRadius: 16,
+                background: '#fff',
+                border: '1px solid #e2e8f0',
+                boxShadow: '0 1px 3px rgba(15,23,42,0.06)',
+              }}
+            >
+              <div style={{ flex: '1 1 200px' }}>
+                <span style={labelSm}>Cliente</span>
+                <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '1rem' }}>
+                  {pedido?.cliente || pedido?.cliente_nombre || '—'}
+                </div>
+              </div>
+              <div style={{ flex: '0 0 auto', textAlign: 'right' }}>
+                <span style={labelSm}>Total pedido</span>
+                <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#0f172a' }}>
+                  ${(pedido?.total || 0).toFixed(2)}
+                </div>
+              </div>
+              <div style={{ flex: '1 1 100%', fontSize: '0.85rem', color: '#64748b' }}>
+                Fecha:{' '}
+                <strong style={{ color: '#334155' }}>
+                  {new Date(pedido?.created_at || pedido?.fecha).toLocaleDateString('es-MX', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                  })}
+                </strong>
+                {pedido?.estado && (
+                  <>
+                    {' '}
+                    · Estado:{' '}
+                    <strong style={{ color: '#0f766e' }}>{pedido.estado}</strong>
+                  </>
+                )}
+              </div>
             </div>
 
-            {/* Motivo */}
-            <div style={{ marginBottom: '1.5rem' }}>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
-                Motivo *
-              </label>
-              <select
-                value={motivo}
-                onChange={(e) => setMotivo(e.target.value)}
-                style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #ddd' }}
-                required
-              >
-                <option value="">Selecciona un motivo...</option>
-                <option value="Talla incorrecta">📏 Talla incorrecta</option>
-                <option value="Defecto de fabricación">🔧 Defecto de fabricación</option>
-                <option value="No le gustó">❌ No le gustó</option>
-                <option value="Color diferente">🎨 Color diferente</option>
-                <option value="Entrega tardía">⏰ Entrega tardía</option>
-                <option value="Cambio de opinión">💭 Cambio de opinión</option>
-                <option value="Otro">📝 Otro</option>
-              </select>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+              <div>
+                <label style={labelSm}>Tipo *</label>
+                <select
+                  value={tipoDevolucion}
+                  onChange={(e) => setTipoDevolucion(e.target.value as typeof tipoDevolucion)}
+                  style={{ ...inputBase, cursor: 'pointer' }}
+                  required
+                >
+                  <option value="COMPLETA">Devolución completa</option>
+                  <option value="PARCIAL">Devolución parcial</option>
+                  <option value="CAMBIO_TALLA">Cambio de talla</option>
+                  <option value="CAMBIO_PRENDA">Cambio de prenda</option>
+                </select>
+              </div>
+              <div>
+                <label style={labelSm}>Motivo *</label>
+                <select
+                  value={motivo}
+                  onChange={(e) => setMotivo(e.target.value)}
+                  style={{ ...inputBase, cursor: 'pointer' }}
+                  required
+                >
+                  <option value="">Selecciona…</option>
+                  <option value="Talla incorrecta">Talla incorrecta</option>
+                  <option value="Defecto de fabricación">Defecto de fabricación</option>
+                  <option value="No le gustó">No le gustó</option>
+                  <option value="Color diferente">Color diferente</option>
+                  <option value="Entrega tardía">Entrega tardía</option>
+                  <option value="Cambio de opinión">Cambio de opinión</option>
+                  <option value="Otro">Otro</option>
+                </select>
+              </div>
             </div>
 
-            {/* Observaciones */}
-            <div style={{ marginBottom: '1.5rem' }}>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
-                Observaciones
-              </label>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={labelSm}>Observaciones</label>
               <textarea
                 value={observaciones}
                 onChange={(e) => setObservaciones(e.target.value)}
-                placeholder="Detalles adicionales sobre la devolución..."
-                style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #ddd', minHeight: '80px' }}
+                placeholder="Notas internas para el equipo…"
+                style={{ ...inputBase, minHeight: 88, resize: 'vertical' }}
               />
             </div>
 
-            {/* Artículos */}
-            <div style={{ marginBottom: '1.5rem' }}>
-              <h3 style={{ marginBottom: '1rem' }}>Artículos a devolver:</h3>
-              <div style={{ border: '1px solid #ddd', borderRadius: '8px', overflow: 'hidden' }}>
-                {detalles.map((det, index) => (
-                  <div key={index} style={{ 
-                    padding: '1rem', 
-                    borderBottom: index < detalles.length - 1 ? '1px solid #eee' : 'none',
-                    background: det.seleccionado ? '#f0f8ff' : 'white'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.75rem' }}>
+            <div style={{ marginBottom: '0.65rem' }}>
+              <span style={{ ...labelSm, marginBottom: 0 }}>Artículos</span>
+            </div>
+            <div
+              style={{
+                borderRadius: 16,
+                border: '1px solid #e2e8f0',
+                overflow: 'hidden',
+                background: '#fff',
+                marginBottom: '1rem',
+              }}
+            >
+              {detalles.map((det, index) => {
+                const maxEntregado =
+                  pedido?.estado === 'PENDIENTE'
+                    ? Math.max(0, det.cantidad_original - (det.pendiente || 0))
+                    : det.cantidad_original;
+                return (
+                  <div
+                    key={index}
+                    style={{
+                      padding: '1rem 1.15rem',
+                      borderBottom: index < detalles.length - 1 ? '1px solid #f1f5f9' : 'none',
+                      background: det.seleccionado
+                        ? 'linear-gradient(90deg, #ecfeff 0%, #fff 45%)'
+                        : '#fff',
+                    }}
+                  >
+                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
                       <input
                         type="checkbox"
                         checked={det.seleccionado}
                         onChange={() => toggleSeleccion(index)}
                         disabled={tipoDevolucion === 'COMPLETA'}
-                        style={{ width: '18px', height: '18px' }}
+                        style={{
+                          width: 20,
+                          height: 20,
+                          marginTop: 4,
+                          accentColor: '#0d9488',
+                          cursor: tipoDevolucion === 'COMPLETA' ? 'not-allowed' : 'pointer',
+                        }}
                       />
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                          <strong style={{ fontSize: '1rem' }}>{det.prenda_nombre}</strong>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
+                          <strong style={{ fontSize: '1.02rem', color: '#0f172a' }}>{det.prenda_nombre}</strong>
                           {det.prenda_codigo && (
-                            <span style={{ fontSize: '0.85rem', color: '#666', background: '#f0f0f0', padding: '2px 6px', borderRadius: '4px' }}>
+                            <span
+                              style={{
+                                fontSize: '0.72rem',
+                                fontWeight: 700,
+                                padding: '0.15rem 0.45rem',
+                                borderRadius: 6,
+                                background: '#f1f5f9',
+                                color: '#475569',
+                              }}
+                            >
                               {det.prenda_codigo}
                             </span>
                           )}
                         </div>
-                        <div style={{ fontSize: '0.9rem', color: '#555', marginBottom: '0.25rem' }}>
-                          <span style={{ fontWeight: 'bold' }}>Talla:</span> {det.talla_nombre}
+                        <div style={{ fontSize: '0.88rem', color: '#64748b', marginTop: '0.25rem' }}>
+                          Talla <strong style={{ color: '#334155' }}>{det.talla_nombre}</strong>
                           {det.especificaciones && (
-                            <>
-                              {' '} | <span style={{ fontWeight: 'bold' }}>Especificaciones:</span> {det.especificaciones}
-                            </>
+                            <span>
+                              {' '}
+                              · {det.especificaciones}
+                            </span>
                           )}
                         </div>
-                        <div style={{ fontSize: '0.85rem', color: '#666' }}>
-                          💰 Precio unitario: ${(det.precio_unitario || 0).toFixed(2)} | 
-                          📦 Cantidad: {det.cantidad_original} | 
-                          💵 Subtotal: ${((det.precio_unitario || 0) * (det.cantidad_original || 0)).toFixed(2)}
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.5rem' }}>
+                          <span
+                            style={{
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                              padding: '0.2rem 0.5rem',
+                              borderRadius: 999,
+                              background: '#f1f5f9',
+                              color: '#475569',
+                            }}
+                          >
+                            ${(det.precio_unitario || 0).toFixed(2)} c/u
+                          </span>
+                          <span
+                            style={{
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                              padding: '0.2rem 0.5rem',
+                              borderRadius: 999,
+                              background: '#e0f2fe',
+                              color: '#0369a1',
+                            }}
+                          >
+                            Máx. a devolver {maxEntregado}
+                          </span>
                         </div>
                       </div>
                     </div>
 
                     {det.seleccionado && (
-                      <div style={{ marginLeft: '2rem', display: 'grid', gap: '0.75rem' }}>
-                        <div>
-                          <label style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>Cantidad a devolver:</label>
-                          <input
-                            type="number"
-                            min="1"
-                            max={
-                              pedido?.estado === 'PENDIENTE'
-                                ? Math.max(0, det.cantidad_original - (det.pendiente || 0))
-                                : det.cantidad_original
-                            }
-                            value={det.cantidad_devuelta}
-                            onChange={(e) => actualizarCantidad(index, parseInt(e.target.value) || 0)}
-                            style={{ width: '100px', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd', marginLeft: '0.5rem' }}
-                          />
+                      <div style={{ marginLeft: 28, marginTop: '0.85rem', display: 'grid', gap: '0.75rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>Cantidad</span>
+                          <div
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              border: '1px solid #e2e8f0',
+                              borderRadius: 12,
+                              overflow: 'hidden',
+                              background: '#f8fafc',
+                            }}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => bumpQty(index, -1)}
+                              disabled={det.cantidad_devuelta <= 0}
+                              style={{
+                                width: 36,
+                                height: 36,
+                                border: 'none',
+                                background: 'transparent',
+                                cursor: det.cantidad_devuelta <= 0 ? 'not-allowed' : 'pointer',
+                                color: '#64748b',
+                              }}
+                            >
+                              −
+                            </button>
+                            <input
+                              type="number"
+                              min={1}
+                              max={maxEntregado}
+                              value={det.cantidad_devuelta}
+                              onChange={(e) => actualizarCantidad(index, parseInt(e.target.value) || 0)}
+                              style={{
+                                width: 48,
+                                border: 'none',
+                                textAlign: 'center',
+                                fontWeight: 800,
+                                background: '#fff',
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => bumpQty(index, 1)}
+                              disabled={det.cantidad_devuelta >= maxEntregado}
+                              style={{
+                                width: 36,
+                                height: 36,
+                                border: 'none',
+                                background: 'transparent',
+                                cursor: det.cantidad_devuelta >= maxEntregado ? 'not-allowed' : 'pointer',
+                                color: '#64748b',
+                              }}
+                            >
+                              +
+                            </button>
+                          </div>
                         </div>
 
                         {(tipoDevolucion === 'CAMBIO_TALLA' || tipoDevolucion === 'CAMBIO_PRENDA') && (
-                          <div style={{ background: '#fff9e6', padding: '0.75rem', borderRadius: '4px' }}>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                          <div
+                            style={{
+                              padding: '0.85rem 1rem',
+                              borderRadius: 14,
+                              border: '1px solid #fde68a',
+                              background: 'linear-gradient(135deg, #fffbeb 0%, #fff 100%)',
+                            }}
+                          >
+                            <label
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                marginBottom: '0.5rem',
+                                fontWeight: 800,
+                                color: '#92400e',
+                                cursor: 'pointer',
+                              }}
+                            >
                               <input
                                 type="checkbox"
                                 checked={det.es_cambio}
                                 onChange={() => toggleCambio(index)}
+                                style={{ width: 18, height: 18, accentColor: '#d97706' }}
                               />
-                              <span style={{ fontWeight: 'bold' }}>🔄 Es un cambio</span>
+                              Registrar cambio (nueva prenda/talla)
                             </label>
 
                             {det.es_cambio && (
-                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', marginTop: '0.5rem' }}>
+                              <div
+                                style={{
+                                  display: 'grid',
+                                  gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+                                  gap: '0.65rem',
+                                }}
+                              >
                                 <div>
-                                  <label style={{ fontSize: '0.85rem' }}>Nueva prenda:</label>
+                                  <span style={{ ...labelSm, color: '#a16207' }}>Nueva prenda</span>
                                   <select
                                     value={det.prenda_cambio_id || ''}
-                                    onChange={(e) => setDetalles(prev => prev.map((d, i) => 
-                                      i === index ? { ...d, prenda_cambio_id: e.target.value } : d
-                                    ))}
-                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd', fontSize: '0.85rem' }}
+                                    onChange={(e) =>
+                                      setDetalles((prev) =>
+                                        prev.map((d, i) =>
+                                          i === index ? { ...d, prenda_cambio_id: e.target.value } : d
+                                        )
+                                      )
+                                    }
+                                    style={{ ...inputBase, fontSize: '0.88rem' }}
                                   >
-                                    <option value="">Seleccionar...</option>
-                                    {prendas.map(p => (
-                                      <option key={p.id} value={p.id}>{p.nombre}</option>
+                                    <option value="">Seleccionar…</option>
+                                    {prendas.map((p) => (
+                                      <option key={p.id} value={p.id}>
+                                        {p.nombre}
+                                      </option>
                                     ))}
                                   </select>
                                 </div>
                                 <div>
-                                  <label style={{ fontSize: '0.85rem' }}>Nueva talla:</label>
+                                  <span style={{ ...labelSm, color: '#a16207' }}>Nueva talla</span>
                                   <select
                                     value={det.talla_cambio_id || ''}
-                                    onChange={(e) => setDetalles(prev => prev.map((d, i) => 
-                                      i === index ? { ...d, talla_cambio_id: e.target.value } : d
-                                    ))}
-                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd', fontSize: '0.85rem' }}
+                                    onChange={(e) =>
+                                      setDetalles((prev) =>
+                                        prev.map((d, i) =>
+                                          i === index ? { ...d, talla_cambio_id: e.target.value } : d
+                                        )
+                                      )
+                                    }
+                                    style={{ ...inputBase, fontSize: '0.88rem' }}
                                   >
-                                    <option value="">Seleccionar...</option>
-                                    {tallas.map(t => (
-                                      <option key={t.id} value={t.id}>{t.nombre}</option>
+                                    <option value="">Seleccionar…</option>
+                                    {tallas.map((t) => (
+                                      <option key={t.id} value={t.id}>
+                                        {t.nombre}
+                                      </option>
                                     ))}
                                   </select>
                                 </div>
                                 <div>
-                                  <label style={{ fontSize: '0.85rem' }}>Cantidad:</label>
+                                  <span style={{ ...labelSm, color: '#a16207' }}>Cantidad cambio</span>
                                   <input
                                     type="number"
-                                    min="1"
+                                    min={1}
                                     value={det.cantidad_cambio || det.cantidad_devuelta}
-                                    onChange={(e) => setDetalles(prev => prev.map((d, i) => 
-                                      i === index ? { ...d, cantidad_cambio: parseInt(e.target.value) || 0 } : d
-                                    ))}
-                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd', fontSize: '0.85rem' }}
+                                    onChange={(e) =>
+                                      setDetalles((prev) =>
+                                        prev.map((d, i) =>
+                                          i === index
+                                            ? { ...d, cantidad_cambio: parseInt(e.target.value) || 0 }
+                                            : d
+                                        )
+                                      )
+                                    }
+                                    style={inputBase}
                                   />
                                 </div>
                               </div>
@@ -383,57 +670,121 @@ export default function ModalDevolucion({ isOpen, onClose, pedido, onSuccess }: 
                       </div>
                     )}
                   </div>
-                ))}
-              </div>
+                );
+              })}
             </div>
 
-            {/* Reembolso */}
-            <div style={{ background: '#fff3cd', padding: '1rem', borderRadius: '8px', marginBottom: '1rem' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+            <div
+              style={{
+                padding: '1rem 1.15rem',
+                borderRadius: 16,
+                border: '1px solid #e2e8f0',
+                background: 'linear-gradient(135deg, #f8fafc 0%, #fff 100%)',
+                marginBottom: '1rem',
+              }}
+            >
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.6rem',
+                  fontWeight: 800,
+                  color: '#334155',
+                  cursor: 'pointer',
+                }}
+              >
                 <input
                   type="checkbox"
                   checked={reembolsoAplicado}
                   onChange={(e) => setReembolsoAplicado(e.target.checked)}
-                  style={{ width: '18px', height: '18px' }}
+                  style={{ width: 18, height: 18, accentColor: '#0d9488' }}
                 />
-                <span style={{ fontWeight: 'bold' }}>💰 Aplicar reembolso económico</span>
+                Aplicar reembolso económico
               </label>
-
               {reembolsoAplicado && (
-                <div style={{ marginTop: '0.5rem' }}>
-                  <label style={{ fontSize: '0.9rem' }}>Monto a reembolsar:</label>
+                <div style={{ marginTop: '0.65rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '0.85rem', color: '#64748b' }}>Monto</span>
                   <input
                     type="number"
-                    min="0"
+                    min={0}
                     max={totalDevolucion}
-                    step="0.01"
+                    step={0.01}
                     value={montoReembolsado}
                     onChange={(e) => setMontoReembolsado(parseFloat(e.target.value) || 0)}
-                    style={{ width: '150px', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd', marginLeft: '0.5rem' }}
+                    style={{ ...inputBase, width: 160 }}
                   />
-                  <span style={{ marginLeft: '0.5rem', fontSize: '0.9rem', color: '#666' }}>
-                    (Máximo: ${(totalDevolucion || 0).toFixed(2)})
+                  <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                    Máx. ${(totalDevolucion || 0).toFixed(2)}
                   </span>
                 </div>
               )}
             </div>
 
-            {/* Total */}
-            <div style={{ background: '#e7f3ff', padding: '1rem', borderRadius: '8px', textAlign: 'right' }}>
-              <div style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>
-                Total devolución: ${(totalDevolucion || 0).toFixed(2)}
+            <div
+              style={{
+                padding: '1rem 1.15rem',
+                borderRadius: 16,
+                background: 'linear-gradient(135deg, #ccfbf1 0%, #e0f2fe 100%)',
+                border: '1px solid #99f6e4',
+                textAlign: 'right',
+              }}
+            >
+              <div style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.08em', color: '#0f766e' }}>
+                TOTAL DEVOLUCIÓN
+              </div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#0f172a' }}>
+                ${(totalDevolucion || 0).toFixed(2)}
               </div>
             </div>
           </div>
 
-          <div className="modal-footer">
-            <button type="button" onClick={onClose} className="btn-secondary" disabled={guardando}>
-              Cancelar
+          <footer
+            style={{
+              padding: '1rem 1.5rem',
+              borderTop: '1px solid #e2e8f0',
+              background: 'linear-gradient(180deg, #fafafa 0%, #fff 100%)',
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '0.75rem',
+              flexWrap: 'wrap',
+            }}
+          >
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={guardando}
+              style={{
+                padding: '0.65rem 1.25rem',
+                borderRadius: 12,
+                border: '1px solid #e2e8f0',
+                background: '#fff',
+                fontWeight: 700,
+                color: '#475569',
+                cursor: guardando ? 'not-allowed' : 'pointer',
+              }}
+            >
+              Cerrar
             </button>
-            <button type="submit" className="btn-primary" disabled={guardando || detalles.filter(d => d.seleccionado).length === 0}>
-              {guardando ? '⏳ Guardando...' : '✅ Registrar Devolución'}
+            <button
+              type="submit"
+              disabled={guardando || detalles.filter((d) => d.seleccionado).length === 0}
+              style={{
+                padding: '0.65rem 1.35rem',
+                borderRadius: 12,
+                border: 'none',
+                background: 'linear-gradient(135deg, #0d9488 0%, #0e7490 55%, #1e40af 100%)',
+                color: '#fff',
+                fontWeight: 800,
+                cursor:
+                  guardando || detalles.filter((d) => d.seleccionado).length === 0
+                    ? 'not-allowed'
+                    : 'pointer',
+                boxShadow: '0 4px 14px rgba(13, 148, 136, 0.35)',
+              }}
+            >
+              {guardando ? 'Guardando…' : 'Registrar devolución'}
             </button>
-          </div>
+          </footer>
         </form>
       </div>
     </div>,

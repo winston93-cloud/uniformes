@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 interface ModalCancelacionPedidoProps {
   isOpen: boolean;
   onClose: () => void;
-  pedido: any; // pedido + detalles enriquecidos
+  pedido: any;
   onSuccess?: () => void;
 }
 
@@ -20,6 +20,64 @@ type ItemCancelacion = {
   pendiente: number;
   cantidad_cancelar: number;
   seleccionado: boolean;
+};
+
+const overlay: CSSProperties = {
+  position: 'fixed',
+  inset: 0,
+  zIndex: 10050,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: '1rem',
+  background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.75) 0%, rgba(30, 27, 75, 0.65) 100%)',
+  backdropFilter: 'blur(8px)',
+  WebkitBackdropFilter: 'blur(8px)',
+};
+
+const panel: CSSProperties = {
+  width: '100%',
+  maxWidth: 920,
+  maxHeight: 'min(92vh, 900px)',
+  display: 'flex',
+  flexDirection: 'column',
+  background: '#fff',
+  borderRadius: 20,
+  overflow: 'hidden',
+  boxShadow:
+    '0 25px 50px -12px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255,255,255,0.06) inset',
+  animation: 'modalFadeIn 0.28s ease',
+};
+
+const headerGradient: CSSProperties = {
+  padding: '1.25rem 1.5rem',
+  background: 'linear-gradient(135deg, #be123c 0%, #881337 45%, #4c0519 100%)',
+  color: '#fff',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: '1rem',
+};
+
+const labelSm: CSSProperties = {
+  display: 'block',
+  fontSize: '0.7rem',
+  fontWeight: 700,
+  letterSpacing: '0.06em',
+  textTransform: 'uppercase',
+  color: '#64748b',
+  marginBottom: '0.35rem',
+};
+
+const inputBase: CSSProperties = {
+  width: '100%',
+  padding: '0.65rem 0.85rem',
+  borderRadius: 12,
+  border: '1px solid #e2e8f0',
+  fontSize: '0.95rem',
+  background: '#fff',
+  outline: 'none',
+  transition: 'border-color 0.15s, box-shadow 0.15s',
 };
 
 export default function ModalCancelacionPedido({
@@ -130,117 +188,420 @@ export default function ModalCancelacionPedido({
     );
   };
 
+  const bump = (idx: number, delta: number) => {
+    const it = items[idx];
+    if (!it) return;
+    setCantidad(idx, it.cantidad_cancelar + delta);
+  };
+
   if (!isOpen) return null;
 
   return createPortal(
-    <div className="modal-overlay" onClick={onClose}>
-      <div
-        className="modal-content"
-        onClick={(e) => e.stopPropagation()}
-        style={{ maxWidth: '900px', maxHeight: '90vh', overflowY: 'auto' }}
-      >
-        <div className="modal-header">
-          <h2>⛔ Cancelación de Pedido</h2>
-          <button className="modal-close" onClick={onClose}>
+    <div style={overlay} onClick={onClose} role="presentation">
+      <div style={panel} onClick={(e) => e.stopPropagation()}>
+        <header style={headerGradient}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', minWidth: 0 }}>
+            <div
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 14,
+                background: 'rgba(255,255,255,0.15)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1.35rem',
+                flexShrink: 0,
+              }}
+              aria-hidden
+            >
+              ⛔
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <h2 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
+                Cancelación de pedido
+              </h2>
+              <p style={{ margin: '0.2rem 0 0', fontSize: '0.85rem', opacity: 0.92 }}>
+                Ajusta inventario según lo que canceles (total o por partida).
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              flexShrink: 0,
+              width: 40,
+              height: 40,
+              borderRadius: 12,
+              border: 'none',
+              background: 'rgba(255,255,255,0.15)',
+              color: '#fff',
+              fontSize: '1.35rem',
+              lineHeight: 1,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            aria-label="Cerrar"
+          >
             ×
           </button>
-        </div>
+        </header>
 
-        <form onSubmit={handleSubmit}>
-          <div className="modal-body">
-            <div style={{ background: '#f8f9fa', padding: '1rem', borderRadius: '8px', marginBottom: '1rem' }}>
-              <div style={{ fontWeight: 700 }}>
-                Pedido: {pedido?.folio || `#${String(pedido?.id).slice(0, 8)}…`}
+        <form
+          onSubmit={handleSubmit}
+          style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}
+        >
+          <div
+            style={{
+              padding: '1.25rem 1.5rem',
+              overflowY: 'auto',
+              flex: 1,
+              background: 'linear-gradient(180deg, #f8fafc 0%, #fff 120px)',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '1rem',
+                alignItems: 'stretch',
+                marginBottom: '1.25rem',
+                padding: '1rem 1.15rem',
+                borderRadius: 16,
+                background: '#fff',
+                border: '1px solid #e2e8f0',
+                boxShadow: '0 1px 3px rgba(15,23,42,0.06)',
+              }}
+            >
+              <div style={{ flex: '1 1 200px' }}>
+                <span style={labelSm}>Pedido</span>
+                <div
+                  style={{
+                    fontFamily: 'ui-monospace, monospace',
+                    fontWeight: 700,
+                    fontSize: '0.95rem',
+                    color: '#0f172a',
+                  }}
+                >
+                  {pedido?.folio || `#${String(pedido?.id).slice(0, 8)}…`}
+                </div>
               </div>
-              <div style={{ fontSize: '0.9rem', color: '#666' }}>
-                Cliente: {pedido?.cliente_nombre || pedido?.cliente || 'N/A'} | Total: $
-                {(pedido?.total || 0).toFixed(2)}
+              <div style={{ flex: '2 1 280px' }}>
+                <span style={labelSm}>Cliente</span>
+                <div style={{ fontWeight: 600, color: '#334155', fontSize: '0.95rem' }}>
+                  {pedido?.cliente_nombre || pedido?.cliente || 'N/A'}
+                </div>
+              </div>
+              <div style={{ textAlign: 'right', flex: '0 0 auto' }}>
+                <span style={labelSm}>Total</span>
+                <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#0f172a' }}>
+                  ${(pedido?.total || 0).toFixed(2)}
+                </div>
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1rem', marginBottom: '1rem' }}>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1.4fr)',
+                gap: '1rem',
+                marginBottom: '1.25rem',
+              }}
+            >
               <div>
-                <label style={{ display: 'block', fontWeight: 700, marginBottom: '0.25rem' }}>
-                  Tipo de cancelación
-                </label>
+                <label style={labelSm}>Tipo de cancelación</label>
                 <select
                   value={modo}
-                  onChange={(e) => setModo(e.target.value as any)}
-                  style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '1px solid #ddd' }}
+                  onChange={(e) => setModo(e.target.value as 'TOTAL' | 'PARCIAL')}
+                  style={{ ...inputBase, cursor: 'pointer' }}
                 >
-                  <option value="TOTAL">Cancelar todo el pedido</option>
-                  <option value="PARCIAL">Cancelar algunas partidas</option>
+                  <option value="TOTAL">Todo el pedido</option>
+                  <option value="PARCIAL">Solo algunas partidas</option>
                 </select>
               </div>
               <div>
-                <label style={{ display: 'block', fontWeight: 700, marginBottom: '0.25rem' }}>
-                  Motivo (opcional)
-                </label>
+                <label style={labelSm}>Motivo (opcional)</label>
                 <input
                   value={motivo}
                   onChange={(e) => setMotivo(e.target.value)}
-                  placeholder="Ej. Cliente canceló / Error de captura"
-                  style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '1px solid #ddd' }}
+                  placeholder="Ej. Cliente canceló, error de captura…"
+                  style={inputBase}
                 />
               </div>
             </div>
 
-            <div style={{ border: '1px solid #ddd', borderRadius: '8px', overflow: 'hidden' }}>
-              {items.map((it, idx) => (
-                <div
-                  key={it.detalle_pedido_id}
-                  style={{
-                    padding: '0.85rem',
-                    borderBottom: idx < items.length - 1 ? '1px solid #eee' : 'none',
-                    background: it.seleccionado ? '#fff7ed' : 'white',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <input
-                      type="checkbox"
-                      checked={it.seleccionado}
-                      onChange={() => toggle(idx)}
-                      disabled={modo === 'TOTAL'}
-                      style={{ width: 18, height: 18 }}
-                    />
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 800 }}>
-                        {it.prenda_nombre} — {it.talla_nombre}
-                      </div>
-                      <div style={{ fontSize: '0.85rem', color: '#666' }}>
-                        Cantidad: {it.cantidad_total} | Pendiente: {it.pendiente} | Entregado: {Math.max(0, it.cantidad_total - it.pendiente)}
+            <div>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'baseline',
+                  justifyContent: 'space-between',
+                  marginBottom: '0.65rem',
+                }}
+              >
+                <span style={{ ...labelSm, marginBottom: 0 }}>Partidas</span>
+                <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                  {modo === 'TOTAL' ? 'Se cancelará el pedido completo' : 'Marca cantidades a anular'}
+                </span>
+              </div>
+              <div
+                style={{
+                  borderRadius: 16,
+                  border: '1px solid #e2e8f0',
+                  overflow: 'hidden',
+                  background: '#fff',
+                  boxShadow: '0 1px 2px rgba(15,23,42,0.04)',
+                }}
+              >
+                {items.map((it, idx) => {
+                  const entregado = Math.max(0, it.cantidad_total - it.pendiente);
+                  const active = it.seleccionado;
+                  return (
+                    <div
+                      key={it.detalle_pedido_id}
+                      style={{
+                        padding: '1rem 1.15rem',
+                        borderBottom: idx < items.length - 1 ? '1px solid #f1f5f9' : 'none',
+                        background: active
+                          ? 'linear-gradient(90deg, #fff1f2 0%, #fff 40%)'
+                          : '#fff',
+                        transition: 'background 0.15s ease',
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: '0.85rem',
+                          flexWrap: 'wrap',
+                        }}
+                      >
+                        <label
+                          style={{
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            gap: '0.65rem',
+                            cursor: modo === 'TOTAL' ? 'default' : 'pointer',
+                            flex: '1 1 220px',
+                            minWidth: 0,
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={it.seleccionado}
+                            onChange={() => toggle(idx)}
+                            disabled={modo === 'TOTAL'}
+                            style={{
+                              width: 20,
+                              height: 20,
+                              marginTop: 3,
+                              accentColor: '#be123c',
+                              cursor: modo === 'TOTAL' ? 'not-allowed' : 'pointer',
+                            }}
+                          />
+                          <div style={{ minWidth: 0 }}>
+                            <div
+                              style={{
+                                fontWeight: 800,
+                                fontSize: '1rem',
+                                color: '#0f172a',
+                                lineHeight: 1.3,
+                              }}
+                            >
+                              {it.prenda_nombre}
+                              <span style={{ color: '#94a3b8', fontWeight: 600 }}> · </span>
+                              <span style={{ color: '#475569' }}>Talla {it.talla_nombre}</span>
+                            </div>
+                            <div
+                              style={{
+                                display: 'flex',
+                                flexWrap: 'wrap',
+                                gap: '0.4rem',
+                                marginTop: '0.5rem',
+                              }}
+                            >
+                              <span
+                                style={{
+                                  fontSize: '0.72rem',
+                                  fontWeight: 700,
+                                  padding: '0.2rem 0.5rem',
+                                  borderRadius: 999,
+                                  background: '#f1f5f9',
+                                  color: '#475569',
+                                }}
+                              >
+                                Pedido {it.cantidad_total}
+                              </span>
+                              <span
+                                style={{
+                                  fontSize: '0.72rem',
+                                  fontWeight: 700,
+                                  padding: '0.2rem 0.5rem',
+                                  borderRadius: 999,
+                                  background: '#fef3c7',
+                                  color: '#92400e',
+                                }}
+                              >
+                                Pendiente {it.pendiente}
+                              </span>
+                              <span
+                                style={{
+                                  fontSize: '0.72rem',
+                                  fontWeight: 700,
+                                  padding: '0.2rem 0.5rem',
+                                  borderRadius: 999,
+                                  background: '#dcfce7',
+                                  color: '#166534',
+                                }}
+                              >
+                                Entregado {entregado}
+                              </span>
+                            </div>
+                          </div>
+                        </label>
+
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            marginLeft: 'auto',
+                          }}
+                        >
+                          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>
+                            Quitar
+                          </span>
+                          <div
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              border: '1px solid #e2e8f0',
+                              borderRadius: 12,
+                              overflow: 'hidden',
+                              background: '#f8fafc',
+                            }}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => bump(idx, -1)}
+                              disabled={!it.seleccionado || modo === 'TOTAL' || it.cantidad_cancelar <= 0}
+                              style={{
+                                width: 36,
+                                height: 36,
+                                border: 'none',
+                                background: 'transparent',
+                                cursor:
+                                  !it.seleccionado || modo === 'TOTAL' || it.cantidad_cancelar <= 0
+                                    ? 'not-allowed'
+                                    : 'pointer',
+                                fontSize: '1.1rem',
+                                color: '#64748b',
+                              }}
+                            >
+                              −
+                            </button>
+                            <input
+                              type="number"
+                              min={0}
+                              max={it.cantidad_total}
+                              value={it.cantidad_cancelar}
+                              disabled={!it.seleccionado || modo === 'TOTAL'}
+                              onChange={(e) => setCantidad(idx, parseInt(e.target.value) || 0)}
+                              style={{
+                                width: 48,
+                                border: 'none',
+                                textAlign: 'center',
+                                fontWeight: 800,
+                                fontSize: '0.95rem',
+                                background: '#fff',
+                                padding: '0.35rem 0',
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => bump(idx, 1)}
+                              disabled={
+                                !it.seleccionado ||
+                                modo === 'TOTAL' ||
+                                it.cantidad_cancelar >= it.cantidad_total
+                              }
+                              style={{
+                                width: 36,
+                                height: 36,
+                                border: 'none',
+                                background: 'transparent',
+                                cursor:
+                                  !it.seleccionado ||
+                                  modo === 'TOTAL' ||
+                                  it.cantidad_cancelar >= it.cantidad_total
+                                    ? 'not-allowed'
+                                    : 'pointer',
+                                fontSize: '1.1rem',
+                                color: '#64748b',
+                              }}
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>Cancelar</span>
-                      <input
-                        type="number"
-                        min={0}
-                        max={it.cantidad_total}
-                        value={it.cantidad_cancelar}
-                        disabled={!it.seleccionado || modo === 'TOTAL'}
-                        onChange={(e) => setCantidad(idx, parseInt(e.target.value) || 0)}
-                        style={{ width: 90, padding: '0.4rem', borderRadius: '6px', border: '1px solid #ddd' }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))}
+                  );
+                })}
+              </div>
             </div>
           </div>
 
-          <div className="modal-footer">
-            <button type="button" onClick={onClose} className="btn-secondary" disabled={guardando}>
+          <footer
+            style={{
+              padding: '1rem 1.5rem',
+              borderTop: '1px solid #e2e8f0',
+              background: 'linear-gradient(180deg, #fafafa 0%, #fff 100%)',
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '0.75rem',
+              flexWrap: 'wrap',
+            }}
+          >
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={guardando}
+              style={{
+                padding: '0.65rem 1.25rem',
+                borderRadius: 12,
+                border: '1px solid #e2e8f0',
+                background: '#fff',
+                fontWeight: 700,
+                color: '#475569',
+                cursor: guardando ? 'not-allowed' : 'pointer',
+              }}
+            >
               Cerrar
             </button>
-            <button type="submit" className="btn-danger" disabled={guardando}>
-              {guardando ? '⏳ Aplicando...' : '⛔ Cancelar'}
+            <button
+              type="submit"
+              disabled={guardando}
+              style={{
+                padding: '0.65rem 1.35rem',
+                borderRadius: 12,
+                border: 'none',
+                background: 'linear-gradient(135deg, #be123c 0%, #9f1239 100%)',
+                color: '#fff',
+                fontWeight: 800,
+                cursor: guardando ? 'not-allowed' : 'pointer',
+                boxShadow: '0 4px 14px rgba(190, 18, 60, 0.35)',
+              }}
+            >
+              {guardando ? 'Aplicando…' : 'Confirmar cancelación'}
             </button>
-          </div>
+          </footer>
         </form>
       </div>
     </div>,
     document.body
   );
 }
-

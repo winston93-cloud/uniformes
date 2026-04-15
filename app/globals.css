@@ -1081,7 +1081,7 @@ body {
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
-  justifycontent: center;
+  justify-content: center;
   z-index: 9999;
   padding: 1rem;
   overflow-y: auto;
