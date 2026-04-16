@@ -637,8 +637,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       const xR = 176;
       // Ajuste fino: interlineado del bloque derecho
       const shiftYRight = -11;
-      const stepRight = 5.4; // separación entre renglones (más corta para que no "se vaya" hacia abajo)
-      const gapRight = 8.0; // separación entre bloque superior e inferior
+      const stepRight = 4.8; // separación entre renglones (más compacta)
+      const gapRight = 6.2; // separación entre bloque superior e inferior (quitar ~1 renglón)
       const yNo = 26.5 + shiftYRight;
       const yLugar = yNo + stepRight;
       const yFecha = yNo + stepRight * 2;
