@@ -645,7 +645,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       // - "Fecha de comprobante": bajar un poco
       // - Bloque inferior completo: bajar 1.5 renglones
       const yFecha = yNo + stepRight * 2 + 1.2;
-      const shiftInferior = stepRight * 1.5;
+      // Subir 1 renglón a partir de "Método de pago"
+      const shiftInferior = stepRight * 0.5;
       const yMetodo = yFecha + gapRight + shiftInferior;
       const yForma = yMetodo + stepRight;
       const yTipoCambio = yForma + stepRight;
