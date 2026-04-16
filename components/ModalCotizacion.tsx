@@ -649,8 +649,9 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       const shiftInferior = stepRight * 0.5;
       const yMetodo = yFecha + gapRight + shiftInferior;
       const yForma = yMetodo + stepRight;
-      const yTipoCambio = yForma + stepRight;
-      const yMoneda = yTipoCambio + stepRight;
+      const ajustarAbajoTipoCambioYMoneda = 0.9;
+      const yTipoCambio = yForma + stepRight + ajustarAbajoTipoCambioYMoneda;
+      const yMoneda = yTipoCambio + stepRight + ajustarAbajoTipoCambioYMoneda;
 
       // Bloque superior derecho
       const lugarExp = data.comprobante.lugarExpedicion || '';
