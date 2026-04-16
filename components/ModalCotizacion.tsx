@@ -620,27 +620,30 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
 
       // Caja izquierda (cliente)
       // Coordenadas calibradas al JPG (mm, A4)
-      const xL = 33;
+      // Ajuste fino: subir ~3 renglones y mover a la derecha
+      const xL = 37;
       const clienteNombre = data.cliente.nombre || '';
       const clienteDomicilio = data.cliente.domicilio || '';
       const clienteRfc = data.cliente.rfc || '';
       const clienteTelefono = data.cliente.telefono || '';
-      if (clienteNombre) doc.text(doc.splitTextToSize(clienteNombre, 100), xL, 44);
-      if (clienteDomicilio) doc.text(doc.splitTextToSize(clienteDomicilio, 100), xL, 51);
-      if (clienteRfc) doc.text(doc.splitTextToSize(clienteRfc, 100), xL, 58);
-      if (clienteTelefono) doc.text(doc.splitTextToSize(clienteTelefono, 100), xL, 65);
+      if (clienteNombre) doc.text(doc.splitTextToSize(clienteNombre, 100), xL, 35);
+      if (clienteDomicilio) doc.text(doc.splitTextToSize(clienteDomicilio, 100), xL, 42);
+      if (clienteRfc) doc.text(doc.splitTextToSize(clienteRfc, 100), xL, 49);
+      if (clienteTelefono) doc.text(doc.splitTextToSize(clienteTelefono, 100), xL, 56);
 
       // Caja derecha (comprobante / pago)
       // NOTA: el fondo tiene una columna de "rótulos" y otra de "valores".
       // xR debe iniciar en la columna de valores para evitar encimar etiquetas.
       const xR = 176;
-      const yNo = 26.5;
-      const yLugar = 33.5;
-      const yFecha = 40.5;
-      const yMetodo = 52.5;
-      const yForma = 59.5;
-      const yTipoCambio = 66.5;
-      const yMoneda = 73.5;
+      // Ajuste fino: subir ~6-7 renglones
+      const shiftYRight = -16;
+      const yNo = 26.5 + shiftYRight;
+      const yLugar = 33.5 + shiftYRight;
+      const yFecha = 40.5 + shiftYRight;
+      const yMetodo = 52.5 + shiftYRight;
+      const yForma = 59.5 + shiftYRight;
+      const yTipoCambio = 66.5 + shiftYRight;
+      const yMoneda = 73.5 + shiftYRight;
 
       // Bloque superior derecho
       const lugarExp = data.comprobante.lugarExpedicion || '';
