@@ -608,35 +608,45 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     const pintarHeader = () => {
       doc.setTextColor(15, 23, 42);
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
+      doc.setFontSize(8.5);
 
       const noComprobante = (() => {
         // Preferimos mostrar el consecutivo (ej. 0141 -> 141) como en tu ejemplo.
         const m = String(data.folio || '').match(/(\d{1,})$/);
-        if (!m) return data.folio || '—';
+        if (!m) return data.folio || '';
         const n = Number.parseInt(m[1], 10);
-        return Number.isFinite(n) ? String(n) : (data.folio || '—');
+        return Number.isFinite(n) ? String(n) : (data.folio || '');
       })();
 
       // Caja izquierda (cliente)
       // Coordenadas calibradas al JPG (mm, A4)
       const xL = 33;
-      doc.text(doc.splitTextToSize(data.cliente.nombre || '—', 100), xL, 42);
-      doc.text(doc.splitTextToSize(data.cliente.domicilio || '—', 100), xL, 49);
-      doc.text(doc.splitTextToSize(data.cliente.rfc || '—', 100), xL, 56);
-      doc.text(doc.splitTextToSize(data.cliente.telefono || '—', 100), xL, 63);
+      const clienteNombre = data.cliente.nombre || '';
+      const clienteDomicilio = data.cliente.domicilio || '';
+      const clienteRfc = data.cliente.rfc || '';
+      const clienteTelefono = data.cliente.telefono || '';
+      if (clienteNombre) doc.text(doc.splitTextToSize(clienteNombre, 100), xL, 44);
+      if (clienteDomicilio) doc.text(doc.splitTextToSize(clienteDomicilio, 100), xL, 51);
+      if (clienteRfc) doc.text(doc.splitTextToSize(clienteRfc, 100), xL, 58);
+      if (clienteTelefono) doc.text(doc.splitTextToSize(clienteTelefono, 100), xL, 65);
 
       // Caja derecha (comprobante / pago)
       const xR = 156;
       // Bloque superior derecho
-      doc.text(doc.splitTextToSize(noComprobante, 35), xR, 35);
-      doc.text(doc.splitTextToSize(data.comprobante.lugarExpedicion || '—', 35), xR, 42);
-      doc.text(doc.splitTextToSize(data.fechaComprobante || '—', 35), xR, 49);
+      const lugarExp = data.comprobante.lugarExpedicion || '';
+      const fechaComp = data.fechaComprobante || '';
+      if (noComprobante) doc.text(doc.splitTextToSize(noComprobante, 35), xR, 32);
+      if (lugarExp) doc.text(doc.splitTextToSize(lugarExp, 35), xR, 38.5);
+      if (fechaComp) doc.text(doc.splitTextToSize(fechaComp, 35), xR, 45);
       // Bloque inferior derecho
-      doc.text(doc.splitTextToSize(data.comprobante.metodoPago || '—', 35), xR, 60);
-      doc.text(doc.splitTextToSize(data.comprobante.formaPago || '—', 35), xR, 67);
-      doc.text(doc.splitTextToSize(data.comprobante.tipoCambio || '—', 35), xR, 74);
-      doc.text(doc.splitTextToSize(data.comprobante.moneda || '—', 35), xR, 81);
+      const metodo = data.comprobante.metodoPago || '';
+      const forma = data.comprobante.formaPago || '';
+      const tipoCambio = data.comprobante.tipoCambio || '';
+      const moneda = data.comprobante.moneda || '';
+      if (metodo) doc.text(doc.splitTextToSize(metodo, 35), xR, 58.5);
+      if (forma) doc.text(doc.splitTextToSize(forma, 35), xR, 65);
+      if (tipoCambio) doc.text(doc.splitTextToSize(tipoCambio, 35), xR, 71.5);
+      if (moneda) doc.text(doc.splitTextToSize(moneda, 35), xR, 78);
     };
 
     autoTable(doc, {
