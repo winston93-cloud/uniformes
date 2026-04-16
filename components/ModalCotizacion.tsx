@@ -635,16 +635,17 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       // NOTA: el fondo tiene una columna de "rótulos" y otra de "valores".
       // xR debe iniciar en la columna de valores para evitar encimar etiquetas.
       const xR = 176;
-      // Ajuste fino: subir ~6-7 renglones
-      // Ajuste fino: bajarlo ~2 renglones (vs. el ajuste anterior)
+      // Ajuste fino: interlineado del bloque derecho
       const shiftYRight = -11;
+      const stepRight = 5.4; // separación entre renglones (más corta para que no "se vaya" hacia abajo)
+      const gapRight = 8.0; // separación entre bloque superior e inferior
       const yNo = 26.5 + shiftYRight;
-      const yLugar = 33.5 + shiftYRight;
-      const yFecha = 40.5 + shiftYRight;
-      const yMetodo = 52.5 + shiftYRight;
-      const yForma = 59.5 + shiftYRight;
-      const yTipoCambio = 66.5 + shiftYRight;
-      const yMoneda = 73.5 + shiftYRight;
+      const yLugar = yNo + stepRight;
+      const yFecha = yNo + stepRight * 2;
+      const yMetodo = yFecha + gapRight;
+      const yForma = yMetodo + stepRight;
+      const yTipoCambio = yForma + stepRight;
+      const yMoneda = yTipoCambio + stepRight;
 
       // Bloque superior derecho
       const lugarExp = data.comprobante.lugarExpedicion || '';
