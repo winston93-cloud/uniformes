@@ -626,10 +626,15 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       const clienteDomicilio = data.cliente.domicilio || '';
       const clienteRfc = data.cliente.rfc || '';
       const clienteTelefono = data.cliente.telefono || '';
-      if (clienteNombre) doc.text(doc.splitTextToSize(clienteNombre, 100), xL, 35);
-      if (clienteDomicilio) doc.text(doc.splitTextToSize(clienteDomicilio, 100), xL, 42);
-      if (clienteRfc) doc.text(doc.splitTextToSize(clienteRfc, 100), xL, 49);
-      if (clienteTelefono) doc.text(doc.splitTextToSize(clienteTelefono, 100), xL, 56);
+      // Interlineado izquierdo: domicilio un poco más arriba (menos hueco bajo el nombre)
+      const yNombre = 35;
+      const yDomicilio = 39;
+      const yRfc = 47;
+      const yTel = 54;
+      if (clienteNombre) doc.text(doc.splitTextToSize(clienteNombre, 100), xL, yNombre);
+      if (clienteDomicilio) doc.text(doc.splitTextToSize(clienteDomicilio, 100), xL, yDomicilio);
+      if (clienteRfc) doc.text(doc.splitTextToSize(clienteRfc, 100), xL, yRfc);
+      if (clienteTelefono) doc.text(doc.splitTextToSize(clienteTelefono, 100), xL, yTel);
 
       // Caja derecha (comprobante / pago)
       // NOTA: el fondo tiene una columna de "rótulos" y otra de "valores".
