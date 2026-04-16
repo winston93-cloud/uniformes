@@ -673,7 +673,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     // Ajuste: el encabezado de columnas debe caer sobre la franja azul del JPG,
     // y NO debe dibujarse un bloque oscuro extra por parte del PDF.
     // Subir encabezados + partidas ~8 renglones
-    const tableTopY = 50;
+    // Ajuste fino: bajar medio renglón la tabla
+    const tableTopY = 52;
     autoTable(doc, {
       // Importante: startY solo aplica a la primera página.
       // Para páginas siguientes, hay que usar margin.top para que el encabezado
@@ -692,8 +693,9 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       ]),
       theme: 'grid',
       styles: { fontSize: 9, cellPadding: 2, textColor: [15, 23, 42] },
-      // El fondo del encabezado lo aporta el JPG (franja azul). Aquí dejamos el head sin bloque.
-      headStyles: { fillColor: [255, 255, 255], textColor: [15, 23, 42], fontStyle: 'bold' },
+      // El fondo del encabezado lo aporta el JPG (franja azul).
+      // Importante: desactivar relleno del head (sin bloque blanco) y usar texto blanco.
+      headStyles: { fillColor: false as any, textColor: [255, 255, 255], fontStyle: 'bold' },
       columnStyles: {
         0: { cellWidth: 16, halign: 'right' },
         1: { cellWidth: 78 },
