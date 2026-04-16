@@ -673,7 +673,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     // Ajuste: el encabezado de columnas debe caer sobre la franja azul del JPG,
     // y NO debe dibujarse un bloque oscuro extra por parte del PDF.
     // Subir encabezados + partidas ~8 renglones
-    const tableTopY = 86;
+    const tableTopY = 62;
     autoTable(doc, {
       // Importante: startY solo aplica a la primera página.
       // Para páginas siguientes, hay que usar margin.top para que el encabezado
