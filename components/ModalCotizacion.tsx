@@ -636,7 +636,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       // xR debe iniciar en la columna de valores para evitar encimar etiquetas.
       const xR = 176;
       // Ajuste fino: subir ~6-7 renglones
-      const shiftYRight = -16;
+      // Ajuste fino: bajarlo ~2 renglones (vs. el ajuste anterior)
+      const shiftYRight = -11;
       const yNo = 26.5 + shiftYRight;
       const yLugar = 33.5 + shiftYRight;
       const yFecha = 40.5 + shiftYRight;
