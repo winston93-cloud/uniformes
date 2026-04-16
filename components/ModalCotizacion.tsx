@@ -608,7 +608,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     const pintarHeader = () => {
       doc.setTextColor(15, 23, 42);
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(8.5);
+      doc.setFontSize(7.8);
 
       const noComprobante = (() => {
         // Preferimos mostrar el consecutivo (ej. 0141 -> 141) como en tu ejemplo.
@@ -631,22 +631,32 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       if (clienteTelefono) doc.text(doc.splitTextToSize(clienteTelefono, 100), xL, 65);
 
       // Caja derecha (comprobante / pago)
-      const xR = 156;
+      // NOTA: el fondo tiene una columna de "rótulos" y otra de "valores".
+      // xR debe iniciar en la columna de valores para evitar encimar etiquetas.
+      const xR = 176;
+      const yNo = 26.5;
+      const yLugar = 33.5;
+      const yFecha = 40.5;
+      const yMetodo = 52.5;
+      const yForma = 59.5;
+      const yTipoCambio = 66.5;
+      const yMoneda = 73.5;
+
       // Bloque superior derecho
       const lugarExp = data.comprobante.lugarExpedicion || '';
       const fechaComp = data.fechaComprobante || '';
-      if (noComprobante) doc.text(doc.splitTextToSize(noComprobante, 35), xR, 32);
-      if (lugarExp) doc.text(doc.splitTextToSize(lugarExp, 35), xR, 38.5);
-      if (fechaComp) doc.text(doc.splitTextToSize(fechaComp, 35), xR, 45);
+      if (noComprobante) doc.text(doc.splitTextToSize(noComprobante, 28), xR, yNo);
+      if (lugarExp) doc.text(doc.splitTextToSize(lugarExp, 28), xR, yLugar);
+      if (fechaComp) doc.text(doc.splitTextToSize(fechaComp, 28), xR, yFecha);
       // Bloque inferior derecho
       const metodo = data.comprobante.metodoPago || '';
       const forma = data.comprobante.formaPago || '';
       const tipoCambio = data.comprobante.tipoCambio || '';
       const moneda = data.comprobante.moneda || '';
-      if (metodo) doc.text(doc.splitTextToSize(metodo, 35), xR, 58.5);
-      if (forma) doc.text(doc.splitTextToSize(forma, 35), xR, 65);
-      if (tipoCambio) doc.text(doc.splitTextToSize(tipoCambio, 35), xR, 71.5);
-      if (moneda) doc.text(doc.splitTextToSize(moneda, 35), xR, 78);
+      if (metodo) doc.text(doc.splitTextToSize(metodo, 28), xR, yMetodo);
+      if (forma) doc.text(doc.splitTextToSize(forma, 28), xR, yForma);
+      if (tipoCambio) doc.text(doc.splitTextToSize(tipoCambio, 28), xR, yTipoCambio);
+      if (moneda) doc.text(doc.splitTextToSize(moneda, 28), xR, yMoneda);
     };
 
     autoTable(doc, {
