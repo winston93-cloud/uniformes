@@ -670,9 +670,14 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       if (moneda) doc.text(doc.splitTextToSize(moneda, 28), xR, yMoneda);
     };
 
+    const tableTopY = 105;
     autoTable(doc, {
-      startY: 105,
-      margin: { left: 14, right: 14, top: 0, bottom: 28 },
+      // Importante: startY solo aplica a la primera página.
+      // Para páginas siguientes, hay que usar margin.top para que el encabezado
+      // de la tabla NO se vaya hasta arriba y quede alineado al bloque azul del formato.
+      startY: tableTopY,
+      margin: { left: 14, right: 14, top: tableTopY, bottom: 28 },
+      showHead: 'everyPage',
       head: [['CANT.', 'DESCRIPCIÓN', 'TALLA', 'COLOR', 'P. UNITARIO', 'VALOR DE VENTA']],
       body: data.partidas.map((p) => [
         String(p.cantidad),
@@ -697,9 +702,9 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
         pintarFondo();
       },
       didDrawPage: (hookData) => {
-        if (hookData.pageNumber === 1) {
-          pintarHeader();
-        }
+        // Pintar encabezado en TODAS las páginas para que la tabla siempre
+        // arranque debajo del formato, y no se vea un encabezado suelto arriba.
+        pintarHeader();
       },
     });
 
