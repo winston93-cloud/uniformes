@@ -19,6 +19,7 @@ import {
   abrirPlanTrabajoSemanalPdf,
   type FilaPlanTrabajoPdf,
 } from '@/lib/plan-trabajo-semanal-pdf';
+import { obtenerCostoBrutoPrendaTalla } from '@/lib/costo-bruto-prenda';
 
 /** Fila guardada en InsForge para esta semana (permite conservar partidas sin reexpandir cotizaciones). */
 type PlanItemSemana = {
@@ -43,10 +44,34 @@ type SeleccionRow = {
   ganancia_total: number;
 };
 
-function rowDesdePlanItemGuardado(p: PlanItemSemana): SeleccionRow {
+/** Costo bruto por receta (insumos); si aún no cargó, respaldo `precio_compra` del costo. */
+function costoBrutoEfectivoUnitario(
+  costoId: string | undefined,
+  costoBrutoPorCostoId: Record<string, number>,
+  costoPorId: Record<string, Costo>
+): number {
+  if (!costoId) return 0;
+  const row = costoPorId[costoId];
+  if (!row) return 0;
+  if (costoBrutoPorCostoId[costoId] !== undefined) {
+    return costoBrutoPorCostoId[costoId];
+  }
+  return Number((row as Costo).precio_compra) || 0;
+}
+
+function rowDesdePlanItemGuardado(
+  p: PlanItemSemana,
+  piezasArg: number,
+  costoId: string | undefined,
+  costoBrutoPorCostoId: Record<string, number>,
+  costoPorId: Record<string, Costo>
+): SeleccionRow {
   const precio = Number(p.precio_unitario) || 0;
-  const costo = Number(p.costo_unitario) || 0;
-  const piezas = Number(p.piezas) || 0;
+  let costo = costoBrutoEfectivoUnitario(costoId, costoBrutoPorCostoId, costoPorId);
+  if (!costoId) {
+    costo = Number(p.costo_unitario) || 0;
+  }
+  const piezas = Number(piezasArg) || 0;
   const ganU = Number((precio - costo).toFixed(2));
   const ganT = Number((ganU * piezas).toFixed(2));
   return {
@@ -88,6 +113,10 @@ function fmtFechaCot(fecha: string | null | undefined) {
   } catch {
     return '—';
   }
+}
+
+function fmtMxn(n: number) {
+  return n.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 /** Máximo de piezas que pueden planearse en la semana vista (restante tras otras semanas). */
@@ -147,6 +176,11 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
   const [cotizacionExpandida, setCotizacionExpandida] = useState<string | null>(null);
   const [detallesExpandidos, setDetallesExpandidos] = useState<Record<string, DetalleCotizacion[]>>({});
   const [costoPorId, setCostoPorId] = useState<Record<string, Costo>>({});
+  /** costo_id → costo bruto por prenda (receta insumos × costo unitario por presentación). */
+  const [costoBrutoPorCostoId, setCostoBrutoPorCostoId] = useState<Record<string, number>>({});
+  /** detalle_id → costo_id cuando la partida no está en detalles expandidos (p. ej. solo en plan guardado). */
+  const [detalleCostoIdExtra, setDetalleCostoIdExtra] = useState<Record<string, string>>({});
+  const [loadingCostoBruto, setLoadingCostoBruto] = useState(false);
   /** detalle_id → piezas asignadas al plan de la semana que se edita (0 = no entra en el plan). */
   const [piezasPorDetalle, setPiezasPorDetalle] = useState<Record<string, number>>({});
   const [gastosFijosTotal, setGastosFijosTotal] = useState(0);
@@ -370,6 +404,88 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
     return m;
   }, [cotizacionesProduccion, detallesExpandidos]);
 
+  const detalleIdACostoId = useMemo(() => {
+    const r: Record<string, string> = { ...detalleCostoIdExtra };
+    for (const cot of cotizacionesProduccion) {
+      for (const d of detallesExpandidos[cot.id] || []) {
+        if (d.costo_id) r[d.id] = d.costo_id as string;
+      }
+    }
+    return r;
+  }, [cotizacionesProduccion, detallesExpandidos, detalleCostoIdExtra]);
+
+  /** Partidas en el plan sin detalle en memoria: obtener costo_id y filas de costos para el costo bruto. */
+  useEffect(() => {
+    const ids = Object.keys(piezasPorDetalle).filter((detalleId) => !detalleExpandidoPorId.has(detalleId));
+    if (ids.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase.from('detalle_cotizacion').select('id, costo_id').in('id', ids);
+      if (cancelled || error || !data?.length) return;
+      const ext: Record<string, string> = {};
+      const costoIds: string[] = [];
+      for (const row of data as { id: string; costo_id?: string | null }[]) {
+        if (row.costo_id) {
+          ext[row.id] = row.costo_id;
+          costoIds.push(row.costo_id);
+        }
+      }
+      if (Object.keys(ext).length > 0) {
+        setDetalleCostoIdExtra((prev) => ({ ...prev, ...ext }));
+      }
+      if (costoIds.length === 0) return;
+      const uniq = [...new Set(costoIds)];
+      const { data: costosRows, error: costosErr } = await supabase.from('costos').select('*').in('id', uniq);
+      if (cancelled || costosErr || !costosRows?.length) return;
+      setCostoPorId((prev) => {
+        const n = { ...prev };
+        for (const row of costosRows as Costo[]) n[row.id] = row;
+        return n;
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [piezasPorDetalle, detalleExpandidoPorId]);
+
+  useEffect(() => {
+    const costoIds = Object.keys(costoPorId);
+  if (costoIds.length === 0) {
+    setCostoBrutoPorCostoId({});
+    setLoadingCostoBruto(false);
+    return;
+  }
+    let cancelled = false;
+    setLoadingCostoBruto(true);
+    (async () => {
+      const next: Record<string, number> = {};
+      await Promise.all(
+        costoIds.map(async (cid) => {
+          const c = costoPorId[cid];
+          if (!c?.prenda_id || !c?.talla_id) {
+            next[cid] = Number(c.precio_compra) || 0;
+            return;
+          }
+          const bruto = await obtenerCostoBrutoPrendaTalla(supabase, c.prenda_id, c.talla_id);
+          if (bruto !== null && bruto > 0) {
+            next[cid] = bruto;
+          } else {
+            next[cid] = Number(c.precio_compra) || 0;
+          }
+        })
+      );
+      if (!cancelled) {
+        setCostoBrutoPorCostoId(next);
+      }
+      if (!cancelled) {
+        setLoadingCostoBruto(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [costoPorId]);
+
   const seleccionInfo = useMemo(() => {
     const rows: SeleccionRow[] = [];
 
@@ -383,7 +499,7 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
         const cot = hit.cot;
         const precio = Number(d.precio_unitario) || 0;
         const costoId = d.costo_id as string | undefined;
-        const costoUnit = costoId && costoPorId[costoId] ? Number((costoPorId[costoId] as any).precio_compra) || 0 : 0;
+        const costoUnit = costoBrutoEfectivoUnitario(costoId, costoBrutoPorCostoId, costoPorId);
         const ganU = Number((precio - costoUnit).toFixed(2));
         const ganT = Number((ganU * piezas).toFixed(2));
         rows.push({
@@ -402,13 +518,23 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
 
       const cached = planItemsCache.find((p) => p.detalle_id === detalleId);
       if (cached) {
-        rows.push(rowDesdePlanItemGuardado({ ...cached, piezas }));
+        const costoIdPlan = detalleIdACostoId[detalleId];
+        rows.push(
+          rowDesdePlanItemGuardado({ ...cached, piezas }, piezas, costoIdPlan, costoBrutoPorCostoId, costoPorId)
+        );
       }
     }
 
     const gananciasTotal = rows.reduce((s, r) => s + r.ganancia_total, 0);
     return { rows, gananciasTotal };
-  }, [piezasPorDetalle, detalleExpandidoPorId, costoPorId, planItemsCache]);
+  }, [
+    piezasPorDetalle,
+    detalleExpandidoPorId,
+    costoPorId,
+    costoBrutoPorCostoId,
+    planItemsCache,
+    detalleIdACostoId,
+  ]);
 
   const hayCotizacionPosterior = useMemo(
     () =>
@@ -498,13 +624,20 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
     });
   }, [seleccionInfo.rows, cotizaciones]);
 
+  /** Mínimo: suma de ganancias de todas las prendas/partidas seleccionadas vs gastos fijos semanales. */
   const minimoAlcanzado = seleccionInfo.gananciasTotal >= gastosFijosTotal && gastosFijosTotal > 0;
+
+  /** Monto que falta para que esa ganancia total cubra los gastos fijos de la semana. */
+  const faltanteGastosSemanales =
+    gastosFijosTotal > 0 ? Math.max(0, gastosFijosTotal - seleccionInfo.gananciasTotal) : 0;
 
   /** 0–100 % del mínimo (gastos fijos); solo para barra y etiqueta, sin mostrar pesos. */
   const progresoPct =
     gastosFijosTotal > 0
       ? Math.min(100, (seleccionInfo.gananciasTotal / gastosFijosTotal) * 100)
       : 0;
+
+  const cargandoValidacion = loadingGastos || loadingCostoBruto;
 
   const handleGuardar = () => {
     const porCot = new Map(cotizacionesProduccion.map((c) => [c.id, c] as const));
@@ -589,8 +722,8 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
   const intentarGenerarPlan = () => {
     if (guardandoPlan) return;
     setError(null);
-    if (loadingGastos) {
-      setError('Espera a que termine la validación de gastos fijos.');
+    if (loadingGastos || loadingCostoBruto) {
+      setError('Espera a que termine la validación de gastos fijos y el cálculo de costo bruto (insumos).');
       return;
     }
     if (gastosFijosTotal <= 0) {
@@ -600,8 +733,9 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
       return;
     }
     if (seleccionInfo.gananciasTotal < gastosFijosTotal) {
+      const falta = Math.max(0, gastosFijosTotal - seleccionInfo.gananciasTotal);
       setError(
-        'Las ganancias estimadas de las partidas aún no cubren los gastos fijos de la semana. Añade partidas en «Editar selección» o revisa precios y costos.'
+        `Faltan $${fmtMxn(falta)} para alcanzar gastos semanales. Añade partidas en «Editar selección» o revisa precios y costos.`
       );
       return;
     }
@@ -618,8 +752,15 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
     setGuardandoPlan(true);
     setError(null);
     try {
+      if (loadingGastos || loadingCostoBruto) {
+        setError('Espera a que termine la validación de gastos y el costo bruto por receta.');
+        return;
+      }
       if (!minimoAlcanzado) {
-        setError('No se cumplen las condiciones para generar el plan. Revisa gastos fijos y partidas seleccionadas.');
+        const falta = Math.max(0, gastosFijosTotal - seleccionInfo.gananciasTotal);
+        setError(
+          `Faltan $${fmtMxn(falta)} para alcanzar gastos semanales. Revisa partidas seleccionadas y costos.`
+        );
         return;
       }
       if (seleccionInvalidaSinPrioridad) {
@@ -757,7 +898,7 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
               <h2 style={{ margin: 0, fontSize: 'clamp(1.1rem, 2.5vw, 1.35rem)' }}>Producción semanal</h2>
               <p style={{ margin: '0.35rem 0 0', fontSize: '0.85rem', color: '#6b7280', lineHeight: 1.4 }}>
                 Elige la semana. Usa <strong>Editar selección</strong> para elegir partidas y{' '}
-                <strong>Guardar selección</strong> en esa pantalla; cuando el mínimo de ganancias se cumpla,{' '}
+                <strong>Guardar selección</strong> en esa pantalla; cuando veas <strong>Mínimo alcanzado</strong>, usa{' '}
                 <strong>Generar plan de trabajo</strong> desde aquí.
               </p>
             </div>
@@ -869,17 +1010,21 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
             }}
           >
             <span style={{ fontSize: '0.9rem', fontWeight: 800, color: minimoAlcanzado ? '#047857' : '#b91c1c' }}>
-              {loadingGastos ? (
-                'Validando gastos fijos…'
+              {cargandoValidacion ? (
+                loadingGastos ? (
+                  'Validando gastos fijos…'
+                ) : (
+                  'Calculando costo bruto por receta (insumos)…'
+                )
               ) : gastosFijosTotal <= 0 ? (
                 'Configura gastos fijos semanales para poder generar el plan'
               ) : minimoAlcanzado ? (
-                'Mínimo alcanzado: puedes generar el plan de trabajo'
+                'Mínimo alcanzado'
               ) : (
-                'Aún no alcanzas el mínimo de ganancias para cubrir gastos fijos semanales'
+                `Faltan $${fmtMxn(faltanteGastosSemanales)} para alcanzar gastos semanales`
               )}
             </span>
-            {!loadingGastos && gastosFijosTotal > 0 && (
+            {!cargandoValidacion && gastosFijosTotal > 0 && (
               <div
                 style={{
                   marginTop: '0.65rem',
@@ -956,11 +1101,13 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
               title={
                 guardandoPlan
                   ? undefined
-                  : gastosFijosTotal <= 0
-                    ? 'Configura gastos fijos semanales primero (pulsa para ver el aviso)'
-                    : !minimoAlcanzado
-                      ? 'Aún no cubres el mínimo de ganancias (pulsa para ver el aviso)'
-                      : 'Generar y guardar el plan de trabajo'
+                  : cargandoValidacion
+                    ? 'Espera a que terminen gastos fijos y costo bruto (insumos)'
+                    : gastosFijosTotal <= 0
+                      ? 'Configura gastos fijos semanales primero (pulsa para ver el aviso)'
+                      : !minimoAlcanzado
+                        ? `Faltan $${fmtMxn(faltanteGastosSemanales)} para alcanzar gastos semanales`
+                        : 'Generar y guardar el plan de trabajo'
               }
               style={{
                 display: 'flex',
@@ -1280,7 +1427,7 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
             {seleccionInfo.rows.length} concepto{seleccionInfo.rows.length !== 1 ? 's' : ''} seleccionado
             {seleccionInfo.rows.length !== 1 ? 's' : ''}
           </p>
-          {!loadingGastos && gastosFijosTotal > 0 && (
+          {!cargandoValidacion && gastosFijosTotal > 0 && (
             <div
               style={{ marginTop: '0.85rem', maxWidth: 'min(100%, 340px)', marginLeft: 'auto', marginRight: 'auto' }}
               role="progressbar"
@@ -1331,8 +1478,10 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
               </div>
             </div>
           )}
-          {loadingGastos && (
-            <p style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', color: '#6b7280' }}>Validando…</p>
+          {cargandoValidacion && (
+            <p style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', color: '#6b7280' }}>
+              {loadingGastos ? 'Validando gastos…' : 'Calculando costo bruto (insumos)…'}
+            </p>
           )}
           {seleccionGuardadaMsg && (
             <p style={{ margin: '0.65rem 0 0', fontSize: '0.85rem', color: '#0369a1' }}>{seleccionGuardadaMsg}</p>
@@ -1342,14 +1491,18 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
         <div className="modal-footer" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', minWidth: 'min(100%, 280px)' }}>
             <span style={{ fontSize: '0.9rem', fontWeight: 800, color: minimoAlcanzado ? '#047857' : '#b91c1c' }}>
-              {loadingGastos ? (
-                'Validando…'
+              {cargandoValidacion ? (
+                loadingGastos ? (
+                  'Validando…'
+                ) : (
+                  'Calculando costo bruto (insumos)…'
+                )
               ) : gastosFijosTotal <= 0 ? (
                 'Configura gastos fijos semanales para poder generar el plan'
               ) : minimoAlcanzado ? (
                 'Mínimo alcanzado'
               ) : (
-                'Aún no alcanzas el mínimo de ganancias para cubrir gastos fijos semanales'
+                `Faltan $${fmtMxn(faltanteGastosSemanales)} para alcanzar gastos semanales`
               )}
             </span>
           </div>
