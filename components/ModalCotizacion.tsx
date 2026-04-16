@@ -641,8 +641,12 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       const gapRight = 6.2; // separación entre bloque superior e inferior (quitar ~1 renglón)
       const yNo = 26.5 + shiftYRight;
       const yLugar = yNo + stepRight;
-      const yFecha = yNo + stepRight * 2;
-      const yMetodo = yFecha + gapRight;
+      // Ajuste fino solicitado:
+      // - "Fecha de comprobante": bajar un poco
+      // - Bloque inferior completo: bajar 1.5 renglones
+      const yFecha = yNo + stepRight * 2 + 1.2;
+      const shiftInferior = stepRight * 1.5;
+      const yMetodo = yFecha + gapRight + shiftInferior;
       const yForma = yMetodo + stepRight;
       const yTipoCambio = yForma + stepRight;
       const yMoneda = yTipoCambio + stepRight;
