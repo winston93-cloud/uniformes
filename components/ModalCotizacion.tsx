@@ -19,6 +19,10 @@ import {
 import type { Cotizacion } from '@/lib/types';
 import { supabase } from '@/lib/supabase';
 import ModalDatosFiscalesCliente from '@/components/ModalDatosFiscalesCliente';
+import {
+  datosClientePdfDesdeFiscalesYContacto,
+  obtenerDatosFiscalesClienteParaPdf,
+} from '@/lib/datosFiscalesPdf';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -822,21 +826,16 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       }
 
       // Generar y mostrar PDF en pantalla (mismo folio al editar)
-      const domicilioCliente =
-        clienteSeleccionado?.domicilio ||
-        clienteSeleccionado?.direccion ||
-        clienteSeleccionado?.domicilio_fiscal ||
-        '';
-      const rfcCliente = clienteSeleccionado?.rfc || '';
-      const telCliente = clienteSeleccionado?.telefono || clienteSeleccionado?.tel || '';
+      const fiscalesPdf = await obtenerDatosFiscalesClienteParaPdf(tipoCliente, clienteSeleccionado);
+      const bloqueClientePdf = datosClientePdfDesdeFiscalesYContacto(clienteSeleccionado, fiscalesPdf);
       const pdf = await generarPdfCotizacion({
         folio: data.folio,
         fechaComprobante: new Date().toLocaleDateString('es-MX'),
         cliente: {
           nombre: clienteSeleccionado?.nombre || 'Cliente General',
-          domicilio: domicilioCliente,
-          rfc: rfcCliente,
-          telefono: telCliente,
+          domicilio: bloqueClientePdf.domicilio,
+          rfc: bloqueClientePdf.rfc,
+          telefono: bloqueClientePdf.telefono,
         },
         comprobante: {
           lugarExpedicion: 'CD. MADERO',
@@ -902,10 +901,21 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       const tPdf = calcularMontosImpuestosCotizacion(subPdf, conIva, conIsr);
 
       const nombreCliente = cotizacion.alumno?.nombre || cotizacion.externo?.nombre || 'Cliente General';
+      const clienteParaFiscal =
+        cotizacion.tipo_cliente === 'alumno'
+          ? { ...(cotizacion.alumno || {}), id: cotizacion.alumno_id }
+          : { ...(cotizacion.externo || {}), id: cotizacion.externo_id };
+      const fiscalesHistorial = await obtenerDatosFiscalesClienteParaPdf(cotizacion.tipo_cliente, clienteParaFiscal);
+      const bloqueHistorial = datosClientePdfDesdeFiscalesYContacto(clienteParaFiscal, fiscalesHistorial);
       const doc = await generarPdfCotizacion({
         folio: cotizacion.folio,
         fechaComprobante: fechaCotizacion,
-        cliente: { nombre: nombreCliente },
+        cliente: {
+          nombre: nombreCliente,
+          domicilio: bloqueHistorial.domicilio,
+          rfc: bloqueHistorial.rfc,
+          telefono: bloqueHistorial.telefono,
+        },
         comprobante: {
           lugarExpedicion: 'CD. MADERO',
           metodoPago: 'EFECTIVO',
