@@ -109,6 +109,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   const inputEspecificacionesRef = useRef<HTMLInputElement>(null);
   const primeraSubPartidaInputRef = useRef<HTMLInputElement>(null);
   const primeraSubPartidaSelectRef = useRef<HTMLSelectElement>(null);
+  const fondoCotizacionDataUrlRef = useRef<string | null>(null);
+  const [cargandoFondoCotizacionPdf, setCargandoFondoCotizacionPdf] = useState(false);
   
   // Estados para posicionamiento de dropdowns en portal
   const [dropdownClientePos, setDropdownClientePos] = useState<{ top: number; left: number; width: number } | null>(null);
@@ -184,7 +186,35 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
         inputClienteRef.current.focus();
       }
     }, 150);
+    // Precargar fondo del PDF (no bloquea)
+    void (async () => {
+      try {
+        setCargandoFondoCotizacionPdf(true);
+        await obtenerFondoCotizacionDataUrl();
+      } finally {
+        setCargandoFondoCotizacionPdf(false);
+      }
+    })();
   }, []);
+
+  async function cargarImagenComoDataUrl(url: string): Promise<string> {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`No se pudo cargar imagen (${res.status})`);
+    const blob = await res.blob();
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error('No se pudo leer la imagen'));
+      reader.onload = () => resolve(String(reader.result));
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  async function obtenerFondoCotizacionDataUrl(): Promise<string> {
+    if (fondoCotizacionDataUrlRef.current) return fondoCotizacionDataUrlRef.current;
+    const dataUrl = await cargarImagenComoDataUrl('/cotizacion-fondo.jpg');
+    fondoCotizacionDataUrlRef.current = dataUrl;
+    return dataUrl;
+  }
 
   // Calcular posición del dropdown de clientes cuando se muestra
   useEffect(() => {
@@ -539,85 +569,117 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     [subtotal, incluirIva, incluirIsr]
   );
 
-  // Generar PDF
-  const generarPDF = (folioGenerado: string) => {
+  type DatosPdfCotizacion = {
+    folio: string;
+    fechaComprobante: string;
+    cliente: {
+      nombre: string;
+      domicilio?: string;
+      rfc?: string;
+      telefono?: string;
+    };
+    comprobante: {
+      lugarExpedicion: string;
+      metodoPago: string;
+      formaPago: string;
+      tipoCambio: string;
+      moneda: string;
+    };
+    partidas: PartidaCotizacion[];
+    totales: ReturnType<typeof calcularMontosImpuestosCotizacion>;
+    incluirIva: boolean;
+    incluirIsr: boolean;
+    condicionesPago: string;
+    tiempoEntrega: string;
+    fechaEntregaTexto: string;
+    observaciones?: string;
+  };
+
+  const generarPdfCotizacion = async (data: DatosPdfCotizacion) => {
     const doc = new jsPDF();
-    const fechaHoy = new Date().toLocaleDateString('es-MX');
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    const fondo = await obtenerFondoCotizacionDataUrl();
 
-    // Header
-    doc.setFontSize(20);
-    doc.setFont('helvetica', 'bold');
-    doc.text('COTIZACIÓN', 105, 20, { align: 'center' });
+    const pintarFondo = () => {
+      doc.addImage(fondo, 'JPEG', 0, 0, pageW, pageH);
+    };
 
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text('Sistema de Uniformes Winston Churchill', 105, 28, { align: 'center' });
+    const pintarHeader = () => {
+      doc.setTextColor(15, 23, 42);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
 
-    // Folio y fecha
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`Folio: ${folioGenerado}`, 14, 45);
-    doc.text(`Fecha: ${fechaHoy}`, 14, 52);
-    if (fechaVigencia) {
-      doc.text(`Vigencia: ${new Date(fechaVigencia).toLocaleDateString('es-MX')}`, 14, 59);
-    }
+      // Caja izquierda (cliente)
+      const xL = 34;
+      doc.text(doc.splitTextToSize(data.cliente.nombre || '—', 95), xL, 51);
+      doc.text(doc.splitTextToSize(data.cliente.domicilio || '—', 95), xL, 58);
+      doc.text(doc.splitTextToSize(data.cliente.rfc || '—', 95), xL, 65);
+      doc.text(doc.splitTextToSize(data.cliente.telefono || '—', 95), xL, 72);
 
-    // Cliente
-    doc.setFont('helvetica', 'bold');
-    doc.text('Cliente:', 14, 70);
-    doc.setFont('helvetica', 'normal');
-    const nombreCliente = clienteSeleccionado?.nombre || 'Cliente General';
-    doc.text(nombreCliente, 14, 77);
-    if (clienteSeleccionado?.referencia) {
-      doc.text(`Ref: ${clienteSeleccionado.referencia}`, 14, 84);
-    }
+      // Caja derecha (comprobante / pago)
+      const xR = 155;
+      doc.text(doc.splitTextToSize(data.folio || '—', 45), xR, 51);
+      doc.text(doc.splitTextToSize(data.comprobante.lugarExpedicion || '—', 45), xR, 58);
+      doc.text(doc.splitTextToSize(data.fechaComprobante || '—', 45), xR, 65);
+      doc.text(doc.splitTextToSize(data.comprobante.metodoPago || '—', 45), xR, 73);
+      doc.text(doc.splitTextToSize(data.comprobante.formaPago || '—', 45), xR, 80);
+      doc.text(doc.splitTextToSize(data.comprobante.tipoCambio || '—', 45), xR, 87);
+      doc.text(doc.splitTextToSize(data.comprobante.moneda || '—', 45), xR, 94);
+    };
 
-    // Tabla de partidas
     autoTable(doc, {
-      startY: 95,
-      head: [['#', 'Descripción', 'Talla', 'Color', 'Cantidad', 'P. Unit.', 'Subtotal']],
-      body: partidas.map((p, i) => [
-        i + 1,
+      startY: 105,
+      margin: { left: 14, right: 14, top: 0, bottom: 28 },
+      head: [['CANT.', 'DESCRIPCIÓN', 'TALLA', 'COLOR', 'P. UNITARIO', 'VALOR DE VENTA']],
+      body: data.partidas.map((p) => [
+        String(p.cantidad),
         p.prenda_nombre + (p.especificaciones ? `\n${p.especificaciones}` : ''),
         p.talla,
         p.color || '-',
-        p.cantidad,
         `$${p.precio_unitario.toFixed(2)}`,
         `$${p.subtotal.toFixed(2)}`,
       ]),
       theme: 'grid',
-      headStyles: { fillColor: [102, 126, 234], fontSize: 10 },
-      styles: { fontSize: 9 },
+      styles: { fontSize: 9, cellPadding: 2, textColor: [15, 23, 42] },
+      headStyles: { fillColor: [17, 24, 39], textColor: [255, 255, 255], fontStyle: 'bold' },
       columnStyles: {
-        0: { cellWidth: 10 },
-        1: { cellWidth: 60 },
-        2: { cellWidth: 20 },
-        3: { cellWidth: 25 },
-        4: { cellWidth: 20 },
-        5: { cellWidth: 25 },
-        6: { cellWidth: 30 },
+        0: { cellWidth: 16, halign: 'right' },
+        1: { cellWidth: 78 },
+        2: { cellWidth: 18 },
+        3: { cellWidth: 20 },
+        4: { cellWidth: 26, halign: 'right' },
+        5: { cellWidth: 28, halign: 'right' },
+      },
+      willDrawPage: () => {
+        pintarFondo();
+      },
+      didDrawPage: (hookData) => {
+        if (hookData.pageNumber === 1) {
+          pintarHeader();
+        }
       },
     });
 
     // Totales (subtotal partidas + IVA / − ISR según checkboxes)
-    const finalY = (doc as any).lastAutoTable.finalY || 95;
+    const finalY = (doc as any).lastAutoTable?.finalY || 105;
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
-    let yTot = finalY + 10;
-    doc.text(`Subtotal: $${totalesCotizacion.subtotal.toFixed(2)}`, 140, yTot);
-    if (incluirIva) {
+    let yTot = Math.min(finalY + 10, pageH - 70);
+    doc.text(`Subtotal: $${data.totales.subtotal.toFixed(2)}`, 140, yTot);
+    if (data.incluirIva) {
       yTot += 7;
       doc.setFont('helvetica', 'normal');
       doc.text(
-        `IVA (${(TASA_IVA_TRASLADADO * 100).toFixed(0)}%): $${totalesCotizacion.montoIva.toFixed(2)}`,
+        `IVA (${(TASA_IVA_TRASLADADO * 100).toFixed(0)}%): $${data.totales.montoIva.toFixed(2)}`,
         140,
         yTot
       );
     }
-    if (incluirIsr) {
+    if (data.incluirIsr) {
       yTot += 7;
       doc.text(
-        `Ret. ISR RESICO (${(TASA_ISR_RETENCION * 100).toFixed(2)}% s/importe sin IVA): −$${totalesCotizacion.montoIsrRet.toFixed(2)}`,
+        `Ret. ISR RESICO (${(TASA_ISR_RETENCION * 100).toFixed(2)}% s/importe sin IVA): −$${data.totales.montoIsrRet.toFixed(2)}`,
         140,
         yTot
       );
@@ -625,32 +687,32 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     yTot += 12;
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(14);
-    doc.text(`TOTAL: $${totalesCotizacion.total.toFixed(2)}`, 140, yTot);
+    doc.text(`TOTAL: $${data.totales.total.toFixed(2)}`, 140, yTot);
 
     // Condiciones
-    const yCond = yTot + 18;
+    const yCond = yTot + 16;
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     doc.text('Condiciones de Pago:', 14, yCond);
     doc.setFont('helvetica', 'normal');
-    doc.text(condicionesPago, 14, yCond + 7);
+    doc.text(doc.splitTextToSize(data.condicionesPago || '—', 180), 14, yCond + 7);
 
     doc.setFont('helvetica', 'bold');
-    doc.text('Tiempo de Entrega:', 14, yCond + 17);
+    doc.text('Tiempo de Entrega:', 14, yCond + 20);
     doc.setFont('helvetica', 'normal');
-    doc.text(tiempoEntrega, 14, yCond + 24);
+    doc.text(doc.splitTextToSize(data.tiempoEntrega || '—', 180), 14, yCond + 27);
 
     doc.setFont('helvetica', 'bold');
-    doc.text('Fecha de Entrega:', 14, yCond + 34);
+    doc.text('Fecha de Entrega:', 14, yCond + 40);
     doc.setFont('helvetica', 'normal');
-    doc.text(fechaEntrega ? new Date(fechaEntrega + 'T12:00:00').toLocaleDateString('es-MX') : '—', 14, yCond + 41);
+    doc.text(data.fechaEntregaTexto || '—', 14, yCond + 47);
 
-    if (observaciones) {
+    if (data.observaciones) {
       doc.setFont('helvetica', 'bold');
-      doc.text('Observaciones:', 14, yCond + 51);
+      doc.text('Observaciones:', 14, yCond + 60);
       doc.setFont('helvetica', 'normal');
-      const lineas = doc.splitTextToSize(observaciones, 180);
-      doc.text(lineas, 14, yCond + 58);
+      const lineas = doc.splitTextToSize(data.observaciones, 180);
+      doc.text(lineas, 14, yCond + 67);
     }
 
     return doc;
@@ -702,7 +764,40 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       }
 
       // Generar y mostrar PDF en pantalla (mismo folio al editar)
-      const pdf = generarPDF(data.folio);
+      const domicilioCliente =
+        clienteSeleccionado?.domicilio ||
+        clienteSeleccionado?.direccion ||
+        clienteSeleccionado?.domicilio_fiscal ||
+        '';
+      const rfcCliente = clienteSeleccionado?.rfc || '';
+      const telCliente = clienteSeleccionado?.telefono || clienteSeleccionado?.tel || '';
+      const pdf = await generarPdfCotizacion({
+        folio: data.folio,
+        fechaComprobante: new Date().toLocaleDateString('es-MX'),
+        cliente: {
+          nombre: clienteSeleccionado?.nombre || 'Cliente General',
+          domicilio: domicilioCliente,
+          rfc: rfcCliente,
+          telefono: telCliente,
+        },
+        comprobante: {
+          lugarExpedicion: 'CD. MADERO',
+          metodoPago: 'EFECTIVO',
+          formaPago: 'EFECTIVO',
+          tipoCambio: '1',
+          moneda: 'PESOS',
+        },
+        partidas,
+        totales: totalesCotizacion,
+        incluirIva,
+        incluirIsr,
+        condicionesPago,
+        tiempoEntrega,
+        fechaEntregaTexto: fechaEntrega
+          ? new Date(fechaEntrega + 'T12:00:00').toLocaleDateString('es-MX')
+          : '—',
+        observaciones: observaciones || undefined,
+      });
       const pdfUrl = pdf.output('bloburl');
       window.open(pdfUrl, '_blank');
 
@@ -742,73 +837,36 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
         es_manual: d.es_manual || false,
       }));
 
-      // Generar PDF temporal
-      const doc = new jsPDF();
       const fechaCotizacion = new Date(cotizacion.fecha_cotizacion).toLocaleDateString('es-MX');
-
-      doc.setFontSize(20);
-      doc.setFont('helvetica', 'bold');
-      doc.text('COTIZACIÓN', 105, 20, { align: 'center' });
-
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      doc.text('Sistema de Uniformes Winston Churchill', 105, 28, { align: 'center' });
-
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'bold');
-      doc.text(`Folio: ${cotizacion.folio}`, 14, 45);
-      doc.text(`Fecha: ${fechaCotizacion}`, 14, 52);
-
-      doc.setFont('helvetica', 'bold');
-      doc.text('Cliente:', 14, 70);
-      doc.setFont('helvetica', 'normal');
-      const nombreCliente = cotizacion.alumno?.nombre || cotizacion.externo?.nombre || 'Cliente General';
-      doc.text(nombreCliente, 14, 77);
-
-      autoTable(doc, {
-        startY: 95,
-        head: [['#', 'Descripción', 'Talla', 'Color', 'Cantidad', 'P. Unit.', 'Subtotal']],
-        body: partidasFormateadas.map((p, i) => [
-          i + 1,
-          p.prenda_nombre + (p.especificaciones ? `\n${p.especificaciones}` : ''),
-          p.talla,
-          p.color || '-',
-          p.cantidad,
-          `$${p.precio_unitario.toFixed(2)}`,
-          `$${p.subtotal.toFixed(2)}`,
-        ]),
-        theme: 'grid',
-        headStyles: { fillColor: [102, 126, 234] },
-      });
-
-      const finalY = (doc as any).lastAutoTable.finalY || 95;
       const subPdf = partidasFormateadas.reduce((s, p) => s + p.subtotal, 0);
       const conIva = cotizacion.incluir_iva === true;
       const conIsr = cotizacion.incluir_isr === true;
       const tPdf = calcularMontosImpuestosCotizacion(subPdf, conIva, conIsr);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(10);
-      let yP = finalY + 10;
-      doc.text(`Subtotal: $${tPdf.subtotal.toFixed(2)}`, 140, yP);
-      if (conIva) {
-        yP += 7;
-        doc.setFont('helvetica', 'normal');
-        doc.text(`IVA (${(TASA_IVA_TRASLADADO * 100).toFixed(0)}%): $${tPdf.montoIva.toFixed(2)}`, 140, yP);
-      }
-      if (conIsr) {
-        yP += 7;
-        doc.text(
-          `Ret. ISR RESICO (${(TASA_ISR_RETENCION * 100).toFixed(2)}% s/importe sin IVA): −$${tPdf.montoIsrRet.toFixed(2)}`,
-          140,
-          yP
-        );
-      }
-      yP += 10;
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(14);
-      doc.text(`TOTAL: $${cotizacion.total.toFixed(2)}`, 140, yP);
 
-      // Abrir PDF en nueva ventana en lugar de descargar
+      const nombreCliente = cotizacion.alumno?.nombre || cotizacion.externo?.nombre || 'Cliente General';
+      const doc = await generarPdfCotizacion({
+        folio: cotizacion.folio,
+        fechaComprobante: fechaCotizacion,
+        cliente: { nombre: nombreCliente },
+        comprobante: {
+          lugarExpedicion: 'CD. MADERO',
+          metodoPago: 'EFECTIVO',
+          formaPago: 'EFECTIVO',
+          tipoCambio: '1',
+          moneda: 'PESOS',
+        },
+        partidas: partidasFormateadas,
+        totales: tPdf,
+        incluirIva: conIva,
+        incluirIsr: conIsr,
+        condicionesPago: cotizacion.condiciones_pago || '—',
+        tiempoEntrega: cotizacion.tiempo_entrega || '—',
+        fechaEntregaTexto: cotizacion.fecha_entrega
+          ? new Date(String(cotizacion.fecha_entrega).split('T')[0] + 'T12:00:00').toLocaleDateString('es-MX')
+          : '—',
+        observaciones: cotizacion.observaciones || undefined,
+      });
+
       const pdfUrl = doc.output('bloburl');
       window.open(pdfUrl, '_blank');
     } catch (err) {
