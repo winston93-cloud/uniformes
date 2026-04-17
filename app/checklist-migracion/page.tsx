@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { ArrowLeft, Download, ListChecks, RotateCcw, Upload } from 'lucide-react';
+import styles from './checklist-migracion.module.css';
 
 const STORAGE_KEY = 'uniformes_checklist_migracion_v1';
 const NOTES_KEY = 'uniformes_checklist_migracion_notas_v1';
@@ -144,6 +146,7 @@ export default function ChecklistMigracionPage() {
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [notes, setNotes] = useState('');
   const [mounted, setMounted] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
     setChecked(loadState());
@@ -160,6 +163,12 @@ export default function ChecklistMigracionPage() {
     if (!mounted) return;
     localStorage.setItem(NOTES_KEY, notes);
   }, [notes, mounted]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = window.setTimeout(() => setToast(null), 4200);
+    return () => window.clearTimeout(t);
+  }, [toast]);
 
   const allIds = useMemo(() => SECTIONS.flatMap((s) => s.items.map((i) => i.id)), []);
   const total = allIds.length;
@@ -183,6 +192,7 @@ export default function ChecklistMigracionPage() {
   const resetAll = useCallback(() => {
     if (typeof window !== 'undefined' && !window.confirm('¿Borrar todo el progreso del checklist en este navegador?')) return;
     setChecked({});
+    setToast('Checklist reiniciado en este dispositivo.');
   }, []);
 
   const exportJson = useCallback(() => {
@@ -193,6 +203,7 @@ export default function ChecklistMigracionPage() {
     a.download = `checklist-migracion-uniformes-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(a.href);
+    setToast('JSON exportado. Revisa la carpeta de descargas.');
   }, [checked, notes]);
 
   const importJson = useCallback(() => {
@@ -210,9 +221,9 @@ export default function ChecklistMigracionPage() {
             setChecked(data.checked);
           }
           if (typeof data.notes === 'string') setNotes(data.notes);
-          alert('Importación aplicada. Comprueba el progreso.');
+          setToast('Importación aplicada correctamente.');
         } catch {
-          alert('No se pudo leer el JSON.');
+          setToast('No se pudo leer el archivo JSON.');
         }
       };
       reader.readAsText(file);
@@ -221,124 +232,112 @@ export default function ChecklistMigracionPage() {
   }, []);
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        padding: '1.5rem 1rem 3rem',
-        maxWidth: '820px',
-        margin: '0 auto',
-        fontFamily: 'system-ui, Segoe UI, Roboto, sans-serif',
-        color: '#0f172a',
-      }}
-    >
-      <header style={{ marginBottom: '1.75rem' }}>
-        <p style={{ margin: '0 0 0.35rem', fontSize: '0.85rem', color: '#64748b' }}>
-          <Link href="/dashboard" style={{ color: '#6366f1', textDecoration: 'none' }}>
-            ← Volver al panel
-          </Link>
-        </p>
-        <h1 style={{ margin: 0, fontSize: '1.65rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
-          Checklist: migración Plan B
-        </h1>
-        <p style={{ margin: '0.6rem 0 0', fontSize: '0.95rem', color: '#475569', lineHeight: 1.55 }}>
-          Cuentas nuevas (Supabase, Vercel, InsForge), dos sistemas desplegados, alumnos en Supabase y negocio en
-          InsForge, bitácora + cron hacia Supabase y conmutador de URL. El progreso se guarda en{' '}
-          <strong>este navegador</strong> (localStorage). Usa exportar/importar JSON para respaldo o otra máquina.
-        </p>
-        <div
-          style={{
-            marginTop: '1rem',
-            height: '10px',
-            borderRadius: '999px',
-            background: '#e2e8f0',
-            overflow: 'hidden',
-          }}
-          role="progressbar"
-          aria-valuenow={pct}
-          aria-valuemin={0}
-          aria-valuemax={100}
-        >
-          <div
-            style={{
-              width: `${pct}%`,
-              height: '100%',
-              background: 'linear-gradient(90deg, #6366f1, #8b5cf6)',
-              transition: 'width 0.25s ease',
-            }}
-          />
+    <div className={styles.page}>
+      {toast ? (
+        <div className={styles.toast} role="status" aria-live="polite">
+          {toast}
         </div>
-        <p style={{ margin: '0.35rem 0 0', fontSize: '0.8rem', color: '#64748b' }}>
-          {done} / {total} completados ({pct}%)
-        </p>
-        <div style={{ marginTop: '0.75rem', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-          <button
-            type="button"
-            onClick={exportJson}
-            style={btnSecondary}
+      ) : null}
+
+      <header className={styles.sticky}>
+        <div className={styles.stickyRow}>
+          <Link href="/dashboard" className={styles.back} aria-label="Volver al panel principal">
+            <ArrowLeft size={20} strokeWidth={2.25} aria-hidden />
+            <span>Panel</span>
+          </Link>
+          <div className={styles.titleBlock}>
+            <h1 className={styles.title}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', verticalAlign: 'middle' }}>
+                <ListChecks size={22} strokeWidth={2} className={styles.iconBtn} aria-hidden />
+                Migración Plan B
+              </span>
+            </h1>
+            <p className={styles.subtitle}>Checklist guardado en este dispositivo</p>
+          </div>
+        </div>
+
+        <div className={styles.progressWrap}>
+          <div className={styles.progressMeta}>
+            <span>Progreso</span>
+            <span>
+              {done}/{total} ({pct}%)
+            </span>
+          </div>
+          <div
+            className={styles.progressTrack}
+            role="progressbar"
+            aria-valuenow={pct}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuetext={`${done} de ${total} ítems completados, ${pct} por ciento`}
           >
-            Exportar JSON
+            <div className={styles.progressFill} style={{ width: `${pct}%` }} />
+          </div>
+        </div>
+
+        <div className={styles.actions}>
+          <button type="button" className={styles.btnCta} onClick={exportJson}>
+            <Download size={18} aria-hidden />
+            Exportar
           </button>
-          <button type="button" onClick={importJson} style={btnSecondary}>
-            Importar JSON
+          <button type="button" className={styles.btn} onClick={importJson}>
+            <Upload size={18} aria-hidden />
+            Importar
           </button>
-          <button type="button" onClick={resetAll} style={btnDanger}>
-            Reiniciar checklist
+          <button type="button" className={styles.btnDanger} onClick={resetAll}>
+            <RotateCcw size={18} aria-hidden />
+            Reiniciar
           </button>
         </div>
       </header>
 
+      <p className={styles.intro}>
+        Cuentas nuevas (Supabase, Vercel, InsForge), dos despliegues, alumnos en Supabase y negocio en InsForge, bitácora
+        + cron y conmutador de URL. Usa <strong>Exportar</strong> para respaldar el progreso en otro archivo o
+        dispositivo.
+      </p>
+
       {!mounted ? (
-        <p style={{ color: '#64748b' }}>Cargando checklist…</p>
+        <p className={styles.loading}>Cargando checklist…</p>
       ) : (
         SECTIONS.map((section) => (
           <section
             key={section.id}
-            style={{
-              marginBottom: '1.75rem',
-              padding: '1.25rem 1.35rem',
-              background: '#fff',
-              borderRadius: '14px',
-              border: '1px solid #e2e8f0',
-              boxShadow: '0 4px 24px rgba(15, 23, 42, 0.06)',
-            }}
+            className={styles.section}
+            aria-labelledby={`sec-${section.id}`}
           >
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: 'space-between', gap: '0.5rem' }}>
-              <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>{section.title}</h2>
-              <div style={{ display: 'flex', gap: '0.35rem' }}>
-                <button type="button" style={btnMini} onClick={() => setSectionAll(section, true)}>
-                  Marcar sección
+            <div className={styles.sectionHead}>
+              <div style={{ minWidth: 0 }}>
+                <h2 id={`sec-${section.id}`} className={styles.sectionTitle}>
+                  {section.title}
+                </h2>
+                {section.description ? <p className={styles.sectionDesc}>{section.description}</p> : null}
+              </div>
+              <div className={styles.sectionActions}>
+                <button type="button" className={styles.btnMini} onClick={() => setSectionAll(section, true)}>
+                  Marcar todo
                 </button>
-                <button type="button" style={btnMini} onClick={() => setSectionAll(section, false)}>
+                <button type="button" className={styles.btnMini} onClick={() => setSectionAll(section, false)}>
                   Desmarcar
                 </button>
               </div>
             </div>
-            {section.description ? (
-              <p style={{ margin: '0.5rem 0 0.85rem', fontSize: '0.88rem', color: '#64748b', lineHeight: 1.5 }}>{section.description}</p>
-            ) : null}
-            <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+            <ul className={styles.list}>
               {section.items.map((item) => (
-                <li
-                  key={item.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: '0.65rem',
-                    padding: '0.55rem 0',
-                    borderTop: '1px solid #f1f5f9',
-                  }}
-                >
+                <li key={item.id} className={styles.row}>
                   <input
                     type="checkbox"
                     id={item.id}
                     checked={Boolean(checked[item.id])}
                     onChange={() => toggle(item.id)}
-                    style={{ marginTop: '0.2rem', width: '1.05rem', height: '1.05rem', cursor: 'pointer', accentColor: '#6366f1' }}
+                    className={styles.checkbox}
                   />
-                  <label htmlFor={item.id} style={{ cursor: 'pointer', flex: 1, fontSize: '0.92rem', lineHeight: 1.45 }}>
+                  <label htmlFor={item.id} className={styles.label}>
                     {item.label}
                     {item.hint ? (
-                      <span style={{ display: 'block', fontSize: '0.8rem', color: '#94a3b8', marginTop: '0.2rem' }}>{item.hint}</span>
+                      <span style={{ display: 'block', fontSize: '0.8rem', color: '#64748b', marginTop: '0.25rem', fontWeight: 400 }}>
+                        {item.hint}
+                      </span>
                     ) : null}
                   </label>
                 </li>
@@ -348,68 +347,27 @@ export default function ChecklistMigracionPage() {
         ))
       )}
 
-      <section
-        style={{
-          padding: '1.25rem 1.35rem',
-          background: '#f8fafc',
-          borderRadius: '14px',
-          border: '1px solid #e2e8f0',
-        }}
-      >
-        <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.05rem', fontWeight: 700 }}>Notas libres</h2>
-        <p style={{ margin: '0 0 0.5rem', fontSize: '0.82rem', color: '#64748b' }}>
-          También se guardan en este navegador. Incluye enlaces internos, fechas o contactos de soporte.
-        </p>
+      <section className={styles.notesSection} aria-labelledby="notas-titulo">
+        <h2 id="notas-titulo" className={styles.notesTitle}>
+          Notas libres
+        </h2>
+        <p className={styles.notesHint}>Se guardan automáticamente en este navegador al escribir.</p>
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          rows={6}
-          style={{
-            width: '100%',
-            boxSizing: 'border-box',
-            padding: '0.65rem 0.75rem',
-            borderRadius: '10px',
-            border: '1px solid #cbd5e1',
-            fontSize: '0.9rem',
-            fontFamily: 'inherit',
-            resize: 'vertical',
-          }}
-          placeholder="Ej. IDs de proyecto Supabase / Vercel / InsForge, URLs definitivas, incidencias…"
+          className={styles.textarea}
+          placeholder="IDs de proyecto, URLs, contactos de soporte, incidencias…"
+          autoComplete="off"
+          spellCheck
         />
       </section>
 
-      <p style={{ marginTop: '1.5rem', fontSize: '0.78rem', color: '#94a3b8', textAlign: 'center' }}>
-        URL de esta página: <code style={{ background: '#f1f5f9', padding: '0.15rem 0.4rem', borderRadius: 6 }}>/checklist-migracion</code>
-      </p>
+      <footer className={styles.footer}>
+        Ruta:{' '}
+        <code className={styles.code}>/checklist-migracion</code>
+        <br />
+        Áreas táctiles ampliadas · Tipografía Plus Jakarta Sans · Contraste alto
+      </footer>
     </div>
   );
 }
-
-const btnSecondary: React.CSSProperties = {
-  padding: '0.45rem 0.85rem',
-  fontSize: '0.82rem',
-  fontWeight: 600,
-  border: '1px solid #cbd5e1',
-  borderRadius: '8px',
-  background: '#fff',
-  color: '#334155',
-  cursor: 'pointer',
-};
-
-const btnDanger: React.CSSProperties = {
-  ...btnSecondary,
-  borderColor: '#fecaca',
-  color: '#b91c1c',
-  background: '#fef2f2',
-};
-
-const btnMini: React.CSSProperties = {
-  padding: '0.25rem 0.5rem',
-  fontSize: '0.72rem',
-  fontWeight: 600,
-  border: '1px solid #e2e8f0',
-  borderRadius: '6px',
-  background: '#f8fafc',
-  color: '#475569',
-  cursor: 'pointer',
-};
