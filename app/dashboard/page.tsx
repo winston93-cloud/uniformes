@@ -64,7 +64,7 @@ export default function Dashboard() {
               'Comprueba en Vercel que NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY correspondan a este proyecto. Tras superar el límite de egress o cambiar de plan, a veces hace falta republicar o revisar la clave anon en Supabase → Settings → API.'}
           </p>
           <p style={{ fontSize: '0.85rem', opacity: 0.85, marginBottom: '1.25rem', lineHeight: 1.45 }}>
-            Opcional: en Vercel añade <code style={{ background: 'rgba(255,255,255,0.15)', padding: '0.15rem 0.35rem', borderRadius: 4 }}>NEXT_PUBLIC_DEFAULT_SUCURSAL_ID</code> con el UUID de la matriz (tabla sucursales en Supabase) para que arranque aunque falle la consulta.
+            En Vercel define <code style={{ background: 'rgba(255,255,255,0.15)', padding: '0.15rem 0.35rem', borderRadius: 4 }}>NEXT_PUBLIC_DEFAULT_SUCURSAL_ID</code> con el UUID de la matriz (tabla sucursales): con eso la app arranca sin llamar a Supabase (útil si el host da ERR_NAME_NOT_RESOLVED).
           </p>
           <button
             type="button"

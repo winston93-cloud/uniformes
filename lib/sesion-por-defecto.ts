@@ -64,14 +64,16 @@ export async function resolverSesionInvitado(): Promise<{
 }> {
   const envSesion = sesionDesdeVariablesEntorno();
 
+  /** Si está definido, arrancamos sin llamar a Supabase (evita fallos DNS/red como ERR_NAME_NOT_RESOLVED). */
+  if (envSesion) {
+    return { sesion: envSesion, errorDetalle: null };
+  }
+
   if (!supabaseClienteConfigurado()) {
-    if (envSesion) {
-      return { sesion: envSesion, errorDetalle: null };
-    }
     return {
       sesion: null,
       errorDetalle:
-        'El cliente de Supabase no está configurado en Vercel (NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY). Opcional: define NEXT_PUBLIC_DEFAULT_SUCURSAL_ID con el UUID de la matriz como respaldo.',
+        'El cliente de Supabase no está configurado en Vercel (NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY). Añade NEXT_PUBLIC_DEFAULT_SUCURSAL_ID (UUID de la matriz en tabla sucursales) para arrancar sin consultar la API.',
     };
   }
 
@@ -87,17 +89,12 @@ export async function resolverSesionInvitado(): Promise<{
     await sleep(350 * (intento + 1));
   }
 
-  if (envSesion) {
-    console.warn('Supabase no respondió; usando NEXT_PUBLIC_DEFAULT_SUCURSAL_ID');
-    return { sesion: envSesion, errorDetalle: null };
-  }
-
   const msg = getSupabaseErrorMessage(ultimoError);
   return {
     sesion: null,
     errorDetalle:
       msg ||
-      'No se pudo leer la tabla sucursales. Revisa en Supabase que el proyecto esté activo, la anon key sea la actual y exista al menos una sucursal con activo=true. Tras límites de egress, a veces tarda en normalizarse el acceso.',
+      'No se pudo leer la tabla sucursales. Si en consola ves ERR_NAME_NOT_RESOLVED hacia *.supabase.co, la URL del proyecto en Vercel no coincide con un proyecto activo: copia Project URL en Supabase → Settings → API. Como respaldo inmediato, define NEXT_PUBLIC_DEFAULT_SUCURSAL_ID con el UUID de la matriz.',
   };
 }
 
