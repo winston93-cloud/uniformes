@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUsuariosUniformes } from '@/lib/hooks/useUsuariosUniformes';
@@ -18,8 +17,7 @@ function etiquetaEstado(estado: EstadoUsuarioUniforme): string {
 }
 
 export default function UsuariosPage() {
-  const router = useRouter();
-  const { sesion, loading: authLoading } = useAuth();
+  const { loading: authLoading } = useAuth();
   const { usuarios, roles, loading, error, recargar, crearUsuario, actualizarUsuario, eliminarUsuario } =
     useUsuariosUniformes();
 
@@ -31,12 +29,6 @@ export default function UsuariosPage() {
   const [correo, setCorreo] = useState('');
   const [rolId, setRolId] = useState('');
   const [estado, setEstado] = useState<EstadoUsuarioUniforme>('pendiente_validacion');
-
-  useEffect(() => {
-    if (!authLoading && !sesion) {
-      router.push('/login');
-    }
-  }, [sesion, authLoading, router]);
 
   const abrirNuevo = () => {
     setEditando(null);
@@ -131,10 +123,6 @@ export default function UsuariosPage() {
         </div>
       </LayoutWrapper>
     );
-  }
-
-  if (!sesion) {
-    return null;
   }
 
   return (

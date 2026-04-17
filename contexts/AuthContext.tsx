@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { SesionUsuario } from '@/lib/types';
 import { getCicloEscolarActual } from '@/lib/utils/cicloEscolar';
+import { fetchSesionPorDefecto } from '@/lib/sesion-por-defecto';
 
 interface AuthContextType {
   sesion: SesionUsuario | null;
@@ -20,24 +21,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [cicloEscolar, setCicloEscolarState] = useState<number>(getCicloEscolarActual());
 
-  // Cargar sesión y ciclo escolar del localStorage al iniciar
+  // Cargar sesión (localStorage o invitado por sucursal matriz / primera activa)
   useEffect(() => {
-    const sesionGuardada = localStorage.getItem('sesion_uniformes');
-    if (sesionGuardada) {
+    let cancelled = false;
+
+    (async () => {
       try {
-        setSesionState(JSON.parse(sesionGuardada));
-      } catch (error) {
-        console.error('Error cargando sesión:', error);
-        localStorage.removeItem('sesion_uniformes');
+        const sesionGuardada = localStorage.getItem('sesion_uniformes');
+        if (sesionGuardada) {
+          try {
+            setSesionState(JSON.parse(sesionGuardada));
+          } catch (error) {
+            console.error('Error cargando sesión:', error);
+            localStorage.removeItem('sesion_uniformes');
+          }
+        }
+
+        if (!cancelled && !localStorage.getItem('sesion_uniformes')) {
+          const invitado = await fetchSesionPorDefecto();
+          if (!cancelled && invitado) {
+            setSesionState(invitado);
+            localStorage.setItem('sesion_uniformes', JSON.stringify(invitado));
+          }
+        }
+
+        const cicloGuardado = localStorage.getItem('ciclo_escolar_actual');
+        if (cicloGuardado) {
+          setCicloEscolarState(parseInt(cicloGuardado));
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
-    }
-    
-    const cicloGuardado = localStorage.getItem('ciclo_escolar_actual');
-    if (cicloGuardado) {
-      setCicloEscolarState(parseInt(cicloGuardado));
-    }
-    
-    setLoading(false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const setSesion = (nuevaSesion: SesionUsuario | null) => {
@@ -55,9 +76,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const cerrarSesion = () => {
-    setSesionState(null);
     localStorage.removeItem('sesion_uniformes');
-    window.location.href = '/login';
+    void (async () => {
+      const invitado = await fetchSesionPorDefecto();
+      if (invitado) {
+        setSesionState(invitado);
+        localStorage.setItem('sesion_uniformes', JSON.stringify(invitado));
+      } else {
+        setSesionState(null);
+      }
+      window.location.href = '/dashboard';
+    })();
   };
 
   return (

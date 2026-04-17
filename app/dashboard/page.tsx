@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import Link from 'next/link';
@@ -11,16 +10,8 @@ import TarjetaAlertasStockPrendas from '@/components/TarjetaAlertasStockPrendas'
 import UserCard from '@/components/UserCard';
 
 export default function Dashboard() {
-  const router = useRouter();
   const { sesion, loading } = useAuth();
   const [tarjetaExpandida, setTarjetaExpandida] = useState<'insumos' | 'alertas' | 'prendas' | null>(null);
-
-  // Protección de ruta: redirigir a login si no hay sesión
-  useEffect(() => {
-    if (!loading && !sesion) {
-      router.push('/login');
-    }
-  }, [sesion, loading, router]);
 
   const handleToggleInsumos = () => {
     setTarjetaExpandida(prev => prev === 'insumos' ? null : 'insumos');
@@ -49,8 +40,26 @@ export default function Dashboard() {
           color: 'white',
           fontSize: '1.5rem',
         }}>
-          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🔐</div>
-          Verificando sesión...
+          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>✨</div>
+          Cargando…
+        </div>
+      </div>
+    );
+  }
+
+  if (!sesion) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        padding: '2rem',
+      }}>
+        <div style={{ textAlign: 'center', color: 'white', maxWidth: '420px' }}>
+          <p style={{ fontSize: '1.2rem', marginBottom: '0.75rem' }}>No se pudo cargar la sucursal por defecto.</p>
+          <p style={{ fontSize: '0.95rem', opacity: 0.9 }}>Comprueba la conexión y que exista al menos una sucursal activa en el catálogo.</p>
         </div>
       </div>
     );
