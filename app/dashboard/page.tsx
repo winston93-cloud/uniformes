@@ -10,7 +10,7 @@ import TarjetaAlertasStockPrendas from '@/components/TarjetaAlertasStockPrendas'
 import UserCard from '@/components/UserCard';
 
 export default function Dashboard() {
-  const { sesion, loading } = useAuth();
+  const { sesion, loading, sesionError, recargarSesion } = useAuth();
   const [tarjetaExpandida, setTarjetaExpandida] = useState<'insumos' | 'alertas' | 'prendas' | null>(null);
 
   const handleToggleInsumos = () => {
@@ -57,9 +57,31 @@ export default function Dashboard() {
         background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
         padding: '2rem',
       }}>
-        <div style={{ textAlign: 'center', color: 'white', maxWidth: '420px' }}>
-          <p style={{ fontSize: '1.2rem', marginBottom: '0.75rem' }}>No se pudo cargar la sucursal por defecto.</p>
-          <p style={{ fontSize: '0.95rem', opacity: 0.9 }}>Comprueba la conexión y que exista al menos una sucursal activa en el catálogo.</p>
+        <div style={{ textAlign: 'center', color: 'white', maxWidth: '520px' }}>
+          <p style={{ fontSize: '1.2rem', marginBottom: '0.75rem' }}>No se pudo cargar la sucursal por defecto (matriz).</p>
+          <p style={{ fontSize: '0.95rem', opacity: 0.92, marginBottom: '1rem', lineHeight: 1.5 }}>
+            {sesionError ??
+              'Comprueba en Vercel que NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY correspondan a este proyecto. Tras superar el límite de egress o cambiar de plan, a veces hace falta republicar o revisar la clave anon en Supabase → Settings → API.'}
+          </p>
+          <p style={{ fontSize: '0.85rem', opacity: 0.85, marginBottom: '1.25rem', lineHeight: 1.45 }}>
+            Opcional: en Vercel añade <code style={{ background: 'rgba(255,255,255,0.15)', padding: '0.15rem 0.35rem', borderRadius: 4 }}>NEXT_PUBLIC_DEFAULT_SUCURSAL_ID</code> con el UUID de la matriz (tabla sucursales en Supabase) para que arranque aunque falle la consulta.
+          </p>
+          <button
+            type="button"
+            onClick={() => void recargarSesion()}
+            style={{
+              padding: '0.65rem 1.25rem',
+              fontSize: '1rem',
+              fontWeight: 600,
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              background: 'white',
+              color: '#5b21b6',
+            }}
+          >
+            Reintentar
+          </button>
         </div>
       </div>
     );
