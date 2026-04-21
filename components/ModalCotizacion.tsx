@@ -144,8 +144,10 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     cargando,
     actualizarEstado,
     actualizarCotizacionCompleta,
+    eliminarCotizacion,
   } = useCotizaciones();
   const [actualizandoEstadoId, setActualizandoEstadoId] = useState<string | null>(null);
+  const [eliminandoCotizacionId, setEliminandoCotizacionId] = useState<string | null>(null);
   const { searchAlumnos } = useAlumnos(cicloEscolar);
   const { searchExternos } = useExternos();
   const { prendas } = usePrendas();
@@ -1167,6 +1169,35 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     } catch (e) {
       console.error(e);
       alert('No se pudo cargar la cotización para editar');
+    }
+  };
+
+  const confirmarYEliminarCotizacion = async (cot: Cotizacion) => {
+    if (cot.estado !== 'emitido') {
+      alert('Solo puedes eliminar cotizaciones en estado "Emitido".');
+      return;
+    }
+    const folio = cot.folio || '(sin folio)';
+    const ok1 = confirm(
+      `⚠️ ELIMINACIÓN DEFINITIVA\n\nSe eliminará la cotización ${folio} y todas sus partidas.\n\n¿Deseas continuar?`
+    );
+    if (!ok1) return;
+    const typed = prompt(`Escribe ELIMINAR para confirmar borrar ${folio} definitivamente:`, '');
+    if (typed !== 'ELIMINAR') {
+      alert('Cancelado. No se eliminó la cotización.');
+      return;
+    }
+
+    try {
+      setEliminandoCotizacionId(cot.id);
+      const { error } = await eliminarCotizacion(cot.id);
+      if (error) {
+        alert(`No se pudo eliminar: ${error}`);
+        return;
+      }
+      alert(`✅ Cotización ${folio} eliminada definitivamente.`);
+    } finally {
+      setEliminandoCotizacionId(null);
     }
   };
 
@@ -3228,6 +3259,36 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                                 ✏️ Modificar
                               </button>
                             ) : null}
+                            <button
+                              type="button"
+                              onClick={() => confirmarYEliminarCotizacion(cot)}
+                              disabled={eliminandoCotizacionId === cot.id || cot.estado !== 'emitido'}
+                              style={{
+                                background:
+                                  eliminandoCotizacionId === cot.id || cot.estado !== 'emitido'
+                                    ? '#e5e7eb'
+                                    : '#dc2626',
+                                color:
+                                  eliminandoCotizacionId === cot.id || cot.estado !== 'emitido'
+                                    ? '#6b7280'
+                                    : 'white',
+                                border: 'none',
+                                padding: '0.5rem 1rem',
+                                borderRadius: '4px',
+                                cursor:
+                                  eliminandoCotizacionId === cot.id || cot.estado !== 'emitido'
+                                    ? 'not-allowed'
+                                    : 'pointer',
+                                fontWeight: 'bold',
+                              }}
+                              title={
+                                cot.estado !== 'emitido'
+                                  ? 'Solo se permite eliminar en estado Emitido'
+                                  : 'Eliminar definitivamente'
+                              }
+                            >
+                              {eliminandoCotizacionId === cot.id ? '⏳ Eliminando…' : '🗑 Eliminar'}
+                            </button>
                           </div>
                         </td>
                       </tr>

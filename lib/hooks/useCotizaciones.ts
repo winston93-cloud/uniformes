@@ -325,6 +325,13 @@ export function useCotizaciones() {
   // Eliminar cotización
   const eliminarCotizacion = async (id: string) => {
     try {
+      // Intentar borrar detalle primero (además de depender de ON DELETE CASCADE)
+      const { error: detError } = await supabase
+        .from('detalle_cotizacion')
+        .delete()
+        .eq('cotizacion_id', id);
+      if (detError) throw detError;
+
       const { error } = await supabase
         .from('cotizaciones')
         .delete()
