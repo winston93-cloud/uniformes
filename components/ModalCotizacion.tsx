@@ -528,6 +528,52 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     setPartidas(partidas.filter((_, i) => i !== index));
   };
 
+  const esModoEdicion = cotizacionEditId !== null;
+
+  const normalizarNumero = (raw: string, fallback: number) => {
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : fallback;
+  };
+
+  const actualizarPartida = <K extends keyof PartidaCotizacion>(
+    index: number,
+    campo: K,
+    valor: PartidaCotizacion[K]
+  ) => {
+    setPartidas((prev) => {
+      const next = [...prev];
+      const actual = next[index];
+      if (!actual) return prev;
+
+      // Si se toca cualquier campo "estructural" o precio, se considera override manual para no depender de IDs/costos.
+      const campoDisparaManual =
+        campo === 'prenda_nombre' ||
+        campo === 'talla' ||
+        campo === 'precio_unitario' ||
+        campo === 'tipo_precio_usado';
+
+      const actualizado: PartidaCotizacion = {
+        ...actual,
+        [campo]: valor,
+        ...(campoDisparaManual
+          ? {
+              es_manual: true,
+              prenda_id: null,
+              costo_id: null,
+            }
+          : null),
+      } as PartidaCotizacion;
+
+      // Recalcular subtotal si cambia cantidad / precio
+      const cantidad = actualizado.cantidad;
+      const precio = actualizado.precio_unitario;
+      actualizado.subtotal = cantidad * precio;
+
+      next[index] = actualizado;
+      return next;
+    });
+  };
+
   // Cambiar tipo de precio de una partida
   const cambiarTipoPrecioPartida = async (index: number, nuevoTipoPrecio: 'mayoreo' | 'menudeo') => {
     const partida = partidas[index];
@@ -2253,19 +2299,149 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                         <tr key={index} style={{ borderBottom: '1px solid #eee' }}>
                           <td style={{ padding: '0.75rem' }}>{index + 1}</td>
                           <td style={{ padding: '0.75rem', fontWeight: 'bold' }}>
-                            {partida.prenda_nombre}
+                            {esModoEdicion ? (
+                              <input
+                                value={partida.prenda_nombre}
+                                onChange={(e) => actualizarPartida(index, 'prenda_nombre', e.target.value)}
+                                style={{
+                                  width: '100%',
+                                  padding: '0.4rem 0.5rem',
+                                  borderRadius: 6,
+                                  border: '1px solid #d1d5db',
+                                  fontWeight: 700,
+                                }}
+                                aria-label={`Prenda partida ${index + 1}`}
+                              />
+                            ) : (
+                              partida.prenda_nombre
+                            )}
                           </td>
-                          <td style={{ padding: '0.75rem' }}>{partida.talla}</td>
-                          <td style={{ padding: '0.75rem' }}>{partida.color || '-'}</td>
+                          <td style={{ padding: '0.75rem' }}>
+                            {esModoEdicion ? (
+                              <input
+                                value={partida.talla}
+                                onChange={(e) => actualizarPartida(index, 'talla', e.target.value)}
+                                style={{
+                                  width: '100%',
+                                  padding: '0.4rem 0.5rem',
+                                  borderRadius: 6,
+                                  border: '1px solid #d1d5db',
+                                }}
+                                aria-label={`Talla partida ${index + 1}`}
+                              />
+                            ) : (
+                              partida.talla
+                            )}
+                          </td>
+                          <td style={{ padding: '0.75rem' }}>
+                            {esModoEdicion ? (
+                              <input
+                                value={partida.color || ''}
+                                onChange={(e) => actualizarPartida(index, 'color', e.target.value)}
+                                style={{
+                                  width: '100%',
+                                  padding: '0.4rem 0.5rem',
+                                  borderRadius: 6,
+                                  border: '1px solid #d1d5db',
+                                }}
+                                aria-label={`Color partida ${index + 1}`}
+                              />
+                            ) : (
+                              partida.color || '-'
+                            )}
+                          </td>
                           <td style={{ padding: '0.75rem', fontSize: '0.9rem', color: '#555' }}>
-                            {partida.especificaciones || '-'}
+                            {esModoEdicion ? (
+                              <input
+                                value={partida.especificaciones || ''}
+                                onChange={(e) => actualizarPartida(index, 'especificaciones', e.target.value)}
+                                style={{
+                                  width: '100%',
+                                  padding: '0.4rem 0.5rem',
+                                  borderRadius: 6,
+                                  border: '1px solid #d1d5db',
+                                }}
+                                aria-label={`Especificaciones partida ${index + 1}`}
+                              />
+                            ) : (
+                              partida.especificaciones || '-'
+                            )}
                           </td>
-                          <td style={{ padding: '0.75rem', textAlign: 'right' }}>{partida.cantidad}</td>
                           <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                            ${partida.precio_unitario.toFixed(2)}
+                            {esModoEdicion ? (
+                              <input
+                                type="number"
+                                inputMode="numeric"
+                                min={0}
+                                step={1}
+                                value={String(partida.cantidad)}
+                                onChange={(e) => {
+                                  const n = Math.max(0, Math.floor(normalizarNumero(e.target.value, partida.cantidad)));
+                                  actualizarPartida(index, 'cantidad', n);
+                                }}
+                                style={{
+                                  width: 90,
+                                  textAlign: 'right',
+                                  padding: '0.4rem 0.5rem',
+                                  borderRadius: 6,
+                                  border: '1px solid #d1d5db',
+                                }}
+                                aria-label={`Cantidad partida ${index + 1}`}
+                              />
+                            ) : (
+                              partida.cantidad
+                            )}
+                          </td>
+                          <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                            {esModoEdicion ? (
+                              <input
+                                type="number"
+                                inputMode="decimal"
+                                min={0}
+                                step={0.01}
+                                value={String(partida.precio_unitario)}
+                                onChange={(e) => {
+                                  const n = Math.max(0, normalizarNumero(e.target.value, partida.precio_unitario));
+                                  actualizarPartida(index, 'precio_unitario', n);
+                                }}
+                                style={{
+                                  width: 120,
+                                  textAlign: 'right',
+                                  padding: '0.4rem 0.5rem',
+                                  borderRadius: 6,
+                                  border: '1px solid #d1d5db',
+                                }}
+                                aria-label={`Precio unitario partida ${index + 1}`}
+                              />
+                            ) : (
+                              `$${partida.precio_unitario.toFixed(2)}`
+                            )}
                           </td>
                           <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                            {!partida.es_manual && partida.prenda_id && partida.costo_id ? (
+                            {esModoEdicion ? (
+                              <select
+                                value={partida.tipo_precio_usado}
+                                onChange={(e) =>
+                                  actualizarPartida(
+                                    index,
+                                    'tipo_precio_usado',
+                                    e.target.value as 'mayoreo' | 'menudeo'
+                                  )
+                                }
+                                style={{
+                                  padding: '0.4rem 0.5rem',
+                                  borderRadius: 6,
+                                  border: '1px solid #d1d5db',
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                  background: 'white',
+                                }}
+                                aria-label={`Tipo de precio partida ${index + 1}`}
+                              >
+                                <option value="menudeo">Menudeo</option>
+                                <option value="mayoreo">Mayoreo</option>
+                              </select>
+                            ) : !partida.es_manual && partida.prenda_id && partida.costo_id ? (
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
