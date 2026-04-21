@@ -158,6 +158,13 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     precio_menudeo: number;
   };
   const [costosPorPrendaId, setCostosPorPrendaId] = useState<Record<string, CostoSlim[]>>({});
+  const [editPartidaIdx, setEditPartidaIdx] = useState<number | null>(null);
+  const [busquedaPrendaEdit, setBusquedaPrendaEdit] = useState('');
+  const [dropdownPrendaEditVisible, setDropdownPrendaEditVisible] = useState(false);
+  const [indiceSeleccionadoPrendaEdit, setIndiceSeleccionadoPrendaEdit] = useState(-1);
+  const [dropdownPrendaEditPos, setDropdownPrendaEditPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  const editColorRefs = useRef<Record<number, HTMLInputElement | null>>({});
+  const editTallaRefs = useRef<Record<number, HTMLElement | null>>({});
 
   // Optimización: Memoizar filtrado de prendas para evitar recálculos
   const prendasMostrar = useMemo(() => {
@@ -173,6 +180,18 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     
     return prendasFiltradas.slice(0, 10);
   }, [prendas, busquedaPrenda]);
+
+  const prendasEditMostrar = useMemo(() => {
+    const prendasActivas = prendas
+      .filter(p => p.activo)
+      .sort((a, b) => a.nombre.localeCompare(b.nombre));
+
+    const prendasFiltradas = busquedaPrendaEdit.trim()
+      ? prendasActivas.filter(p => p.nombre.toLowerCase().includes(busquedaPrendaEdit.toLowerCase()))
+      : prendasActivas;
+
+    return prendasFiltradas.slice(0, 10);
+  }, [prendas, busquedaPrendaEdit]);
 
   // Filtrar cotizaciones por cliente y fecha
   const cotizacionesFiltradas = useMemo(() => {
@@ -246,6 +265,12 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       }
     })();
   }, [esModoEdicion, partidas, costosPorPrendaId]);
+
+  // Posicionar dropdown de edición de prenda (en partidas)
+  useEffect(() => {
+    if (!dropdownPrendaEditVisible || editPartidaIdx === null || !editTallaRefs.current[editPartidaIdx]) return;
+    // Usamos el nodo de la celda/ input para calcular rect; se setea en focus.
+  }, [dropdownPrendaEditVisible, editPartidaIdx]);
 
   async function cargarImagenComoDataUrl(url: string): Promise<string> {
     const res = await fetch(url);
@@ -614,6 +639,47 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
         subtotal: actual.cantidad * actual.precio_unitario,
       };
       return next;
+    });
+  };
+
+  const seleccionarPrendaSistemaParaPartida = async (index: number, prendaId: string, prendaNombre: string) => {
+    let costos = costosPorPrendaId[prendaId];
+    if (!costos) {
+      const { data, error } = await supabase
+        .from('costos')
+        .select('id, prenda_id, talla, precio_mayoreo, precio_menudeo')
+        .eq('prenda_id', prendaId);
+      if (error) {
+        console.error('Error al cargar costos para prenda (edición):', error);
+        return;
+      }
+      costos = (data || []) as CostoSlim[];
+      setCostosPorPrendaId((prev) => ({
+        ...prev,
+        [prendaId]: costos!.slice().sort((a, b) => String(a.talla).localeCompare(String(b.talla))),
+      }));
+    }
+
+    const lista = costos || [];
+    if (lista.length === 0) {
+      actualizarPartida(index, 'prenda_nombre', prendaNombre);
+      forzarPartidaManual(index);
+      return;
+    }
+
+    const partida = partidas[index];
+    const tallaDeseada = partida?.talla || '';
+    const costoMatch = lista.find((c) => String(c.talla) === String(tallaDeseada)) || lista[0];
+    const tipo = (partida?.tipo_precio_usado || 'menudeo') as 'menudeo' | 'mayoreo';
+    const precio = tipo === 'mayoreo' ? costoMatch.precio_mayoreo : costoMatch.precio_menudeo;
+
+    aplicarCostoSistema(index, {
+      prenda_id: prendaId,
+      prenda_nombre: prendaNombre,
+      costo_id: costoMatch.id,
+      talla: costoMatch.talla,
+      tipo_precio_usado: tipo,
+      precio_unitario: precio,
     });
   };
 
@@ -2369,87 +2435,86 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                           <td style={{ padding: '0.75rem' }}>{index + 1}</td>
                           <td style={{ padding: '0.75rem', fontWeight: 'bold' }}>
                             {esModoEdicion ? (
-                              !partida.es_manual && partida.prenda_id ? (
-                                <select
-                                  value={partida.prenda_id}
-                                  onChange={async (e) => {
-                                    const prendaId = e.target.value;
-                                    const prendaSel = prendas.find((p) => String(p.id) === String(prendaId));
-                                    const prendaNombre = prendaSel?.nombre || partida.prenda_nombre;
+                              <input
+                                value={editPartidaIdx === index ? busquedaPrendaEdit : partida.prenda_nombre}
+                                onChange={(e) => {
+                                  const q = e.target.value;
+                                  setEditPartidaIdx(index);
+                                  setBusquedaPrendaEdit(q);
+                                  setDropdownPrendaEditVisible(true);
+                                  setIndiceSeleccionadoPrendaEdit(-1);
+                                  // Si es manual, permitimos editar el texto directamente
+                                  if (partida.es_manual) {
+                                    actualizarPartida(index, 'prenda_nombre', q);
+                                  }
+                                }}
+                                onFocus={(e) => {
+                                  const rect = e.currentTarget.getBoundingClientRect();
+                                  setDropdownPrendaEditPos({
+                                    top: rect.bottom + window.scrollY + 8,
+                                    left: rect.left + window.scrollX,
+                                    width: rect.width,
+                                  });
+                                  setEditPartidaIdx(index);
+                                  setBusquedaPrendaEdit(partida.prenda_nombre);
+                                  setDropdownPrendaEditVisible(true);
+                                  setIndiceSeleccionadoPrendaEdit(-1);
+                                }}
+                                onBlur={() => {
+                                  setTimeout(() => {
+                                    setDropdownPrendaEditVisible(false);
+                                    setIndiceSeleccionadoPrendaEdit(-1);
+                                  }, 200);
+                                }}
+                                onKeyDown={(e) => {
+                                  if (!dropdownPrendaEditVisible) return;
+                                  if (e.key === 'ArrowDown') {
+                                    e.preventDefault();
+                                    setIndiceSeleccionadoPrendaEdit((prev) =>
+                                      Math.min(prev + 1, prendasEditMostrar.length - 1)
+                                    );
+                                  } else if (e.key === 'ArrowUp') {
+                                    e.preventDefault();
+                                    setIndiceSeleccionadoPrendaEdit((prev) => Math.max(prev - 1, 0));
+                                  } else if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    const pick =
+                                      indiceSeleccionadoPrendaEdit >= 0
+                                        ? prendasEditMostrar[indiceSeleccionadoPrendaEdit]
+                                        : prendasEditMostrar[0];
+                                    if (!pick) return;
+                                    const prendaId = String(pick.id);
+                                    const prendaNombre = pick.nombre;
+                                    setBusquedaPrendaEdit(prendaNombre);
+                                    setDropdownPrendaEditVisible(false);
+                                    setIndiceSeleccionadoPrendaEdit(-1);
 
-                                    // Asegurar costos cargados
-                                    let costos = costosPorPrendaId[prendaId];
-                                    if (!costos) {
-                                      const { data, error } = await supabase
-                                        .from('costos')
-                                        .select('id, prenda_id, talla, precio_mayoreo, precio_menudeo')
-                                        .eq('prenda_id', prendaId);
-                                      if (!error) {
-                                        costos = (data || []) as CostoSlim[];
-                                        setCostosPorPrendaId((prev) => ({
-                                          ...prev,
-                                          [prendaId]: costos!.slice().sort((a, b) => String(a.talla).localeCompare(String(b.talla))),
-                                        }));
-                                      }
-                                    }
-
-                                    const lista = costos || [];
-                                    if (lista.length === 0) {
-                                      // Sin costos, degradar a manual pero conservar nombre seleccionado
+                                    if (partida.es_manual) {
                                       actualizarPartida(index, 'prenda_nombre', prendaNombre);
-                                      forzarPartidaManual(index);
-                                      return;
+                                    } else {
+                                      void seleccionarPrendaSistemaParaPartida(index, prendaId, prendaNombre);
                                     }
 
-                                    const tallaDeseada = partida.talla;
-                                    const costoMatch = lista.find((c) => String(c.talla) === String(tallaDeseada)) || lista[0];
-                                    const tipo = partida.tipo_precio_usado || 'menudeo';
-                                    const precio =
-                                      tipo === 'mayoreo' ? costoMatch.precio_mayoreo : costoMatch.precio_menudeo;
-
-                                    aplicarCostoSistema(index, {
-                                      prenda_id: prendaId,
-                                      prenda_nombre: prendaNombre,
-                                      costo_id: costoMatch.id,
-                                      talla: costoMatch.talla,
-                                      tipo_precio_usado: tipo,
-                                      precio_unitario: precio,
-                                    });
-                                  }}
-                                  style={{
-                                    width: '100%',
-                                    padding: '0.4rem 0.5rem',
-                                    borderRadius: 6,
-                                    border: '1px solid #d1d5db',
-                                    fontWeight: 700,
-                                    background: 'white',
-                                    cursor: 'pointer',
-                                  }}
-                                  aria-label={`Prenda partida ${index + 1}`}
-                                >
-                                  {prendas
-                                    .filter((p) => p.activo)
-                                    .sort((a, b) => a.nombre.localeCompare(b.nombre))
-                                    .map((p) => (
-                                      <option key={String(p.id)} value={String(p.id)}>
-                                        {p.nombre}
-                                      </option>
-                                    ))}
-                                </select>
-                              ) : (
-                                <input
-                                  value={partida.prenda_nombre}
-                                  onChange={(e) => actualizarPartida(index, 'prenda_nombre', e.target.value)}
-                                  style={{
-                                    width: '100%',
-                                    padding: '0.4rem 0.5rem',
-                                    borderRadius: 6,
-                                    border: '1px solid #d1d5db',
-                                    fontWeight: 700,
-                                  }}
-                                  aria-label={`Prenda partida ${index + 1}`}
-                                />
-                              )
+                                    // Foco a talla para seguir flujo de teclado
+                                    setTimeout(() => {
+                                      const node = editTallaRefs.current[index] as any;
+                                      if (node?.focus) node.focus();
+                                    }, 80);
+                                  } else if (e.key === 'Escape') {
+                                    e.preventDefault();
+                                    setDropdownPrendaEditVisible(false);
+                                    setIndiceSeleccionadoPrendaEdit(-1);
+                                  }
+                                }}
+                                style={{
+                                  width: '100%',
+                                  padding: '0.4rem 0.5rem',
+                                  borderRadius: 6,
+                                  border: '1px solid #d1d5db',
+                                  fontWeight: 700,
+                                }}
+                                aria-label={`Prenda partida ${index + 1}`}
+                              />
                             ) : (
                               partida.prenda_nombre
                             )}
@@ -2459,6 +2524,9 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                               !partida.es_manual && partida.prenda_id ? (
                                 <select
                                   value={partida.talla}
+                                  ref={(el) => {
+                                    editTallaRefs.current[index] = el;
+                                  }}
                                   onChange={(e) => {
                                     const nuevaTalla = e.target.value;
                                     const prendaId = String(partida.prenda_id);
@@ -2481,6 +2549,15 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                                       tipo_precio_usado: tipo,
                                       precio_unitario: precio,
                                     });
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      setTimeout(() => {
+                                        const node = editColorRefs.current[index];
+                                        if (node) node.focus();
+                                      }, 60);
+                                    }
                                   }}
                                   style={{
                                     width: '100%',
@@ -2505,6 +2582,9 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                                 <input
                                   value={partida.talla}
                                   onChange={(e) => actualizarPartida(index, 'talla', e.target.value)}
+                                  ref={(el) => {
+                                    editTallaRefs.current[index] = el;
+                                  }}
                                   style={{
                                     width: '100%',
                                     padding: '0.4rem 0.5rem',
@@ -2523,6 +2603,9 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                               <input
                                 value={partida.color || ''}
                                 onChange={(e) => actualizarPartida(index, 'color', e.target.value)}
+                                ref={(el) => {
+                                  editColorRefs.current[index] = el;
+                                }}
                                 style={{
                                   width: '100%',
                                   padding: '0.4rem 0.5rem',
@@ -3397,6 +3480,83 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
             top: dropdownPrendaPos.top,
             left: dropdownPrendaPos.left,
             width: dropdownPrendaPos.width,
+            background: 'white',
+            border: '2px solid #ddd',
+            borderRadius: '8px',
+            padding: '0.75rem',
+            color: '#999',
+            fontSize: '0.9rem',
+            zIndex: 10000,
+            boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+          }}>
+            No se encontraron prendas
+          </div>
+        ),
+        document.body
+      )}
+
+      {/* Portal: Autocomplete de prenda en edición de partidas */}
+      {mounted && dropdownPrendaEditPos && dropdownPrendaEditVisible && createPortal(
+        prendasEditMostrar.length > 0 ? (
+          <div style={{
+            position: 'fixed',
+            top: dropdownPrendaEditPos.top,
+            left: dropdownPrendaEditPos.left,
+            width: dropdownPrendaEditPos.width,
+            maxHeight: '250px',
+            overflowY: 'auto',
+            background: 'white',
+            border: '2px solid #667eea',
+            borderRadius: '8px',
+            boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
+            zIndex: 10000,
+          }}>
+            {prendasEditMostrar.map((prenda, idx) => (
+              <div
+                key={prenda.id}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  if (editPartidaIdx === null) return;
+                  const prendaId = String(prenda.id);
+                  const prendaNombre = prenda.nombre;
+                  setBusquedaPrendaEdit(prendaNombre);
+                  setDropdownPrendaEditVisible(false);
+                  setIndiceSeleccionadoPrendaEdit(-1);
+
+                  const partida = partidas[editPartidaIdx];
+                  if (partida?.es_manual) {
+                    actualizarPartida(editPartidaIdx, 'prenda_nombre', prendaNombre);
+                  } else {
+                    void seleccionarPrendaSistemaParaPartida(editPartidaIdx, prendaId, prendaNombre);
+                  }
+
+                  // Foco a talla para seguir flujo
+                  setTimeout(() => {
+                    const node = editTallaRefs.current[editPartidaIdx] as any;
+                    if (node?.focus) node.focus();
+                  }, 80);
+                }}
+                onMouseEnter={() => setIndiceSeleccionadoPrendaEdit(idx)}
+                style={{
+                  padding: '0.75rem 1rem',
+                  cursor: 'pointer',
+                  borderBottom: idx < prendasEditMostrar.length - 1 ? '1px solid #f0f0f0' : 'none',
+                  transition: 'all 0.15s',
+                  background: indiceSeleccionadoPrendaEdit === idx ? '#667eea' : 'white',
+                  color: indiceSeleccionadoPrendaEdit === idx ? 'white' : 'black',
+                  fontWeight: indiceSeleccionadoPrendaEdit === idx ? 'bold' : 'normal',
+                }}
+              >
+                {prenda.nombre}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{
+            position: 'fixed',
+            top: dropdownPrendaEditPos.top,
+            left: dropdownPrendaEditPos.left,
+            width: dropdownPrendaEditPos.width,
             background: 'white',
             border: '2px solid #ddd',
             borderRadius: '8px',
