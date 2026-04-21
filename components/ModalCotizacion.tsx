@@ -153,9 +153,11 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   type CostoSlim = {
     id: string;
     prenda_id: string;
-    talla: string;
+    talla_id: string;
     precio_mayoreo: number;
     precio_menudeo: number;
+    activo?: boolean | null;
+    talla?: { nombre?: string | null } | null;
   };
   const [costosPorPrendaId, setCostosPorPrendaId] = useState<Record<string, CostoSlim[]>>({});
   const [editPartidaIdx, setEditPartidaIdx] = useState<number | null>(null);
@@ -246,7 +248,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       try {
         const { data, error } = await supabase
           .from('costos')
-          .select('id, prenda_id, talla, precio_mayoreo, precio_menudeo')
+          .select('id, prenda_id, talla_id, precio_mayoreo, precio_menudeo, activo, talla:tallas(nombre)')
           .in('prenda_id', prendaIds);
         if (error) throw error;
         const rows = (data || []) as CostoSlim[];
@@ -257,7 +259,9 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
         }
         // Ordenar tallas de forma estable (alfabética) para UI
         for (const k of Object.keys(grouped)) {
-          grouped[k] = grouped[k].slice().sort((a, b) => String(a.talla).localeCompare(String(b.talla)));
+          grouped[k] = grouped[k]
+            .slice()
+            .sort((a, b) => String(a.talla?.nombre || '').localeCompare(String(b.talla?.nombre || '')));
         }
         setCostosPorPrendaId((prev) => ({ ...prev, ...grouped }));
       } catch (e) {
@@ -265,12 +269,6 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       }
     })();
   }, [esModoEdicion, partidas, costosPorPrendaId]);
-
-  // Posicionar dropdown de edición de prenda (en partidas)
-  useEffect(() => {
-    if (!dropdownPrendaEditVisible || editPartidaIdx === null || !editTallaRefs.current[editPartidaIdx]) return;
-    // Usamos el nodo de la celda/ input para calcular rect; se setea en focus.
-  }, [dropdownPrendaEditVisible, editPartidaIdx]);
 
   async function cargarImagenComoDataUrl(url: string): Promise<string> {
     const res = await fetch(url);
@@ -647,7 +645,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     if (!costos) {
       const { data, error } = await supabase
         .from('costos')
-        .select('id, prenda_id, talla, precio_mayoreo, precio_menudeo')
+        .select('id, prenda_id, talla_id, precio_mayoreo, precio_menudeo, activo, talla:tallas(nombre)')
         .eq('prenda_id', prendaId);
       if (error) {
         console.error('Error al cargar costos para prenda (edición):', error);
@@ -656,11 +654,13 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       costos = (data || []) as CostoSlim[];
       setCostosPorPrendaId((prev) => ({
         ...prev,
-        [prendaId]: costos!.slice().sort((a, b) => String(a.talla).localeCompare(String(b.talla))),
+        [prendaId]: costos!
+          .slice()
+          .sort((a, b) => String(a.talla?.nombre || '').localeCompare(String(b.talla?.nombre || ''))),
       }));
     }
 
-    const lista = costos || [];
+    const lista = (costos || []).filter((c) => c.activo !== false);
     if (lista.length === 0) {
       actualizarPartida(index, 'prenda_nombre', prendaNombre);
       forzarPartidaManual(index);
@@ -668,8 +668,11 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     }
 
     const partida = partidas[index];
-    const tallaDeseada = partida?.talla || '';
-    const costoMatch = lista.find((c) => String(c.talla) === String(tallaDeseada)) || lista[0];
+    const tallaDeseada = String(partida?.talla || '');
+    const costoMatch =
+      (partida?.costo_id ? lista.find((c) => String(c.id) === String(partida.costo_id)) : undefined) ||
+      lista.find((c) => String(c.talla?.nombre || '') === tallaDeseada) ||
+      lista[0];
     const tipo = (partida?.tipo_precio_usado || 'menudeo') as 'menudeo' | 'mayoreo';
     const precio = tipo === 'mayoreo' ? costoMatch.precio_mayoreo : costoMatch.precio_menudeo;
 
@@ -677,7 +680,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       prenda_id: prendaId,
       prenda_nombre: prendaNombre,
       costo_id: costoMatch.id,
-      talla: costoMatch.talla,
+      talla: String(costoMatch.talla?.nombre || ''),
       tipo_precio_usado: tipo,
       precio_unitario: precio,
     });
@@ -2478,11 +2481,10 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                                     setIndiceSeleccionadoPrendaEdit((prev) => Math.max(prev - 1, 0));
                                   } else if (e.key === 'Enter') {
                                     e.preventDefault();
-                                    const pick =
-                                      indiceSeleccionadoPrendaEdit >= 0
-                                        ? prendasEditMostrar[indiceSeleccionadoPrendaEdit]
-                                        : prendasEditMostrar[0];
-                                    if (!pick) return;
+                                    if (indiceSeleccionadoPrendaEdit < 0 || !prendasEditMostrar[indiceSeleccionadoPrendaEdit]) {
+                                      return;
+                                    }
+                                    const pick = prendasEditMostrar[indiceSeleccionadoPrendaEdit];
                                     const prendaId = String(pick.id);
                                     const prendaNombre = pick.nombre;
                                     setBusquedaPrendaEdit(prendaNombre);
@@ -2523,21 +2525,15 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                             {esModoEdicion ? (
                               !partida.es_manual && partida.prenda_id ? (
                                 <select
-                                  value={partida.talla}
+                                  value={partida.costo_id || ''}
                                   ref={(el) => {
                                     editTallaRefs.current[index] = el;
                                   }}
                                   onChange={(e) => {
-                                    const nuevaTalla = e.target.value;
                                     const prendaId = String(partida.prenda_id);
-                                    const lista = costosPorPrendaId[prendaId] || [];
-                                    const costoMatch = lista.find((c) => String(c.talla) === String(nuevaTalla));
-                                    if (!costoMatch) {
-                                      // Si no hay match, degradar a manual conservando talla y nombre
-                                      actualizarPartida(index, 'talla', nuevaTalla);
-                                      forzarPartidaManual(index);
-                                      return;
-                                    }
+                                    const lista = (costosPorPrendaId[prendaId] || []).filter((c) => c.activo !== false);
+                                    const costoMatch = lista.find((c) => String(c.id) === String(e.target.value));
+                                    if (!costoMatch) return;
                                     const tipo = partida.tipo_precio_usado || 'menudeo';
                                     const precio =
                                       tipo === 'mayoreo' ? costoMatch.precio_mayoreo : costoMatch.precio_menudeo;
@@ -2545,7 +2541,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                                       prenda_id: prendaId,
                                       prenda_nombre: partida.prenda_nombre,
                                       costo_id: costoMatch.id,
-                                      talla: costoMatch.talla,
+                                      talla: String(costoMatch.talla?.nombre || ''),
                                       tipo_precio_usado: tipo,
                                       precio_unitario: precio,
                                     });
@@ -2569,12 +2565,12 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                                   }}
                                   aria-label={`Talla partida ${index + 1}`}
                                 >
+                                  <option value="">Selecciona...</option>
                                   {(costosPorPrendaId[String(partida.prenda_id)] || [])
-                                    .map((c) => c.talla)
-                                    .filter((t, i, arr) => arr.indexOf(t) === i)
-                                    .map((t) => (
-                                      <option key={String(t)} value={String(t)}>
-                                        {t}
+                                    .filter((c) => c.activo !== false)
+                                    .map((costo) => (
+                                      <option key={String(costo.id)} value={String(costo.id)}>
+                                        {costo.talla?.nombre || 'Sin talla'}
                                       </option>
                                     ))}
                                 </select>
