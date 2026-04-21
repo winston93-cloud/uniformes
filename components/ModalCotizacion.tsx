@@ -134,6 +134,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   /** Si no es null, estamos editando una cotización existente (mismo folio al guardar). */
   const [cotizacionEditId, setCotizacionEditId] = useState<string | null>(null);
   const [modalDatosFiscalesAbierto, setModalDatosFiscalesAbierto] = useState(false);
+  const esModoEdicion = cotizacionEditId !== null;
   
   const { cicloEscolar } = useAuth();
   const {
@@ -149,6 +150,14 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   const { searchExternos } = useExternos();
   const { prendas } = usePrendas();
   const { getCostosByPrenda } = useCostos();
+  type CostoSlim = {
+    id: string;
+    prenda_id: string;
+    talla: string;
+    precio_mayoreo: number;
+    precio_menudeo: number;
+  };
+  const [costosPorPrendaId, setCostosPorPrendaId] = useState<Record<string, CostoSlim[]>>({});
 
   // Optimización: Memoizar filtrado de prendas para evitar recálculos
   const prendasMostrar = useMemo(() => {
@@ -200,6 +209,43 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       }
     })();
   }, []);
+
+  // En modo edición, precargar costos de prendas ya presentes en partidas (para selectors de prenda/talla/tipo).
+  useEffect(() => {
+    if (!esModoEdicion) return;
+    const prendaIds = Array.from(
+      new Set(
+        partidas
+          .filter((p) => !p.es_manual && Boolean(p.prenda_id))
+          .map((p) => String(p.prenda_id))
+      )
+    ).filter((id) => !costosPorPrendaId[id]);
+
+    if (prendaIds.length === 0) return;
+
+    void (async () => {
+      try {
+        const { data, error } = await supabase
+          .from('costos')
+          .select('id, prenda_id, talla, precio_mayoreo, precio_menudeo')
+          .in('prenda_id', prendaIds);
+        if (error) throw error;
+        const rows = (data || []) as CostoSlim[];
+        const grouped: Record<string, CostoSlim[]> = {};
+        for (const r of rows) {
+          if (!grouped[r.prenda_id]) grouped[r.prenda_id] = [];
+          grouped[r.prenda_id].push(r);
+        }
+        // Ordenar tallas de forma estable (alfabética) para UI
+        for (const k of Object.keys(grouped)) {
+          grouped[k] = grouped[k].slice().sort((a, b) => String(a.talla).localeCompare(String(b.talla)));
+        }
+        setCostosPorPrendaId((prev) => ({ ...prev, ...grouped }));
+      } catch (e) {
+        console.error('Error al precargar costos para edición:', e);
+      }
+    })();
+  }, [esModoEdicion, partidas, costosPorPrendaId]);
 
   async function cargarImagenComoDataUrl(url: string): Promise<string> {
     const res = await fetch(url);
@@ -528,8 +574,6 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     setPartidas(partidas.filter((_, i) => i !== index));
   };
 
-  const esModoEdicion = cotizacionEditId !== null;
-
   const normalizarNumero = (raw: string, fallback: number) => {
     const n = Number(raw);
     return Number.isFinite(n) ? n : fallback;
@@ -544,31 +588,56 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       const next = [...prev];
       const actual = next[index];
       if (!actual) return prev;
-
-      // Si se toca cualquier campo "estructural" o precio, se considera override manual para no depender de IDs/costos.
-      const campoDisparaManual =
-        campo === 'prenda_nombre' ||
-        campo === 'talla' ||
-        campo === 'precio_unitario' ||
-        campo === 'tipo_precio_usado';
-
-      const actualizado: PartidaCotizacion = {
-        ...actual,
-        [campo]: valor,
-        ...(campoDisparaManual
-          ? {
-              es_manual: true,
-              prenda_id: null,
-              costo_id: null,
-            }
-          : null),
-      } as PartidaCotizacion;
+      const actualizado: PartidaCotizacion = { ...actual, [campo]: valor } as PartidaCotizacion;
 
       // Recalcular subtotal si cambia cantidad / precio
       const cantidad = actualizado.cantidad;
       const precio = actualizado.precio_unitario;
       actualizado.subtotal = cantidad * precio;
 
+      next[index] = actualizado;
+      return next;
+    });
+  };
+
+  const forzarPartidaManual = (index: number) => {
+    setPartidas((prev) => {
+      const next = [...prev];
+      const actual = next[index];
+      if (!actual) return prev;
+      next[index] = {
+        ...actual,
+        es_manual: true,
+        prenda_id: null,
+        costo_id: null,
+        // tipo_precio_usado se conserva como referencia visual
+        subtotal: actual.cantidad * actual.precio_unitario,
+      };
+      return next;
+    });
+  };
+
+  const aplicarCostoSistema = (
+    index: number,
+    patch: {
+      prenda_id: string;
+      prenda_nombre: string;
+      costo_id: string | null;
+      talla: string;
+      tipo_precio_usado: 'mayoreo' | 'menudeo';
+      precio_unitario: number;
+    }
+  ) => {
+    setPartidas((prev) => {
+      const next = [...prev];
+      const actual = next[index];
+      if (!actual) return prev;
+      const actualizado: PartidaCotizacion = {
+        ...actual,
+        ...patch,
+        es_manual: false,
+        subtotal: actual.cantidad * patch.precio_unitario,
+      };
       next[index] = actualizado;
       return next;
     });
@@ -2300,35 +2369,151 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                           <td style={{ padding: '0.75rem' }}>{index + 1}</td>
                           <td style={{ padding: '0.75rem', fontWeight: 'bold' }}>
                             {esModoEdicion ? (
-                              <input
-                                value={partida.prenda_nombre}
-                                onChange={(e) => actualizarPartida(index, 'prenda_nombre', e.target.value)}
-                                style={{
-                                  width: '100%',
-                                  padding: '0.4rem 0.5rem',
-                                  borderRadius: 6,
-                                  border: '1px solid #d1d5db',
-                                  fontWeight: 700,
-                                }}
-                                aria-label={`Prenda partida ${index + 1}`}
-                              />
+                              !partida.es_manual && partida.prenda_id ? (
+                                <select
+                                  value={partida.prenda_id}
+                                  onChange={async (e) => {
+                                    const prendaId = e.target.value;
+                                    const prendaSel = prendas.find((p) => String(p.id) === String(prendaId));
+                                    const prendaNombre = prendaSel?.nombre || partida.prenda_nombre;
+
+                                    // Asegurar costos cargados
+                                    let costos = costosPorPrendaId[prendaId];
+                                    if (!costos) {
+                                      const { data, error } = await supabase
+                                        .from('costos')
+                                        .select('id, prenda_id, talla, precio_mayoreo, precio_menudeo')
+                                        .eq('prenda_id', prendaId);
+                                      if (!error) {
+                                        costos = (data || []) as CostoSlim[];
+                                        setCostosPorPrendaId((prev) => ({
+                                          ...prev,
+                                          [prendaId]: costos!.slice().sort((a, b) => String(a.talla).localeCompare(String(b.talla))),
+                                        }));
+                                      }
+                                    }
+
+                                    const lista = costos || [];
+                                    if (lista.length === 0) {
+                                      // Sin costos, degradar a manual pero conservar nombre seleccionado
+                                      actualizarPartida(index, 'prenda_nombre', prendaNombre);
+                                      forzarPartidaManual(index);
+                                      return;
+                                    }
+
+                                    const tallaDeseada = partida.talla;
+                                    const costoMatch = lista.find((c) => String(c.talla) === String(tallaDeseada)) || lista[0];
+                                    const tipo = partida.tipo_precio_usado || 'menudeo';
+                                    const precio =
+                                      tipo === 'mayoreo' ? costoMatch.precio_mayoreo : costoMatch.precio_menudeo;
+
+                                    aplicarCostoSistema(index, {
+                                      prenda_id: prendaId,
+                                      prenda_nombre: prendaNombre,
+                                      costo_id: costoMatch.id,
+                                      talla: costoMatch.talla,
+                                      tipo_precio_usado: tipo,
+                                      precio_unitario: precio,
+                                    });
+                                  }}
+                                  style={{
+                                    width: '100%',
+                                    padding: '0.4rem 0.5rem',
+                                    borderRadius: 6,
+                                    border: '1px solid #d1d5db',
+                                    fontWeight: 700,
+                                    background: 'white',
+                                    cursor: 'pointer',
+                                  }}
+                                  aria-label={`Prenda partida ${index + 1}`}
+                                >
+                                  {prendas
+                                    .filter((p) => p.activo)
+                                    .sort((a, b) => a.nombre.localeCompare(b.nombre))
+                                    .map((p) => (
+                                      <option key={String(p.id)} value={String(p.id)}>
+                                        {p.nombre}
+                                      </option>
+                                    ))}
+                                </select>
+                              ) : (
+                                <input
+                                  value={partida.prenda_nombre}
+                                  onChange={(e) => actualizarPartida(index, 'prenda_nombre', e.target.value)}
+                                  style={{
+                                    width: '100%',
+                                    padding: '0.4rem 0.5rem',
+                                    borderRadius: 6,
+                                    border: '1px solid #d1d5db',
+                                    fontWeight: 700,
+                                  }}
+                                  aria-label={`Prenda partida ${index + 1}`}
+                                />
+                              )
                             ) : (
                               partida.prenda_nombre
                             )}
                           </td>
                           <td style={{ padding: '0.75rem' }}>
                             {esModoEdicion ? (
-                              <input
-                                value={partida.talla}
-                                onChange={(e) => actualizarPartida(index, 'talla', e.target.value)}
-                                style={{
-                                  width: '100%',
-                                  padding: '0.4rem 0.5rem',
-                                  borderRadius: 6,
-                                  border: '1px solid #d1d5db',
-                                }}
-                                aria-label={`Talla partida ${index + 1}`}
-                              />
+                              !partida.es_manual && partida.prenda_id ? (
+                                <select
+                                  value={partida.talla}
+                                  onChange={(e) => {
+                                    const nuevaTalla = e.target.value;
+                                    const prendaId = String(partida.prenda_id);
+                                    const lista = costosPorPrendaId[prendaId] || [];
+                                    const costoMatch = lista.find((c) => String(c.talla) === String(nuevaTalla));
+                                    if (!costoMatch) {
+                                      // Si no hay match, degradar a manual conservando talla y nombre
+                                      actualizarPartida(index, 'talla', nuevaTalla);
+                                      forzarPartidaManual(index);
+                                      return;
+                                    }
+                                    const tipo = partida.tipo_precio_usado || 'menudeo';
+                                    const precio =
+                                      tipo === 'mayoreo' ? costoMatch.precio_mayoreo : costoMatch.precio_menudeo;
+                                    aplicarCostoSistema(index, {
+                                      prenda_id: prendaId,
+                                      prenda_nombre: partida.prenda_nombre,
+                                      costo_id: costoMatch.id,
+                                      talla: costoMatch.talla,
+                                      tipo_precio_usado: tipo,
+                                      precio_unitario: precio,
+                                    });
+                                  }}
+                                  style={{
+                                    width: '100%',
+                                    padding: '0.4rem 0.5rem',
+                                    borderRadius: 6,
+                                    border: '1px solid #d1d5db',
+                                    background: 'white',
+                                    cursor: 'pointer',
+                                  }}
+                                  aria-label={`Talla partida ${index + 1}`}
+                                >
+                                  {(costosPorPrendaId[String(partida.prenda_id)] || [])
+                                    .map((c) => c.talla)
+                                    .filter((t, i, arr) => arr.indexOf(t) === i)
+                                    .map((t) => (
+                                      <option key={String(t)} value={String(t)}>
+                                        {t}
+                                      </option>
+                                    ))}
+                                </select>
+                              ) : (
+                                <input
+                                  value={partida.talla}
+                                  onChange={(e) => actualizarPartida(index, 'talla', e.target.value)}
+                                  style={{
+                                    width: '100%',
+                                    padding: '0.4rem 0.5rem',
+                                    borderRadius: 6,
+                                    border: '1px solid #d1d5db',
+                                  }}
+                                  aria-label={`Talla partida ${index + 1}`}
+                                />
+                              )
                             ) : (
                               partida.talla
                             )}
@@ -2403,6 +2588,10 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                                 onChange={(e) => {
                                   const n = Math.max(0, normalizarNumero(e.target.value, partida.precio_unitario));
                                   actualizarPartida(index, 'precio_unitario', n);
+                                  // Si el usuario toca el precio unitario, lo tratamos como override manual.
+                                  if (!partida.es_manual) {
+                                    forzarPartidaManual(index);
+                                  }
                                 }}
                                 style={{
                                   width: 120,
@@ -2421,13 +2610,15 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                             {esModoEdicion ? (
                               <select
                                 value={partida.tipo_precio_usado}
-                                onChange={(e) =>
-                                  actualizarPartida(
-                                    index,
-                                    'tipo_precio_usado',
-                                    e.target.value as 'mayoreo' | 'menudeo'
-                                  )
-                                }
+                                onChange={async (e) => {
+                                  const nuevo = e.target.value as 'mayoreo' | 'menudeo';
+                                  // Si es partida del sistema, recalcular desde costos; si es manual, solo cambiar etiqueta.
+                                  if (!partida.es_manual && partida.prenda_id && partida.costo_id) {
+                                    await cambiarTipoPrecioPartida(index, nuevo);
+                                    return;
+                                  }
+                                  actualizarPartida(index, 'tipo_precio_usado', nuevo);
+                                }}
                                 style={{
                                   padding: '0.4rem 0.5rem',
                                   borderRadius: 6,
