@@ -19,7 +19,7 @@ import {
   abrirPlanTrabajoSemanalPdf,
   type FilaPlanTrabajoPdf,
 } from '@/lib/plan-trabajo-semanal-pdf';
-import { obtenerCostoBrutoPrendaTalla } from '@/lib/costo-bruto-prenda';
+import { obtenerDiagnosticoRecetaPrendaTalla } from '@/lib/costo-bruto-prenda';
 
 /** Fila guardada en InsForge para esta semana (permite conservar partidas sin reexpandir cotizaciones). */
 type PlanItemSemana = {
@@ -42,6 +42,7 @@ type SeleccionRow = {
   costo_unitario: number;
   ganancia_unitaria: number;
   ganancia_total: number;
+  advertencia_insumos?: 'SIN_INSUMOS' | 'INSUMO_SIN_COSTO';
 };
 
 /** Costo bruto por receta (insumos); si aún no cargó, respaldo `precio_compra` del costo. */
@@ -178,6 +179,10 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
   const [costoPorId, setCostoPorId] = useState<Record<string, Costo>>({});
   /** costo_id → costo bruto por prenda (receta insumos × costo unitario por presentación). */
   const [costoBrutoPorCostoId, setCostoBrutoPorCostoId] = useState<Record<string, number>>({});
+  /** costo_id → advertencia de insumos (sin receta / insumo sin costo). */
+  const [advertenciaInsumosPorCostoId, setAdvertenciaInsumosPorCostoId] = useState<
+    Record<string, 'SIN_INSUMOS' | 'INSUMO_SIN_COSTO'>
+  >({});
   /** detalle_id → costo_id cuando la partida no está en detalles expandidos (p. ej. solo en plan guardado). */
   const [detalleCostoIdExtra, setDetalleCostoIdExtra] = useState<Record<string, string>>({});
   const [loadingCostoBruto, setLoadingCostoBruto] = useState(false);
@@ -452,6 +457,7 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
     const costoIds = Object.keys(costoPorId);
   if (costoIds.length === 0) {
     setCostoBrutoPorCostoId({});
+    setAdvertenciaInsumosPorCostoId({});
     setLoadingCostoBruto(false);
     return;
   }
@@ -459,6 +465,7 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
     setLoadingCostoBruto(true);
     (async () => {
       const next: Record<string, number> = {};
+      const warn: Record<string, 'SIN_INSUMOS' | 'INSUMO_SIN_COSTO'> = {};
       await Promise.all(
         costoIds.map(async (cid) => {
           const c = costoPorId[cid];
@@ -466,16 +473,19 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
             next[cid] = Number(c.precio_compra) || 0;
             return;
           }
-          const bruto = await obtenerCostoBrutoPrendaTalla(supabase, c.prenda_id, c.talla_id);
-          if (bruto !== null && bruto > 0) {
-            next[cid] = bruto;
+          const diag = await obtenerDiagnosticoRecetaPrendaTalla(supabase, c.prenda_id, c.talla_id);
+          if (diag.ok) {
+            next[cid] = diag.costo_bruto_unitario;
           } else {
-            next[cid] = Number(c.precio_compra) || 0;
+            // Sin receta / insumo sin costo: marcamos advertencia y NO usamos fallback para cálculo.
+            warn[cid] = diag.motivo;
+            next[cid] = 0;
           }
         })
       );
       if (!cancelled) {
         setCostoBrutoPorCostoId(next);
+        setAdvertenciaInsumosPorCostoId(warn);
       }
       if (!cancelled) {
         setLoadingCostoBruto(false);
@@ -499,9 +509,10 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
         const cot = hit.cot;
         const precio = Number(d.precio_unitario) || 0;
         const costoId = d.costo_id as string | undefined;
+        const advertencia = costoId ? advertenciaInsumosPorCostoId[costoId] : undefined;
         const costoUnit = costoBrutoEfectivoUnitario(costoId, costoBrutoPorCostoId, costoPorId);
-        const ganU = Number((precio - costoUnit).toFixed(2));
-        const ganT = Number((ganU * piezas).toFixed(2));
+        const ganU = advertencia ? 0 : Number((precio - costoUnit).toFixed(2));
+        const ganT = advertencia ? 0 : Number((ganU * piezas).toFixed(2));
         rows.push({
           cotizacion_id: cot.id,
           cotizacion_folio: cot.folio,
@@ -512,6 +523,7 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
           costo_unitario: costoUnit,
           ganancia_unitaria: ganU,
           ganancia_total: ganT,
+          advertencia_insumos: advertencia,
         });
         continue;
       }
@@ -519,9 +531,20 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
       const cached = planItemsCache.find((p) => p.detalle_id === detalleId);
       if (cached) {
         const costoIdPlan = detalleIdACostoId[detalleId];
-        rows.push(
-          rowDesdePlanItemGuardado({ ...cached, piezas }, piezas, costoIdPlan, costoBrutoPorCostoId, costoPorId)
+        const advertencia = costoIdPlan ? advertenciaInsumosPorCostoId[costoIdPlan] : undefined;
+        const row = rowDesdePlanItemGuardado(
+          { ...cached, piezas },
+          piezas,
+          costoIdPlan,
+          costoBrutoPorCostoId,
+          costoPorId
         );
+        if (advertencia) {
+          row.ganancia_unitaria = 0;
+          row.ganancia_total = 0;
+          row.advertencia_insumos = advertencia;
+        }
+        rows.push(row);
       }
     }
 
@@ -532,9 +555,15 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
     detalleExpandidoPorId,
     costoPorId,
     costoBrutoPorCostoId,
+    advertenciaInsumosPorCostoId,
     planItemsCache,
     detalleIdACostoId,
   ]);
+
+  const partidasConAdvertencia = useMemo(
+    () => seleccionInfo.rows.filter((r) => Boolean(r.advertencia_insumos)),
+    [seleccionInfo.rows]
+  );
 
   const hayCotizacionPosterior = useMemo(
     () =>
@@ -726,6 +755,12 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
       setError('Espera a que termine la validación de gastos fijos y el cálculo de costo bruto (insumos).');
       return;
     }
+    if (partidasConAdvertencia.length > 0) {
+      setError(
+        `Hay ${partidasConAdvertencia.length} partida(s) sin receta de insumos o con insumos sin costo. Corrige en el catálogo de prendas (Insumos por talla) y vuelve a intentar.`
+      );
+      return;
+    }
     if (gastosFijosTotal <= 0) {
       setError(
         'Configura primero los gastos fijos semanales (tarjeta «Gastos fijos semanales» en esta pantalla). Sin ese monto no se puede generar el plan.'
@@ -754,6 +789,12 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
     try {
       if (loadingGastos || loadingCostoBruto) {
         setError('Espera a que termine la validación de gastos y el costo bruto por receta.');
+        return;
+      }
+      if (partidasConAdvertencia.length > 0) {
+        setError(
+          `Hay ${partidasConAdvertencia.length} partida(s) sin receta de insumos o con insumos sin costo. Corrige esas prendas antes de generar el plan.`
+        );
         return;
       }
       if (!minimoAlcanzado) {
@@ -1357,6 +1398,23 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
                                         <strong>{d.prenda_nombre}</strong>
                                         {d.talla ? ` · ${d.talla}` : ''}
                                         {d.color ? ` · ${d.color}` : ''}
+                                        {d.costo_id && advertenciaInsumosPorCostoId[String(d.costo_id)] ? (
+                                          <span
+                                            style={{
+                                              display: 'block',
+                                              marginTop: 4,
+                                              fontSize: '0.75rem',
+                                              fontWeight: 800,
+                                              color: '#b91c1c',
+                                            }}
+                                            title="Esta partida no puede usarse para validar mínimos hasta completar insumos y costos."
+                                          >
+                                            ⚠️{' '}
+                                            {advertenciaInsumosPorCostoId[String(d.costo_id)] === 'SIN_INSUMOS'
+                                              ? 'Sin insumos asignados'
+                                              : 'Insumo(s) sin costo de compra'}
+                                          </span>
+                                        ) : null}
                                       </td>
                                       <td style={{ padding: '0.45rem 0.5rem', textAlign: 'right', verticalAlign: 'middle' }}>
                                         {d.cantidad}
