@@ -166,6 +166,32 @@ export function usePedidos(sucursal_id?: string) {
     }
   };
 
+  const eliminarPedidoDefinitivo = async (pedidoId: string, motivo?: string) => {
+    try {
+      // 1) Cancelar todo (reponer stock de entregado y borrar detalle_pedidos) de forma atómica.
+      const { data, error } = await supabase.rpc('cancelar_pedido_atomico', {
+        p_pedido_id: pedidoId,
+        p_usuario_id: null,
+        p_items: null,
+        p_motivo: motivo || 'ELIMINACION DEFINITIVA',
+      });
+      if (error) throw error;
+      if (data && data.success === false) {
+        throw new Error(data.error || 'Error al cancelar pedido antes de eliminar');
+      }
+
+      // 2) Borrar el pedido (definitivo). Si quedara algún detalle, FK debe cascade.
+      const { error: delErr } = await supabase.from('pedidos').delete().eq('id', pedidoId);
+      if (delErr) throw delErr;
+
+      await fetchPedidos();
+      return { success: true };
+    } catch (error: any) {
+      console.error('Error al eliminar pedido definitivamente:', error);
+      return { success: false, error: error.message || error };
+    }
+  };
+
   useEffect(() => {
     fetchPedidos();
   }, [fetchPedidos]);
@@ -184,6 +210,7 @@ export function usePedidos(sucursal_id?: string) {
     fetchPedidos,
     crearPedido,
     actualizarEstadoPedido,
+    eliminarPedidoDefinitivo,
   };
 }
 

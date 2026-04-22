@@ -83,7 +83,8 @@ function PedidosPageContent() {
   const { externos } = useExternos();
   const { prendas } = usePrendas();
   const { tallas } = useTallas();
-  const { pedidos: pedidosDB, loading: loadingPedidos, crearPedido, actualizarEstadoPedido } = usePedidos(sesion?.sucursal_id);
+  const { pedidos: pedidosDB, loading: loadingPedidos, crearPedido, actualizarEstadoPedido, eliminarPedidoDefinitivo } =
+    usePedidos(sesion?.sucursal_id);
 
   // Estados para filtro de mes/año
   const fechaActual = new Date();
@@ -1878,6 +1879,33 @@ function PedidosPageContent() {
                             await cambiarEstado(pedido.id, 'COMPLETADO');
                             return;
                           }
+                          if (v === 'ELIMINAR') {
+                            const pin = prompt('PIN de seguridad para eliminar el pedido:', '');
+                            if (pin !== '9207') {
+                              alert('PIN incorrecto. Cancelado.');
+                              return;
+                            }
+                            const devolver = confirm(
+                              '¿Deseas devolver al stock las prendas descontadas por esta venta? (Recomendado: Sí)'
+                            );
+                            if (!devolver) {
+                              alert('Cancelado. No se eliminó el pedido.');
+                              return;
+                            }
+                            const folio = pedido.folio || `#${String(pedido.id).slice(0, 8)}…`;
+                            const ok = confirm(
+                              `⚠️ ELIMINACIÓN DEFINITIVA\n\nSe eliminará el pedido ${folio} y sus partidas.\nSe repondrá el stock entregado.\n\n¿Continuar?`
+                            );
+                            if (!ok) return;
+
+                            const res = await eliminarPedidoDefinitivo(pedido.id, 'ELIMINADO DESDE UI');
+                            if (!res.success) {
+                              alert(`No se pudo eliminar: ${res.error || 'Error desconocido'}`);
+                              return;
+                            }
+                            alert(`✅ Pedido ${folio} eliminado definitivamente.`);
+                            return;
+                          }
                           if (v === 'DEVOLUCION') {
                             // Cargar detalles del pedido con JOIN de prendas y tallas (incluye pendiente)
                             const { data: detalles, error } = await supabase
@@ -1933,6 +1961,9 @@ function PedidosPageContent() {
                         {pedido.estado === 'PENDIENTE' && <option value="COMPLETAR">✓ Completar (descuenta pendientes)</option>}
                         {(pedido.estado === 'PENDIENTE' || pedido.estado === 'COMPLETADO') && (
                           <option value="DEVOLUCION">🔄 Devolución / Cambio</option>
+                        )}
+                        {(pedido.estado === 'PENDIENTE' || pedido.estado === 'COMPLETADO') && (
+                          <option value="ELIMINAR">🗑 Eliminar (definitivo)</option>
                         )}
                       </select>
                       </span>
