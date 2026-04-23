@@ -109,6 +109,12 @@ export default function InsumosPage() {
     Array<{ tempId: string; ubicacion_id: string; cantidad: string }>
   >([]);
 
+  const [modalAjusteStockAbierto, setModalAjusteStockAbierto] = useState(false);
+  const [ajusteTipo, setAjusteTipo] = useState<'SUMAR' | 'RESTAR'>('SUMAR');
+  const [ajusteUbicacionId, setAjusteUbicacionId] = useState('');
+  const [ajusteCantidad, setAjusteCantidad] = useState('');
+  const [ajusteMotivo, setAjusteMotivo] = useState('');
+
   const cerrarAuxModal = () => {
     setAuxTipo(null);
     setAuxError(null);
@@ -289,6 +295,105 @@ export default function InsumosPage() {
   const stockTotalInsumoForm = () => parseNumeroFormateado(formData.stock_inicial);
   const sumUbicacionesInsumo = () =>
     ubicacionesInsumo.reduce((s, p) => s + parseNumeroFormateado(p.cantidad), 0);
+
+  const abrirAjusteStock = () => {
+    if (!insumoEditando) return;
+    const ubDefault =
+      ubicacionCatalogoSeleccionada ||
+      ubicacionesInsumo[0]?.ubicacion_id ||
+      insumoEditando.ubicacion_almacenamiento_id ||
+      '';
+    setAjusteTipo('SUMAR');
+    setAjusteUbicacionId(ubDefault);
+    setAjusteCantidad('');
+    setAjusteMotivo('');
+    setModalAjusteStockAbierto(true);
+  };
+
+  const aplicarAjusteStock = async () => {
+    if (!insumoEditando) return;
+    const qtyRaw = parseNumeroFormateado(ajusteCantidad);
+    const qty = Math.max(0, round2(qtyRaw));
+    if (!ajusteUbicacionId) {
+      alert('Elige una ubicación.');
+      return;
+    }
+    if (!qty || qty <= 0) {
+      alert('Indica una cantidad mayor a 0.');
+      return;
+    }
+
+    const delta = ajusteTipo === 'SUMAR' ? qty : -qty;
+    const prev = ubicacionesInsumo.find((u) => u.ubicacion_id === ajusteUbicacionId);
+    const prevQty = prev ? round2(parseNumeroFormateado(prev.cantidad)) : 0;
+    const nextQty = round2(prevQty + delta);
+    if (nextQty < 0) {
+      alert(
+        `No puedes restar ${formatoNumeroDesdeDb(qty)} porque en esa ubicación solo hay ${formatoNumeroDesdeDb(prevQty)}.`
+      );
+      return;
+    }
+
+    try {
+      const { data: existing, error: exErr } = await supabase
+        .from('insumo_ubicaciones')
+        .select('id')
+        .eq('insumo_id', insumoEditando.id)
+        .eq('ubicacion_almacenamiento_id', ajusteUbicacionId)
+        .maybeSingle();
+      if (exErr) throw exErr;
+
+      if (existing?.id) {
+        if (nextQty <= 0) {
+          const { error: delErr } = await supabase.from('insumo_ubicaciones').delete().eq('id', existing.id);
+          if (delErr) throw delErr;
+        } else {
+          const { error: updErr } = await supabase
+            .from('insumo_ubicaciones')
+            .update({ cantidad: nextQty })
+            .eq('id', existing.id);
+          if (updErr) throw updErr;
+        }
+      } else if (nextQty > 0) {
+        const { error: insErr } = await supabase.from('insumo_ubicaciones').insert({
+          insumo_id: insumoEditando.id,
+          ubicacion_almacenamiento_id: ajusteUbicacionId,
+          cantidad: nextQty,
+        });
+        if (insErr) throw insErr;
+      }
+
+      const { data: filasUb, error: errUb } = await supabase
+        .from('insumo_ubicaciones')
+        .select('id, ubicacion_almacenamiento_id, cantidad')
+        .eq('insumo_id', insumoEditando.id);
+      if (errUb) throw errUb;
+
+      const nextUi = (filasUb || []).map((f: any) => ({
+        tempId: f.id,
+        ubicacion_id: f.ubicacion_almacenamiento_id,
+        cantidad: formatoNumeroDesdeDb(Number(f.cantidad ?? 0)),
+      }));
+      setUbicacionesInsumo(nextUi);
+
+      const nextTotal = round2((filasUb || []).reduce((s: number, f: any) => s + (Number(f.cantidad) || 0), 0));
+      const { error: upInsumoErr } = await supabase
+        .from('insumos')
+        .update({ stock: nextTotal, stock_inicial: nextTotal })
+        .eq('id', insumoEditando.id);
+      if (upInsumoErr) throw upInsumoErr;
+
+      setFormData((fd) => ({ ...fd, stock_inicial: formatoNumeroDesdeDb(nextTotal) }));
+      setModalAjusteStockAbierto(false);
+      alert(
+        `✅ Ajuste aplicado (${ajusteTipo === 'SUMAR' ? '+' : '−'}${formatoNumeroDesdeDb(qty)}).` +
+          (ajusteMotivo.trim() ? `\nMotivo: ${ajusteMotivo.trim()}` : '')
+      );
+    } catch (e: any) {
+      console.error(e);
+      alert(`❌ No se pudo aplicar el ajuste de stock: ${e?.message || e}`);
+    }
+  };
 
   const agregarUbicacionSeleccionadaAlInsumo = () => {
     const id = ubicacionCatalogoSeleccionada;
@@ -1147,6 +1252,17 @@ export default function InsumosPage() {
                     ? '💾 Guardar Cambios' 
                     : '➕ Crear Insumo'}
                 </button>
+                {insumoEditando && (
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={abrirAjusteStock}
+                    style={{ whiteSpace: 'nowrap' }}
+                    title="Sumar o restar piezas al stock existente"
+                  >
+                    ⚙️ Ajustes de stock
+                  </button>
+                )}
                 <button
                   type="button"
                   className="btn btn-secondary"
@@ -1176,6 +1292,105 @@ export default function InsumosPage() {
                 </button>
               </div>
             </form>
+            </div>
+          </div>
+        )}
+
+        {modalAjusteStockAbierto && insumoEditando && (
+          <div
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.7)',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              zIndex: 1100,
+              padding: '1rem',
+              overflowY: 'auto',
+            }}
+            onClick={() => setModalAjusteStockAbierto(false)}
+          >
+            <div
+              className="form-container"
+              style={{
+                maxWidth: '520px',
+                width: '100%',
+                maxHeight: '90vh',
+                overflowY: 'auto',
+                margin: '2rem auto',
+                position: 'relative',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h2 className="form-title" style={{ marginBottom: '0.75rem' }}>
+                Ajustes de stock
+              </h2>
+
+              <p style={{ marginTop: 0, color: '#475569', fontSize: '0.9rem' }}>
+                Insumo: <strong>{insumoEditando.nombre}</strong>
+              </p>
+
+              <div className="form-group">
+                <label className="form-label">Movimiento</label>
+                <select className="form-select" value={ajusteTipo} onChange={(e) => setAjusteTipo(e.target.value as any)}>
+                  <option value="SUMAR">Sumar (Entrada)</option>
+                  <option value="RESTAR">Restar (Salida)</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Ubicación</label>
+                <select
+                  className="form-select"
+                  value={ajusteUbicacionId}
+                  onChange={(e) => setAjusteUbicacionId(e.target.value)}
+                >
+                  <option value="">Elige una ubicación…</option>
+                  {ubicaciones.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.nombre}
+                      {!u.activo ? ' (inactiva)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Cantidad</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
+                  className="form-input"
+                  value={ajusteCantidad}
+                  onChange={(e) => setAjusteCantidad(formatearNumeroMilesDecimalesAlEscribir(e.target.value))}
+                  placeholder="Ej: 25"
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Motivo (opcional)</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={ajusteMotivo}
+                  onChange={(e) => setAjusteMotivo(e.target.value)}
+                  placeholder="Ej: Compra / Merma / Ajuste inventario"
+                />
+              </div>
+
+              <div className="btn-group" style={{ marginTop: '0.75rem' }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setModalAjusteStockAbierto(false)}>
+                  Cancelar
+                </button>
+                <button type="button" className="btn btn-primary" onClick={() => void aplicarAjusteStock()}>
+                  Aplicar ajuste
+                </button>
+              </div>
             </div>
           </div>
         )}
