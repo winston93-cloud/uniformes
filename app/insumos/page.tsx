@@ -61,6 +61,16 @@ function textoAlmacenInsumo(insumo: Insumo): string {
   return insumo.ubicacion_almacenamiento?.nombre || '-';
 }
 
+function stockExistenteInsumo(insumo: Insumo): number {
+  const partes = insumo.insumo_ubicaciones;
+  if (partes && partes.length > 0) {
+    return partes.reduce((s, p) => s + (Number(p.cantidad ?? 0) || 0), 0);
+  }
+  // Respaldo: si la BD trae un stock total, úsalo.
+  const s = Number((insumo as any).stock);
+  return Number.isFinite(s) ? s : 0;
+}
+
 export default function InsumosPage() {
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [insumoEditando, setInsumoEditando] = useState<Insumo | null>(null);
@@ -1185,6 +1195,7 @@ export default function InsumosPage() {
                 <th>Proveedor</th>
                 <th>Unidad</th>
                 {/* <th>Cantidad</th> — cantidad por presentación (columna oculta; ver formulario comentado) */}
+                <th>Stock existente</th>
                 <th>Almacenado</th>
                 <th>Descripción</th>
                 <th>Estado</th>
@@ -1194,7 +1205,7 @@ export default function InsumosPage() {
             <tbody>
               {insumosFiltrados.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                  <td colSpan={9} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
                     {busqueda ? 'No se encontraron insumos con ese criterio.' : 'No hay insumos registrados. Crea tu primer insumo.'}
                   </td>
                 </tr>
@@ -1222,6 +1233,9 @@ export default function InsumosPage() {
                       {Number(insumo.cantidad_por_presentacion).toLocaleString('es-MX')}
                     </td>
                     */}
+                    <td data-label="Stock existente" style={{ fontWeight: 800, whiteSpace: 'nowrap' }}>
+                      {stockExistenteInsumo(insumo).toLocaleString('es-MX')}
+                    </td>
                     <td data-label="Almacenado" title={textoAlmacenInsumo(insumo)}>
                       <span
                         className="badge"
