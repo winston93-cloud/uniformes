@@ -168,8 +168,13 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
       <style jsx global>{`
         @media print {
           @page {
-            size: letter;
-            margin: 0.3cm;
+            /* Recibo tipo ticket: evitar cortes por escalado */
+            size: 80mm auto;
+            margin: 0;
+          }
+          html, body {
+            margin: 0 !important;
+            padding: 0 !important;
           }
           body * {
             visibility: hidden;
@@ -178,13 +183,16 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
             visibility: visible;
           }
           #recibo-impresion {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            max-width: 100%;
-            transform: scale(0.85);
-            transform-origin: top left;
+            position: static;
+            left: auto;
+            top: auto;
+            width: 80mm;
+            max-width: 80mm;
+            transform: none !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+            margin: 0 !important;
+            overflow: visible !important;
           }
           .recibo-scale-wrap {
             transform: none !important;
