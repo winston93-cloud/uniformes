@@ -820,7 +820,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       const yNombre = 35;
       const yDomicilio = 39;
       const yRfc = 47;
-      const yTel = 54;
+      // Subir ~1.5 renglones para evitar encimarse con la etiqueta del formato
+      const yTel = 50.5;
       if (clienteNombre) doc.text(doc.splitTextToSize(clienteNombre, 100), xL, yNombre);
       if (clienteDomicilio) doc.text(doc.splitTextToSize(clienteDomicilio, 100), xL, yDomicilio);
       if (clienteRfc) doc.text(doc.splitTextToSize(clienteRfc, 100), xL, yRfc);
