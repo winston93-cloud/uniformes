@@ -666,6 +666,12 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
       ? Math.min(100, (seleccionInfo.gananciasTotal / gastosFijosTotal) * 100)
       : 0;
 
+  /** Utilidad neta semanal: ganancias brutas (selección) − gastos fijos. */
+  const utilidadNetaSemana = useMemo(() => {
+    if (gastosFijosTotal <= 0) return 0;
+    return Number((seleccionInfo.gananciasTotal - gastosFijosTotal).toFixed(2));
+  }, [seleccionInfo.gananciasTotal, gastosFijosTotal]);
+
   const cargandoValidacion = loadingGastos || loadingCostoBruto;
 
   const handleGuardar = () => {
@@ -1119,6 +1125,19 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
                 </div>
               </div>
             )}
+            {!cargandoValidacion && gastosFijosTotal > 0 && (
+              <div
+                style={{
+                  marginTop: '0.55rem',
+                  fontSize: '0.9rem',
+                  fontWeight: 800,
+                  color: utilidadNetaSemana > 0 ? '#047857' : '#0f172a',
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              >
+                Utilidad Neta de la Semana: ${fmtMxn(utilidadNetaSemana)}
+              </div>
+            )}
           </div>
         </div>
 
@@ -1534,6 +1553,19 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
                   }}
                 />
               </div>
+            </div>
+          )}
+          {!cargandoValidacion && gastosFijosTotal > 0 && (
+            <div
+              style={{
+                marginTop: '0.55rem',
+                fontSize: '0.9rem',
+                fontWeight: 800,
+                color: utilidadNetaSemana > 0 ? '#047857' : '#0f172a',
+                fontVariantNumeric: 'tabular-nums',
+              }}
+            >
+              Utilidad Neta de la Semana: ${fmtMxn(utilidadNetaSemana)}
             </div>
           )}
           {cargandoValidacion && (
