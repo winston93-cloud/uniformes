@@ -11,24 +11,23 @@ export function precioUnitarioInsumo(insumo: {
   insumo_ubicaciones?: { cantidad?: number | null }[] | null;
 }): number {
   const costo = Number(insumo.costo_compra) || 0;
-  const cant = Number(insumo.cantidad_por_presentacion);
-  const stockInicial = Number(insumo.stock_inicial);
   const stockActual = Number(insumo.stock);
   const stockPorUbicaciones = Array.isArray(insumo.insumo_ubicaciones)
     ? insumo.insumo_ubicaciones.reduce((s, u) => s + (Number(u?.cantidad) || 0), 0)
     : 0;
-  // Preferimos `cantidad_por_presentacion` (unidades por compra). Si está vacío/0,
-  // usamos el stock por ubicaciones / stock actual / stock inicial como respaldo para prorratear.
+  const cantPresentacion = Number(insumo.cantidad_por_presentacion);
+  // En producción semanal, el prorrateo correcto es por "unidades existentes" del insumo
+  // (equivalente a "stock_existente" en tu ejemplo). En este proyecto, esa cifra puede
+  // venir de `insumo_ubicaciones` (stock por ubicaciones) o del campo `stock`.
+  // Si no existe, usamos `cantidad_por_presentacion` como último respaldo.
   const divisor =
-    cant > 0
-      ? cant
-      : stockPorUbicaciones > 0
-        ? stockPorUbicaciones
-        : stockActual > 0
-          ? stockActual
-          : stockInicial > 0
-            ? stockInicial
-            : 1;
+    stockPorUbicaciones > 0
+      ? stockPorUbicaciones
+      : stockActual > 0
+        ? stockActual
+        : cantPresentacion > 0
+          ? cantPresentacion
+          : 1;
   return costo / divisor;
 }
 
@@ -58,17 +57,15 @@ function insumoTieneCostoValido(insumo: {
   insumo_ubicaciones?: { cantidad?: number | null }[] | null;
 }): boolean {
   const costo = Number(insumo.costo_compra);
-  const cant = Number(insumo.cantidad_por_presentacion);
-  const stockInicial = Number(insumo.stock_inicial);
   const stockActual = Number(insumo.stock);
   const stockPorUbicaciones = Array.isArray(insumo.insumo_ubicaciones)
     ? insumo.insumo_ubicaciones.reduce((s, u) => s + (Number(u?.cantidad) || 0), 0)
     : 0;
+  const cantPresentacion = Number(insumo.cantidad_por_presentacion);
   const tieneDivisorValido =
-    (Number.isFinite(cant) && cant > 0) ||
     (Number.isFinite(stockPorUbicaciones) && stockPorUbicaciones > 0) ||
     (Number.isFinite(stockActual) && stockActual > 0) ||
-    (Number.isFinite(stockInicial) && stockInicial > 0);
+    (Number.isFinite(cantPresentacion) && cantPresentacion > 0);
   return Number.isFinite(costo) && costo > 0 && tieneDivisorValido;
 }
 
