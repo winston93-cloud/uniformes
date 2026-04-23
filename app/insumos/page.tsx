@@ -979,23 +979,38 @@ export default function InsumosPage() {
 
               <div className="form-group">
                 <label className="form-label">📦 Stock Existente</label>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  autoComplete="off"
-                  className="form-input"
-                  value={formData.stock_inicial}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      stock_inicial: formatearNumeroMilesDecimalesAlEscribir(e.target.value),
-                    })
-                  }
-                  placeholder="Ej: 10,000.5 (opcional, por defecto 0)"
-                  style={{
-                    borderLeft: '4px solid #3b82f6',
-                  }}
-                />
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'stretch', flexWrap: 'wrap' }}>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    autoComplete="off"
+                    className="form-input"
+                    value={formData.stock_inicial}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        stock_inicial: formatearNumeroMilesDecimalesAlEscribir(e.target.value),
+                      })
+                    }
+                    placeholder="Ej: 10,000.5 (opcional, por defecto 0)"
+                    style={{
+                      borderLeft: '4px solid #3b82f6',
+                      flex: '1 1 220px',
+                      minWidth: 'min(100%, 16rem)',
+                    }}
+                  />
+                  {insumoEditando && (
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={abrirAjusteStock}
+                      title="Sumar o restar piezas al stock existente"
+                      style={{ whiteSpace: 'nowrap', alignSelf: 'stretch' }}
+                    >
+                      ⚙️ Ajustes de stock
+                    </button>
+                  )}
+                </div>
                 <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
                   Total del inventario (puede ser <strong>0</strong> en el alta). Con stock &gt; 0 debes repartirlo en las
                   ubicaciones de abajo; la suma debe coincidir con este número (igual que en Prendas → Configurar stock).
@@ -1252,17 +1267,6 @@ export default function InsumosPage() {
                     ? '💾 Guardar Cambios' 
                     : '➕ Crear Insumo'}
                 </button>
-                {insumoEditando && (
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={abrirAjusteStock}
-                    style={{ whiteSpace: 'nowrap' }}
-                    title="Sumar o restar piezas al stock existente"
-                  >
-                    ⚙️ Ajustes de stock
-                  </button>
-                )}
                 <button
                   type="button"
                   className="btn btn-secondary"
