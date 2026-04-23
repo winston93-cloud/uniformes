@@ -9,7 +9,7 @@ import { useExternos } from '@/lib/hooks/useExternos';
 import { usePrendas } from '@/lib/hooks/usePrendas';
 import { useCostos } from '@/lib/hooks/useCostos';
 import type { Costo } from '@/lib/types';
-import { compareCotizacionesPorFechaEntrega } from '@/lib/cotizacionesSort';
+import { compareCotizacionesPorFechaCotizacionDesc } from '@/lib/cotizacionesSort';
 import { obtenerEstadosCotizacionPermitidosDesde } from '@/lib/cotizacionesEstados';
 import {
   calcularMontosImpuestosCotizacion,
@@ -210,7 +210,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
 
       return cumpleFiltroCliente && cumpleFiltroFecha;
     });
-    return [...filtradas].sort(compareCotizacionesPorFechaEntrega);
+    return [...filtradas].sort(compareCotizacionesPorFechaCotizacionDesc);
   }, [cotizaciones, filtroCliente, filtroFecha]);
 
   // Montar componente (necesario para portales)

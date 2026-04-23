@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase, getSupabaseErrorMessage } from '@/lib/supabase';
 import type { Cotizacion, DetalleCotizacion } from '@/lib/types';
-import { compareCotizacionesPorFechaEntrega } from '@/lib/cotizacionesSort';
+import { compareCotizacionesPorFechaCotizacionDesc } from '@/lib/cotizacionesSort';
 import { calcularMontosImpuestosCotizacion } from '@/lib/cotizacionesImpuestos';
 import { transicionEstadoCotizacionValida } from '@/lib/cotizacionesEstados';
 import { isUuid, resolverAlumnoUuidParaCotizacion } from '@/lib/resolverAlumnoCotizacion';
@@ -61,7 +61,7 @@ export function useCotizaciones() {
         `);
 
       if (fetchError) throw fetchError;
-      setCotizaciones([...(data || [])].sort(compareCotizacionesPorFechaEntrega));
+      setCotizaciones([...(data || [])].sort(compareCotizacionesPorFechaCotizacionDesc));
     } catch (err) {
       console.error('Error al obtener cotizaciones:', err);
       setError(getSupabaseErrorMessage(err));
