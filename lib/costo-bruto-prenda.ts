@@ -7,13 +7,28 @@ export function precioUnitarioInsumo(insumo: {
   costo_compra?: number | null;
   cantidad_por_presentacion?: number | null;
   stock_inicial?: number | null;
+  stock?: number | null;
+  insumo_ubicaciones?: { cantidad?: number | null }[] | null;
 }): number {
   const costo = Number(insumo.costo_compra) || 0;
   const cant = Number(insumo.cantidad_por_presentacion);
   const stockInicial = Number(insumo.stock_inicial);
+  const stockActual = Number(insumo.stock);
+  const stockPorUbicaciones = Array.isArray(insumo.insumo_ubicaciones)
+    ? insumo.insumo_ubicaciones.reduce((s, u) => s + (Number(u?.cantidad) || 0), 0)
+    : 0;
   // Preferimos `cantidad_por_presentacion` (unidades por compra). Si está vacío/0,
-  // usamos `stock_inicial` (stock existente inicial) como respaldo para prorratear.
-  const divisor = cant > 0 ? cant : stockInicial > 0 ? stockInicial : 1;
+  // usamos el stock por ubicaciones / stock actual / stock inicial como respaldo para prorratear.
+  const divisor =
+    cant > 0
+      ? cant
+      : stockPorUbicaciones > 0
+        ? stockPorUbicaciones
+        : stockActual > 0
+          ? stockActual
+          : stockInicial > 0
+            ? stockInicial
+            : 1;
   return costo / divisor;
 }
 
@@ -39,12 +54,21 @@ function insumoTieneCostoValido(insumo: {
   costo_compra?: number | null;
   cantidad_por_presentacion?: number | null;
   stock_inicial?: number | null;
+  stock?: number | null;
+  insumo_ubicaciones?: { cantidad?: number | null }[] | null;
 }): boolean {
   const costo = Number(insumo.costo_compra);
   const cant = Number(insumo.cantidad_por_presentacion);
   const stockInicial = Number(insumo.stock_inicial);
+  const stockActual = Number(insumo.stock);
+  const stockPorUbicaciones = Array.isArray(insumo.insumo_ubicaciones)
+    ? insumo.insumo_ubicaciones.reduce((s, u) => s + (Number(u?.cantidad) || 0), 0)
+    : 0;
   const tieneDivisorValido =
-    (Number.isFinite(cant) && cant > 0) || (Number.isFinite(stockInicial) && stockInicial > 0);
+    (Number.isFinite(cant) && cant > 0) ||
+    (Number.isFinite(stockPorUbicaciones) && stockPorUbicaciones > 0) ||
+    (Number.isFinite(stockActual) && stockActual > 0) ||
+    (Number.isFinite(stockInicial) && stockInicial > 0);
   return Number.isFinite(costo) && costo > 0 && tieneDivisorValido;
 }
 
@@ -59,7 +83,7 @@ export async function obtenerCostoBrutoPrendaTalla(
 ): Promise<number | null> {
   const { data, error } = await supabase
     .from('prenda_talla_insumos')
-    .select('cantidad, insumo:insumos(costo_compra, cantidad_por_presentacion, stock_inicial)')
+    .select('cantidad, insumo:insumos(costo_compra, cantidad_por_presentacion, stock_inicial, stock, insumo_ubicaciones(cantidad))')
     .eq('prenda_id', prendaId)
     .eq('talla_id', tallaId);
 
@@ -70,6 +94,8 @@ export async function obtenerCostoBrutoPrendaTalla(
     costo_compra?: number | null;
     cantidad_por_presentacion?: number | null;
     stock_inicial?: number | null;
+    stock?: number | null;
+    insumo_ubicaciones?: { cantidad?: number | null }[] | null;
   }[] = [];
   for (const row of data as any[]) {
     const cant = Number(row.cantidad) || 0;
@@ -81,6 +107,8 @@ export async function obtenerCostoBrutoPrendaTalla(
       costo_compra: insumo.costo_compra,
       cantidad_por_presentacion: insumo.cantidad_por_presentacion,
       stock_inicial: insumo.stock_inicial,
+      stock: insumo.stock,
+      insumo_ubicaciones: insumo.insumo_ubicaciones,
     });
   }
 
@@ -100,7 +128,7 @@ export async function obtenerDiagnosticoRecetaPrendaTalla(
 ): Promise<DiagnosticoRecetaInsumos> {
   const { data, error } = await supabase
     .from('prenda_talla_insumos')
-    .select('cantidad, insumo:insumos(costo_compra, cantidad_por_presentacion, stock_inicial)')
+    .select('cantidad, insumo:insumos(costo_compra, cantidad_por_presentacion, stock_inicial, stock, insumo_ubicaciones(cantidad))')
     .eq('prenda_id', prendaId)
     .eq('talla_id', tallaId);
 
@@ -113,6 +141,8 @@ export async function obtenerDiagnosticoRecetaPrendaTalla(
     costo_compra?: number | null;
     cantidad_por_presentacion?: number | null;
     stock_inicial?: number | null;
+    stock?: number | null;
+    insumo_ubicaciones?: { cantidad?: number | null }[] | null;
   }[] = [];
   let hayInsumoSinCosto = false;
   for (const row of data as any[]) {
@@ -128,6 +158,8 @@ export async function obtenerDiagnosticoRecetaPrendaTalla(
       costo_compra: insumo.costo_compra,
       cantidad_por_presentacion: insumo.cantidad_por_presentacion,
       stock_inicial: insumo.stock_inicial,
+      stock: insumo.stock,
+      insumo_ubicaciones: insumo.insumo_ubicaciones,
     });
   }
 
