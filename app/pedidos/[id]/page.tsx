@@ -168,9 +168,9 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
       <style jsx global>{`
         @media print {
           @page {
-            /* Recibo tipo ticket: evitar cortes por escalado */
-            size: 80mm auto;
-            margin: 0;
+            /* Ticket en 1/3 de hoja carta (horizontal) */
+            size: letter landscape;
+            margin: 0.35cm;
           }
           html, body {
             margin: 0 !important;
@@ -186,8 +186,8 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
             position: static;
             left: auto;
             top: auto;
-            width: 80mm;
-            max-width: 80mm;
+            width: 100%;
+            max-width: 100%;
             transform: none !important;
             box-shadow: none !important;
             border-radius: 0 !important;
@@ -250,141 +250,91 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
           id="recibo-impresion"
           style={{
             backgroundColor: 'white',
-            padding: '0.5rem',
+            padding: '0.55rem 0.75rem',
             borderRadius: '8px',
             boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-            fontFamily: 'monospace',
-            fontSize: '0.7rem',
-            maxWidth: '600px',
+            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace',
+            fontSize: '0.75rem',
+            width: '100%',
+            maxWidth: '920px',
             margin: '0 auto'
           }}
         >
-          {/* Encabezado */}
-          <div style={{ textAlign: 'center', marginBottom: '0.4rem', borderBottom: '1px solid #000', paddingBottom: '0.3rem' }}>
-            <h1 style={{ margin: '0 0 0.15rem 0', fontSize: '0.85rem', fontWeight: '700' }}>
-              {pedido.sucursal.nombre}
-            </h1>
-            {pedido.sucursal.direccion && (
-              <p style={{ margin: '0.05rem 0', fontSize: '0.55rem' }}>{pedido.sucursal.direccion}</p>
-            )}
-            {pedido.sucursal.telefono && (
-              <p style={{ margin: '0.05rem 0', fontSize: '0.55rem' }}>Tel: {pedido.sucursal.telefono}</p>
-            )}
-            <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.65rem', fontWeight: '700' }}>
-              TICKET DE VENTA
-            </p>
-          </div>
-
-          {/* Información del pedido */}
-          <div style={{ marginBottom: '0.4rem', fontSize: '0.6rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.1rem' }}>
-              <span><strong>Folio:</strong></span>
-              <span>{pedido.folio || `#${pedido.id.slice(0, 8).toUpperCase()}`}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.1rem' }}>
-              <span><strong>Fecha:</strong></span>
-              <span>{new Date(pedido.created_at).toLocaleString('es-MX')}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.1rem' }}>
-              <span><strong>Cliente:</strong></span>
-              <span>
-                {pedido.cliente_nombre}
-                {pedido.tipo_cliente === 'ALUMNO' && pedido.alumno && (
-                  <span style={{ marginLeft: '0.3rem', color: '#6b7280', fontSize: '0.55rem' }}>
-                    ({pedido.alumno.nivel || ''} {pedido.alumno.grado || ''})
-                  </span>
-                )}
-              </span>
-            </div>
-          </div>
-
-          {/* Estado detallado del pedido */}
-          <div style={{
-            backgroundColor: pedido.estado === 'COMPLETADO' ? '#d1fae5' : '#fef3c7',
-            border: `1px solid ${pedido.estado === 'COMPLETADO' ? '#10b981' : '#f59e0b'}`,
-            borderRadius: '3px',
-            padding: '0.3rem',
-            marginBottom: '0.4rem'
-          }}>
-            <div style={{ 
-              fontSize: '0.6rem', 
-              fontWeight: '700',
-              marginBottom: '0.2rem',
-              color: pedido.estado === 'COMPLETADO' ? '#065f46' : '#92400e',
-              textAlign: 'center'
-            }}>
-              {pedido.estado === 'COMPLETADO' ? '✅ COMPLETADO' : '⚠️ PENDIENTE'}
-            </div>
-            
-            <div style={{ 
-              fontSize: '0.5rem', 
-              color: '#374151',
-              borderTop: `1px dashed ${pedido.estado === 'COMPLETADO' ? '#10b981' : '#f59e0b'}`,
-              paddingTop: '0.2rem',
+          {/* Header distribuido */}
+          <div
+            style={{
               display: 'flex',
-              justifyContent: 'space-around',
-              gap: '0.2rem'
-            }}>
-              <span><strong>Partidas:</strong> {totalPartidas}</span>
-              <span><strong>Entregadas:</strong> <span style={{ color: '#10b981', fontWeight: '700' }}>{totalUnidadesEntregadas}</span></span>
-              {tienePendientes && (
-                <span><strong>Pendientes:</strong> <span style={{ color: '#dc2626', fontWeight: '700' }}>{totalUnidadesPendientes}</span></span>
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
+              gap: '0.75rem',
+              paddingBottom: '0.35rem',
+              borderBottom: '1px solid #0f172a',
+              marginBottom: '0.45rem',
+            }}
+          >
+            <div style={{ minWidth: 160 }}>
+              <div style={{ fontWeight: 900, fontSize: '0.95rem', lineHeight: 1.1 }}>
+                Matriz Madero
+              </div>
+              <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#334155', marginTop: '0.15rem' }}>
+                Ticket de venta
+              </div>
+            </div>
+
+            <div style={{ flex: 1, textAlign: 'right', fontSize: '0.72rem', lineHeight: 1.25 }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', flexWrap: 'wrap', gap: '0.6rem' }}>
+                <span>
+                  <strong>Folio:</strong> {pedido.folio || `#${pedido.id.slice(0, 8).toUpperCase()}`}
+                </span>
+                <span>
+                  <strong>Fecha:</strong> {new Date(pedido.created_at).toLocaleString('es-MX')}
+                </span>
+                <span style={{ maxWidth: 420, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <strong>Cliente:</strong> {pedido.cliente_nombre}
+                </span>
+              </div>
+              {pedido.tipo_cliente === 'ALUMNO' && pedido.alumno && (
+                <div style={{ marginTop: '0.15rem', color: '#64748b', fontSize: '0.68rem' }}>
+                  {pedido.alumno.nivel || ''} {pedido.alumno.grado || ''}
+                </div>
               )}
             </div>
           </div>
 
           {/* Detalles del pedido */}
-          <div style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '0.3rem 0', marginBottom: '0.3rem' }}>
-            <table style={{ width: '100%', fontSize: '0.55rem', borderCollapse: 'collapse' }}>
+          <div style={{ borderTop: '1px solid #0f172a', borderBottom: '1px solid #0f172a', padding: '0.35rem 0', marginBottom: '0.35rem' }}>
+            <table style={{ width: '100%', fontSize: '0.7rem', borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ borderBottom: '1px dashed #666' }}>
-                  <th style={{ textAlign: 'left', padding: '0.15rem 0', fontWeight: '700', fontSize: '0.5rem' }}>ARTÍCULO</th>
-                  <th style={{ textAlign: 'center', padding: '0.15rem', fontWeight: '700', width: '25px', fontSize: '0.5rem' }}>✅</th>
-                  <th style={{ textAlign: 'center', padding: '0.15rem', fontWeight: '700', width: '25px', fontSize: '0.5rem' }}>⚠️</th>
-                  <th style={{ textAlign: 'right', padding: '0.15rem 0', fontWeight: '700', fontSize: '0.5rem' }}>PRECIO</th>
-                  <th style={{ textAlign: 'right', padding: '0.15rem 0', fontWeight: '700', fontSize: '0.5rem' }}>TOTAL</th>
+                <tr style={{ borderBottom: '1px dashed #64748b' }}>
+                  <th style={{ textAlign: 'left', padding: '0.2rem 0', fontWeight: 900, fontSize: '0.65rem', letterSpacing: '0.02em' }}>ARTÍCULO</th>
+                  <th style={{ textAlign: 'center', padding: '0.2rem 0.25rem', fontWeight: 900, width: 56, fontSize: '0.65rem' }}>CANT</th>
+                  <th style={{ textAlign: 'right', padding: '0.2rem 0', fontWeight: 900, width: 90, fontSize: '0.65rem' }}>PRECIO</th>
+                  <th style={{ textAlign: 'right', padding: '0.2rem 0', fontWeight: 900, width: 96, fontSize: '0.65rem' }}>TOTAL</th>
                 </tr>
               </thead>
               <tbody>
                 {pedido.detalles.map((detalle, index) => {
-                  const entregado = cantidadEntregada(detalle);
-                  const pendiente = detalle.pendiente;
+                  const cant = Number(detalle.cantidad) || 0;
                   
                   return (
                     <tr key={detalle.id} style={{ 
-                      borderBottom: index < pedido.detalles.length - 1 ? '1px dashed #e0e0e0' : 'none',
-                      backgroundColor: pendiente > 0 ? '#fffbeb' : 'transparent'
+                      borderBottom: index < pedido.detalles.length - 1 ? '1px dashed #e2e8f0' : 'none',
                     }}>
                       <td style={{ padding: '0.25rem 0' }}>
                         <div>
-                          <div style={{ fontWeight: '600', fontSize: '0.55rem' }}>{detalle.prenda.nombre}</div>
-                          <div style={{ fontSize: '0.5rem', color: '#666' }}>
+                          <div style={{ fontWeight: 800, fontSize: '0.72rem' }}>{detalle.prenda.nombre}</div>
+                          <div style={{ fontSize: '0.65rem', color: '#475569' }}>
                             {detalle.talla.nombre}{detalle.especificaciones ? ` - ${detalle.especificaciones}` : ''}
                           </div>
                         </div>
                       </td>
-                      <td style={{ 
-                        textAlign: 'center', 
-                        padding: '0.25rem 0.15rem', 
-                        fontWeight: '700',
-                        color: '#10b981',
-                        fontSize: '0.6rem'
-                      }}>
-                        {entregado}
+                      <td style={{ textAlign: 'center', padding: '0.25rem 0.25rem', fontWeight: 800 }}>
+                        {cant}
                       </td>
-                      <td style={{ 
-                        textAlign: 'center', 
-                        padding: '0.25rem 0.15rem', 
-                        fontWeight: '700',
-                        color: pendiente > 0 ? '#dc2626' : '#9ca3af',
-                        fontSize: '0.6rem'
-                      }}>
-                        {pendiente}
-                      </td>
-                      <td style={{ textAlign: 'right', padding: '0.25rem 0', fontSize: '0.55rem' }}>
+                      <td style={{ textAlign: 'right', padding: '0.25rem 0', fontVariantNumeric: 'tabular-nums' }}>
                         ${detalle.precio_unitario.toFixed(2)}
                       </td>
-                      <td style={{ textAlign: 'right', padding: '0.25rem 0', fontWeight: '600', fontSize: '0.55rem' }}>
+                      <td style={{ textAlign: 'right', padding: '0.25rem 0', fontWeight: 900, fontVariantNumeric: 'tabular-nums' }}>
                         ${detalle.subtotal.toFixed(2)}
                       </td>
                     </tr>
@@ -413,47 +363,31 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
             </div>
           </div>
 
-          {/* Movimientos de inventario */}
-          {movimientos.length > 0 && (
-            <div style={{
-              backgroundColor: '#f0f9ff',
-              border: '1px solid #3b82f6',
-              borderRadius: '3px',
-              padding: '0.3rem',
-              marginBottom: '0.4rem'
-            }}>
-              <h3 style={{ 
-                margin: '0 0 0.2rem 0', 
-                fontSize: '0.55rem', 
-                fontWeight: '700',
-                color: '#1e40af',
-                borderBottom: '1px solid #3b82f6',
-                paddingBottom: '0.15rem'
-              }}>
-                📦 MOVIMIENTOS
-              </h3>
-              {movimientos.map((mov, idx) => (
-                <div key={mov.id} style={{ 
-                  fontSize: '0.5rem',
-                  marginBottom: idx < movimientos.length - 1 ? '0.2rem' : 0,
-                  paddingBottom: idx < movimientos.length - 1 ? '0.2rem' : 0,
-                  borderBottom: idx < movimientos.length - 1 ? '1px dashed #bfdbfe' : 'none'
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ fontWeight: '600' }}>
-                      {mov.costo?.prenda?.nombre || 'Prenda'} - {mov.costo?.talla?.nombre || 'Talla'}
-                    </span>
-                    <span style={{ 
-                      fontWeight: '700',
-                      color: mov.tipo === 'SALIDA' ? '#dc2626' : '#10b981'
-                    }}>
-                      {mov.tipo}: {Math.abs(mov.cantidad)}
-                    </span>
-                  </div>
-                </div>
-              ))}
+          {/* Nuevo bloque de estatus (debajo del total) */}
+          <div
+            style={{
+              borderTop: '1px dashed #94a3b8',
+              paddingTop: '0.35rem',
+              marginBottom: '0.45rem',
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '0.25rem 0.75rem',
+              fontSize: '0.72rem',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem' }}>
+              <span style={{ fontWeight: 900 }}>Partidas Entregadas</span>
+              <span style={{ fontWeight: 900, color: '#047857', fontVariantNumeric: 'tabular-nums' }}>
+                {partidasEntregadasCompletas}
+              </span>
             </div>
-          )}
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem' }}>
+              <span style={{ fontWeight: 900 }}>Partidas Pendientes</span>
+              <span style={{ fontWeight: 900, color: partidasConPendientes > 0 ? '#b91c1c' : '#0f172a', fontVariantNumeric: 'tabular-nums' }}>
+                {partidasConPendientes}
+              </span>
+            </div>
+          </div>
 
           {/* Advertencia de pendientes */}
           {tienePendientes && (
