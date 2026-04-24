@@ -188,6 +188,8 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
             top: auto;
             width: 100%;
             max-width: 100%;
+            box-sizing: border-box;
+            padding-top: 1.5rem !important;
             transform: none !important;
             box-shadow: none !important;
             border-radius: 0 !important;
@@ -195,7 +197,8 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
             overflow: visible !important;
           }
           .recibo-scale-wrap {
-            transform: none !important;
+            transform: scale(0.9) !important;
+            transform-origin: top left !important;
           }
           .no-imprimir {
             display: none !important;
@@ -203,7 +206,7 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
         }
       `}</style>
 
-      <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '2rem' }}>
+      <div style={{ maxWidth: '990px', margin: '0 auto', padding: '2rem 2.5rem' }}>
         {/* Botones de acción */}
         <div className="no-imprimir" style={{ marginBottom: '1rem', display: 'flex', gap: '1rem' }}>
           <button
@@ -256,7 +259,7 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
             fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace',
             fontSize: '0.75rem',
             width: '100%',
-            maxWidth: '920px',
+            maxWidth: '828px',
             margin: '0 auto'
           }}
         >
@@ -281,7 +284,7 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
               </div>
             </div>
 
-            <div style={{ flex: 1, textAlign: 'right', fontSize: '0.72rem', lineHeight: 1.25 }}>
+            <div style={{ flex: 1, textAlign: 'right', fontSize: '0.72rem', lineHeight: 1.25, paddingRight: '0.35rem' }}>
               <div style={{ display: 'flex', justifyContent: 'flex-end', flexWrap: 'wrap', gap: '0.6rem' }}>
                 <span>
                   <strong>Folio:</strong> {pedido.folio || `#${pedido.id.slice(0, 8).toUpperCase()}`}
@@ -303,7 +306,7 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
 
           {/* Detalles del pedido */}
           <div style={{ borderTop: '1px solid #0f172a', borderBottom: '1px solid #0f172a', padding: '0.35rem 0', marginBottom: '0.35rem' }}>
-            <table style={{ width: '100%', fontSize: '0.7rem', borderCollapse: 'collapse' }}>
+            <table style={{ width: '100%', fontSize: '0.7rem', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
               <thead>
                 <tr style={{ borderBottom: '1px dashed #64748b' }}>
                   <th style={{ textAlign: 'left', padding: '0.2rem 0', fontWeight: 900, fontSize: '0.65rem', letterSpacing: '0.02em' }}>ARTÍCULO</th>
@@ -320,10 +323,12 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
                     <tr key={detalle.id} style={{ 
                       borderBottom: index < pedido.detalles.length - 1 ? '1px dashed #e2e8f0' : 'none',
                     }}>
-                      <td style={{ padding: '0.25rem 0' }}>
+                      <td style={{ padding: '0.25rem 0', overflow: 'hidden' }}>
                         <div>
-                          <div style={{ fontWeight: 800, fontSize: '0.72rem' }}>{detalle.prenda.nombre}</div>
-                          <div style={{ fontSize: '0.65rem', color: '#475569' }}>
+                          <div style={{ fontWeight: 800, fontSize: '0.72rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {detalle.prenda.nombre}
+                          </div>
+                          <div style={{ fontSize: '0.65rem', color: '#475569', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {detalle.talla.nombre}{detalle.especificaciones ? ` - ${detalle.especificaciones}` : ''}
                           </div>
                         </div>
