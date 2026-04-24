@@ -54,11 +54,12 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
   const [showPrintCal, setShowPrintCal] = useState(false);
 
   const [printCal, setPrintCal] = useState({
-    leftMm: 0,
+    // Defaults calibrados para HP LaserJet (taller)
+    leftMm: 40,
     topMm: 0,
-    widthPct: 86,
+    widthPct: 82,
     scale: 0.98,
-    paddingTopMm: 8,
+    paddingTopMm: 2.5,
   });
 
   const [movimientos, setMovimientos] = useState<any[]>([]);
@@ -87,8 +88,9 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
   useEffect(() => {
     if (!isMounted) return;
     const root = document.documentElement;
-    root.style.setProperty('--ticket-print-left', `${printCal.leftMm}mm`);
-    root.style.setProperty('--ticket-print-top', `${printCal.topMm}mm`);
+    // Calibración: offsets en mm (X/Y) + ancho/escala/padding
+    root.style.setProperty('--ticket-print-x', `${printCal.leftMm}mm`);
+    root.style.setProperty('--ticket-print-y', `${printCal.topMm}mm`);
     root.style.setProperty('--ticket-print-width', `${printCal.widthPct}%`);
     root.style.setProperty('--ticket-print-scale', `${printCal.scale}`);
     root.style.setProperty('--ticket-print-padding-top', `${printCal.paddingTopMm}mm`);
@@ -507,8 +509,8 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
           }
           #recibo-impresion {
             position: absolute;
-            top: var(--ticket-print-top, 0mm);
-            left: var(--ticket-print-left, 0mm);
+            top: var(--ticket-print-y, 0mm);
+            left: calc(50% + var(--ticket-print-x, 0mm));
             right: auto;
             width: var(--ticket-print-width, 86%) !important;
             max-width: var(--ticket-print-width, 86%) !important;
@@ -516,8 +518,8 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
             box-sizing: border-box;
             margin: 0 !important;
             overflow: hidden !important;
-            transform: scale(var(--ticket-print-scale, 0.98)) !important;
-            transform-origin: top left !important;
+            transform: translateX(-50%) scale(var(--ticket-print-scale, 0.98)) !important;
+            transform-origin: top center !important;
             break-inside: avoid;
             page-break-inside: avoid;
           }
