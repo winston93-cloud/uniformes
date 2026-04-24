@@ -182,9 +182,12 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
           }
-          /* Evita que el resto del DOM reserve espacio y cree una "página 2" */
-          body > *:not(#recibo-impresion) {
-            display: none !important;
+          /* Oculta visualmente todo salvo el ticket (sin romper la jerarquía del DOM) */
+          body * {
+            visibility: hidden;
+          }
+          #recibo-impresion, #recibo-impresion * {
+            visibility: visible;
           }
           #recibo-impresion {
             position: absolute;
@@ -192,10 +195,12 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
             top: 0;
             width: 216mm;
             max-width: 216mm;
-            max-height: 90mm;
+            max-height: none;
             height: auto !important;
             box-sizing: border-box;
-            padding-top: 1.5rem !important;
+            display: block !important;
+            z-index: 1 !important;
+            padding-top: 15mm !important;
             padding-bottom: 0 !important;
             font-size: 0.71rem !important;
             transform: scale(0.98) !important;
