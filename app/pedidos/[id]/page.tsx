@@ -168,13 +168,16 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
       <style jsx global>{`
         @media print {
           @page {
-            /* Ticket en 1/3 de hoja carta (horizontal) */
-            size: letter landscape;
-            margin: 0.35cm;
+            size: auto;
+            margin: 0mm;
           }
           html, body {
             margin: 0 !important;
             padding: 0 !important;
+          }
+          body {
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
           }
           body * {
             visibility: hidden;
@@ -183,22 +186,26 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
             visibility: visible;
           }
           #recibo-impresion {
-            position: static;
-            left: auto;
-            top: auto;
-            width: 100%;
-            max-width: 100%;
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 100vw;
+            max-width: 100vw;
             box-sizing: border-box;
             padding-top: 1.5rem !important;
+            font-size: 0.71rem !important;
             transform: none !important;
             box-shadow: none !important;
             border-radius: 0 !important;
             margin: 0 !important;
-            overflow: visible !important;
+            overflow: hidden !important;
+            break-inside: avoid;
+            page-break-inside: avoid;
           }
           .recibo-scale-wrap {
-            transform: scale(0.9) !important;
-            transform-origin: top left !important;
+            transform: none !important;
+            padding-bottom: 0 !important;
+            margin: 0 !important;
           }
           .no-imprimir {
             display: none !important;
@@ -253,11 +260,11 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
           id="recibo-impresion"
           style={{
             backgroundColor: 'white',
-            padding: '0.55rem 0.75rem',
+            padding: '0.4rem 0.55rem',
             borderRadius: '8px',
             boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
             fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace',
-            fontSize: '0.75rem',
+            fontSize: '0.71rem',
             width: '100%',
             maxWidth: '828px',
             margin: '0 auto'
@@ -270,9 +277,9 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
               justifyContent: 'space-between',
               alignItems: 'flex-start',
               gap: '0.75rem',
-              paddingBottom: '0.35rem',
+              paddingBottom: '0.25rem',
               borderBottom: '1px solid #0f172a',
-              marginBottom: '0.45rem',
+              marginBottom: '0.3rem',
             }}
           >
             <div style={{ minWidth: 160 }}>
@@ -305,8 +312,8 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
           </div>
 
           {/* Detalles del pedido */}
-          <div style={{ borderTop: '1px solid #0f172a', borderBottom: '1px solid #0f172a', padding: '0.35rem 0', marginBottom: '0.35rem' }}>
-            <table style={{ width: '100%', fontSize: '0.7rem', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+          <div style={{ borderTop: '1px solid #0f172a', borderBottom: '1px solid #0f172a', padding: '0.2rem 0', marginBottom: '0.2rem', breakInside: 'avoid', pageBreakInside: 'avoid' }}>
+            <table style={{ width: '100%', fontSize: '0.65rem', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
               <thead>
                 <tr style={{ borderBottom: '1px dashed #64748b' }}>
                   <th style={{ textAlign: 'left', padding: '0.2rem 0', fontWeight: 900, fontSize: '0.65rem', letterSpacing: '0.02em' }}>ARTÍCULO</th>
@@ -323,7 +330,7 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
                     <tr key={detalle.id} style={{ 
                       borderBottom: index < pedido.detalles.length - 1 ? '1px dashed #e2e8f0' : 'none',
                     }}>
-                      <td style={{ padding: '0.25rem 0', overflow: 'hidden' }}>
+                      <td style={{ padding: '0.125rem 0', overflow: 'hidden' }}>
                         <div>
                           <div style={{ fontWeight: 800, fontSize: '0.72rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {detalle.prenda.nombre}
@@ -333,13 +340,13 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
                           </div>
                         </div>
                       </td>
-                      <td style={{ textAlign: 'center', padding: '0.25rem 0.25rem', fontWeight: 800 }}>
+                      <td style={{ textAlign: 'center', padding: '0.125rem 0.2rem', fontWeight: 800 }}>
                         {cant}
                       </td>
-                      <td style={{ textAlign: 'right', padding: '0.25rem 0', fontVariantNumeric: 'tabular-nums' }}>
+                      <td style={{ textAlign: 'right', padding: '0.125rem 0', fontVariantNumeric: 'tabular-nums' }}>
                         ${detalle.precio_unitario.toFixed(2)}
                       </td>
-                      <td style={{ textAlign: 'right', padding: '0.25rem 0', fontWeight: 900, fontVariantNumeric: 'tabular-nums' }}>
+                      <td style={{ textAlign: 'right', padding: '0.125rem 0', fontWeight: 900, fontVariantNumeric: 'tabular-nums' }}>
                         ${detalle.subtotal.toFixed(2)}
                       </td>
                     </tr>
@@ -350,18 +357,18 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
           </div>
 
           {/* Totales */}
-          <div style={{ marginBottom: '0.4rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.15rem', fontSize: '0.6rem' }}>
+          <div style={{ marginBottom: '0.25rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.1rem', fontSize: '0.57rem' }}>
               <span><strong>SUBTOTAL:</strong></span>
               <span>${pedido.subtotal.toFixed(2)}</span>
             </div>
             <div style={{ 
               display: 'flex', 
               justifyContent: 'space-between', 
-              fontSize: '0.7rem', 
+              fontSize: '0.66rem', 
               fontWeight: '700',
               borderTop: '1px solid #000',
-              paddingTop: '0.15rem'
+              paddingTop: '0.1rem'
             }}>
               <span>TOTAL:</span>
               <span>${pedido.total.toFixed(2)}</span>
@@ -372,8 +379,8 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
           <div
             style={{
               borderTop: '1px dashed #94a3b8',
-              paddingTop: '0.35rem',
-              marginBottom: '0.45rem',
+              paddingTop: '0.2rem',
+              marginBottom: '0.25rem',
               display: 'grid',
               gridTemplateColumns: '1fr 1fr',
               gap: '0.25rem 0.75rem',
@@ -442,7 +449,7 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
           {/* Pie de página */}
           <div style={{ 
             borderTop: '1px solid #000', 
-            paddingTop: '0.3rem', 
+            paddingTop: '0.2rem', 
             textAlign: 'center',
             fontSize: '0.5rem'
           }}>
