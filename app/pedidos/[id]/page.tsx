@@ -470,13 +470,13 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
           #recibo-impresion {
             position: absolute;
             top: 0;
-            left: 0;
-            right: 0;
-            width: 92% !important;
-            max-width: 92% !important;
+            left: 8mm;
+            right: auto;
+            width: 88% !important;
+            max-width: 88% !important;
             height: 93mm !important;
             box-sizing: border-box;
-            margin: 0 auto !important;
+            margin: 0 !important;
             overflow: hidden !important;
             break-inside: avoid;
             page-break-inside: avoid;
@@ -548,8 +548,8 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
           <Ticket
             id="recibo-impresion"
             extraStyle={{
-              width: '92%',
-              maxWidth: '92%',
+              width: '88%',
+              maxWidth: '88%',
               height: '93mm',
               borderRadius: 0,
               boxShadow: 'none',
