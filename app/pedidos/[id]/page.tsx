@@ -230,6 +230,7 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
         style={{
           borderTop: '1px solid #0f172a',
           borderBottom: '1px solid #0f172a',
+          marginTop: '1rem',
           padding: '0.2rem 0',
           marginBottom: '0.2rem',
           breakInside: 'avoid',
@@ -470,10 +471,12 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
             position: absolute;
             top: 0;
             left: 0;
-            width: 216mm !important;
-            max-width: 216mm !important;
+            right: 0;
+            width: 92% !important;
+            max-width: 92% !important;
             height: 93mm !important;
             box-sizing: border-box;
+            margin: 0 auto !important;
             overflow: hidden !important;
             break-inside: avoid;
             page-break-inside: avoid;
@@ -545,13 +548,14 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
           <Ticket
             id="recibo-impresion"
             extraStyle={{
-              width: '216mm',
-              maxWidth: '216mm',
+              width: '92%',
+              maxWidth: '92%',
               height: '93mm',
               borderRadius: 0,
               boxShadow: 'none',
               margin: 0,
               overflow: 'hidden',
+              paddingTop: '8mm',
             }}
           />,
           document.body
