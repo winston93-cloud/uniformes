@@ -51,6 +51,15 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
   const [pedido, setPedido] = useState<Pedido | null>(null);
   const [loading, setLoading] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
+  const [showPrintCal, setShowPrintCal] = useState(false);
+
+  const [printCal, setPrintCal] = useState({
+    leftMm: 0,
+    topMm: 0,
+    widthPct: 86,
+    scale: 0.98,
+    paddingTopMm: 8,
+  });
 
   const [movimientos, setMovimientos] = useState<any[]>([]);
 
@@ -61,6 +70,35 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!isMounted) return;
+    try {
+      const raw = localStorage.getItem('ticketPrintCal_v1');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        setPrintCal((prev) => ({ ...prev, ...parsed }));
+      }
+    } catch {
+      // ignore
+    }
+  }, [isMounted]);
+
+  useEffect(() => {
+    if (!isMounted) return;
+    const root = document.documentElement;
+    root.style.setProperty('--ticket-print-left', `${printCal.leftMm}mm`);
+    root.style.setProperty('--ticket-print-top', `${printCal.topMm}mm`);
+    root.style.setProperty('--ticket-print-width', `${printCal.widthPct}%`);
+    root.style.setProperty('--ticket-print-scale', `${printCal.scale}`);
+    root.style.setProperty('--ticket-print-padding-top', `${printCal.paddingTopMm}mm`);
+
+    try {
+      localStorage.setItem('ticketPrintCal_v1', JSON.stringify(printCal));
+    } catch {
+      // ignore
+    }
+  }, [isMounted, printCal]);
 
   const cargarPedido = async () => {
     try {
@@ -469,15 +507,17 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
           }
           #recibo-impresion {
             position: absolute;
-            top: 0;
-            left: 8mm;
+            top: var(--ticket-print-top, 0mm);
+            left: var(--ticket-print-left, 0mm);
             right: auto;
-            width: 88% !important;
-            max-width: 88% !important;
+            width: var(--ticket-print-width, 86%) !important;
+            max-width: var(--ticket-print-width, 86%) !important;
             height: 93mm !important;
             box-sizing: border-box;
             margin: 0 !important;
             overflow: hidden !important;
+            transform: scale(var(--ticket-print-scale, 0.98)) !important;
+            transform-origin: top left !important;
             break-inside: avoid;
             page-break-inside: avoid;
           }
@@ -525,7 +565,92 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
           >
             🖨️ Imprimir Recibo
           </button>
+          <button
+            onClick={() => setShowPrintCal((v) => !v)}
+            style={{
+              padding: '0.5rem 1rem',
+              backgroundColor: '#0f172a',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontWeight: '600',
+            }}
+          >
+            Calibrar impresión
+          </button>
         </div>
+
+        {showPrintCal && (
+          <div
+            className="no-imprimir"
+            style={{
+              background: 'white',
+              border: '1px solid #e2e8f0',
+              borderRadius: 8,
+              padding: '0.75rem',
+              marginBottom: '1rem',
+              maxWidth: 720,
+            }}
+          >
+            <div style={{ fontWeight: 800, marginBottom: '0.5rem' }}>Calibración (se guarda en esta PC)</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: '0.5rem' }}>
+              <label style={{ fontSize: 12, color: '#334155' }}>
+                Left (mm)
+                <input
+                  type="number"
+                  step="0.5"
+                  value={printCal.leftMm}
+                  onChange={(e) => setPrintCal((p) => ({ ...p, leftMm: Number(e.target.value) }))}
+                  style={{ width: '100%', padding: '0.4rem', border: '1px solid #cbd5e1', borderRadius: 6 }}
+                />
+              </label>
+              <label style={{ fontSize: 12, color: '#334155' }}>
+                Top (mm)
+                <input
+                  type="number"
+                  step="0.5"
+                  value={printCal.topMm}
+                  onChange={(e) => setPrintCal((p) => ({ ...p, topMm: Number(e.target.value) }))}
+                  style={{ width: '100%', padding: '0.4rem', border: '1px solid #cbd5e1', borderRadius: 6 }}
+                />
+              </label>
+              <label style={{ fontSize: 12, color: '#334155' }}>
+                Width (%)
+                <input
+                  type="number"
+                  step="1"
+                  value={printCal.widthPct}
+                  onChange={(e) => setPrintCal((p) => ({ ...p, widthPct: Number(e.target.value) }))}
+                  style={{ width: '100%', padding: '0.4rem', border: '1px solid #cbd5e1', borderRadius: 6 }}
+                />
+              </label>
+              <label style={{ fontSize: 12, color: '#334155' }}>
+                Scale
+                <input
+                  type="number"
+                  step="0.01"
+                  value={printCal.scale}
+                  onChange={(e) => setPrintCal((p) => ({ ...p, scale: Number(e.target.value) }))}
+                  style={{ width: '100%', padding: '0.4rem', border: '1px solid #cbd5e1', borderRadius: 6 }}
+                />
+              </label>
+              <label style={{ fontSize: 12, color: '#334155' }}>
+                Padding-top (mm)
+                <input
+                  type="number"
+                  step="0.5"
+                  value={printCal.paddingTopMm}
+                  onChange={(e) => setPrintCal((p) => ({ ...p, paddingTopMm: Number(e.target.value) }))}
+                  style={{ width: '100%', padding: '0.4rem', border: '1px solid #cbd5e1', borderRadius: 6 }}
+                />
+              </label>
+            </div>
+            <div style={{ marginTop: '0.5rem', fontSize: 12, color: '#475569' }}>
+              Tip HP LaserJet: normalmente se corrige bajando <strong>Width</strong> (84–86) y moviendo <strong>Left</strong> a negativo (ej. -2mm) si se corta del lado derecho.
+            </div>
+          </div>
+        )}
 
         {/* Recibo: +30% en pantalla (zoom); al imprimir se anula el escalado del wrap */}
         <div
@@ -555,7 +680,7 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
               boxShadow: 'none',
               margin: 0,
               overflow: 'hidden',
-              paddingTop: '8mm',
+              paddingTop: `${printCal.paddingTopMm}mm`,
             }}
           />,
           document.body
