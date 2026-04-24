@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, use } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -49,12 +50,17 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
   const { sesion } = useAuth();
   const [pedido, setPedido] = useState<Pedido | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isMounted, setIsMounted] = useState(false);
 
   const [movimientos, setMovimientos] = useState<any[]>([]);
 
   useEffect(() => {
     cargarPedido();
   }, [resolvedParams.id]);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const cargarPedido = async () => {
     try {
@@ -163,6 +169,277 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
   const totalUnidadesEntregadas = pedido.detalles.reduce((sum, d) => sum + cantidadEntregada(d), 0);
   const totalUnidadesPendientes = pedido.detalles.reduce((sum, d) => sum + d.pendiente, 0);
 
+  const Ticket = ({ id, extraStyle }: { id: string; extraStyle?: React.CSSProperties }) => (
+    <div
+      id={id}
+      style={{
+        backgroundColor: 'white',
+        padding: '0.4rem 0.55rem',
+        borderRadius: '8px',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+        fontFamily:
+          'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+        fontSize: '0.71rem',
+        width: '100%',
+        maxWidth: '828px',
+        margin: '0 auto',
+        ...extraStyle,
+      }}
+    >
+      {/* Header distribuido */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          gap: '0.75rem',
+          paddingBottom: '0.25rem',
+          borderBottom: '1px solid #0f172a',
+          marginBottom: '0.3rem',
+        }}
+      >
+        <div style={{ minWidth: 160 }}>
+          <div style={{ fontWeight: 900, fontSize: '0.95rem', lineHeight: 1.1 }}>Matriz Madero</div>
+          <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#334155', marginTop: '0.15rem' }}>
+            Ticket de venta
+          </div>
+        </div>
+
+        <div style={{ flex: 1, textAlign: 'right', fontSize: '0.72rem', lineHeight: 1.25, paddingRight: '0.35rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', flexWrap: 'wrap', gap: '0.6rem' }}>
+            <span>
+              <strong>Folio:</strong> {pedido.folio || `#${pedido.id.slice(0, 8).toUpperCase()}`}
+            </span>
+            <span>
+              <strong>Fecha:</strong> {new Date(pedido.created_at).toLocaleString('es-MX')}
+            </span>
+            <span style={{ maxWidth: 420, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <strong>Cliente:</strong> {pedido.cliente_nombre}
+            </span>
+          </div>
+          {pedido.tipo_cliente === 'ALUMNO' && pedido.alumno && (
+            <div style={{ marginTop: '0.15rem', color: '#64748b', fontSize: '0.68rem' }}>
+              {pedido.alumno.nivel || ''} {pedido.alumno.grado || ''}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Detalles del pedido */}
+      <div
+        style={{
+          borderTop: '1px solid #0f172a',
+          borderBottom: '1px solid #0f172a',
+          padding: '0.2rem 0',
+          marginBottom: '0.2rem',
+          breakInside: 'avoid',
+          pageBreakInside: 'avoid',
+        }}
+      >
+        <table style={{ width: '100%', fontSize: '0.65rem', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+          <thead>
+            <tr style={{ borderBottom: '1px dashed #64748b' }}>
+              <th
+                style={{
+                  textAlign: 'left',
+                  padding: '0.2rem 0',
+                  fontWeight: 900,
+                  fontSize: '0.65rem',
+                  letterSpacing: '0.02em',
+                }}
+              >
+                ARTÍCULO
+              </th>
+              <th style={{ textAlign: 'center', padding: '0.2rem 0.25rem', fontWeight: 900, width: 56, fontSize: '0.65rem' }}>
+                CANT
+              </th>
+              <th style={{ textAlign: 'right', padding: '0.2rem 0', fontWeight: 900, width: 90, fontSize: '0.65rem' }}>
+                PRECIO
+              </th>
+              <th style={{ textAlign: 'right', padding: '0.2rem 0', fontWeight: 900, width: 96, fontSize: '0.65rem' }}>
+                TOTAL
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {pedido.detalles.map((detalle, index) => {
+              const cant = Number(detalle.cantidad) || 0;
+              return (
+                <tr
+                  key={detalle.id}
+                  style={{
+                    borderBottom: index < pedido.detalles.length - 1 ? '1px dashed #e2e8f0' : 'none',
+                  }}
+                >
+                  <td style={{ padding: '0.125rem 0', overflow: 'hidden' }}>
+                    <div>
+                      <div
+                        style={{
+                          fontWeight: 800,
+                          fontSize: '0.72rem',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {detalle.prenda.nombre}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: '0.65rem',
+                          color: '#475569',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {detalle.talla.nombre}
+                        {detalle.especificaciones ? ` - ${detalle.especificaciones}` : ''}
+                      </div>
+                    </div>
+                  </td>
+                  <td style={{ textAlign: 'center', padding: '0.125rem 0.2rem', fontWeight: 800 }}>{cant}</td>
+                  <td style={{ textAlign: 'right', padding: '0.125rem 0', fontVariantNumeric: 'tabular-nums' }}>
+                    ${detalle.precio_unitario.toFixed(2)}
+                  </td>
+                  <td
+                    style={{
+                      textAlign: 'right',
+                      padding: '0.125rem 0',
+                      fontWeight: 900,
+                      fontVariantNumeric: 'tabular-nums',
+                    }}
+                  >
+                    ${detalle.subtotal.toFixed(2)}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Totales */}
+      <div style={{ marginBottom: '0.25rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.1rem', fontSize: '0.57rem' }}>
+          <span>
+            <strong>SUBTOTAL:</strong>
+          </span>
+          <span>${pedido.subtotal.toFixed(2)}</span>
+        </div>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            fontSize: '0.66rem',
+            fontWeight: '700',
+            borderTop: '1px solid #000',
+            paddingTop: '0.1rem',
+          }}
+        >
+          <span>TOTAL:</span>
+          <span>${pedido.total.toFixed(2)}</span>
+        </div>
+      </div>
+
+      {/* Nuevo bloque de estatus (debajo del total) */}
+      <div
+        style={{
+          borderTop: '1px dashed #94a3b8',
+          paddingTop: '0.2rem',
+          marginBottom: '0.25rem',
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '0.25rem 0.75rem',
+          fontSize: '0.72rem',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem' }}>
+          <span style={{ fontWeight: 900 }}>Partidas Entregadas</span>
+          <span style={{ fontWeight: 900, color: '#047857', fontVariantNumeric: 'tabular-nums' }}>
+            {partidasEntregadasCompletas}
+          </span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem' }}>
+          <span style={{ fontWeight: 900 }}>Partidas Pendientes</span>
+          <span
+            style={{
+              fontWeight: 900,
+              color: partidasConPendientes > 0 ? '#b91c1c' : '#0f172a',
+              fontVariantNumeric: 'tabular-nums',
+            }}
+          >
+            {partidasConPendientes}
+          </span>
+        </div>
+      </div>
+
+      {/* Advertencia de pendientes */}
+      {tienePendientes && (
+        <div
+          style={{
+            backgroundColor: '#fef2f2',
+            border: '1px solid #dc2626',
+            borderRadius: '3px',
+            padding: '0.3rem',
+            marginBottom: '0.4rem',
+          }}
+        >
+          <p
+            style={{
+              margin: '0 0 0.2rem 0',
+              color: '#991b1b',
+              fontWeight: '700',
+              textAlign: 'center',
+              fontSize: '0.55rem',
+            }}
+          >
+            ⚠️ PENDIENTES DE ENTREGA
+          </p>
+          <div style={{ marginTop: '0.2rem', fontSize: '0.5rem' }}>
+            {pedido.detalles
+              .filter(d => d.pendiente > 0)
+              .map(d => (
+                <div
+                  key={d.id}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    padding: '0.2rem',
+                    backgroundColor: 'rgba(255,255,255,0.5)',
+                    borderRadius: '2px',
+                    marginBottom: '0.2rem',
+                  }}
+                >
+                  <span style={{ color: '#991b1b', fontWeight: '600' }}>
+                    {d.prenda.nombre} - {d.talla.nombre}
+                  </span>
+                  <span style={{ color: '#dc2626', fontWeight: '700' }}>{d.pendiente}</span>
+                </div>
+              ))}
+          </div>
+          <p style={{ margin: '0.2rem 0 0 0', color: '#991b1b', fontSize: '0.5rem', textAlign: 'center', fontWeight: '600' }}>
+            Pasar a recoger cuando estén disponibles
+          </p>
+        </div>
+      )}
+
+      {/* Notas */}
+      {pedido.notas && (
+        <div style={{ marginBottom: '0.4rem', fontSize: '0.5rem' }}>
+          <strong>NOTAS:</strong>
+          <p style={{ margin: '0.15rem 0', fontStyle: 'italic' }}>{pedido.notas}</p>
+        </div>
+      )}
+
+      {/* Pie de página */}
+      <div style={{ borderTop: '1px solid #000', paddingTop: '0.2rem', textAlign: 'center', fontSize: '0.5rem' }}>
+        <p style={{ margin: '0.1rem 0' }}>¡GRACIAS POR SU COMPRA!</p>
+        <p style={{ margin: '0.1rem 0', fontSize: '0.45rem', color: '#666' }}>Sistema de Gestión de Uniformes</p>
+      </div>
+    </div>
+  );
+
   return (
     <LayoutWrapper>
       <style jsx global>{`
@@ -175,46 +452,31 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
             margin: 0 !important;
             padding: 0 !important;
             width: 216mm !important;
-            height: 90mm !important;
+            height: 93mm !important;
             overflow: hidden !important;
           }
           body {
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
           }
-          /* Oculta visualmente todo salvo el ticket (sin romper la jerarquía del DOM) */
-          body * {
-            visibility: hidden;
+          /* En impresión: el único hijo del body debe ser el ticket */
+          body > * {
+            display: none !important;
           }
-          #recibo-impresion, #recibo-impresion * {
-            visibility: visible;
+          body > #recibo-impresion {
+            display: block !important;
           }
           #recibo-impresion {
-            position: relative;
+            position: absolute;
             top: 0;
             left: 0;
-            width: 216mm;
-            max-width: 216mm;
-            max-height: none;
-            height: 90mm !important;
+            width: 216mm !important;
+            max-width: 216mm !important;
+            height: 93mm !important;
             box-sizing: border-box;
-            display: flex !important;
-            flex-direction: column !important;
-            z-index: 1 !important;
-            padding-top: 0 !important;
-            padding-bottom: 0 !important;
-            margin-top: 0 !important;
-            font-size: 0.71rem !important;
-            transform: none !important;
-            box-shadow: none !important;
-            border-radius: 0 !important;
-            margin: 0 !important;
             overflow: hidden !important;
             break-inside: avoid;
             page-break-inside: avoid;
-          }
-          #recibo-impresion p {
-            margin-bottom: 0 !important;
           }
           .recibo-scale-wrap {
             transform: none !important;
@@ -222,6 +484,9 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
             margin: 0 !important;
           }
           .no-imprimir {
+            display: none !important;
+          }
+          #recibo-impresion-screen {
             display: none !important;
           }
         }
@@ -270,211 +535,27 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
             transformOrigin: 'top center',
           }}
         >
-        <div 
-          id="recibo-impresion"
-          style={{
-            backgroundColor: 'white',
-            padding: '0.4rem 0.55rem',
-            borderRadius: '8px',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace',
-            fontSize: '0.71rem',
-            width: '100%',
-            maxWidth: '828px',
-            margin: '0 auto'
-          }}
-        >
-          {/* Header distribuido */}
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'flex-start',
-              gap: '0.75rem',
-              paddingBottom: '0.25rem',
-              borderBottom: '1px solid #0f172a',
-              marginBottom: '0.3rem',
-            }}
-          >
-            <div style={{ minWidth: 160 }}>
-              <div style={{ fontWeight: 900, fontSize: '0.95rem', lineHeight: 1.1 }}>
-                Matriz Madero
-              </div>
-              <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#334155', marginTop: '0.15rem' }}>
-                Ticket de venta
-              </div>
-            </div>
-
-            <div style={{ flex: 1, textAlign: 'right', fontSize: '0.72rem', lineHeight: 1.25, paddingRight: '0.35rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', flexWrap: 'wrap', gap: '0.6rem' }}>
-                <span>
-                  <strong>Folio:</strong> {pedido.folio || `#${pedido.id.slice(0, 8).toUpperCase()}`}
-                </span>
-                <span>
-                  <strong>Fecha:</strong> {new Date(pedido.created_at).toLocaleString('es-MX')}
-                </span>
-                <span style={{ maxWidth: 420, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  <strong>Cliente:</strong> {pedido.cliente_nombre}
-                </span>
-              </div>
-              {pedido.tipo_cliente === 'ALUMNO' && pedido.alumno && (
-                <div style={{ marginTop: '0.15rem', color: '#64748b', fontSize: '0.68rem' }}>
-                  {pedido.alumno.nivel || ''} {pedido.alumno.grado || ''}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Detalles del pedido */}
-          <div style={{ borderTop: '1px solid #0f172a', borderBottom: '1px solid #0f172a', padding: '0.2rem 0', marginBottom: '0.2rem', breakInside: 'avoid', pageBreakInside: 'avoid' }}>
-            <table style={{ width: '100%', fontSize: '0.65rem', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px dashed #64748b' }}>
-                  <th style={{ textAlign: 'left', padding: '0.2rem 0', fontWeight: 900, fontSize: '0.65rem', letterSpacing: '0.02em' }}>ARTÍCULO</th>
-                  <th style={{ textAlign: 'center', padding: '0.2rem 0.25rem', fontWeight: 900, width: 56, fontSize: '0.65rem' }}>CANT</th>
-                  <th style={{ textAlign: 'right', padding: '0.2rem 0', fontWeight: 900, width: 90, fontSize: '0.65rem' }}>PRECIO</th>
-                  <th style={{ textAlign: 'right', padding: '0.2rem 0', fontWeight: 900, width: 96, fontSize: '0.65rem' }}>TOTAL</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pedido.detalles.map((detalle, index) => {
-                  const cant = Number(detalle.cantidad) || 0;
-                  
-                  return (
-                    <tr key={detalle.id} style={{ 
-                      borderBottom: index < pedido.detalles.length - 1 ? '1px dashed #e2e8f0' : 'none',
-                    }}>
-                      <td style={{ padding: '0.125rem 0', overflow: 'hidden' }}>
-                        <div>
-                          <div style={{ fontWeight: 800, fontSize: '0.72rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {detalle.prenda.nombre}
-                          </div>
-                          <div style={{ fontSize: '0.65rem', color: '#475569', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {detalle.talla.nombre}{detalle.especificaciones ? ` - ${detalle.especificaciones}` : ''}
-                          </div>
-                        </div>
-                      </td>
-                      <td style={{ textAlign: 'center', padding: '0.125rem 0.2rem', fontWeight: 800 }}>
-                        {cant}
-                      </td>
-                      <td style={{ textAlign: 'right', padding: '0.125rem 0', fontVariantNumeric: 'tabular-nums' }}>
-                        ${detalle.precio_unitario.toFixed(2)}
-                      </td>
-                      <td style={{ textAlign: 'right', padding: '0.125rem 0', fontWeight: 900, fontVariantNumeric: 'tabular-nums' }}>
-                        ${detalle.subtotal.toFixed(2)}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Totales */}
-          <div style={{ marginBottom: '0.25rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.1rem', fontSize: '0.57rem' }}>
-              <span><strong>SUBTOTAL:</strong></span>
-              <span>${pedido.subtotal.toFixed(2)}</span>
-            </div>
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              fontSize: '0.66rem', 
-              fontWeight: '700',
-              borderTop: '1px solid #000',
-              paddingTop: '0.1rem'
-            }}>
-              <span>TOTAL:</span>
-              <span>${pedido.total.toFixed(2)}</span>
-            </div>
-          </div>
-
-          {/* Nuevo bloque de estatus (debajo del total) */}
-          <div
-            style={{
-              borderTop: '1px dashed #94a3b8',
-              paddingTop: '0.2rem',
-              marginBottom: '0.25rem',
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: '0.25rem 0.75rem',
-              fontSize: '0.72rem',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem' }}>
-              <span style={{ fontWeight: 900 }}>Partidas Entregadas</span>
-              <span style={{ fontWeight: 900, color: '#047857', fontVariantNumeric: 'tabular-nums' }}>
-                {partidasEntregadasCompletas}
-              </span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem' }}>
-              <span style={{ fontWeight: 900 }}>Partidas Pendientes</span>
-              <span style={{ fontWeight: 900, color: partidasConPendientes > 0 ? '#b91c1c' : '#0f172a', fontVariantNumeric: 'tabular-nums' }}>
-                {partidasConPendientes}
-              </span>
-            </div>
-          </div>
-
-          {/* Advertencia de pendientes */}
-          {tienePendientes && (
-            <div style={{
-              backgroundColor: '#fef2f2',
-              border: '1px solid #dc2626',
-              borderRadius: '3px',
-              padding: '0.3rem',
-              marginBottom: '0.4rem'
-            }}>
-              <p style={{ margin: '0 0 0.2rem 0', color: '#991b1b', fontWeight: '700', textAlign: 'center', fontSize: '0.55rem' }}>
-                ⚠️ PENDIENTES DE ENTREGA
-              </p>
-              <div style={{ marginTop: '0.2rem', fontSize: '0.5rem' }}>
-                {pedido.detalles.filter(d => d.pendiente > 0).map(d => (
-                  <div key={d.id} style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between',
-                    padding: '0.2rem',
-                    backgroundColor: 'rgba(255,255,255,0.5)',
-                    borderRadius: '2px',
-                    marginBottom: '0.2rem'
-                  }}>
-                    <span style={{ color: '#991b1b', fontWeight: '600' }}>
-                      {d.prenda.nombre} - {d.talla.nombre}
-                    </span>
-                    <span style={{ color: '#dc2626', fontWeight: '700' }}>
-                      {d.pendiente}
-                    </span>
-                  </div>
-                ))}
-              </div>
-              <p style={{ margin: '0.2rem 0 0 0', color: '#991b1b', fontSize: '0.5rem', textAlign: 'center', fontWeight: '600' }}>
-                Pasar a recoger cuando estén disponibles
-              </p>
-            </div>
-          )}
-
-          {/* Notas */}
-          {pedido.notas && (
-            <div style={{ marginBottom: '0.4rem', fontSize: '0.5rem' }}>
-              <strong>NOTAS:</strong>
-              <p style={{ margin: '0.15rem 0', fontStyle: 'italic' }}>{pedido.notas}</p>
-            </div>
-          )}
-
-          {/* Pie de página */}
-          <div style={{ 
-            borderTop: '1px solid #000', 
-            paddingTop: '0.2rem', 
-            textAlign: 'center',
-            fontSize: '0.5rem'
-          }}>
-            <p style={{ margin: '0.1rem 0' }}>¡GRACIAS POR SU COMPRA!</p>
-            <p style={{ margin: '0.1rem 0', fontSize: '0.45rem', color: '#666' }}>
-              Sistema de Gestión de Uniformes
-            </p>
-          </div>
-        </div>
+          <Ticket id="recibo-impresion-screen" />
         </div>
       </div>
+
+      {/* Ticket exclusivo de impresión como hijo directo del body */}
+      {isMounted &&
+        createPortal(
+          <Ticket
+            id="recibo-impresion"
+            extraStyle={{
+              width: '216mm',
+              maxWidth: '216mm',
+              height: '93mm',
+              borderRadius: 0,
+              boxShadow: 'none',
+              margin: 0,
+              overflow: 'hidden',
+            }}
+          />,
+          document.body
+        )}
     </LayoutWrapper>
   );
 }
