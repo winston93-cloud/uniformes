@@ -174,6 +174,9 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
           html, body {
             margin: 0 !important;
             padding: 0 !important;
+            width: 216mm !important;
+            height: 93mm !important;
+            overflow: hidden !important;
           }
           body {
             -webkit-print-color-adjust: exact;
@@ -186,12 +189,13 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
             visibility: visible;
           }
           #recibo-impresion {
-            position: fixed;
+            position: absolute;
             left: 0;
             top: 0;
             width: 216mm;
             max-width: 216mm;
             max-height: 93mm;
+            height: auto !important;
             box-sizing: border-box;
             padding-top: 1.5rem !important;
             font-size: 0.71rem !important;
