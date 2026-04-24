@@ -246,7 +246,7 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
         </div>
 
         <div style={{ flex: 1, textAlign: 'right', fontSize: '0.72rem', lineHeight: 1.25, paddingRight: '0.35rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', flexWrap: 'wrap', gap: '0.6rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', flexWrap: 'wrap', columnGap: '0.3rem', rowGap: '0.1rem' }}>
             <span>
               <strong>Folio:</strong> {pedido.folio || `#${pedido.id.slice(0, 8).toUpperCase()}`}
             </span>
@@ -365,24 +365,24 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
 
       {/* Totales */}
       <div style={{ marginBottom: '0.25rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.1rem', fontSize: '0.57rem' }}>
-          <span>
-            <strong>SUBTOTAL:</strong>
-          </span>
-          <span>${pedido.subtotal.toFixed(2)}</span>
-        </div>
         <div
           style={{
             display: 'flex',
             justifyContent: 'space-between',
-            fontSize: '0.66rem',
+            alignItems: 'baseline',
+            gap: '0.75rem',
+            fontSize: '0.62rem',
             fontWeight: '700',
             borderTop: '1px solid #000',
             paddingTop: '0.1rem',
           }}
         >
-          <span>TOTAL:</span>
-          <span>${pedido.total.toFixed(2)}</span>
+          <span style={{ whiteSpace: 'nowrap' }}>
+            SUBTOTAL: <span style={{ fontWeight: 900 }}>${pedido.subtotal.toFixed(2)}</span>
+          </span>
+          <span style={{ whiteSpace: 'nowrap' }}>
+            TOTAL: <span style={{ fontWeight: 900 }}>${pedido.total.toFixed(2)}</span>
+          </span>
         </div>
       </div>
 
@@ -447,7 +447,6 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
       {/* Pie de página */}
       <div style={{ borderTop: '1px solid #000', paddingTop: '0.2rem', textAlign: 'center', fontSize: '0.5rem' }}>
         <p style={{ margin: '0.1rem 0' }}>¡GRACIAS POR SU COMPRA!</p>
-        <p style={{ margin: '0.1rem 0', fontSize: '0.45rem', color: '#666' }}>Sistema de Gestión de Uniformes</p>
       </div>
     </div>
   );
