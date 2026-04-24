@@ -168,8 +168,8 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
       <style jsx global>{`
         @media print {
           @page {
-            size: auto;
-            margin: 0mm;
+            size: 216mm 93mm;
+            margin: 0;
           }
           html, body {
             margin: 0 !important;
@@ -189,12 +189,14 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
             position: fixed;
             left: 0;
             top: 0;
-            width: 100vw;
-            max-width: 100vw;
+            width: 216mm;
+            max-width: 216mm;
+            max-height: 93mm;
             box-sizing: border-box;
             padding-top: 1.5rem !important;
             font-size: 0.71rem !important;
-            transform: none !important;
+            transform: scale(0.98) !important;
+            transform-origin: top left !important;
             box-shadow: none !important;
             border-radius: 0 !important;
             margin: 0 !important;
