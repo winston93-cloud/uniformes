@@ -190,21 +190,22 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
             visibility: visible;
           }
           #recibo-impresion {
-            position: absolute;
-            left: 0;
+            position: relative;
             top: 0;
+            left: 0;
             width: 216mm;
             max-width: 216mm;
             max-height: none;
-            height: auto !important;
+            height: 90mm !important;
             box-sizing: border-box;
-            display: block !important;
+            display: flex !important;
+            flex-direction: column !important;
             z-index: 1 !important;
-            padding-top: 15mm !important;
+            padding-top: 0 !important;
             padding-bottom: 0 !important;
+            margin-top: 0 !important;
             font-size: 0.71rem !important;
-            transform: scale(0.98) !important;
-            transform-origin: top left !important;
+            transform: none !important;
             box-shadow: none !important;
             border-radius: 0 !important;
             margin: 0 !important;
