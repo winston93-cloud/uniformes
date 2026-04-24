@@ -268,9 +268,9 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
       {/* Detalles del pedido */}
       <div
         style={{
-          borderTop: '1px solid #0f172a',
+          borderTop: 'none',
           borderBottom: '1px solid #0f172a',
-          marginTop: '1rem',
+          marginTop: '0.35rem',
           padding: '0.2rem 0',
           marginBottom: '0.2rem',
           breakInside: 'avoid',
@@ -291,6 +291,9 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
               >
                 ARTÍCULO
               </th>
+              <th style={{ textAlign: 'left', padding: '0.2rem 0', fontWeight: 900, width: 86, fontSize: '0.65rem' }}>
+                TALLA
+              </th>
               <th style={{ textAlign: 'center', padding: '0.2rem 0.25rem', fontWeight: 900, width: 56, fontSize: '0.65rem' }}>
                 CANT
               </th>
@@ -300,11 +303,15 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
               <th style={{ textAlign: 'right', padding: '0.2rem 0', fontWeight: 900, width: 96, fontSize: '0.65rem' }}>
                 TOTAL
               </th>
+              <th style={{ textAlign: 'center', padding: '0.2rem 0', fontWeight: 900, width: 60, fontSize: '0.65rem' }}>
+                EST
+              </th>
             </tr>
           </thead>
           <tbody>
             {pedido.detalles.map((detalle, index) => {
               const cant = Number(detalle.cantidad) || 0;
+              const lineaEstado = detalle.pendiente > 0 ? 'Pend.' : 'Ent.';
               return (
                 <tr
                   key={detalle.id}
@@ -325,18 +332,11 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
                       >
                         {detalle.prenda.nombre}
                       </div>
-                      <div
-                        style={{
-                          fontSize: '0.65rem',
-                          color: '#475569',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {detalle.talla.nombre}
-                        {detalle.especificaciones ? ` - ${detalle.especificaciones}` : ''}
-                      </div>
+                    </div>
+                  </td>
+                  <td style={{ padding: '0.125rem 0', overflow: 'hidden' }}>
+                    <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 700 }}>
+                      {detalle.talla.nombre}
                     </div>
                   </td>
                   <td style={{ textAlign: 'center', padding: '0.125rem 0.2rem', fontWeight: 800 }}>{cant}</td>
@@ -352,6 +352,9 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
                     }}
                   >
                     ${detalle.subtotal.toFixed(2)}
+                  </td>
+                  <td style={{ textAlign: 'center', padding: '0.125rem 0', fontWeight: 900 }}>
+                    {lineaEstado}
                   </td>
                 </tr>
               );
@@ -380,38 +383,6 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
         >
           <span>TOTAL:</span>
           <span>${pedido.total.toFixed(2)}</span>
-        </div>
-      </div>
-
-      {/* Nuevo bloque de estatus (debajo del total) */}
-      <div
-        style={{
-          borderTop: '1px dashed #94a3b8',
-          paddingTop: '0.2rem',
-          marginBottom: '0.25rem',
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: '0.25rem 0.75rem',
-          fontSize: '0.72rem',
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem' }}>
-          <span style={{ fontWeight: 900 }}>Partidas Entregadas</span>
-          <span style={{ fontWeight: 900, color: '#047857', fontVariantNumeric: 'tabular-nums' }}>
-            {partidasEntregadasCompletas}
-          </span>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem' }}>
-          <span style={{ fontWeight: 900 }}>Partidas Pendientes</span>
-          <span
-            style={{
-              fontWeight: 900,
-              color: partidasConPendientes > 0 ? '#b91c1c' : '#0f172a',
-              fontVariantNumeric: 'tabular-nums',
-            }}
-          >
-            {partidasConPendientes}
-          </span>
         </div>
       </div>
 
