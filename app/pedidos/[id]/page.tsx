@@ -175,18 +175,16 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
             margin: 0 !important;
             padding: 0 !important;
             width: 216mm !important;
-            height: 93mm !important;
+            height: 90mm !important;
             overflow: hidden !important;
           }
           body {
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
           }
-          body * {
-            visibility: hidden;
-          }
-          #recibo-impresion, #recibo-impresion * {
-            visibility: visible;
+          /* Evita que el resto del DOM reserve espacio y cree una "página 2" */
+          body > *:not(#recibo-impresion) {
+            display: none !important;
           }
           #recibo-impresion {
             position: absolute;
@@ -194,10 +192,11 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
             top: 0;
             width: 216mm;
             max-width: 216mm;
-            max-height: 93mm;
+            max-height: 90mm;
             height: auto !important;
             box-sizing: border-box;
             padding-top: 1.5rem !important;
+            padding-bottom: 0 !important;
             font-size: 0.71rem !important;
             transform: scale(0.98) !important;
             transform-origin: top left !important;
@@ -207,6 +206,9 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
             overflow: hidden !important;
             break-inside: avoid;
             page-break-inside: avoid;
+          }
+          #recibo-impresion p {
+            margin-bottom: 0 !important;
           }
           .recibo-scale-wrap {
             transform: none !important;
