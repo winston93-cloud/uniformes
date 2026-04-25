@@ -221,6 +221,27 @@ export default function MigracionPage() {
     }
   };
 
+  const probarTokenAdminInsForge = async () => {
+    setBusy(true);
+    try {
+      addLog('Probando INSFORGE_ADMIN_TOKEN…');
+      const res = await fetch('/api/migracion/insforge-admin-check', { cache: 'no-store' });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json) throw new Error('No se pudo validar token admin');
+      addLog(`InsForge admin check: HTTP ${json.status} ok=${json.success}`);
+      if (!json.success) {
+        alert(`❌ INSFORGE_ADMIN_TOKEN NO sirve.\nHTTP ${json.status}\n\n${String(json.body || '').slice(0, 800)}`);
+      } else {
+        alert(`✅ INSFORGE_ADMIN_TOKEN OK.\nHTTP ${json.status}`);
+      }
+    } catch (e: any) {
+      addLog(`ERROR admin check: ${e?.message || String(e)}`);
+      alert(`❌ No se pudo validar token admin: ${e?.message || String(e)}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const finalizarCutover = async () => {
     if (!todasOk) {
       addLog('Aún faltan tablas por migrar: el corte a InsForge está bloqueado.');
@@ -303,6 +324,9 @@ export default function MigracionPage() {
         <button className="btn btn-secondary" type="button" disabled={busy} onClick={() => toggleAll(false)}>
           Desmarcar todo
         </button>
+        <button className="btn btn-secondary" type="button" disabled={busy} onClick={probarTokenAdminInsForge}>
+          Probar token InsForge admin
+        </button>
         <button className="btn btn-primary" type="button" disabled={busy} onClick={migrarSeleccionadas}>
           Migrar seleccionadas
         </button>
@@ -373,7 +397,22 @@ export default function MigracionPage() {
                     {t}
                   </span>
                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <span style={{ padding: '0.2rem 0.5rem', borderRadius: 999, background: badge.bg, color: 'white', fontSize: '0.78rem' }}>
+                    <span
+                      style={{
+                        padding: '0.2rem 0.5rem',
+                        borderRadius: 999,
+                        background: badge.bg,
+                        color: 'white',
+                        fontSize: '0.78rem',
+                        cursor: st.status === 'ERROR' ? 'pointer' : 'default',
+                      }}
+                      title={st.status === 'ERROR' ? st.error : ''}
+                      onClick={() => {
+                        if (st.status === 'ERROR') {
+                          alert(`❌ Error en ${t}\n\n${st.error}`);
+                        }
+                      }}
+                    >
                       {badge.text}
                     </span>
                     <button className="btn btn-secondary" type="button" disabled={busy || !selected} onClick={() => migrarTabla(t)}>

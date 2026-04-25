@@ -61,6 +61,7 @@ export async function runInsforgeMigrationsSql(sql: string) {
     headers: {
       'content-type': 'application/json; charset=utf-8',
       authorization: `Bearer ${token}`,
+      apikey: token,
     },
     body: JSON.stringify(body),
     cache: 'no-store',
@@ -76,7 +77,7 @@ export async function runInsforgeMigrationsSql(sql: string) {
 
   if (!res.ok) {
     const msg = json?.error || json?.message || text || `HTTP ${res.status}`;
-    throw new Error(`InsForge migrations fallo: ${msg}`);
+    throw new Error(`InsForge migrations fallo (HTTP ${res.status}): ${msg}`);
   }
   if (json && json.success === false) {
     throw new Error(`InsForge migrations error: ${json.error || json.message || 'error'}`);
