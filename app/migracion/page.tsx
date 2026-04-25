@@ -80,6 +80,7 @@ export default function MigracionPage() {
   const [logs, setLogs] = useState<string[]>([]);
   const [ping, setPing] = useState<{ supabaseHost: string | null; insforgeHost: string | null } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [schemaStatus, setSchemaStatus] = useState<'PENDIENTE' | 'OK' | 'ERROR'>('PENDIENTE');
 
   const seleccionadas = useMemo(() => TABLAS_34.filter((t) => seleccion[t]), [seleccion]);
   const todasOk = useMemo(() => TABLAS_34.every((t) => estado[t]?.status === 'OK'), [estado]);
@@ -104,7 +105,42 @@ export default function MigracionPage() {
     setSeleccion(Object.fromEntries(TABLAS_34.map((t) => [t, v])));
   };
 
+  const crearEstructurasEnInsForge = async () => {
+    setBusy(true);
+    addLog('Creando estructuras en InsForge desde migrations de Supabase…');
+    try {
+      const res = await fetch('/api/migracion/ensure-schema', { method: 'POST', cache: 'no-store' });
+      const json = await res.json().catch(() => null);
+      if (res.ok && json?.success && json?.executed) {
+        setSchemaStatus('OK');
+        addLog(`OK esquema: ejecutado vía RPC ${json.rpc}`);
+        alert(`✅ Estructuras creadas en InsForge (RPC: ${json.rpc}).`);
+        return;
+      }
+      setSchemaStatus('ERROR');
+      addLog(`ERROR esquema: ${json?.error || 'No se pudo ejecutar DDL en InsForge'}`);
+      // En caso de no poder ejecutar, mostramos el SQL para ejecución manual.
+      if (json?.sql) {
+        addLog('Se devolvió SQL para ejecución manual (copiar desde Network/Response).');
+      }
+      alert(
+        `❌ No se pudo ejecutar el DDL automáticamente en InsForge.\n\nMotivo: ${json?.error || 'Desconocido'}\n\nTe dejo el SQL en la respuesta del endpoint /api/migracion/ensure-schema (POST).`
+      );
+    } catch (e: any) {
+      setSchemaStatus('ERROR');
+      addLog(`ERROR esquema: ${e?.message || String(e)}`);
+      alert(`❌ Error creando estructuras: ${e?.message || String(e)}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const migrarTabla = async (table: string) => {
+    if (schemaStatus !== 'OK') {
+      addLog(`Bloqueado: primero crea estructuras en InsForge (tabla: ${table}).`);
+      alert('⚠️ Primero ejecuta "Crear estructuras en InsForge" para asegurar que existan las tablas.');
+      return;
+    }
     setEstado((s) => ({ ...s, [table]: { status: 'MIGRANDO', progreso: 'Iniciando…' } }));
     addLog(`Migrando ${table}…`);
     try {
@@ -222,6 +258,23 @@ export default function MigracionPage() {
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'center', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+        <button
+          className="btn"
+          type="button"
+          disabled={busy}
+          onClick={crearEstructurasEnInsForge}
+          style={{
+            background: schemaStatus === 'OK' ? '#16a34a' : schemaStatus === 'ERROR' ? '#dc2626' : '#0ea5e9',
+            color: 'white',
+            border: 'none',
+          }}
+        >
+          {schemaStatus === 'OK'
+            ? '✅ Estructuras OK en InsForge'
+            : schemaStatus === 'ERROR'
+              ? '❌ Reintentar crear estructuras'
+              : '🏗️ Crear estructuras en InsForge'}
+        </button>
         <button className="btn btn-secondary" type="button" disabled={busy} onClick={() => toggleAll(true)}>
           Marcar todo
         </button>
