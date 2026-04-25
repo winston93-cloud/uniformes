@@ -38,6 +38,7 @@ export default function ModalBitacora({
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<AuditoriaRow[]>([]);
   const [count, setCount] = useState<number | null>(null);
+  const [debug, setDebug] = useState<{ supabaseHost: string | null; serverNowIso: string | null } | null>(null);
   const [offset, setOffset] = useState(0);
   const limit = 100;
   const [seleccion, setSeleccion] = useState<AuditoriaRow | null>(null);
@@ -71,6 +72,7 @@ export default function ModalBitacora({
         if (cancel) return;
         setRows(json.rows || []);
         setCount(typeof json.count === 'number' ? json.count : null);
+        setDebug(json.debug || null);
         setSeleccion(null);
       } catch (e: any) {
         if (!cancel) setError(e?.message || String(e));
@@ -117,6 +119,17 @@ export default function ModalBitacora({
             <p style={{ margin: '0.35rem 0 0', fontSize: '0.9rem', color: '#64748b' }}>
               Registro de inserciones, ediciones y eliminaciones por tabla.
             </p>
+            {debug?.supabaseHost ? (
+              <p style={{ margin: '0.35rem 0 0', fontSize: '0.82rem', color: '#94a3b8' }}>
+                Conectado a: <span style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }}>{debug.supabaseHost}</span>
+                {debug?.serverNowIso ? (
+                  <>
+                    {' '}
+                    · Servidor: <span style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }}>{fmtFechaHora(debug.serverNowIso)}</span>
+                  </>
+                ) : null}
+              </p>
+            ) : null}
           </div>
           <button type="button" className="modal-close-btn" onClick={onClose}>
             ✕

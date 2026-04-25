@@ -7,6 +7,15 @@ function clampInt(v: number, min: number, max: number) {
   return Math.max(min, Math.min(max, Math.trunc(v)));
 }
 
+function supabaseHostFromUrl(url: string | undefined | null) {
+  if (!url) return null;
+  try {
+    return new URL(url).host;
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
@@ -46,6 +55,10 @@ export async function GET(req: Request) {
       count: count ?? null,
       limit,
       offset,
+      debug: {
+        supabaseHost: supabaseHostFromUrl(process.env.NEXT_PUBLIC_SUPABASE_URL),
+        serverNowIso: new Date().toISOString(),
+      },
     });
   } catch (err) {
     return NextResponse.json(
