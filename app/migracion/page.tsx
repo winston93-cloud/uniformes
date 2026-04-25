@@ -116,14 +116,14 @@ export default function MigracionPage() {
       const json = await res.json().catch(() => null);
       if (res.ok && json?.success && json?.executed) {
         setSchemaStatus('OK');
-        addLog(`OK esquema: ejecutado vía RPC ${json.rpc}`);
-        alert(`✅ Estructuras creadas en InsForge (RPC: ${json.rpc}).`);
+        addLog(`OK esquema: ejecutado en InsForge (${String(json.mode || 'ok')})`);
+        alert(`✅ Estructuras creadas en InsForge.`);
         return;
       }
       setSchemaStatus('ERROR');
       addLog(`ERROR esquema: ${json?.error || 'No se pudo ejecutar DDL en InsForge'}`);
       alert(
-        `❌ No se pudo ejecutar el DDL automáticamente en InsForge.\n\nMotivo: ${json?.error || 'Desconocido'}\n\nVoy a abrir el SQL para que lo pegues en el SQL Editor de InsForge y le des Run.`
+        `❌ No se pudo ejecutar el DDL automáticamente en InsForge.\n\nMotivo: ${json?.error || 'Desconocido'}\n\nPuedo abrir el SQL para copiarlo al SQL Editor.`
       );
       await abrirSqlEsquema();
     } catch (e: any) {
@@ -143,19 +143,15 @@ export default function MigracionPage() {
     setSchemaSql(String(json.sql || ''));
     setSchemaFiles(Array.isArray(json.files) ? json.files : []);
     setSchemaModalOpen(true);
-    addLog(`SQL listo (${schemaFiles.length || (Array.isArray(json.files) ? json.files.length : 0)} migrations).`);
+    const n = Array.isArray(json.files) ? json.files.length : 0;
+    addLog(`SQL listo (${n} archivos de migration).`);
   };
 
   const migrarTabla = async (table: string) => {
-    if (schemaStatus !== 'OK') {
-      addLog(`Bloqueado: primero crea estructuras en InsForge (tabla: ${table}).`);
-      alert('⚠️ Primero ejecuta "Crear estructuras en InsForge" para asegurar que existan las tablas.');
-      return;
-    }
     setEstado((s) => ({ ...s, [table]: { status: 'MIGRANDO', progreso: 'Iniciando…' } }));
-    addLog(`Migrando ${table}…`);
+    addLog(`Migrando ${table} (DDL + datos)…`);
     try {
-      const res = await fetch('/api/migracion/migrate-table', {
+      const res = await fetch('/api/migracion/migrate-one', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         cache: 'no-store',
@@ -165,9 +161,19 @@ export default function MigracionPage() {
       if (!res.ok || !json?.success) throw new Error(json?.error || `Migración falló en ${table}`);
       setEstado((s) => ({
         ...s,
-        [table]: { status: 'OK', detalle: `Insertados: ${json.totalInserted ?? 0}` },
+        [table]: {
+          status: 'OK',
+          detalle: `Insertados: ${json.totalInserted ?? 0} · DDL: ${String(json.ddlFile || '—')}`,
+        },
       }));
-      addLog(`OK ${table}: insertados ${json.totalInserted ?? 0}`);
+      addLog(`OK ${table}: insertados ${json.totalInserted ?? 0} (DDL: ${String(json.ddlFile || '—')})`);
+      if (Array.isArray(json?.prerequisiteTables) && json.prerequisiteTables.length) {
+        addLog(
+          `⚠️ ${table} referencia a: ${json.prerequisiteTables.join(
+            ', '
+          )} (deben existir en InsForge antes, si el CREATE trae FKs).`
+        );
+      }
     } catch (e: any) {
       setEstado((s) => ({ ...s, [table]: { status: 'ERROR', error: e?.message || String(e) } }));
       addLog(`ERROR ${table}: ${e?.message || String(e)}`);
@@ -393,7 +399,7 @@ export default function MigracionPage() {
             })}
           </div>
           <p style={{ margin: '0.85rem 0 0', color: '#64748b', fontSize: '0.85rem' }}>
-            Nota: para que “crear tablas” sea automático, InsForge debe soportar DDL/API de esquema. Aquí migramos datos asumiendo que las tablas existen en InsForge con el mismo nombre.
+            Nota: al dar <strong>Migrar</strong>, el sistema primero aplica el <strong>CREATE TABLE</strong> (con sus relaciones inline) hacia InsForge vía <code>POST /api/database/migrations</code>, y luego copia los datos desde Supabase. Si la tabla trae llaves a otras tablas, esas tablas referenciadas deben existir ya en InsForge (mígralas antes en el orden de la lista).
           </p>
         </div>
       </div>

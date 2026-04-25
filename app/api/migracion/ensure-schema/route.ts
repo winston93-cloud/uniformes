@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { insforge, assertInsforgeConfigured } from '@/lib/insforge';
+import { assertInsforgeConfigured } from '@/lib/insforge';
+import { runInsforgeMigrationsSql } from '@/lib/insforgeAdminMigrations';
 
 function shouldIncludeMigration(filename: string) {
   const n = filename.toLowerCase();
@@ -34,7 +35,7 @@ export async function GET() {
       files,
       sql: mergedSql,
       note:
-        'SQL generado desde supabase/migrations (filtrando rls/storage/auditoria_triggers). Se intentará ejecutar en InsForge vía RPC si existe una función compatible.',
+        'SQL generado desde supabase/migrations (filtrando rls/storage/auditoria_triggers). La ejecución en InsForge se hace vía `POST /api/database/migrations`.',
     });
   } catch (e: any) {
     return NextResponse.json({ success: false, error: e?.message || String(e) }, { status: 500 });
@@ -56,29 +57,21 @@ export async function POST() {
     }
     const mergedSql = parts.join('\n\n');
 
-    // Intentar ejecutar SQL en InsForge usando RPC. El nombre puede variar por instalación.
-    // Probamos nombres comunes.
-    const rpcCandidates = ['exec_sql', 'execute_sql', 'run_sql', 'sql'];
-    let lastErr: any = null;
-    for (const fn of rpcCandidates) {
-      // eslint-disable-next-line no-await-in-loop
-      const { error } = await (insforge.database as any).rpc(fn, { sql: mergedSql });
-      if (!error) {
-        return NextResponse.json({ success: true, executed: true, rpc: fn, files });
-      }
-      lastErr = error;
+    try {
+      await runInsforgeMigrationsSql(mergedSql);
+      return NextResponse.json({ success: true, executed: true, files });
+    } catch (e: any) {
+      return NextResponse.json(
+        {
+          success: false,
+          executed: false,
+          error: e?.message || String(e),
+          files,
+          sql: mergedSql,
+        },
+        { status: 500 }
+      );
     }
-
-    // Si no hay RPC compatible, devolvemos el SQL para ejecutarlo manualmente en InsForge.
-    return NextResponse.json({
-      success: false,
-      executed: false,
-      error:
-        'InsForge no expuso un RPC compatible para ejecutar SQL/DDL (se intentó: exec_sql/execute_sql/run_sql/sql).',
-      rpcError: lastErr?.message || String(lastErr),
-      files,
-      sql: mergedSql,
-    });
   } catch (e: any) {
     return NextResponse.json({ success: false, error: e?.message || String(e) }, { status: 500 });
   }
