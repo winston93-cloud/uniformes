@@ -233,16 +233,22 @@ export default function MigracionPage() {
         alert(`❌ ${json.error}`);
         return;
       }
-      addLog(`InsForge admin check: HTTP ${json.status} ok=${json.success}`);
       if (!json.success) {
+        addLog(`InsForge admin check: sin endpoints OK`);
+        const lines = Array.isArray(json.results)
+          ? json.results
+              .map((r: any) => `${r.path} → HTTP ${r.status} ok=${r.ok} :: ${String(r.bodySnippet || '').slice(0, 80)}`)
+              .join('\n')
+          : '—';
         alert(
-          `❌ INSFORGE_ADMIN_TOKEN no autoriza migraciones o InsForge devolvió error.\n\nHTTP: ${String(
-            json.status ?? '—'
-          )}\n\n` + (json.error ? `Detalle: ${String(json.error)}\n\n` : '') + `Body: ${String(json.body || '').slice(0, 1200)}`
+          `❌ El host de InsForge no respondió como API admin.\n\nBase URL: ${String(json.baseUrl || '—')}\n\nResultados:\n${lines}\n\nSugerencia: ${String(
+            json.hint || ''
+          )}`
         );
-      } else {
-        alert(`✅ INSFORGE_ADMIN_TOKEN OK.\nHTTP ${json.status}`);
+        return;
       }
+      addLog(`InsForge admin check: OK (al menos un endpoint respondió 200)`);
+      alert('✅ INSFORGE_ADMIN_TOKEN OK (endpoints admin responden).');
     } catch (e: any) {
       addLog(`ERROR admin check: ${e?.message || String(e)}`);
       alert(`❌ No se pudo validar token admin: ${e?.message || String(e)}`);

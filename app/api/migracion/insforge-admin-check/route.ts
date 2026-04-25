@@ -30,22 +30,46 @@ export async function GET() {
       );
     }
 
-    const url = new URL('/api/database/migrations', baseUrl).toString();
-    const res = await fetch(url, {
-      method: 'GET',
-      headers: {
-        authorization: `Bearer ${token}`,
-        apikey: token,
-      },
-      cache: 'no-store',
-    });
-    const text = await res.text();
+    const candidates = [
+      '/api/database/migrations',
+      '/api/database/migrations/',
+      // endpoints admin alternos para detectar si el host sirve
+      '/api/database/indexes',
+      '/api/database/policies',
+    ];
+
+    const results: Array<{ path: string; status: number; ok: boolean; bodySnippet: string }> = [];
+    for (const path of candidates) {
+      // eslint-disable-next-line no-await-in-loop
+      const url = new URL(path, baseUrl).toString();
+      // eslint-disable-next-line no-await-in-loop
+      const res = await fetch(url, {
+        method: 'GET',
+        headers: {
+          authorization: `Bearer ${token}`,
+          apikey: token,
+        },
+        cache: 'no-store',
+      });
+      // eslint-disable-next-line no-await-in-loop
+      const text = await res.text();
+      results.push({
+        path,
+        status: res.status,
+        ok: res.ok,
+        bodySnippet: String(text || '').slice(0, 240),
+      });
+    }
+
+    const anyOk = results.some((r) => r.ok);
     return NextResponse.json(
       {
-        success: res.ok,
+        success: anyOk,
         configured: true,
-        status: res.status,
-        body: text,
+        baseUrl,
+        results,
+        hint:
+          'Si todos dan 404 con HTML, la variable NEXT_PUBLIC_INSFORGE_URL probablemente apunta al Dashboard y no al host backend/API del proyecto.',
       },
       { status: 200 }
     );
