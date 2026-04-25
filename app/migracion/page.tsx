@@ -3,15 +3,11 @@
 import { useEffect, useMemo, useState } from 'react';
 
 /**
- * Orden recomendado (por dependencias típicas):
- * - Catálogos base primero
- * - Entidades principales (usuarios/prendas/insumos)
- * - Relaciones (costos/ubicaciones/recetas)
- * - Transaccionales (cotizaciones/pedidos/movimientos/transferencias/etc.)
- * - Auditoría y snapshots al final
+ * Orden de importación (Winston → destino) — mismo criterio que usamos en CSV.
+ * Si una tabla tiene FKs, respeta este orden de arriba hacia abajo.
  */
 const TABLAS_34 = [
-  // Catálogos
+  'usuario_perfil',
   'roles_uniformes',
   'tallas',
   'categorias_prendas',
@@ -19,25 +15,18 @@ const TABLAS_34 = [
   'ubicaciones_almacenamiento',
   'sucursales',
   'ciclos_escolares',
-
-  // Usuarios / perfiles
-  'usuarios',
   'usuario',
-  'usuario_perfil',
+  'usuarios',
   'usuarios_uniformes',
-
-  // Entidades base
   'alumnos',
   'externos',
   'prendas',
   'insumos',
-
-  // Relaciones / costos / ubicaciones / recetas
   'costos',
-  'costo_ubicaciones',
-  'insumo_ubicaciones',
   'prenda_talla_insumos',
   'compras_insumos',
+  'costo_ubicaciones',
+  'insumo_ubicaciones',
 
   // Datos fiscales
   'datos_fiscales_cliente',
