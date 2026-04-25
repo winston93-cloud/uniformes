@@ -227,10 +227,19 @@ export default function MigracionPage() {
       addLog('Probando INSFORGE_ADMIN_TOKEN…');
       const res = await fetch('/api/migracion/insforge-admin-check', { cache: 'no-store' });
       const json = await res.json().catch(() => null);
-      if (!res.ok || !json) throw new Error('No se pudo validar token admin');
+      if (!json) throw new Error('No se pudo leer la respuesta del server (JSON inválido).');
+      if (json.error && json.configured === false) {
+        addLog(`Admin check: ${json.error}`);
+        alert(`❌ ${json.error}`);
+        return;
+      }
       addLog(`InsForge admin check: HTTP ${json.status} ok=${json.success}`);
       if (!json.success) {
-        alert(`❌ INSFORGE_ADMIN_TOKEN NO sirve.\nHTTP ${json.status}\n\n${String(json.body || '').slice(0, 800)}`);
+        alert(
+          `❌ INSFORGE_ADMIN_TOKEN no autoriza migraciones o InsForge devolvió error.\n\nHTTP: ${String(
+            json.status ?? '—'
+          )}\n\n` + (json.error ? `Detalle: ${String(json.error)}\n\n` : '') + `Body: ${String(json.body || '').slice(0, 1200)}`
+        );
       } else {
         alert(`✅ INSFORGE_ADMIN_TOKEN OK.\nHTTP ${json.status}`);
       }

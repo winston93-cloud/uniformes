@@ -12,8 +12,23 @@ export async function GET() {
   try {
     const baseUrl = getInsforgeBaseUrl();
     const token = getInsforgeAdminToken();
-    if (!baseUrl) throw new Error('Falta NEXT_PUBLIC_INSFORGE_URL/INSFORGE_URL');
-    if (!token) throw new Error('Falta INSFORGE_ADMIN_TOKEN');
+    if (!baseUrl) {
+      return NextResponse.json(
+        { success: false, configured: false, error: 'Falta NEXT_PUBLIC_INSFORGE_URL/INSFORGE_URL' },
+        { status: 200 }
+      );
+    }
+    if (!token) {
+      return NextResponse.json(
+        {
+          success: false,
+          configured: false,
+          error:
+            'Falta INSFORGE_ADMIN_TOKEN en Vercel (server). Agrega el token admin de InsForge y vuelve a desplegar.',
+        },
+        { status: 200 }
+      );
+    }
 
     const url = new URL('/api/database/migrations', baseUrl).toString();
     const res = await fetch(url, {
@@ -25,13 +40,20 @@ export async function GET() {
       cache: 'no-store',
     });
     const text = await res.text();
-    return NextResponse.json({
-      success: res.ok,
-      status: res.status,
-      body: text,
-    });
+    return NextResponse.json(
+      {
+        success: res.ok,
+        configured: true,
+        status: res.status,
+        body: text,
+      },
+      { status: 200 }
+    );
   } catch (e: any) {
-    return NextResponse.json({ success: false, error: e?.message || String(e) }, { status: 500 });
+    return NextResponse.json(
+      { success: false, configured: false, error: e?.message || String(e) },
+      { status: 200 }
+    );
   }
 }
 
