@@ -36,9 +36,10 @@ export async function GET() {
       // endpoints admin alternos para detectar si el host sirve
       '/api/database/indexes',
       '/api/database/policies',
+      '/api/database/advance/rawsql/unrestricted',
     ];
 
-    const results: Array<{ path: string; status: number; ok: boolean; bodySnippet: string }> = [];
+    const results: Array<{ method: string; path: string; status: number; ok: boolean; bodySnippet: string }> = [];
     for (const path of candidates) {
       // eslint-disable-next-line no-await-in-loop
       const url = new URL(path, baseUrl).toString();
@@ -54,6 +55,33 @@ export async function GET() {
       // eslint-disable-next-line no-await-in-loop
       const text = await res.text();
       results.push({
+        method: 'GET',
+        path,
+        status: res.status,
+        ok: res.ok,
+        bodySnippet: String(text || '').slice(0, 240),
+      });
+    }
+
+    // Probar POST contra migrations para detectar "Cannot POST" explícitamente
+    for (const path of ['/api/database/migrations', '/api/database/migrations/']) {
+      // eslint-disable-next-line no-await-in-loop
+      const url = new URL(path, baseUrl).toString();
+      // eslint-disable-next-line no-await-in-loop
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${token}`,
+          apikey: token,
+          'content-type': 'application/json; charset=utf-8',
+        },
+        body: JSON.stringify({ version: '20000101000000', name: 'probe', sql: 'SELECT 1;' }),
+        cache: 'no-store',
+      });
+      // eslint-disable-next-line no-await-in-loop
+      const text = await res.text();
+      results.push({
+        method: 'POST',
         path,
         status: res.status,
         ok: res.ok,

@@ -49,39 +49,73 @@ export async function runInsforgeMigrationsSql(sql: string) {
     );
   }
 
-  const url = new URL('/api/database/migrations', baseUrl).toString();
-  // Docs: requiere JSON body {version, name, sql} y auth admin.
+  // 1) Intentar endpoint de migrations (si está disponible en esta instancia)
   const body = {
     version: makeVersion(),
     name: 'uniformes_migracion',
     sql,
   };
-  const res = await fetch(url, {
+  const migrationsPaths = ['/api/database/migrations', '/api/database/migrations/'];
+  for (const path of migrationsPaths) {
+    // eslint-disable-next-line no-await-in-loop
+    const url = new URL(path, baseUrl).toString();
+    // eslint-disable-next-line no-await-in-loop
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json; charset=utf-8',
+        authorization: `Bearer ${token}`,
+        apikey: token,
+      },
+      body: JSON.stringify(body),
+      cache: 'no-store',
+    });
+
+    // eslint-disable-next-line no-await-in-loop
+    const text = await res.text();
+    let json: InsforgeMigrationResponse | null = null;
+    try {
+      json = JSON.parse(text) as InsforgeMigrationResponse;
+    } catch {
+      // puede venir body HTML (404) o vacío
+    }
+
+    if (res.ok && !(json && json.success === false)) {
+      return { ok: true, raw: text, json, mode: 'migrations', path };
+    }
+
+    // Si fue 404 o "Cannot POST", probamos fallback rawsql.
+    const msg = json?.error || json?.message || text || `HTTP ${res.status}`;
+    const looksLikeCannotPost =
+      typeof msg === 'string' && msg.toLowerCase().includes('cannot post /api/database/migrations');
+    if (res.status !== 404 && !looksLikeCannotPost) {
+      throw new Error(`InsForge migrations fallo (HTTP ${res.status}): ${msg}`);
+    }
+  }
+
+  // 2) Fallback: ejecutar como SQL raw (unrestricted)
+  const rawUrl = new URL('/api/database/advance/rawsql/unrestricted', baseUrl).toString();
+  const rawBody = { query: sql };
+  const rawRes = await fetch(rawUrl, {
     method: 'POST',
     headers: {
       'content-type': 'application/json; charset=utf-8',
       authorization: `Bearer ${token}`,
       apikey: token,
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify(rawBody),
     cache: 'no-store',
   });
-
-  const text = await res.text();
-  let json: InsforgeMigrationResponse | null = null;
+  const rawText = await rawRes.text();
+  let rawJson: InsforgeMigrationResponse | null = null;
   try {
-    json = JSON.parse(text) as InsforgeMigrationResponse;
+    rawJson = JSON.parse(rawText) as InsforgeMigrationResponse;
   } catch {
-    // puede venir body vacío o no-json
+    // ignore
   }
-
-  if (!res.ok) {
-    const msg = json?.error || json?.message || text || `HTTP ${res.status}`;
-    throw new Error(`InsForge migrations fallo (HTTP ${res.status}): ${msg}`);
+  if (!rawRes.ok) {
+    const msg = rawJson?.error || rawJson?.message || rawText || `HTTP ${rawRes.status}`;
+    throw new Error(`InsForge rawsql fallo (HTTP ${rawRes.status}): ${msg}`);
   }
-  if (json && json.success === false) {
-    throw new Error(`InsForge migrations error: ${json.error || json.message || 'error'}`);
-  }
-
-  return { ok: true, raw: text, json };
+  return { ok: true, raw: rawText, json: rawJson, mode: 'rawsql', path: '/api/database/advance/rawsql/unrestricted' };
 }
