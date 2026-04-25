@@ -81,6 +81,9 @@ export default function MigracionPage() {
   const [ping, setPing] = useState<{ supabaseHost: string | null; insforgeHost: string | null } | null>(null);
   const [busy, setBusy] = useState(false);
   const [schemaStatus, setSchemaStatus] = useState<'PENDIENTE' | 'OK' | 'ERROR'>('PENDIENTE');
+  const [schemaModalOpen, setSchemaModalOpen] = useState(false);
+  const [schemaSql, setSchemaSql] = useState<string>('');
+  const [schemaFiles, setSchemaFiles] = useState<string[]>([]);
 
   const seleccionadas = useMemo(() => TABLAS_34.filter((t) => seleccion[t]), [seleccion]);
   const todasOk = useMemo(() => TABLAS_34.every((t) => estado[t]?.status === 'OK'), [estado]);
@@ -119,13 +122,10 @@ export default function MigracionPage() {
       }
       setSchemaStatus('ERROR');
       addLog(`ERROR esquema: ${json?.error || 'No se pudo ejecutar DDL en InsForge'}`);
-      // En caso de no poder ejecutar, mostramos el SQL para ejecución manual.
-      if (json?.sql) {
-        addLog('Se devolvió SQL para ejecución manual (copiar desde Network/Response).');
-      }
       alert(
-        `❌ No se pudo ejecutar el DDL automáticamente en InsForge.\n\nMotivo: ${json?.error || 'Desconocido'}\n\nTe dejo el SQL en la respuesta del endpoint /api/migracion/ensure-schema (POST).`
+        `❌ No se pudo ejecutar el DDL automáticamente en InsForge.\n\nMotivo: ${json?.error || 'Desconocido'}\n\nVoy a abrir el SQL para que lo pegues en el SQL Editor de InsForge y le des Run.`
       );
+      await abrirSqlEsquema();
     } catch (e: any) {
       setSchemaStatus('ERROR');
       addLog(`ERROR esquema: ${e?.message || String(e)}`);
@@ -133,6 +133,17 @@ export default function MigracionPage() {
     } finally {
       setBusy(false);
     }
+  };
+
+  const abrirSqlEsquema = async () => {
+    addLog('Generando SQL de esquema (GET /api/migracion/ensure-schema)…');
+    const res = await fetch('/api/migracion/ensure-schema', { cache: 'no-store' });
+    const json = await res.json().catch(() => null);
+    if (!res.ok || !json?.success) throw new Error(json?.error || 'No se pudo generar el SQL del esquema');
+    setSchemaSql(String(json.sql || ''));
+    setSchemaFiles(Array.isArray(json.files) ? json.files : []);
+    setSchemaModalOpen(true);
+    addLog(`SQL listo (${schemaFiles.length || (Array.isArray(json.files) ? json.files.length : 0)} migrations).`);
   };
 
   const migrarTabla = async (table: string) => {
@@ -275,6 +286,22 @@ export default function MigracionPage() {
               ? '❌ Reintentar crear estructuras'
               : '🏗️ Crear estructuras en InsForge'}
         </button>
+        <button
+          className="btn btn-secondary"
+          type="button"
+          disabled={busy}
+          onClick={() => {
+            setSchemaModalOpen(true);
+            if (!schemaSql) {
+              abrirSqlEsquema().catch((e: any) => {
+                addLog(`ERROR generar SQL: ${e?.message || String(e)}`);
+                alert(`❌ No se pudo generar el SQL: ${e?.message || String(e)}`);
+              });
+            }
+          }}
+        >
+          Ver SQL del esquema
+        </button>
         <button className="btn btn-secondary" type="button" disabled={busy} onClick={() => toggleAll(true)}>
           Marcar todo
         </button>
@@ -416,6 +443,87 @@ export default function MigracionPage() {
           {todasOk ? '✅ TODO LISTO — Pasar todo el proyecto a InsForge' : '⛔ Pasar todo el proyecto de Supabase a InsForge'}
         </button>
       </div>
+
+      {schemaModalOpen ? (
+        <div
+          className="modal-overlay"
+          style={{ zIndex: 12000 }}
+          onClick={() => setSchemaModalOpen(false)}
+        >
+          <div
+            className="modal-content"
+            style={{
+              maxWidth: 'min(1100px, 100vw - 1.5rem)',
+              width: '100%',
+              maxHeight: '90vh',
+              overflow: 'auto',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
+              <div>
+                <h2 style={{ margin: 0 }}>SQL de esquema para InsForge</h2>
+                <p style={{ margin: '0.35rem 0 0', fontSize: '0.9rem', color: '#64748b' }}>
+                  Copia y pega esto en el <strong>SQL Editor de InsForge</strong> y presiona <strong>Run</strong>.
+                </p>
+                {schemaFiles.length ? (
+                  <p style={{ margin: '0.25rem 0 0', fontSize: '0.82rem', color: '#94a3b8' }}>
+                    Incluye {schemaFiles.length} migrations (filtradas sin RLS/Storage/Auditoría triggers).
+                  </p>
+                ) : null}
+              </div>
+              <button type="button" className="modal-close-btn" onClick={() => setSchemaModalOpen(false)}>
+                ✕
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+              <button
+                className="btn btn-secondary"
+                type="button"
+                onClick={() => {
+                  navigator.clipboard
+                    .writeText(schemaSql || '')
+                    .then(() => addLog('SQL copiado al portapapeles.'))
+                    .catch(() => addLog('No se pudo copiar al portapapeles.'));
+                }}
+                disabled={!schemaSql}
+              >
+                Copiar SQL
+              </button>
+              <button
+                className="btn btn-secondary"
+                type="button"
+                onClick={() => {
+                  setSchemaStatus('OK');
+                  addLog('Marcado como OK: esquema aplicado (confirmado manualmente).');
+                  setSchemaModalOpen(false);
+                }}
+              >
+                Ya lo ejecuté (marcar OK)
+              </button>
+            </div>
+
+            <textarea
+              value={schemaSql}
+              onChange={(e) => setSchemaSql(e.target.value)}
+              style={{
+                width: '100%',
+                minHeight: 420,
+                fontFamily:
+                  'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+                fontSize: '0.82rem',
+                background: '#0b1220',
+                color: '#e2e8f0',
+                border: '1px solid rgba(148, 163, 184, 0.25)',
+                borderRadius: 12,
+                padding: '0.75rem',
+              }}
+              placeholder="Cargando SQL…"
+            />
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
