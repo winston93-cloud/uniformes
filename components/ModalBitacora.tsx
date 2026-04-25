@@ -1,0 +1,219 @@
+'use client';
+
+import { useEffect, useMemo, useState } from 'react';
+
+type AuditoriaRow = {
+  id: string;
+  tabla: string;
+  operacion: 'INSERT' | 'UPDATE' | 'DELETE' | string;
+  registro_id: string | null;
+  registro_pk?: string | null;
+  usuario_id: number | null;
+  timestamp: string;
+};
+
+function fmtFechaHora(fecha: string) {
+  try {
+    return new Date(fecha).toLocaleString('es-MX');
+  } catch {
+    return fecha;
+  }
+}
+
+export default function ModalBitacora({
+  abierto,
+  onClose,
+}: {
+  abierto: boolean;
+  onClose: () => void;
+}) {
+  const [desde, setDesde] = useState('');
+  const [hasta, setHasta] = useState('');
+  const [tabla, setTabla] = useState('');
+  const [operacion, setOperacion] = useState('');
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [rows, setRows] = useState<AuditoriaRow[]>([]);
+  const [count, setCount] = useState<number | null>(null);
+  const [offset, setOffset] = useState(0);
+  const limit = 100;
+
+  const queryKey = useMemo(
+    () => `${abierto}|${desde}|${hasta}|${tabla}|${operacion}|${offset}|${limit}`,
+    [abierto, desde, hasta, tabla, operacion, offset]
+  );
+
+  useEffect(() => {
+    if (!abierto) return;
+    let cancel = false;
+    (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const params = new URLSearchParams();
+        if (desde) params.set('desde', desde);
+        if (hasta) params.set('hasta', hasta);
+        if (tabla) params.set('tabla', tabla);
+        if (operacion) params.set('operacion', operacion);
+        params.set('limit', String(limit));
+        params.set('offset', String(offset));
+        const res = await fetch(`/api/auditoria?${params.toString()}`);
+        const json = await res.json().catch(() => null);
+        if (!res.ok || !json?.success) throw new Error(json?.error || 'No se pudo cargar la bitácora');
+        if (cancel) return;
+        setRows(json.rows || []);
+        setCount(typeof json.count === 'number' ? json.count : null);
+      } catch (e: any) {
+        if (!cancel) setError(e?.message || String(e));
+      } finally {
+        if (!cancel) setLoading(false);
+      }
+    })();
+    return () => {
+      cancel = true;
+    };
+  }, [queryKey]);
+
+  useEffect(() => {
+    if (!abierto) return;
+    setOffset(0);
+  }, [abierto, desde, hasta, tabla, operacion]);
+
+  if (!abierto) return null;
+
+  const puedeAnterior = offset > 0;
+  const puedeSiguiente = rows.length === limit && (count === null || offset + limit < count);
+
+  return (
+    <div
+      className="modal-overlay"
+      style={{ zIndex: 11000 }}
+      onClick={onClose}
+    >
+      <div
+        className="modal-content"
+        style={{
+          maxWidth: 'min(1100px, 100vw - 1.5rem)',
+          width: '100%',
+          maxHeight: '90vh',
+          overflow: 'auto',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
+          <div>
+            <h2 style={{ margin: 0 }}>Bitácora</h2>
+            <p style={{ margin: '0.35rem 0 0', fontSize: '0.9rem', color: '#64748b' }}>
+              Registro de inserciones, ediciones y eliminaciones por tabla.
+            </p>
+          </div>
+          <button type="button" className="modal-close-btn" onClick={onClose}>
+            ✕
+          </button>
+        </div>
+
+        <div style={{ padding: '1rem 1.25rem' }}>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+              gap: '0.75rem',
+              alignItems: 'end',
+            }}
+          >
+            <div className="form-group" style={{ margin: 0 }}>
+              <label className="form-label">Desde</label>
+              <input className="form-input" type="date" value={desde} onChange={(e) => setDesde(e.target.value)} />
+            </div>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label className="form-label">Hasta</label>
+              <input className="form-input" type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} />
+            </div>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label className="form-label">Tabla</label>
+              <input className="form-input" value={tabla} onChange={(e) => setTabla(e.target.value)} placeholder="Ej: pedidos" />
+            </div>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label className="form-label">Operación</label>
+              <select className="form-select" value={operacion} onChange={(e) => setOperacion(e.target.value)}>
+                <option value="">Todas</option>
+                <option value="INSERT">INSERT</option>
+                <option value="UPDATE">UPDATE</option>
+                <option value="DELETE">DELETE</option>
+              </select>
+            </div>
+          </div>
+
+          <div style={{ marginTop: '0.85rem', display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <div style={{ color: '#64748b', fontSize: '0.9rem' }}>
+              {count !== null ? (
+                <span>
+                  Total: <strong>{count}</strong> · Mostrando {offset + 1}–{offset + rows.length}
+                </span>
+              ) : (
+                <span>Mostrando {rows.length} registros</span>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button className="btn btn-secondary" type="button" disabled={!puedeAnterior || loading} onClick={() => setOffset((o) => Math.max(0, o - limit))}>
+                ← Anterior
+              </button>
+              <button className="btn btn-secondary" type="button" disabled={!puedeSiguiente || loading} onClick={() => setOffset((o) => o + limit)}>
+                Siguiente →
+              </button>
+            </div>
+          </div>
+
+          {error && (
+            <div className="alert alert-error" style={{ marginTop: '0.85rem' }}>
+              {error}
+            </div>
+          )}
+
+          <div className="table-container" style={{ marginTop: '0.85rem' }}>
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Operación</th>
+                  <th>Tabla</th>
+                  <th>Registro</th>
+                  <th>Usuario</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={5} style={{ padding: '1.25rem', textAlign: 'center', color: '#64748b' }}>
+                      Cargando…
+                    </td>
+                  </tr>
+                ) : rows.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} style={{ padding: '1.25rem', textAlign: 'center', color: '#64748b' }}>
+                      Sin registros para los filtros seleccionados.
+                    </td>
+                  </tr>
+                ) : (
+                  rows.map((r) => (
+                    <tr key={r.id}>
+                      <td style={{ whiteSpace: 'nowrap' }}>{fmtFechaHora(r.timestamp)}</td>
+                      <td style={{ fontWeight: 800 }}>{String(r.operacion || '').toUpperCase()}</td>
+                      <td style={{ fontFamily: 'monospace' }}>{r.tabla}</td>
+                      <td style={{ fontFamily: 'monospace' }}>
+                        {r.registro_id || r.registro_pk || '—'}
+                      </td>
+                      <td style={{ fontFamily: 'monospace' }}>{r.usuario_id ?? '—'}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+

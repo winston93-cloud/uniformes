@@ -8,10 +8,12 @@ import TarjetaInsumosFaltantes from '@/components/TarjetaInsumosFaltantes';
 import TarjetaAlertasStock from '@/components/TarjetaAlertasStock';
 import TarjetaAlertasStockPrendas from '@/components/TarjetaAlertasStockPrendas';
 import UserCard from '@/components/UserCard';
+import ModalBitacora from '@/components/ModalBitacora';
 
 export default function Dashboard() {
   const { sesion, loading, sesionError, recargarSesion } = useAuth();
   const [tarjetaExpandida, setTarjetaExpandida] = useState<'insumos' | 'alertas' | 'prendas' | null>(null);
+  const [bitacoraAbierta, setBitacoraAbierta] = useState(false);
 
   const handleToggleInsumos = () => {
     setTarjetaExpandida(prev => prev === 'insumos' ? null : 'insumos');
@@ -94,6 +96,18 @@ export default function Dashboard() {
           Sistema de Uniformes Winston Churchill
           <span className="title-icon">✨</span>
         </h1>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '-0.5rem', marginBottom: '1rem' }}>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => setBitacoraAbierta(true)}
+            style={{ whiteSpace: 'nowrap' }}
+            title="Ver bitácora de movimientos (insert/update/delete)"
+          >
+            📒 Bitácora
+          </button>
+        </div>
 
         {/* ⭐ MÓDULOS PRINCIPALES VIP - Layout Dinámico con 3 Tarjetas ⭐ */}
         <div 
@@ -737,6 +751,8 @@ export default function Dashboard() {
           </Link>
         </div>
       </div>
+
+      <ModalBitacora abierto={bitacoraAbierta} onClose={() => setBitacoraAbierta(false)} />
     </LayoutWrapper>
   );
 }
