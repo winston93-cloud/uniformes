@@ -2,8 +2,16 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
+/**
+ * Orden recomendado (por dependencias típicas):
+ * - Catálogos base primero
+ * - Entidades principales (usuarios/prendas/insumos)
+ * - Relaciones (costos/ubicaciones/recetas)
+ * - Transaccionales (cotizaciones/pedidos/movimientos/transferencias/etc.)
+ * - Auditoría y snapshots al final
+ */
 const TABLAS_34 = [
-  'usuario_perfil',
+  // Catálogos
   'roles_uniformes',
   'tallas',
   'categorias_prendas',
@@ -11,30 +19,47 @@ const TABLAS_34 = [
   'ubicaciones_almacenamiento',
   'sucursales',
   'ciclos_escolares',
-  'usuario',
+
+  // Usuarios / perfiles
   'usuarios',
+  'usuario',
+  'usuario_perfil',
   'usuarios_uniformes',
+
+  // Entidades base
   'alumnos',
   'externos',
   'prendas',
   'insumos',
+
+  // Relaciones / costos / ubicaciones / recetas
   'costos',
-  'prenda_talla_insumos',
-  'compras_insumos',
   'costo_ubicaciones',
   'insumo_ubicaciones',
+  'prenda_talla_insumos',
+  'compras_insumos',
+
+  // Datos fiscales
   'datos_fiscales_cliente',
+
+  // Cotizaciones
   'cotizaciones',
   'detalle_cotizacion',
+
+  // Pedidos y movimientos
   'pedidos',
   'detalle_pedidos',
   'movimientos',
+
+  // Cortes / transferencias / devoluciones
   'cortes',
   'detalle_cortes',
   'transferencias',
   'detalle_transferencias',
   'devoluciones',
   'detalle_devoluciones',
+
+  // Auditoría / snapshots
   'auditoria',
   'snapshot_insumos_pedido',
 ] as const;
@@ -57,6 +82,7 @@ export default function MigracionPage() {
   const [busy, setBusy] = useState(false);
 
   const seleccionadas = useMemo(() => TABLAS_34.filter((t) => seleccion[t]), [seleccion]);
+  const todasOk = useMemo(() => TABLAS_34.every((t) => estado[t]?.status === 'OK'), [estado]);
 
   const addLog = (line: string) => setLogs((prev) => [`${new Date().toLocaleString('es-MX')} — ${line}`, ...prev]);
 
@@ -150,6 +176,29 @@ export default function MigracionPage() {
       }
     } finally {
       setBusy(false);
+    }
+  };
+
+  const finalizarCutover = async () => {
+    if (!todasOk) {
+      addLog('Aún faltan tablas por migrar: el corte a InsForge está bloqueado.');
+      alert('⚠️ Aún faltan tablas por migrar. Cuando TODAS estén en OK, podrás hacer el corte a InsForge.');
+      return;
+    }
+    const ok = confirm(
+      '✅ Todas las tablas están en OK.\n\n¿Deseas iniciar el corte del sistema para operar con InsForge?\n\nNota: esto requiere cambiar variables de entorno y redeploy.'
+    );
+    if (!ok) return;
+    try {
+      addLog('Iniciando corte a InsForge (instrucciones)…');
+      const res = await fetch('/api/migracion/finalize', { cache: 'no-store' });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.success) throw new Error(json?.error || 'No se pudo preparar el corte');
+      addLog(`Cutover listo: ${json.message}`);
+      alert(json.message);
+    } catch (e: any) {
+      addLog(`ERROR cutover: ${e?.message || String(e)}`);
+      alert(`❌ No se pudo preparar el corte: ${e?.message || String(e)}`);
     }
   };
 
@@ -293,6 +342,26 @@ export default function MigracionPage() {
         >
           {logs.length ? logs.join('\n') : '—'}
         </div>
+      </div>
+
+      <div style={{ maxWidth: '1100px', margin: '1rem auto 0', display: 'flex', justifyContent: 'center' }}>
+        <button
+          type="button"
+          className="btn"
+          disabled={busy}
+          onClick={finalizarCutover}
+          style={{
+            background: todasOk ? '#16a34a' : '#dc2626',
+            color: 'white',
+            border: 'none',
+            padding: '0.9rem 1.2rem',
+            borderRadius: 12,
+            fontWeight: 800,
+            width: 'min(720px, 100%)',
+          }}
+        >
+          {todasOk ? '✅ TODO LISTO — Pasar todo el proyecto a InsForge' : '⛔ Pasar todo el proyecto de Supabase a InsForge'}
+        </button>
       </div>
     </div>
   );
