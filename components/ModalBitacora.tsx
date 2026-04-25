@@ -10,6 +10,8 @@ type AuditoriaRow = {
   registro_pk?: string | null;
   usuario_id: number | null;
   timestamp: string;
+  datos_anteriores?: any;
+  datos_nuevos?: any;
 };
 
 function fmtFechaHora(fecha: string) {
@@ -38,6 +40,8 @@ export default function ModalBitacora({
   const [count, setCount] = useState<number | null>(null);
   const [offset, setOffset] = useState(0);
   const limit = 100;
+  const [seleccion, setSeleccion] = useState<AuditoriaRow | null>(null);
+  const [tabDetalle, setTabDetalle] = useState<'ANTES' | 'DESPUES'>('DESPUES');
 
   const queryKey = useMemo(
     () => `${abierto}|${desde}|${hasta}|${tabla}|${operacion}|${offset}|${limit}`,
@@ -64,6 +68,7 @@ export default function ModalBitacora({
         if (cancel) return;
         setRows(json.rows || []);
         setCount(typeof json.count === 'number' ? json.count : null);
+        setSeleccion(null);
       } catch (e: any) {
         if (!cancel) setError(e?.message || String(e));
       } finally {
@@ -84,6 +89,8 @@ export default function ModalBitacora({
 
   const puedeAnterior = offset > 0;
   const puedeSiguiente = rows.length === limit && (count === null || offset + limit < count);
+  const tieneAntes = Boolean(seleccion?.datos_anteriores);
+  const tieneDespues = Boolean(seleccion?.datos_nuevos);
 
   return (
     <div
@@ -197,7 +204,18 @@ export default function ModalBitacora({
                   </tr>
                 ) : (
                   rows.map((r) => (
-                    <tr key={r.id}>
+                    <tr
+                      key={r.id}
+                      onClick={() => {
+                        setSeleccion(r);
+                        setTabDetalle(r.operacion === 'DELETE' ? 'ANTES' : 'DESPUES');
+                      }}
+                      style={{
+                        cursor: 'pointer',
+                        background: seleccion?.id === r.id ? '#f1f5f9' : undefined,
+                      }}
+                      title="Click para ver detalles"
+                    >
                       <td style={{ whiteSpace: 'nowrap' }}>{fmtFechaHora(r.timestamp)}</td>
                       <td style={{ fontWeight: 800 }}>{String(r.operacion || '').toUpperCase()}</td>
                       <td style={{ fontFamily: 'monospace' }}>{r.tabla}</td>
@@ -211,6 +229,84 @@ export default function ModalBitacora({
               </tbody>
             </table>
           </div>
+
+          {seleccion && (
+            <div
+              style={{
+                marginTop: '1rem',
+                border: '1px solid #e2e8f0',
+                borderRadius: 12,
+                overflow: 'hidden',
+                background: 'white',
+              }}
+            >
+              <div
+                style={{
+                  padding: '0.75rem 0.9rem',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: '0.75rem',
+                  borderBottom: '1px solid #e2e8f0',
+                  background: '#f8fafc',
+                  flexWrap: 'wrap',
+                }}
+              >
+                <div style={{ fontSize: '0.9rem', color: '#0f172a' }}>
+                  <strong>Detalle</strong> · {fmtFechaHora(seleccion.timestamp)} ·{' '}
+                  <span style={{ fontFamily: 'monospace' }}>{seleccion.tabla}</span> ·{' '}
+                  <span style={{ fontWeight: 900 }}>{String(seleccion.operacion).toUpperCase()}</span>
+                </div>
+                <button className="btn btn-secondary" type="button" onClick={() => setSeleccion(null)}>
+                  Cerrar detalle
+                </button>
+              </div>
+
+              <div style={{ padding: '0.75rem 0.9rem' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    disabled={!tieneAntes}
+                    onClick={() => setTabDetalle('ANTES')}
+                    style={tabDetalle === 'ANTES' ? { borderColor: '#334155', fontWeight: 800 } : undefined}
+                    title={!tieneAntes ? 'Este registro no tiene "antes"' : undefined}
+                  >
+                    Antes
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    disabled={!tieneDespues}
+                    onClick={() => setTabDetalle('DESPUES')}
+                    style={tabDetalle === 'DESPUES' ? { borderColor: '#334155', fontWeight: 800 } : undefined}
+                    title={!tieneDespues ? 'Este registro no tiene "después"' : undefined}
+                  >
+                    Después
+                  </button>
+                </div>
+
+                <pre
+                  style={{
+                    margin: 0,
+                    padding: '0.85rem',
+                    borderRadius: 12,
+                    background: '#0b1220',
+                    color: '#e2e8f0',
+                    fontSize: '0.85rem',
+                    overflowX: 'auto',
+                    lineHeight: 1.35,
+                  }}
+                >
+                  {JSON.stringify(
+                    tabDetalle === 'ANTES' ? seleccion.datos_anteriores ?? null : seleccion.datos_nuevos ?? null,
+                    null,
+                    2
+                  )}
+                </pre>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
