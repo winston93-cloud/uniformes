@@ -16,6 +16,24 @@ function getInsforgeAnonKey() {
   return process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY ?? process.env.INSFORGE_ANON_KEY;
 }
 
+function getInsforgeAdminToken() {
+  return process.env.INSFORGE_ADMIN_TOKEN ?? process.env.NEXT_PUBLIC_INSFORGE_ADMIN_TOKEN;
+}
+
+function makeVersion() {
+  // YYYYMMDDHHmmss (UTC)
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return (
+    String(d.getUTCFullYear()) +
+    pad(d.getUTCMonth() + 1) +
+    pad(d.getUTCDate()) +
+    pad(d.getUTCHours()) +
+    pad(d.getUTCMinutes()) +
+    pad(d.getUTCSeconds())
+  );
+}
+
 /**
  * InsForge: ejecuta SQL/DDL/relaciones (FK) en UNA transacción vía Admin API.
  * Documentación: `POST /api/database/migrations`
@@ -24,20 +42,27 @@ export async function runInsforgeMigrationsSql(sql: string) {
   assertInsforgeConfigured();
   const baseUrl = getInsforgeBaseUrl();
   if (!baseUrl) throw new Error('Falta NEXT_PUBLIC_INSFORGE_URL/INSFORGE_URL');
-  const key = getInsforgeAnonKey();
-  if (!key) throw new Error('Falta NEXT_PUBLIC_INSFORGE_ANON_KEY/INSFORGE_ANON_KEY');
+  const token = getInsforgeAdminToken() || getInsforgeAnonKey();
+  if (!token) {
+    throw new Error(
+      'Falta token de InsForge para migraciones. Configura INSFORGE_ADMIN_TOKEN (recomendado) o NEXT_PUBLIC_INSFORGE_ANON_KEY.'
+    );
+  }
 
   const url = new URL('/api/database/migrations', baseUrl).toString();
-  // InsForge HttpClient setea `Authorization: Bearer <anonKey>` aunque no sea JWT;
-  // replicamos el mismo patrón y añadimos `apikey` (PostgREST style) por compatibilidad.
+  // Docs: requiere JSON body {version, name, sql} y auth admin.
+  const body = {
+    version: makeVersion(),
+    name: 'uniformes_migracion',
+    sql,
+  };
   const res = await fetch(url, {
     method: 'POST',
     headers: {
-      'content-type': 'text/plain; charset=utf-8',
-      authorization: `Bearer ${key}`,
-      apikey: key,
+      'content-type': 'application/json; charset=utf-8',
+      authorization: `Bearer ${token}`,
     },
-    body: sql,
+    body: JSON.stringify(body),
     cache: 'no-store',
   });
 
