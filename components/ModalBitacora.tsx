@@ -42,10 +42,11 @@ export default function ModalBitacora({
   const limit = 100;
   const [seleccion, setSeleccion] = useState<AuditoriaRow | null>(null);
   const [tabDetalle, setTabDetalle] = useState<'ANTES' | 'DESPUES'>('DESPUES');
+  const [refreshToken, setRefreshToken] = useState(0);
 
   const queryKey = useMemo(
-    () => `${abierto}|${desde}|${hasta}|${tabla}|${operacion}|${offset}|${limit}`,
-    [abierto, desde, hasta, tabla, operacion, offset]
+    () => `${abierto}|${desde}|${hasta}|${tabla}|${operacion}|${offset}|${limit}|${refreshToken}`,
+    [abierto, desde, hasta, tabla, operacion, offset, refreshToken]
   );
 
   useEffect(() => {
@@ -62,7 +63,9 @@ export default function ModalBitacora({
         if (operacion) params.set('operacion', operacion);
         params.set('limit', String(limit));
         params.set('offset', String(offset));
-        const res = await fetch(`/api/auditoria?${params.toString()}`);
+        // Evitar cache del navegador / edge
+        params.set('_ts', String(Date.now()));
+        const res = await fetch(`/api/auditoria?${params.toString()}`, { cache: 'no-store' });
         const json = await res.json().catch(() => null);
         if (!res.ok || !json?.success) throw new Error(json?.error || 'No se pudo cargar la bitácora');
         if (cancel) return;
@@ -162,7 +165,16 @@ export default function ModalBitacora({
                 <span>Mostrando {rows.length} registros</span>
               )}
             </div>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <button
+                className="btn btn-secondary"
+                type="button"
+                disabled={loading}
+                onClick={() => setRefreshToken((x) => x + 1)}
+                title="Traer los registros más recientes"
+              >
+                ↻ Refrescar
+              </button>
               <button className="btn btn-secondary" type="button" disabled={!puedeAnterior || loading} onClick={() => setOffset((o) => Math.max(0, o - limit))}>
                 ← Anterior
               </button>
