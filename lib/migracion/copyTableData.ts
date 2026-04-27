@@ -51,6 +51,8 @@ export async function copyTableDataFromSupabaseToInsforge(opts: {
   chunkSize?: number;
   startOffset?: number;
   truncateDestination?: boolean;
+  /** Renombres aplicados solo en el fallback Tables API (columnas reservadas en InsForge). */
+  tablesApiRename?: Record<string, string>;
 }) {
   const table = String(opts.table || '').trim();
   if (!table || !isSafeTableName(table)) {
@@ -110,9 +112,19 @@ export async function copyTableDataFromSupabaseToInsforge(opts: {
   const hasUuid = destCols.has('uuid');
   const hasId = destCols.has('id');
 
+  const tablesApiRename = opts.tablesApiRename || {};
+
   const normalizeRowForInsforge = (row: any) => {
     if (!row || typeof row !== 'object') return row;
     const out: any = {};
+
+    // Si el DDL en InsForge renombró columnas reservadas, reflejarlo en los datos.
+    for (const [from, to] of Object.entries(tablesApiRename)) {
+      if (!from || !to) continue;
+      if (!destCols.has(to)) continue;
+      if (row?.[from] === undefined) continue;
+      out[to] = row[from];
+    }
 
     // Caso común: InsForge usa `uuid` como PK, Supabase usa `id`.
     // Si el destino NO tiene `id` pero sí `uuid`, mapeamos.
@@ -121,6 +133,7 @@ export async function copyTableDataFromSupabaseToInsforge(opts: {
     }
 
     for (const [k, v] of Object.entries(row)) {
+      if (tablesApiRename[k]) continue; // ya movido arriba
       if (k === 'id' && !hasId && hasUuid) continue; // ya mapeado a uuid
       if (!destCols.has(k)) continue; // omitir columnas que no existen en destino
       out[k] = v;

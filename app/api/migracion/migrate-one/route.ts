@@ -49,8 +49,9 @@ export async function POST(req: Request) {
     await insforgeDeleteTable(table);
 
     // 1) Crear estructura en InsForge (incluye FK inline del CREATE TABLE)
+    let ddlRun: any = null;
     try {
-      await runInsforgeMigrationsSql(ddl);
+      ddlRun = await runInsforgeMigrationsSql(ddl);
     } catch (e1: any) {
         return NextResponse.json(
           {
@@ -66,12 +67,23 @@ export async function POST(req: Request) {
     }
 
     // 2) Copiar datos
-    const copy = await copyTableDataFromSupabaseToInsforge({ table, truncateDestination: true });
+    const tablesApiRename =
+      ddlRun && ddlRun.mode === 'tables' && ddlRun.tablesApiRename && typeof ddlRun.tablesApiRename === 'object'
+        ? ddlRun.tablesApiRename
+        : undefined;
+
+    const copy = await copyTableDataFromSupabaseToInsforge({
+      table,
+      truncateDestination: true,
+      ...(tablesApiRename ? { tablesApiRename } : {}),
+    });
 
     return NextResponse.json({
       success: true,
       ddlFile: extracted.file,
       prerequisiteTables: prereq,
+      tablesApiRename: tablesApiRename || null,
+      ddlMode: ddlRun?.mode || null,
       ...copy,
     });
   } catch (e: any) {

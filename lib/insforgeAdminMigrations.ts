@@ -1,5 +1,6 @@
 import { assertInsforgeConfigured } from '@/lib/insforge';
 import { insforgeCreateTable, type InsforgeColumn } from '@/lib/insforgeAdminTables';
+import { sanitizeCreateTableSqlForInsforgeTablesApi } from '@/lib/migracion/insforgeTablesApiSanitize';
 
 type InsforgeMigrationResponse = {
   success?: boolean;
@@ -96,14 +97,22 @@ export async function runInsforgeMigrationsSql(sql: string) {
 
   // 2) Fallback: crear tabla vía Tables API (admin) cuando migrations POST no existe.
   // Soportamos CREATE TABLE sencillo para el caso de uniformes.
-  const parsed = parseCreateTableSqlForTablesApi(sql);
+  const { sql: tablesSql, rename: tablesApiRename } = sanitizeCreateTableSqlForInsforgeTablesApi(sql);
+  const parsed = parseCreateTableSqlForTablesApi(tablesSql) || parseCreateTableSqlForTablesApi(sql);
   if (!parsed) {
     throw new Error(
       'InsForge no soporta POST /api/database/migrations en esta instancia y no pude convertir el SQL a Tables API.'
     );
   }
   await insforgeCreateTable({ tableName: parsed.tableName, rlsEnabled: false, columns: parsed.columns });
-  return { ok: true, raw: JSON.stringify({ tableName: parsed.tableName }), json: null, mode: 'tables', path: '/api/database/tables' };
+  return {
+    ok: true,
+    raw: JSON.stringify({ tableName: parsed.tableName }),
+    json: null,
+    mode: 'tables',
+    path: '/api/database/tables',
+    tablesApiRename,
+  };
 }
 
 function parseCreateTableSqlForTablesApi(sql: string): { tableName: string; columns: InsforgeColumn[] } | null {
