@@ -323,8 +323,30 @@ export default function MigracionPage() {
       const insf = json.insforgeCount;
       const match = json.match;
       addLog(`Verificación ${table}: Supabase=${supa ?? '¿?'} InsForge=${insf ?? '¿?'} Match=${match ?? '¿?'}`);
+      const ok =
+        typeof supa === 'number' && typeof insf === 'number' && typeof match === 'boolean'
+          ? match
+          : false;
+      setEstado((s) => ({
+        ...s,
+        [table]: ok
+          ? {
+              status: 'OK',
+              detalle: `Verificado: Supabase=${supa} · InsForge=${insf} ✓`,
+            }
+          : {
+              status: 'ERROR',
+              error: `Verificación: Supabase=${String(supa)} · InsForge=${String(insf)} · coincide=${String(match)}`,
+            },
+      }));
+      alert(
+        ok
+          ? `✅ ${table}\nSupabase: ${supa}\nInsForge: ${insf}\nCoinciden: sí`
+          : `⚠️ ${table}\nSupabase: ${String(supa)}\nInsForge: ${String(insf)}\nCoinciden: ${String(match)}`
+      );
     } catch (e: any) {
       addLog(`ERROR verificación ${table}: ${e?.message || String(e)}`);
+      alert(`❌ Verificación ${table}: ${e?.message || String(e)}`);
     }
   };
 
@@ -600,7 +622,7 @@ export default function MigracionPage() {
                     <button className="btn btn-secondary" type="button" disabled={busy || !selected} onClick={() => migrarTabla(t)}>
                       Migrar
                     </button>
-                    <button className="btn btn-secondary" type="button" disabled={busy || !selected} onClick={() => verificarTabla(t)}>
+                    <button className="btn btn-secondary" type="button" disabled={busy} onClick={() => verificarTabla(t)}>
                       Verificar
                     </button>
                   </div>

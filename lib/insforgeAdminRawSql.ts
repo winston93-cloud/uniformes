@@ -16,6 +16,11 @@ export async function runInsforgeRawSql<T = any>(query: string, params?: any[]) 
   if (!token) throw new Error('Falta INSFORGE_ADMIN_TOKEN');
 
   const url = new URL('/api/database/advance/rawsql/unrestricted', baseUrl).toString();
+  const payload: Record<string, unknown> = { query };
+  // Solo enviar params cuando hay placeholders; evita edge-cases del backend con arrays vacíos.
+  if (params !== undefined && params !== null && Array.isArray(params) && params.length > 0) {
+    payload.params = params;
+  }
   const res = await fetch(url, {
     method: 'POST',
     headers: {
@@ -23,7 +28,7 @@ export async function runInsforgeRawSql<T = any>(query: string, params?: any[]) 
       authorization: `Bearer ${token}`,
       apikey: token,
     },
-    body: JSON.stringify({ query, params: params || [] }),
+    body: JSON.stringify(payload),
     cache: 'no-store',
   });
 
