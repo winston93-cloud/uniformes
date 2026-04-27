@@ -1,4 +1,5 @@
 import { assertInsforgeConfigured } from '@/lib/insforge';
+import { insforgeCreateTable, type InsforgeColumn } from '@/lib/insforgeAdminTables';
 
 type InsforgeMigrationResponse = {
   success?: boolean;
@@ -93,29 +94,67 @@ export async function runInsforgeMigrationsSql(sql: string) {
     }
   }
 
-  // 2) Fallback: ejecutar como SQL raw (unrestricted)
-  const rawUrl = new URL('/api/database/advance/rawsql/unrestricted', baseUrl).toString();
-  const rawBody = { query: sql };
-  const rawRes = await fetch(rawUrl, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json; charset=utf-8',
-      authorization: `Bearer ${token}`,
-      apikey: token,
-    },
-    body: JSON.stringify(rawBody),
-    cache: 'no-store',
-  });
-  const rawText = await rawRes.text();
-  let rawJson: InsforgeMigrationResponse | null = null;
-  try {
-    rawJson = JSON.parse(rawText) as InsforgeMigrationResponse;
-  } catch {
-    // ignore
+  // 2) Fallback: crear tabla vía Tables API (admin) cuando migrations POST no existe.
+  // Soportamos CREATE TABLE sencillo para el caso de uniformes.
+  const parsed = parseCreateTableSqlForTablesApi(sql);
+  if (!parsed) {
+    throw new Error(
+      'InsForge no soporta POST /api/database/migrations en esta instancia y no pude convertir el SQL a Tables API.'
+    );
   }
-  if (!rawRes.ok) {
-    const msg = rawJson?.error || rawJson?.message || rawText || `HTTP ${rawRes.status}`;
-    throw new Error(`InsForge rawsql fallo (HTTP ${rawRes.status}): ${msg}`);
+  await insforgeCreateTable({ tableName: parsed.tableName, rlsEnabled: false, columns: parsed.columns });
+  return { ok: true, raw: JSON.stringify({ tableName: parsed.tableName }), json: null, mode: 'tables', path: '/api/database/tables' };
+}
+
+function parseCreateTableSqlForTablesApi(sql: string): { tableName: string; columns: InsforgeColumn[] } | null {
+  // CREATE TABLE IF NOT EXISTS public.<name> ( ... );
+  const m = sql.match(/create\s+table\s+if\s+not\s+exists\s+public\.([a-zA-Z_][a-zA-Z0-9_]*)\s*\(([\s\S]*)\)\s*;?/i);
+  if (!m) return null;
+  const tableName = m[1];
+  const body = m[2];
+
+  const lines = body
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l.length && !l.startsWith('--'));
+
+  const pkMatch = body.match(/primary\s+key\s*\(([^)]+)\)/i);
+  const pkCols = pkMatch ? pkMatch[1].split(',').map((x) => x.trim().replace(/"/g, '')) : [];
+  const pkCol = pkCols[0] || null;
+
+  const columns: InsforgeColumn[] = [];
+  for (const raw of lines) {
+    if (/^constraint\b/i.test(raw)) continue;
+    if (/^primary\s+key\b/i.test(raw)) continue;
+    if (/^unique\b/i.test(raw)) continue;
+    // cortar coma final
+    const l = raw.replace(/,+$/, '');
+    const cm2 = l.match(/^"?([a-zA-Z_][a-zA-Z0-9_]*)"?\s+([a-zA-Z_][a-zA-Z0-9_]*(?:\([^)]+\))?)([\s\S]*)$/);
+    const name = cm2?.[1];
+    const typeRaw0 = cm2?.[2];
+    const rest0 = cm2?.[3];
+    if (!name || !typeRaw0) continue;
+    const typeRaw = typeRaw0.toLowerCase();
+    const rest = (rest0 || '').toLowerCase();
+    const nullable = !rest.includes('not null');
+    const unique = rest.includes('unique') || (pkCol === name);
+    const isPrimaryKey = pkCol === name;
+    const defMatch = l.match(/\bdefault\b\s+(.+)$/i);
+    const defaultValue = defMatch ? defMatch[1].trim() : null;
+
+    const type = mapPgTypeToInsforge(typeRaw);
+    columns.push({ name, type, nullable, unique, defaultValue, isPrimaryKey });
   }
-  return { ok: true, raw: rawText, json: rawJson, mode: 'rawsql', path: '/api/database/advance/rawsql/unrestricted' };
+  return { tableName, columns };
+}
+
+function mapPgTypeToInsforge(t: string): InsforgeColumn['type'] {
+  if (t.startsWith('uuid')) return 'uuid';
+  if (t.startsWith('timestamptz') || t.startsWith('timestamp')) return 'datetime';
+  if (t.startsWith('date')) return 'datetime';
+  if (t.startsWith('jsonb') || t.startsWith('json')) return 'json';
+  if (t.startsWith('bool')) return 'boolean';
+  if (t.startsWith('int') || t.startsWith('smallint') || t.startsWith('bigint') || t.startsWith('serial')) return 'integer';
+  if (t.startsWith('numeric') || t.startsWith('decimal') || t.startsWith('real') || t.startsWith('double')) return 'float';
+  return 'string';
 }

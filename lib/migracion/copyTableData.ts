@@ -1,6 +1,5 @@
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { insforge } from '@/lib/insforge';
-import { runInsforgeRawSql } from '@/lib/insforgeAdminRawSql';
 
 function clampInt(v: unknown, min: number, max: number) {
   const n = Number(v);
@@ -31,11 +30,8 @@ export async function copyTableDataFromSupabaseToInsforge(opts: {
 
   const supabaseAdmin = getSupabaseAdmin();
 
-  if (truncateDestination) {
-    // Evitar choques por UNIQUE/PK si la tabla ya tenía datos.
-    // CASCADE para dependientes; en migración inicial esto es deseable.
-    await runInsforgeRawSql(`TRUNCATE TABLE IF EXISTS public.${table} CASCADE;`);
-  }
+  // truncateDestination se maneja a nivel de migrate-one (delete+recreate tabla)
+  void truncateDestination;
 
   let offset = startOffset;
   let totalRead = 0;

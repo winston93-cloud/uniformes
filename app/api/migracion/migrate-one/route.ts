@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { assertInsforgeConfigured } from '@/lib/insforge';
 import { runInsforgeMigrationsSql } from '@/lib/insforgeAdminMigrations';
+import { insforgeDeleteTable } from '@/lib/insforgeAdminTables';
 import { extractCreateTableDdlForPublicTable, prependExtensionIfNeeded } from '@/lib/migracion/ddlFromRepoMigrations';
 import { copyTableDataFromSupabaseToInsforge } from '@/lib/migracion/copyTableData';
 
@@ -43,6 +44,9 @@ export async function POST(req: Request) {
 
     const ddl = prependExtensionIfNeeded(extracted.sql);
     const prereq = extractReferencedPublicTablesFromDdl(ddl).filter((t) => t !== table);
+
+    // Resetear tabla destino para evitar conflictos (plan de migración inicial)
+    await insforgeDeleteTable(table);
 
     // 1) Crear estructura en InsForge (incluye FK inline del CREATE TABLE)
     try {
