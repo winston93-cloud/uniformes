@@ -6,8 +6,8 @@ export function normalizarCamposCostoApi(row: Record<string, unknown>): Record<s
   return {
     ...row,
     id: row.id,
-    talla_id: row.talla_id ?? row.tallaId,
-    prenda_id: row.prenda_id ?? row.prendaId,
+    talla_id: row.talla_id ?? row.tallaId ?? row.TallaId,
+    prenda_id: row.prenda_id ?? row.prendaId ?? row.PrendaId,
     sucursal_id: row.sucursal_id ?? row.sucursalId,
     stock: row.stock,
     stock_minimo: row.stock_minimo ?? row.stockMinimo,
@@ -37,19 +37,56 @@ export function elegirCostoPrendaTalla<T extends Record<string, unknown>>(
   return filtradas[0] ?? norm[0];
 }
 
+const PARES_PRENDA_TALLA: [string, string][] = [
+  ['prenda_id', 'talla_id'],
+  ['prendaId', 'tallaId'],
+  ['prenda_id', 'tallaId'],
+  ['prendaId', 'talla_id'],
+];
+
+/** Todas las filas costo de una prenda; prueba columnas snake_case y camelCase (InsForge). */
+export async function fetchCostosRowsByPrenda(
+  supabase: SupabaseClient,
+  prendaId: string
+): Promise<Record<string, unknown>[]> {
+  for (const col of ['prenda_id', 'prendaId'] as const) {
+    const res = await supabase.from('costos').select('*').eq(col, prendaId);
+    if (res.error) continue;
+    if ((res.data || []).length > 0) return (res.data || []) as Record<string, unknown>[];
+  }
+  const last = await supabase.from('costos').select('*').eq('prenda_id', prendaId);
+  if (!last.error) return (last.data || []) as Record<string, unknown>[];
+  const last2 = await supabase.from('costos').select('*').eq('prendaId', prendaId);
+  return (last2.data || []) as Record<string, unknown>[];
+}
+
+async function fetchCostosRawPrendaYTalla(
+  supabase: SupabaseClient,
+  prendaId: string,
+  tallaId: string
+): Promise<Record<string, unknown>[]> {
+  for (const [pc, tc] of PARES_PRENDA_TALLA) {
+    const res = await supabase.from('costos').select('*').eq(pc, prendaId).eq(tc, tallaId);
+    if (res.error) continue;
+    const rows = (res.data || []) as Record<string, unknown>[];
+    if (rows.length > 0) return rows;
+  }
+  const fallback = await supabase
+    .from('costos')
+    .select('*')
+    .eq('prenda_id', prendaId)
+    .eq('talla_id', tallaId);
+  if (!fallback.error) return (fallback.data || []) as Record<string, unknown>[];
+  return [];
+}
+
 /** Busca costo sin usar sucursal_id en la URL (columna puede no existir en InsForge). */
 export async function fetchCostoStockModal(
   supabase: SupabaseClient,
   opts: { prendaId: string; tallaId: string; sucursalId?: string | null }
 ): Promise<Record<string, unknown> | null> {
   const { prendaId, tallaId, sucursalId } = opts;
-  const { data, error } = await supabase
-    .from('costos')
-    .select('*')
-    .eq('prenda_id', prendaId)
-    .eq('talla_id', tallaId);
-
-  if (error) throw error;
-  const picked = elegirCostoPrendaTalla((data || []) as Record<string, unknown>[], sucursalId);
+  const rows = await fetchCostosRawPrendaYTalla(supabase, prendaId, tallaId);
+  const picked = elegirCostoPrendaTalla(rows, sucursalId);
   return picked ? normalizarCamposCostoApi(picked) : null;
 }

@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { fetchCostosRowsByPrenda, normalizarCamposCostoApi } from '@/lib/costoQueries';
+import { normalizarCamposPrendaApi } from '@/lib/insforgeNormalize';
 import { supabase } from '../supabase';
 import type { CategoriaPrenda, Prenda } from '../types';
 
@@ -114,10 +116,13 @@ export function usePrendas() {
   const fetchPrendas = async () => {
     try {
       setLoading(true);
-      const [preRes, catRes] = await Promise.all([
-        supabase.from('prendas').select('*').order('nombre', { ascending: true }),
+      const [preResFirst, catRes] = await Promise.all([
+        supabase.from('prendas').select('*, categorias_prendas(*)').order('nombre', { ascending: true }),
         supabase.from('categorias_prendas').select('*'),
       ]);
+      const preRes = preResFirst.error
+        ? await supabase.from('prendas').select('*').order('nombre', { ascending: true })
+        : preResFirst;
       if (preRes.error) throw preRes.error;
       if (catRes.error) throw catRes.error;
 
@@ -158,7 +163,7 @@ export function usePrendas() {
       }
 
       const mapped: Prenda[] = prendasRows.map((row) => {
-        const raw = row as Record<string, unknown>;
+        const raw = normalizarCamposPrendaApi(row as Record<string, unknown>);
         const fk = readCategoriaIdFk(raw);
         let cat: CategoriaPrenda | undefined = fk ? catById.get(normalizeUuidKey(fk)) : undefined;
         if (!cat) cat = readCategoriaNested(raw);
@@ -238,17 +243,17 @@ export function usePrendas() {
 
       if (detallePrendaError) throw detallePrendaError;
 
-      // 2. Obtener todos los costos de la prenda
-      const { data: costos, error: costosError } = await supabase
-        .from('costos')
-        .select('id')
-        .eq('prenda_id', id);
-
-      if (costosError) throw costosError;
+      // 2. Obtener todos los costos de la prenda (InsForge: columna prenda_id o prendaId)
+      const costosRows = await fetchCostosRowsByPrenda(supabase, id);
+      const costosIds = costosRows
+        .map((c) => {
+          const n = normalizarCamposCostoApi(c as Record<string, unknown>);
+          return n.id != null ? String(n.id) : '';
+        })
+        .filter(Boolean);
 
       // 3. Si hay costos, eliminar registros relacionados por costo_id
-      if (costos && costos.length > 0) {
-        const costosIds = costos.map(c => c.id);
+      if (costosIds.length > 0) {
         
         // Eliminar detalle_pedidos asociados por costo_id
         const { error: detalleCostoError } = await supabase
@@ -268,12 +273,14 @@ export function usePrendas() {
       }
 
       // 4. Eliminar los costos de la prenda
-      const { error: costosDelError } = await supabase
-        .from('costos')
-        .delete()
-        .eq('prenda_id', id);
-
-      if (costosDelError) throw costosDelError;
+      if (costosIds.length > 0) {
+        const { error: costosDelError } = await supabase.from('costos').delete().in('id', costosIds);
+        if (costosDelError) throw costosDelError;
+      } else {
+        let d = await supabase.from('costos').delete().eq('prenda_id', id);
+        if (d.error) d = await supabase.from('costos').delete().eq('prendaId', id);
+        if (d.error) throw d.error;
+      }
 
       // 5. Finalmente eliminar la prenda
       const { error } = await supabase

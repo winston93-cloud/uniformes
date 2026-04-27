@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { getSupabaseErrorMessage, supabase } from '../supabase';
-import { normalizarCamposCostoApi } from '@/lib/costoQueries';
+import { fetchCostosRowsByPrenda, normalizarCamposCostoApi } from '@/lib/costoQueries';
 import { filtrarFilasPorSucursalSiHayColumna } from '@/lib/sucursalCliente';
 import type { Costo } from '../types';
 
@@ -145,11 +145,9 @@ export function useCostos(sucursal_id?: string) {
   /** Solo columnas de `costos`: InsForge suele no tener FK costos↔tallas/prepar en cache para embeds. */
   const getCostosByPrenda = async (prenda_id: string) => {
     try {
-      const { data, error } = await supabase.from('costos').select('*').eq('prenda_id', prenda_id);
-
-      if (error) throw error;
+      const rows = await fetchCostosRowsByPrenda(supabase, prenda_id);
       return {
-        data: (data || []).map((r) =>
+        data: rows.map((r) =>
           normalizeCostoRow(normalizarCamposCostoApi(r as Record<string, unknown>))
         ),
         error: null,
