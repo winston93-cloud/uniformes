@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
-import type { Prenda } from '../types';
+import type { CategoriaPrenda, Prenda } from '../types';
 
+/** InsForge a veces no expone FK en schema cache → el embed `categorias_prendas(*)` falla. Unimos por categoria_id en cliente. */
 export function usePrendas() {
   const [prendas, setPrendas] = useState<Prenda[]>([]);
   const [loading, setLoading] = useState(true);
@@ -12,20 +13,21 @@ export function usePrendas() {
   const fetchPrendas = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('prendas')
-        .select(`*, categorias_prendas(*)`)
-        .order('nombre', { ascending: true });
+      const [preRes, catRes] = await Promise.all([
+        supabase.from('prendas').select('*').order('nombre', { ascending: true }),
+        supabase.from('categorias_prendas').select('*'),
+      ]);
+      if (preRes.error) throw preRes.error;
+      if (catRes.error) throw catRes.error;
 
-      if (error) throw error;
-      const rows = (data || []) as Array<
-        Prenda & { categorias_prendas?: Prenda['categoria'] | Prenda['categoria'][] }
-      >;
-      const mapped: Prenda[] = rows.map((row) => {
-        const cp = row.categorias_prendas;
-        const cat = Array.isArray(cp) ? cp[0] : cp;
-        const { categorias_prendas: _drop, ...rest } = row;
-        return { ...rest, categoria: cat ?? rest.categoria };
+      const catById = new Map<string, CategoriaPrenda>(
+        (catRes.data || []).map((c) => [c.id, c as CategoriaPrenda])
+      );
+      const mapped: Prenda[] = (preRes.data || []).map((row) => {
+        const r = row as Prenda;
+        const categoria =
+          r.categoria_id != null ? catById.get(r.categoria_id) ?? undefined : undefined;
+        return { ...r, categoria };
       });
       setPrendas(mapped);
     } catch (err: any) {
