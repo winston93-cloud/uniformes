@@ -268,6 +268,9 @@ function parseCreateTableSqlForTablesApi(sql: string): { tableName: string; colu
     const restLine = cm2?.[2];
     if (!name || !restLine) continue;
 
+    // Fragmentos multilínea dentro de CONSTRAINT ... CHECK (... OR ...): líneas que empiezan por OR/AND no son columnas.
+    if (/^(OR|AND)$/i.test(name)) continue;
+
     // tipo: primera “palabra/pattern” hasta encontrar PRIMARY/UNIQUE/REFERENCES/CHECK/NOT NULL/DEFAULT/DEFERRABLE/COLLATE/COMMENT
     const typeMatch = restLine.match(
       /^([\s\S]*?)(\s+(?:primary\s+key|unique|references|check|not\s+null|null|default|collate)\b|\s*$)/i
