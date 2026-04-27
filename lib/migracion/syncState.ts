@@ -1,6 +1,7 @@
 import { assertInsforgeConfigured } from '@/lib/insforge';
 import { runInsforgeMigrationsSql } from '@/lib/insforgeAdminMigrations';
 import { insforge } from '@/lib/insforge';
+import { insforgeCreateTable, insforgeDeleteTable } from '@/lib/insforgeAdminTables';
 
 export type SyncState = {
   key: 'uniformes';
@@ -10,13 +11,29 @@ export type SyncState = {
 
 export async function ensureSyncStateTable() {
   assertInsforgeConfigured();
-  await runInsforgeMigrationsSql(`
-CREATE TABLE IF NOT EXISTS public.uniformes_migracion_state (
-  key TEXT PRIMARY KEY,
-  baseline_ts TIMESTAMPTZ,
-  last_applied_ts TIMESTAMPTZ
-);
-`);
+  // Esta tabla es SOLO para estado de migración. Si existe con un esquema viejo
+  // (por ejemplo creado en intentos anteriores), la recreamos para evitar conflictos.
+  // Nota: InsForge reserva nombres como id/created_at/updated_at; usamos `key`.
+  try {
+    await insforgeDeleteTable('uniformes_migracion_state');
+  } catch {
+    // ignore
+  }
+  try {
+    await insforgeCreateTable({
+      tableName: 'uniformes_migracion_state',
+      rlsEnabled: false,
+      columns: [
+        { name: 'key', type: 'string', nullable: false, unique: true },
+        { name: 'baseline_ts', type: 'datetime', nullable: true },
+        { name: 'last_applied_ts', type: 'datetime', nullable: true },
+      ],
+    });
+  } catch (e: any) {
+    // Si ya existe por carrera, no fallar.
+    const msg = String(e?.message || '');
+    if (!msg.includes('DUPLICATE') && !msg.includes('already exists')) throw e;
+  }
 }
 
 export async function getSyncState(): Promise<SyncState | null> {
