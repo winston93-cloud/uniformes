@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/lib/supabase';
+import { getSupabaseErrorMessage, supabase } from '@/lib/supabase';
 
 export interface AlertaStock {
   insumo_id: string;
@@ -26,26 +26,45 @@ export function useAlertasStock() {
       setCargando(true);
       setError(null);
 
-      // 1. Obtener todos los insumos con su stock mínimo
+      // 1. Insumos sin embed (InsForge puede devolver 400 con presentaciones(...))
       const { data: insumosData, error: insumosError } = await supabase
         .from('insumos')
-        .select(`
-          id,
-          nombre,
-          codigo,
-          stock_minimo,
-          presentaciones (
-            nombre,
-            descripcion
-          )
-        `)
-        .gt('stock_minimo', 0) // Solo insumos con stock mínimo definido
+        .select('id, nombre, codigo, stock_minimo, presentacion_id')
+        .gt('stock_minimo', 0)
         .order('nombre');
 
       if (insumosError) throw insumosError;
       if (!insumosData || insumosData.length === 0) {
         setAlertas([]);
         return;
+      }
+
+      const presIds = [
+        ...new Set(
+          insumosData
+            .map((i) => {
+              const x = i as Record<string, unknown>;
+              return (x.presentacion_id ?? x.presentacionId) as string | null | undefined;
+            })
+            .filter(Boolean)
+        ),
+      ] as string[];
+      let presById = new Map<string, { nombre: string; descripcion?: string | null }>();
+      if (presIds.length > 0) {
+        const { data: presRows, error: presErr } = await supabase
+          .from('presentaciones')
+          .select('id, nombre, descripcion')
+          .in('id', presIds);
+        if (presErr) throw presErr;
+        presById = new Map(
+          (presRows || []).map((p) => [
+            String((p as { id: string }).id),
+            {
+              nombre: String((p as { nombre?: string }).nombre ?? ''),
+              descripcion: (p as { descripcion?: string | null }).descripcion ?? null,
+            },
+          ])
+        );
       }
 
       // 2. Obtener todas las compras de insumos
@@ -60,8 +79,12 @@ export function useAlertasStock() {
       
       if (comprasData) {
         for (const compra of comprasData) {
-          const stockActual = stockPorInsumo.get(compra.insumo_id) || 0;
-          stockPorInsumo.set(compra.insumo_id, stockActual + compra.cantidad_comprada);
+          const r = compra as Record<string, unknown>;
+          const insumoId = String(r.insumo_id ?? r.insumoId ?? '');
+          const cant = Number(r.cantidad_comprada ?? r.cantidadComprada ?? 0) || 0;
+          if (!insumoId) continue;
+          const stockActual = stockPorInsumo.get(insumoId) || 0;
+          stockPorInsumo.set(insumoId, stockActual + cant);
         }
       }
 
@@ -69,12 +92,19 @@ export function useAlertasStock() {
       const alertasCalculadas: AlertaStock[] = [];
 
       for (const insumo of insumosData) {
-        const presentacion = Array.isArray(insumo.presentaciones) 
-          ? insumo.presentaciones[0] 
-          : insumo.presentaciones;
+        const rawIn = insumo as Record<string, unknown>;
+        const row = insumo as {
+          id: string;
+          nombre: string;
+          codigo: string | null;
+          stock_minimo: number | null;
+          presentacion_id?: string | null;
+        };
+        const pid = (rawIn.presentacion_id ?? rawIn.presentacionId) as string | null | undefined;
+        const presentacion = pid ? presById.get(String(pid)) : undefined;
 
-        const stockActual = stockPorInsumo.get(insumo.id) || 0;
-        const stockMinimo = insumo.stock_minimo || 0;
+        const stockActual = stockPorInsumo.get(row.id) || 0;
+        const stockMinimo = row.stock_minimo || 0;
         const diferencia = stockActual - stockMinimo;
         const porcentajeStock = stockMinimo > 0 
           ? Math.round((stockActual / stockMinimo) * 100) 
@@ -93,16 +123,16 @@ export function useAlertasStock() {
           }
 
           alertasCalculadas.push({
-            insumo_id: insumo.id,
-            insumo_nombre: insumo.nombre,
-            insumo_codigo: insumo.codigo,
+            insumo_id: row.id,
+            insumo_nombre: row.nombre,
+            insumo_codigo: row.codigo || '',
             stock_actual: stockActual,
             stock_minimo: stockMinimo,
             diferencia,
             porcentaje_stock: porcentajeStock,
             nivel_alerta: nivelAlerta,
             presentacion_nombre: presentacion?.nombre || 'unidad',
-            presentacion_descripcion: presentacion?.descripcion || '',
+            presentacion_descripcion: presentacion?.descripcion ?? '',
           });
         }
       }
@@ -118,7 +148,7 @@ export function useAlertasStock() {
       setAlertas(alertasCalculadas);
     } catch (err) {
       console.error('Error al cargar alertas de stock:', err);
-      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setError(getSupabaseErrorMessage(err));
       setAlertas([]);
     } finally {
       setCargando(false);

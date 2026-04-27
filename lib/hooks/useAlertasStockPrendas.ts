@@ -1,7 +1,17 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/lib/supabase';
+import { getSupabaseErrorMessage, supabase } from '@/lib/supabase';
+
+function readFk(row: Record<string, unknown>, snake: string, camel: string): string | null {
+  const v = row[snake] ?? row[camel];
+  if (v == null || v === '') return null;
+  return String(v);
+}
+
+function normId(id: string): string {
+  return id.trim().toLowerCase();
+}
 
 export interface AlertaStockPrenda {
   costo_id: string;
@@ -27,49 +37,77 @@ export function useAlertasStockPrendas(sucursal_id?: string) {
       setCargando(true);
       setError(null);
 
-      // Obtener todos los costos (prenda-talla) con stock mínimo definido
+      // Sin embed prendas/tallas — InsForge devuelve 400 si no hay FK en schema cache
       let query = supabase
         .from('costos')
-        .select(`
-          id,
-          stock,
-          stock_minimo,
-          precio_mayoreo,
-          precio_menudeo,
-          prendas (
-            nombre,
-            codigo
-          ),
-          tallas (
-            nombre
-          )
-        `)
-        .gt('stock_minimo', 0) // Solo prendas con stock mínimo definido
-        .eq('activo', true) // Solo prendas activas
-        .order('stock', { ascending: true }); // Las más críticas primero
+        .select('id, stock, stock_minimo, precio_mayoreo, precio_menudeo, prenda_id, talla_id')
+        .gt('stock_minimo', 0)
+        .eq('activo', true)
+        .order('stock', { ascending: true });
 
-      // Filtrar por sucursal si se proporciona
       if (sucursal_id) {
         query = query.eq('sucursal_id', sucursal_id);
       }
 
-      const { data: costosData, error: costosError } = await query;
+      let { data: costosData, error: costosError } = await query;
 
       if (costosError) throw costosError;
+
+      if (sucursal_id && (!costosData || costosData.length === 0)) {
+        const fb = await supabase
+          .from('costos')
+          .select('id, stock, stock_minimo, precio_mayoreo, precio_menudeo, prenda_id, talla_id')
+          .gt('stock_minimo', 0)
+          .eq('activo', true)
+          .order('stock', { ascending: true });
+        if (!fb.error && fb.data && fb.data.length > 0) {
+          costosData = fb.data;
+        }
+      }
+
       if (!costosData || costosData.length === 0) {
         setAlertas([]);
         return;
       }
 
-      // Crear alertas para prendas con stock bajo o crítico
+      const prendaIds = [...new Set(costosData.map((c) => readFk(c as Record<string, unknown>, 'prenda_id', 'prendaId')).filter(Boolean))] as string[];
+      const tallaIds = [...new Set(costosData.map((c) => readFk(c as Record<string, unknown>, 'talla_id', 'tallaId')).filter(Boolean))] as string[];
+
+      const [preRes, taRes] = await Promise.all([
+        prendaIds.length > 0
+          ? supabase.from('prendas').select('id, nombre, codigo').in('id', prendaIds)
+          : Promise.resolve({ data: [] as unknown[] }),
+        tallaIds.length > 0
+          ? supabase.from('tallas').select('id, nombre').in('id', tallaIds)
+          : Promise.resolve({ data: [] as unknown[] }),
+      ]);
+      if ('error' in preRes && preRes.error) throw preRes.error;
+      if ('error' in taRes && taRes.error) throw taRes.error;
+
+      const prendaPorId = new Map(
+        (preRes.data || []).map((p) => {
+          const r = p as { id: string; nombre?: string; codigo?: string | null };
+          return [normId(String(r.id)), { nombre: r.nombre ?? '', codigo: r.codigo ?? null }] as const;
+        })
+      );
+      const tallaPorId = new Map(
+        (taRes.data || []).map((t) => {
+          const r = t as { id: string; nombre?: string };
+          return [normId(String(r.id)), r.nombre ?? ''] as const;
+        })
+      );
+
       const alertasCalculadas: AlertaStockPrenda[] = [];
 
       for (const costo of costosData) {
-        const prenda = Array.isArray(costo.prendas) ? costo.prendas[0] : costo.prendas;
-        const talla = Array.isArray(costo.tallas) ? costo.tallas[0] : costo.tallas;
+        const cr = costo as Record<string, unknown>;
+        const prendaId = readFk(cr, 'prenda_id', 'prendaId');
+        const tallaId = readFk(cr, 'talla_id', 'tallaId');
+        const prenda = prendaId ? prendaPorId.get(normId(prendaId)) : undefined;
+        const tallaNombre = tallaId ? tallaPorId.get(normId(tallaId)) : undefined;
 
-        const stockActual = costo.stock || 0;
-        const stockMinimo = costo.stock_minimo || 0;
+        const stockActual = Number(cr.stock ?? 0) || 0;
+        const stockMinimo = Number(cr.stock_minimo ?? 0) || 0;
         const diferencia = stockActual - stockMinimo;
         const porcentajeStock = stockMinimo > 0 
           ? Math.round((stockActual / stockMinimo) * 100) 
@@ -88,17 +126,17 @@ export function useAlertasStockPrendas(sucursal_id?: string) {
           }
 
           alertasCalculadas.push({
-            costo_id: costo.id,
+            costo_id: String(cr.id ?? ''),
             prenda_nombre: prenda?.nombre || 'Sin nombre',
-            prenda_codigo: prenda?.codigo || 'N/A',
-            talla_nombre: talla?.nombre || 'N/A',
+            prenda_codigo: prenda?.codigo ?? 'N/A',
+            talla_nombre: tallaNombre || 'N/A',
             stock_actual: stockActual,
             stock_minimo: stockMinimo,
             diferencia,
             porcentaje_stock: porcentajeStock,
             nivel_alerta: nivelAlerta,
-            precio_mayoreo: costo.precio_mayoreo,
-            precio_menudeo: costo.precio_menudeo,
+            precio_mayoreo: Number(cr.precio_mayoreo ?? 0),
+            precio_menudeo: Number(cr.precio_menudeo ?? 0),
           });
         }
       }
@@ -114,7 +152,7 @@ export function useAlertasStockPrendas(sucursal_id?: string) {
       setAlertas(alertasCalculadas);
     } catch (err) {
       console.error('Error al cargar alertas de stock de prendas:', err);
-      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setError(getSupabaseErrorMessage(err));
       setAlertas([]);
     } finally {
       setCargando(false);
