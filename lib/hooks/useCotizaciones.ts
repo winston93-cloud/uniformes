@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase, getSupabaseErrorMessage } from '@/lib/supabase';
-import type { Cotizacion, DetalleCotizacion } from '@/lib/types';
+import type { Alumno, Cotizacion, DetalleCotizacion, Externo } from '@/lib/types';
 import { compareCotizacionesPorFechaCotizacionDesc } from '@/lib/cotizacionesSort';
 import { calcularMontosImpuestosCotizacion } from '@/lib/cotizacionesImpuestos';
 import { transicionEstadoCotizacionValida } from '@/lib/cotizacionesEstados';
 import { isUuid, resolverAlumnoUuidParaCotizacion } from '@/lib/resolverAlumnoCotizacion';
+import { mapAlumnoRow } from '@/lib/hooks/useAlumnos';
 import { REFETCH_PEDIDOS_EVENT } from '@/lib/refetchPedidosEvent';
 
 export interface PartidaCotizacion {
@@ -22,6 +23,57 @@ export interface PartidaCotizacion {
   prenda_id?: string | null;
   costo_id?: string | null;
   es_manual: boolean;
+}
+
+/** Evita embed PostgREST `alumno(*)` cuando el FK no coincide (ej. alumno_id UUID vs tabla `alumno` con bigint). */
+async function relacionarClienteParaCotizaciones(
+  cotRows: Record<string, unknown>[]
+): Promise<Cotizacion[]> {
+  const alumnoIds = [
+    ...new Set(cotRows.map((r) => r.alumno_id).filter((x) => x != null && x !== '')),
+  ].map(String);
+  const externoIds = [
+    ...new Set(cotRows.map((r) => r.externo_id).filter((x) => x != null && x !== '')),
+  ].map(String);
+
+  const alumnoPorId = new Map<string, Alumno>();
+  if (alumnoIds.length > 0) {
+    const batch = await supabase.from('alumno').select('*').in('alumno_id', alumnoIds);
+    if (!batch.error && batch.data) {
+      for (const row of batch.data) {
+        const m = mapAlumnoRow(row as Record<string, unknown>);
+        alumnoPorId.set(String((row as { alumno_id: unknown }).alumno_id), m);
+      }
+    }
+    for (const id of alumnoIds) {
+      if (alumnoPorId.has(id)) continue;
+      const one = await supabase.from('alumno').select('*').eq('alumno_id', id).maybeSingle();
+      if (!one.error && one.data) {
+        alumnoPorId.set(id, mapAlumnoRow(one.data as Record<string, unknown>));
+      }
+    }
+  }
+
+  const externoPorId = new Map<string, Externo>();
+  if (externoIds.length > 0) {
+    const ex = await supabase.from('externos').select('*').in('id', externoIds);
+    if (!ex.error && ex.data) {
+      for (const row of ex.data) {
+        externoPorId.set(String((row as Externo).id), row as Externo);
+      }
+    }
+  }
+
+  return cotRows.map((raw) => {
+    const c = raw as unknown as Cotizacion;
+    const aid = c.alumno_id != null ? String(c.alumno_id) : '';
+    const eid = c.externo_id != null ? String(c.externo_id) : '';
+    return {
+      ...c,
+      alumno: aid ? alumnoPorId.get(aid) : undefined,
+      externo: eid ? externoPorId.get(eid) : undefined,
+    };
+  });
 }
 
 export interface NuevaCotizacion {
@@ -52,16 +104,17 @@ export function useCotizaciones() {
       setCargando(true);
       setError(null);
 
-      const { data, error: fetchError } = await supabase
+      let q = await supabase
         .from('cotizaciones')
-        .select(`
-          *,
-          alumno:alumno(*),
-          externo:externos(*)
-        `);
+        .select('*')
+        .order('fecha_cotizacion', { ascending: false });
+      if (q.error) {
+        q = await supabase.from('cotizaciones').select('*').order('created_at', { ascending: false });
+      }
+      if (q.error) throw q.error;
 
-      if (fetchError) throw fetchError;
-      setCotizaciones([...(data || [])].sort(compareCotizacionesPorFechaCotizacionDesc));
+      const list = await relacionarClienteParaCotizaciones((q.data || []) as Record<string, unknown>[]);
+      setCotizaciones([...list].sort(compareCotizacionesPorFechaCotizacionDesc));
     } catch (err) {
       console.error('Error al obtener cotizaciones:', err);
       setError(getSupabaseErrorMessage(err));
@@ -73,17 +126,14 @@ export function useCotizaciones() {
   // Obtener una cotización con su detalle
   const obtenerCotizacion = useCallback(async (id: string) => {
     try {
-      const { data: cotizacion, error: cotError } = await supabase
-        .from('cotizaciones')
-        .select(`
-          *,
-          alumno:alumno(*),
-          externo:externos(*)
-        `)
-        .eq('id', id)
-        .single();
+      const { data: cotRaw, error: cotError } = await supabase.from('cotizaciones').select('*').eq('id', id).single();
 
       if (cotError) throw cotError;
+
+      const [cotizacionEnriquecida] = await relacionarClienteParaCotizaciones([
+        (cotRaw || {}) as Record<string, unknown>,
+      ]);
+      const cotizacion = cotizacionEnriquecida;
 
       const { data: detalle, error: detError } = await supabase
         .from('detalle_cotizacion')
