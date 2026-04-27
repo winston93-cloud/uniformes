@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { TABLAS_MIGRACION_ORDER } from '@/lib/migracion/tablasOrder';
 
 const STORAGE_KEY_ESTADO = 'uniformes_migracion_estado_v1';
@@ -63,6 +63,40 @@ export default function MigracionPage() {
 
   const addLog = (line: string) => setLogs((prev) => [`${new Date().toLocaleString('es-MX')} — ${line}`, ...prev]);
 
+  /** Alinea badges con la realidad de InsForge: si la tabla del plan no existe → PENDIENTE (quita verdes obsoletos). */
+  const aplicarInsforgeFound = useCallback((found: Set<string>) => {
+    setEstado((prev) => {
+      const next = { ...prev };
+      for (const t of TABLAS_34) {
+        const st = prev[t];
+        if (st?.status === 'MIGRANDO') continue;
+        if (!found.has(t)) {
+          next[t] = { status: 'PENDIENTE' };
+        } else if (st?.status === 'PENDIENTE') {
+          next[t] = {
+            status: 'OK',
+            detalle: 'Estructura detectada en InsForge (reconstruido al recargar).',
+          };
+        }
+      }
+      return next;
+    });
+  }, []);
+
+  const sincronizarEstadoConInsforge = async () => {
+    addLog('Sincronizando panel con tablas reales en InsForge…');
+    try {
+      const res = await fetch('/api/migracion/insforge-tables', { cache: 'no-store' });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.success) throw new Error(json?.error || 'insforge-tables');
+      const found = new Set<string>(Array.isArray(json.foundUniformes) ? json.foundUniformes : []);
+      aplicarInsforgeFound(found);
+      addLog(`Panel alineado: ${found.size} tablas del plan detectadas en InsForge.`);
+    } catch (e: any) {
+      addLog(`ERROR sincronizar panel: ${e?.message || String(e)}`);
+    }
+  };
+
   // Persistir estado en localStorage para sobrevivir recargas.
   useEffect(() => {
     try {
@@ -86,8 +120,7 @@ export default function MigracionPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Al cargar: si InsForge ya tiene una tabla, marcar como OK (estructura presente),
-  // y mantener OK/ERROR persistido si ya estaba.
+  // Al cargar: reconciliar con InsForge — quitar OK si la tabla ya no existe (p. ej. tras wipe externo).
   useEffect(() => {
     (async () => {
       try {
@@ -95,21 +128,12 @@ export default function MigracionPage() {
         const json = await res.json().catch(() => null);
         if (!res.ok || !json?.success) return;
         const found = new Set<string>(Array.isArray(json.foundUniformes) ? json.foundUniformes : []);
-        setEstado((prev) => {
-          const next = { ...prev };
-          for (const t of TABLAS_34) {
-            const st = prev[t];
-            if (st?.status === 'OK' || st?.status === 'ERROR' || st?.status === 'MIGRANDO') continue;
-            if (found.has(t)) next[t] = { status: 'OK', detalle: 'Estructura detectada en InsForge (reconstruido al recargar).' };
-          }
-          return next;
-        });
+        aplicarInsforgeFound(found);
       } catch {
         // ignore
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [aplicarInsforgeFound]);
 
   useEffect(() => {
     (async () => {
@@ -611,6 +635,15 @@ export default function MigracionPage() {
         </button>
         <button className="btn btn-secondary" type="button" disabled={busy} onClick={() => toggleAll(false)}>
           Desmarcar todo
+        </button>
+        <button
+          className="btn btn-secondary"
+          type="button"
+          disabled={busy}
+          onClick={() => void sincronizarEstadoConInsforge()}
+          title="Quita badges verdes si las tablas ya no existen en InsForge (p. ej. tras borrar fuera de esta página)"
+        >
+          Sincronizar panel con InsForge
         </button>
         <button className="btn btn-secondary" type="button" disabled={busy} onClick={probarTokenAdminInsForge}>
           Probar token InsForge admin
