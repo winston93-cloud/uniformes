@@ -142,6 +142,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     cotizaciones,
     obtenerCotizacion,
     cargando,
+    error: errorCotizacionesLista,
+    obtenerCotizaciones,
     actualizarEstado,
     actualizarCotizacionCompleta,
     eliminarCotizacion,
@@ -2978,6 +2980,42 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
               Cotizaciones Generadas ({cotizacionesFiltradas.length}{cotizacionesFiltradas.length !== cotizaciones.length ? ` de ${cotizaciones.length}` : ''})
             </h3>
 
+            {errorCotizacionesLista && (
+              <div
+                role="alert"
+                style={{
+                  marginBottom: '1rem',
+                  padding: '0.85rem 1rem',
+                  background: '#fef2f2',
+                  border: '2px solid #f87171',
+                  borderRadius: '10px',
+                  color: '#991b1b',
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '0.75rem',
+                }}
+              >
+                <span style={{ flex: '1 1 220px' }}>{errorCotizacionesLista}</span>
+                <button
+                  type="button"
+                  onClick={() => void obtenerCotizaciones()}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    borderRadius: '8px',
+                    border: '2px solid #991b1b',
+                    background: 'white',
+                    color: '#991b1b',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Reintentar
+                </button>
+              </div>
+            )}
+
             {/* Filtros de búsqueda */}
             <div style={{ 
               marginBottom: '1.5rem',
@@ -3038,6 +3076,12 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
               <div style={{ textAlign: 'center', padding: '3rem', color: '#999' }}>
                 <div style={{ fontSize: '4rem' }}>📄</div>
                 <div>No hay cotizaciones generadas aún</div>
+                <p style={{ marginTop: '1rem', fontSize: '0.88rem', color: '#64748b', maxWidth: '36rem', marginLeft: 'auto', marginRight: 'auto', lineHeight: 1.5 }}>
+                  Si en el panel de Supabase ves filas en <code style={{ fontSize: '0.85em' }}>cotizaciones</code> pero aquí sigue en cero, suele ser{' '}
+                  <strong>Row Level Security</strong>: la app usa la clave <em>anon</em> sin sesión Supabase Auth. Aplica la migración{' '}
+                  <code style={{ fontSize: '0.85em' }}>20260428_rls_cotizaciones_externos_detalle_anon.sql</code> en el proyecto SQL o equivalente para permitir SELECT (y el resto que uses) con anon en{' '}
+                  <code style={{ fontSize: '0.85em' }}>cotizaciones</code>, <code style={{ fontSize: '0.85em' }}>detalle_cotizacion</code> y <code style={{ fontSize: '0.85em' }}>externos</code>.
+                </p>
               </div>
             ) : cotizacionesFiltradas.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '3rem', color: '#999' }}>
