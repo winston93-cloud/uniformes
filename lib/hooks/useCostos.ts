@@ -1,8 +1,18 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '../supabase';
+import { getSupabaseErrorMessage, supabase } from '../supabase';
 import type { Costo } from '../types';
+
+function readCol(r: Record<string, unknown>, snake: string, camel: string): string | null {
+  const v = r[snake] ?? r[camel];
+  if (v == null || v === '') return null;
+  return String(v);
+}
+
+function normIdKey(id: string): string {
+  return id.trim().toLowerCase();
+}
 
 /** InsForge PostgREST a veces rechaza alias `talla:tallas(*)`; usamos embeds sin alias y mapeamos. */
 const COSTOS_EMBED = `*, tallas(*), prendas(*)`;
@@ -19,22 +29,45 @@ function normalizeCostoRow(row: Record<string, unknown>): Costo {
 /** Sin FK en schema cache los embeds fallan: leemos `costos` plano y acoplamos tallas/prendas en cliente. */
 async function enrichCostosFromPlainRows(rows: Record<string, unknown>[]): Promise<Costo[]> {
   if (!rows.length) return [];
-  const tallaIds = [...new Set(rows.map((r) => r.talla_id).filter(Boolean))] as string[];
-  const prendaIds = [...new Set(rows.map((r) => r.prenda_id).filter(Boolean))] as string[];
+  const tallaIds = [
+    ...new Set(rows.map((r) => readCol(r, 'talla_id', 'tallaId')).filter(Boolean)),
+  ] as string[];
+  const prendaIds = [
+    ...new Set(rows.map((r) => readCol(r, 'prenda_id', 'prendaId')).filter(Boolean)),
+  ] as string[];
   const [tRes, pRes] = await Promise.all([
     tallaIds.length > 0 ? supabase.from('tallas').select('*').in('id', tallaIds) : Promise.resolve({ data: [] as unknown[] }),
     prendaIds.length > 0 ? supabase.from('prendas').select('*').in('id', prendaIds) : Promise.resolve({ data: [] as unknown[] }),
   ]);
-  const tallaMap = new Map((tRes.data || []).map((t) => [(t as { id: string }).id, t]));
-  const prendaMap = new Map((pRes.data || []).map((p) => [(p as { id: string }).id, p]));
+  const tallaMap = new Map(
+    (tRes.data || []).map((t) => {
+      const id = String((t as { id: string }).id);
+      return [normIdKey(id), t] as const;
+    })
+  );
+  const prendaMap = new Map(
+    (pRes.data || []).map((p) => {
+      const id = String((p as { id: string }).id);
+      return [normIdKey(id), p] as const;
+    })
+  );
   return rows.map((row) => {
-    const tid = row.talla_id as string | undefined;
-    const pid = row.prenda_id as string | undefined;
+    const tid = readCol(row, 'talla_id', 'tallaId');
+    const pid = readCol(row, 'prenda_id', 'prendaId');
     const enriched: Record<string, unknown> = { ...row };
-    if (tid && tallaMap.has(tid)) enriched.tallas = tallaMap.get(tid);
-    if (pid && prendaMap.has(pid)) enriched.prendas = prendaMap.get(pid);
+    if (tid && tallaMap.has(normIdKey(tid))) enriched.tallas = tallaMap.get(normIdKey(tid));
+    if (pid && prendaMap.has(normIdKey(pid))) enriched.prendas = prendaMap.get(normIdKey(pid));
     return normalizeCostoRow(enriched);
   });
+}
+
+function sortCostosPorFecha(rows: Costo[]): Costo[] {
+  const ts = (c: Costo) => {
+    const raw = (c as unknown as Record<string, unknown>).created_at ?? (c as unknown as Record<string, unknown>).createdAt;
+    const n = raw ? Date.parse(String(raw)) : 0;
+    return Number.isNaN(n) ? 0 : n;
+  };
+  return [...rows].sort((a, b) => ts(b) - ts(a));
 }
 
 export function useCostos(sucursal_id?: string) {
@@ -56,17 +89,23 @@ export function useCostos(sucursal_id?: string) {
       if (error) {
         let q2 = supabase.from('costos').select('*').order('created_at', { ascending: false });
         if (sucursal_id) q2 = q2.eq('sucursal_id', sucursal_id);
-        const fallback = await q2;
+        let fallback = await q2;
+        if (fallback.error) {
+          let q3 = supabase.from('costos').select('*');
+          if (sucursal_id) q3 = q3.eq('sucursal_id', sucursal_id);
+          fallback = await q3;
+        }
         if (fallback.error) throw fallback.error;
-        setCostos(await enrichCostosFromPlainRows((fallback.data || []) as Record<string, unknown>[]));
+        const enriched = await enrichCostosFromPlainRows((fallback.data || []) as Record<string, unknown>[]);
+        setCostos(sortCostosPorFecha(enriched));
         setError(null);
         return;
       }
 
-      setCostos((data || []).map((r) => normalizeCostoRow(r as Record<string, unknown>)));
+      setCostos(sortCostosPorFecha((data || []).map((r) => normalizeCostoRow(r as Record<string, unknown>))));
       setError(null);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(getSupabaseErrorMessage(err));
       console.error('Error fetching costos:', err);
     } finally {
       setLoading(false);

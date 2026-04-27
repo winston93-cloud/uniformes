@@ -26,15 +26,22 @@ export function useAlertasStock() {
       setCargando(true);
       setError(null);
 
-      // 1. Insumos sin embed (InsForge puede devolver 400 con presentaciones(...))
-      const { data: insumosData, error: insumosError } = await supabase
-        .from('insumos')
-        .select('id, nombre, codigo, stock_minimo, presentacion_id')
-        .gt('stock_minimo', 0)
-        .order('nombre');
+      // 1. select('*') — en InsForge a veces no existe columna stock_minimo (migración distinta)
+      const { data: insumosRaw, error: insumosError } = await supabase.from('insumos').select('*');
 
       if (insumosError) throw insumosError;
-      if (!insumosData || insumosData.length === 0) {
+      const insumosData = (insumosRaw || []).filter((row) => {
+        const r = row as Record<string, unknown>;
+        const sm = Number(r.stock_minimo ?? r.stockMinimo ?? 0);
+        return sm > 0;
+      });
+      insumosData.sort((a, b) =>
+        String((a as { nombre?: string }).nombre ?? '').localeCompare(
+          String((b as { nombre?: string }).nombre ?? ''),
+          'es'
+        )
+      );
+      if (!insumosData.length) {
         setAlertas([]);
         return;
       }
@@ -104,7 +111,7 @@ export function useAlertasStock() {
         const presentacion = pid ? presById.get(String(pid)) : undefined;
 
         const stockActual = stockPorInsumo.get(row.id) || 0;
-        const stockMinimo = row.stock_minimo || 0;
+        const stockMinimo = Number(rawIn.stock_minimo ?? rawIn.stockMinimo ?? 0) || 0;
         const diferencia = stockActual - stockMinimo;
         const porcentajeStock = stockMinimo > 0 
           ? Math.round((stockActual / stockMinimo) * 100) 

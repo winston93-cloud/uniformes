@@ -1,7 +1,13 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/lib/supabase';
+import { getSupabaseErrorMessage, supabase } from '@/lib/supabase';
+
+function readFk(row: Record<string, unknown>, snake: string, camel: string): string | null {
+  const v = row[snake] ?? row[camel];
+  if (v == null || v === '') return null;
+  return String(v);
+}
 
 export interface Devolucion {
   id: string;
@@ -71,49 +77,120 @@ export function useDevoluciones(sucursal_id?: string) {
       setLoading(true);
       setError(null);
 
-      let query = supabase
-        .from('devoluciones')
-        .select(`
-          *,
-          pedido:pedidos(cliente_nombre, total),
-          usuario(usuario_nombre, usuario_username)
-        `)
-        .order('created_at', { ascending: false });
-
+      let query = supabase.from('devoluciones').select('*').order('created_at', { ascending: false });
       if (sucursal_id) {
         query = query.eq('sucursal_id', sucursal_id);
       }
 
-      const { data, error: fetchError } = await query;
+      let { data, error: fetchError } = await query;
+
+      if (fetchError) {
+        let q2 = supabase.from('devoluciones').select('*');
+        if (sucursal_id) q2 = q2.eq('sucursal_id', sucursal_id);
+        const fb = await q2;
+        if (!fb.error && fb.data) {
+          data = fb.data;
+          fetchError = null;
+          const ts = (r: Record<string, unknown>) => {
+            const raw = r.created_at ?? r.createdAt;
+            return raw ? Date.parse(String(raw)) : 0;
+          };
+          data.sort((a, b) => ts(b as Record<string, unknown>) - ts(a as Record<string, unknown>));
+        }
+      }
 
       if (fetchError) throw fetchError;
 
-      // Obtener detalles de cada devolución
+      const devs = data || [];
+      const pedidoIds = [
+        ...new Set(devs.map((d) => readFk(d as Record<string, unknown>, 'pedido_id', 'pedidoId')).filter(Boolean)),
+      ] as string[];
+
+      let pedidoPorId = new Map<string, { cliente_nombre: string; total: number }>();
+      if (pedidoIds.length > 0) {
+        const pr = await supabase.from('pedidos').select('id, cliente_nombre, total').in('id', pedidoIds);
+        if (!pr.error && pr.data) {
+          pedidoPorId = new Map(
+            pr.data.map((p) => {
+              const row = p as Record<string, unknown>;
+              return [
+                String(row.id),
+                {
+                  cliente_nombre: String(row.cliente_nombre ?? row.clienteNombre ?? ''),
+                  total: Number(row.total ?? 0),
+                },
+              ];
+            })
+          );
+        }
+      }
+
+      let usuarioPorId = new Map<
+        string,
+        { usuario_nombre: string; usuario_username: string }
+      >();
+      const usuarioIds = [
+        ...new Set(
+          devs.map((d) => {
+            const id = (d as Record<string, unknown>).usuario_id ?? (d as Record<string, unknown>).usuarioId;
+            return id != null ? String(id) : '';
+          }).filter(Boolean)
+        ),
+      ];
+      const usuarioNumericIds = usuarioIds
+        .map((id) => parseInt(id, 10))
+        .filter((n) => !Number.isNaN(n));
+      if (usuarioNumericIds.length > 0) {
+        const ur = await supabase.from('usuario').select('*').in('usuario_id', usuarioNumericIds);
+        if (!ur.error && ur.data) {
+          usuarioPorId = new Map(
+            ur.data.map((u) => {
+              const row = u as Record<string, unknown>;
+              const uid = String(row.usuario_id ?? row.usuarioId ?? '');
+              return [
+                uid,
+                {
+                  usuario_nombre: String(row.usuario_nombre ?? row.usuarioNombre ?? ''),
+                  usuario_username: String(row.usuario_username ?? row.usuarioUsername ?? ''),
+                },
+              ];
+            })
+          );
+        }
+      }
+
       const devolucionesConDetalles: DevolucionConDetalles[] = [];
-      
-      for (const dev of data || []) {
+
+      for (const dev of devs) {
+        const dr = dev as Record<string, unknown>;
         const { data: detalles, error: detallesError } = await supabase
           .from('detalle_devoluciones')
           .select('*')
-          .eq('devolucion_id', dev.id);
+          .eq('devolucion_id', dr.id as string);
 
         if (detallesError) {
           console.error('Error al cargar detalles:', detallesError);
           continue;
         }
 
+        const pid = readFk(dr, 'pedido_id', 'pedidoId');
+        const uid = dr.usuario_id ?? dr.usuarioId;
+
         devolucionesConDetalles.push({
-          ...dev,
+          ...(dev as Devolucion),
           detalles: detalles || [],
-          pedido: Array.isArray(dev.pedido) ? dev.pedido[0] : dev.pedido,
-          usuario: Array.isArray(dev.usuario) ? dev.usuario[0] : dev.usuario,
+          pedido: pid ? pedidoPorId.get(pid) : undefined,
+          usuario:
+            uid != null
+              ? usuarioPorId.get(String(uid))
+              : undefined,
         });
       }
 
       setDevoluciones(devolucionesConDetalles);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error al cargar devoluciones:', err);
-      setError(err.message);
+      setError(getSupabaseErrorMessage(err));
     } finally {
       setLoading(false);
     }

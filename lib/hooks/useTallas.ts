@@ -14,14 +14,19 @@ export function useTallas() {
       setLoading(true);
       
       // Ordenar: números primero (ascendente numérico), luego letras (ascendente alfabético)
-      const { data, error } = await supabase.rpc('obtener_tallas_ordenadas');
-      if (error) {
-        const fallback = await supabase.from('tallas').select('*').order('orden', { ascending: true });
-        if (fallback.error) throw error;
-        setTallas(fallback.data || []);
+      const rpc = await supabase.rpc('obtener_tallas_ordenadas');
+      if (rpc.error) {
+        let fb = await supabase.from('tallas').select('*').order('orden', { ascending: true });
+        if (fb.error) {
+          fb = await supabase.from('tallas').select('*');
+        }
+        if (fb.error) throw fb.error;
+        const rows = fb.data || [];
+        rows.sort((a, b) => String((a as { nombre?: string }).nombre ?? '').localeCompare(String((b as { nombre?: string }).nombre ?? ''), 'es'));
+        setTallas(rows as Talla[]);
         return;
       }
-      setTallas(data || []);
+      setTallas((rpc.data || []) as Talla[]);
     } catch (err: any) {
       setError(err.message);
       console.error('Error fetching tallas:', err);

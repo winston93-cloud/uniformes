@@ -37,13 +37,8 @@ export function useAlertasStockPrendas(sucursal_id?: string) {
       setCargando(true);
       setError(null);
 
-      // Sin embed prendas/tallas — InsForge devuelve 400 si no hay FK en schema cache
-      let query = supabase
-        .from('costos')
-        .select('id, stock, stock_minimo, precio_mayoreo, precio_menudeo, prenda_id, talla_id')
-        .gt('stock_minimo', 0)
-        .eq('activo', true)
-        .order('stock', { ascending: true });
+      // select('*') sin filtros en URL — columnas pueden faltar o nombrarse distinto en InsForge
+      let query = supabase.from('costos').select('*');
 
       if (sucursal_id) {
         query = query.eq('sucursal_id', sucursal_id);
@@ -54,18 +49,21 @@ export function useAlertasStockPrendas(sucursal_id?: string) {
       if (costosError) throw costosError;
 
       if (sucursal_id && (!costosData || costosData.length === 0)) {
-        const fb = await supabase
-          .from('costos')
-          .select('id, stock, stock_minimo, precio_mayoreo, precio_menudeo, prenda_id, talla_id')
-          .gt('stock_minimo', 0)
-          .eq('activo', true)
-          .order('stock', { ascending: true });
+        const fb = await supabase.from('costos').select('*');
         if (!fb.error && fb.data && fb.data.length > 0) {
           costosData = fb.data;
         }
       }
 
-      if (!costosData || costosData.length === 0) {
+      costosData = (costosData || []).filter((row) => {
+        const r = row as Record<string, unknown>;
+        const sm = Number(r.stock_minimo ?? r.stockMinimo ?? 0);
+        const act = r.activo ?? r.activo;
+        return sm > 0 && act !== false;
+      });
+      costosData.sort((a, b) => Number((a as { stock?: unknown }).stock ?? 0) - Number((b as { stock?: unknown }).stock ?? 0));
+
+      if (!costosData.length) {
         setAlertas([]);
         return;
       }
@@ -107,7 +105,7 @@ export function useAlertasStockPrendas(sucursal_id?: string) {
         const tallaNombre = tallaId ? tallaPorId.get(normId(tallaId)) : undefined;
 
         const stockActual = Number(cr.stock ?? 0) || 0;
-        const stockMinimo = Number(cr.stock_minimo ?? 0) || 0;
+        const stockMinimo = Number(cr.stock_minimo ?? cr.stockMinimo ?? 0) || 0;
         const diferencia = stockActual - stockMinimo;
         const porcentajeStock = stockMinimo > 0 
           ? Math.round((stockActual / stockMinimo) * 100) 

@@ -57,20 +57,55 @@ export function usePedidos(sucursal_id?: string) {
   const fetchPedidos = useCallback(async () => {
     try {
       setLoading(true);
-      let query = supabase.from('pedidos').select('*').order('created_at', { ascending: false });
+      // InsForge a veces devuelve 400 con or(sucursal_id...); unimos dos consultas
+      let data: unknown[] | null = null;
+      let error: { message: string } | null = null;
 
-      // Incluir filas sin sucursal (migraciones) además de la sesión actual
       if (sucursal_id) {
-        query = query.or(`sucursal_id.eq.${sucursal_id},sucursal_id.is.null`);
+        const [q1, q2] = await Promise.all([
+          supabase.from('pedidos').select('*').eq('sucursal_id', sucursal_id),
+          supabase.from('pedidos').select('*').is('sucursal_id', null),
+        ]);
+        if (q1.error && q2.error) {
+          error = q1.error;
+        } else {
+          const m = new Map<string, unknown>();
+          for (const row of [...(q1.data || []), ...(q2.data || [])]) {
+            const id = (row as { id: string }).id;
+            if (id) m.set(String(id), row);
+          }
+          data = [...m.values()];
+          const ts = (r: unknown) => {
+            const p = r as Record<string, unknown>;
+            const raw = p.created_at ?? p.createdAt;
+            return raw ? Date.parse(String(raw)) : 0;
+          };
+          data.sort((a, b) => ts(b) - ts(a));
+        }
+      } else {
+        const r = await supabase.from('pedidos').select('*').order('created_at', { ascending: false });
+        data = r.data ?? null;
+        error = r.error;
+        if (error) {
+          const plain = await supabase.from('pedidos').select('*');
+          if (!plain.error && plain.data) {
+            data = plain.data;
+            error = null;
+            const ts = (row: unknown) => {
+              const p = row as Record<string, unknown>;
+              const raw = p.created_at ?? p.createdAt;
+              return raw ? Date.parse(String(raw)) : 0;
+            };
+            data.sort((a, b) => ts(b) - ts(a));
+          }
+        }
       }
-
-      let { data, error } = await query;
 
       if (error) throw error;
 
       // Sesión (env) puede apuntar a otro UUID que los pedidos migrados en InsForge
       if (sucursal_id && (!data || data.length === 0)) {
-        const fb = await supabase.from('pedidos').select('*').order('created_at', { ascending: false });
+        const fb = await supabase.from('pedidos').select('*');
         if (!fb.error && fb.data && fb.data.length > 0) {
           console.warn(
             '[pedidos] Sin resultados para la sucursal de la sesión; mostrando todos los pedidos. Revisa NEXT_PUBLIC_DEFAULT_SUCURSAL_ID vs pedidos.sucursal_id en InsForge.'
