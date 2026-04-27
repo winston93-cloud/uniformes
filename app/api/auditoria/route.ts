@@ -16,6 +16,43 @@ function supabaseHostFromUrl(url: string | undefined | null) {
   }
 }
 
+const TABLAS_UNIFORMES = [
+  'usuario_perfil',
+  'roles_uniformes',
+  'tallas',
+  'categorias_prendas',
+  'presentaciones',
+  'ubicaciones_almacenamiento',
+  'sucursales',
+  'ciclos_escolares',
+  'usuario',
+  'usuarios',
+  'usuarios_uniformes',
+  'alumnos',
+  'externos',
+  'prendas',
+  'insumos',
+  'costos',
+  'prenda_talla_insumos',
+  'compras_insumos',
+  'costo_ubicaciones',
+  'insumo_ubicaciones',
+  'datos_fiscales_cliente',
+  'cotizaciones',
+  'detalle_cotizacion',
+  'pedidos',
+  'detalle_pedidos',
+  'movimientos',
+  'cortes',
+  'detalle_cortes',
+  'transferencias',
+  'detalle_transferencias',
+  'devoluciones',
+  'detalle_devoluciones',
+  'auditoria',
+  'snapshot_insumos_pedido',
+] as const;
+
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
@@ -42,10 +79,9 @@ export async function GET(req: Request) {
     if (tabla && tabla.trim()) {
       q = q.eq('tabla', tabla.trim());
     } else {
-      // Esta instancia comparte BD con otros sistemas (ej. Agenda con prefijo `ag_`).
-      // Si el usuario no filtra por tabla, ocultamos esas tablas para que la Bitácora
-      // sea útil en Uniformes por defecto.
-      q = q.not('tabla', 'ilike', 'ag\\_%');
+      // Esta instancia comparte BD con otros sistemas. Para que la Bitácora sea confiable
+      // en Uniformes, si NO filtras por tabla aplicamos lista blanca (solo tablas del sistema).
+      q = q.in('tabla', [...TABLAS_UNIFORMES]);
     }
     if (operacion && operacion.trim()) {
       q = q.eq('operacion', operacion.trim().toUpperCase());
