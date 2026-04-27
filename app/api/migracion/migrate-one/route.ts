@@ -15,26 +15,8 @@ export async function POST(req: Request) {
     assertInsforgeConfigured();
     const body = await req.json().catch(() => ({}));
     const table = String(body?.table || '').trim();
-    const dataOnly = Boolean(body?.dataOnly);
     if (!table || !isSafeTableName(table)) {
       return NextResponse.json({ success: false, error: 'Tabla inválida.' }, { status: 400 });
-    }
-
-    /** Solo copiar filas desde Supabase: la tabla ya existe en InsForge (p. ej. auditoría creada a mano). */
-    if (dataOnly) {
-      const copy = await copyTableDataFromSupabaseToInsforge({
-        table,
-        truncateDestination: true,
-      });
-      return NextResponse.json({
-        success: true,
-        dataOnly: true,
-        ddlFile: null,
-        prerequisiteTables: [],
-        tablesApiRename: null,
-        ddlMode: null,
-        ...copy,
-      });
     }
 
     const extracted = await extractCreateTableDdlForPublicTable(table);
@@ -73,17 +55,27 @@ export async function POST(req: Request) {
         );
     }
 
-    // 2) Copiar datos
+    // 2) Copiar datos (auditoría: vacía en InsForge; el volcado desde Supabase va en POST /sync-baseline)
     const tablesApiRename =
       ddlRun && ddlRun.mode === 'tables' && ddlRun.tablesApiRename && typeof ddlRun.tablesApiRename === 'object'
         ? ddlRun.tablesApiRename
         : undefined;
 
-    const copy = await copyTableDataFromSupabaseToInsforge({
-      table,
-      truncateDestination: true,
-      ...(tablesApiRename ? { tablesApiRename } : {}),
-    });
+    const copy =
+      table === 'auditoria'
+        ? {
+            table: 'auditoria' as const,
+            startOffset: 0,
+            endOffsetExclusive: 0,
+            totalRead: 0,
+            totalInserted: 0,
+            auditoriaEmptyByDesign: true as const,
+          }
+        : await copyTableDataFromSupabaseToInsforge({
+            table,
+            truncateDestination: true,
+            ...(tablesApiRename ? { tablesApiRename } : {}),
+          });
 
     return NextResponse.json({
       success: true,

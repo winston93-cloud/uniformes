@@ -147,15 +147,26 @@ export default function MigracionPage() {
   const iniciarBaseline = async () => {
     setBusy(true);
     try {
-      addLog('Inicializando baseline de conciliación (sync-baseline)…');
+      addLog('Inicializando baseline (volcando auditoría Supabase → InsForge + ventana de sync)…');
       const res = await fetch('/api/migracion/sync-baseline', { method: 'POST', cache: 'no-store' });
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.success) throw new Error(json?.error || 'No se pudo iniciar baseline');
       setSyncBaselineTs(json.baselineTs ?? null);
       setSyncLastAppliedTs(json.lastAppliedTs ?? null);
       setSyncPending(0);
-      addLog(`Baseline OK: ${json.baselineTs}`);
-      alert('✅ Baseline creado. A partir de ahora se detectan movimientos nuevos para conciliación.');
+      const aud = json?.auditoriaFromSupabase;
+      addLog(
+        `Baseline OK: ${json.baselineTs}` +
+          (aud && typeof aud.totalInserted === 'number'
+            ? ` · auditoría InsForge: ${aud.totalInserted} filas desde Supabase`
+            : '')
+      );
+      alert(
+        `✅ Baseline actualizado.\n\n` +
+          `La tabla auditoría en InsForge se ha rellenado desde Supabase` +
+          (aud && typeof aud.totalInserted === 'number' ? ` (${aud.totalInserted} filas).` : '.') +
+          `\nA partir del baseline se detectan cambios nuevos para conciliación.`
+      );
     } catch (e: any) {
       addLog(`ERROR baseline: ${e?.message || String(e)}`);
       alert(`❌ No se pudo iniciar baseline: ${e?.message || String(e)}`);
@@ -246,10 +257,9 @@ export default function MigracionPage() {
 
   const migrarTabla = async (table: string, opts?: { silentVerify?: boolean }) => {
     setEstado((s) => ({ ...s, [table]: { status: 'MIGRANDO', progreso: 'Iniciando…' } }));
-    const soloDatos = table === 'auditoria';
     addLog(
-      soloDatos
-        ? `Migrando ${table} (solo datos desde Supabase; tabla ya en InsForge)…`
+      table === 'auditoria'
+        ? `Migrando ${table} (solo DDL; datos de auditoría → al iniciar baseline)…`
         : `Migrando ${table} (DDL + datos)…`
     );
     try {
@@ -257,12 +267,7 @@ export default function MigracionPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         cache: 'no-store',
-        body: JSON.stringify({
-          table,
-          batchSize: 1000,
-          chunkSize: 250,
-          ...(soloDatos ? { dataOnly: true } : {}),
-        }),
+        body: JSON.stringify({ table, batchSize: 1000, chunkSize: 250 }),
       });
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.success) throw new Error(json?.error || `Migración falló en ${table}`);
@@ -270,14 +275,15 @@ export default function MigracionPage() {
         ...s,
         [table]: {
           status: 'OK',
-          detalle: soloDatos
-            ? `Insertados desde Supabase: ${json.totalInserted ?? 0}`
-            : `Insertados: ${json.totalInserted ?? 0} · DDL: ${String(json.ddlFile || '—')}`,
+          detalle:
+            table === 'auditoria'
+              ? `Estructura OK (vacía); volcar filas al iniciar baseline`
+              : `Insertados: ${json.totalInserted ?? 0} · DDL: ${String(json.ddlFile || '—')}`,
         },
       }));
       addLog(
-        soloDatos
-          ? `OK ${table}: ${json.totalInserted ?? 0} filas desde Supabase (sin recrear DDL)`
+        table === 'auditoria'
+          ? `OK ${table}: DDL aplicado, tabla vacía — usa «Iniciar baseline» para copiar auditoría desde Supabase`
           : `OK ${table}: insertados ${json.totalInserted ?? 0} (DDL: ${String(json.ddlFile || '—')})`
       );
       if (Array.isArray(json?.prerequisiteTables) && json.prerequisiteTables.length) {
