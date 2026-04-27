@@ -281,7 +281,7 @@ function parseCreateTableSqlForTablesApi(sql: string): { tableName: string; colu
     const unique = rest.includes('unique') || (pkCol === name);
     const isPrimaryKey = pkCol === name;
     const defMatch = l.match(/\bdefault\b\s+(.+)$/i);
-    const defaultValue = defMatch ? defMatch[1].trim() : null;
+    const defaultValue = defMatch ? normalizeExtractedPgDefault(defMatch[1]) : null;
 
     const type = mapPgTypeToInsforge(typeRaw);
     columns.push({ name, type, nullable, unique, defaultValue, isPrimaryKey });
@@ -298,4 +298,41 @@ function mapPgTypeToInsforge(t: string): InsforgeColumn['type'] {
   if (t.startsWith('int') || t.startsWith('smallint') || t.startsWith('bigint') || t.startsWith('serial')) return 'integer';
   if (t.startsWith('numeric') || t.startsWith('decimal') || t.startsWith('real') || t.startsWith('double')) return 'float';
   return 'string';
+}
+
+/** Tras capturar `DEFAULT …` en una línea CREATE TABLE: quita comentarios `--`, corta antes de CHECK/REFERENCES/…, y `NOT NULL` final. */
+function normalizeExtractedPgDefault(raw: string): string | null {
+  let s = String(raw || '').trim();
+  if (!s) return null;
+  const dashAt = s.search(/\s--/);
+  if (dashAt >= 0) s = s.slice(0, dashAt).trim();
+  const stopKw = s.search(/\s+(?:CHECK|REFERENCES|CONSTRAINT|PRIMARY\s+KEY|UNIQUE)\b/i);
+  if (stopKw >= 0) s = s.slice(0, stopKw).trim();
+  s = s.replace(/\s+NOT\s+NULL\s*$/i, '').trim();
+  s = s.replace(/,\s*$/, '').trim();
+  return s.length ? s : null;
+}
+
+/**
+ * Sin llamar a InsForge: mismo saneado + parse + column policy que el fallback Tables API.
+ * Sirve para detectar tablas rotas antes de migrar una por una.
+ */
+export function dryRunInsforgeTablesApiFromDdl(sql: string): {
+  ok: boolean;
+  error?: string;
+  tableName?: string;
+  columnCount?: number;
+} {
+  try {
+    const { sql: tablesSql } = sanitizeCreateTableSqlForInsforgeTablesApi(sql);
+    const parsed = parseCreateTableSqlForTablesApi(tablesSql);
+    if (!parsed) {
+      return { ok: false, error: 'No se pudo interpretar el CREATE TABLE para la Tables API (DDL muy raro o parser).' };
+    }
+    const enforced = enforceInsforgeTablesApiReservedColumns(parsed.columns, parsed.tableName);
+    const ready = sanitizeColumnDefaultsForInsforgeApi(enforced.columns);
+    return { ok: true, tableName: parsed.tableName, columnCount: ready.length };
+  } catch (e: any) {
+    return { ok: false, error: e?.message || String(e) };
+  }
 }

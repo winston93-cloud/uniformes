@@ -9,7 +9,8 @@ CREATE TABLE IF NOT EXISTS usuarios (
   apellido_m VARCHAR(255),
   usuario VARCHAR(100) UNIQUE NOT NULL,
   password TEXT NOT NULL,
-  tipo INTEGER DEFAULT 1, -- 1: admin, 3: operador, 5: supervisor
+  -- tipo: 1 admin, 3 operador, 5 supervisor
+  tipo INTEGER DEFAULT 1,
   email VARCHAR(255),
   activo BOOLEAN DEFAULT true,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

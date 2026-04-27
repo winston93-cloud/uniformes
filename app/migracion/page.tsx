@@ -52,6 +52,8 @@ export default function MigracionPage() {
   const [schemaFiles, setSchemaFiles] = useState<string[]>([]);
   /** Tablas del plan sin CREATE TABLE local en el repo (fallará migrate-one hasta tener SQL). */
   const [ddlMissing, setDdlMissing] = useState<string[]>([]);
+  /** DDL presente pero el pipeline Tables API (saneado + parse) falla antes de InsForge. */
+  const [pipelineFailures, setPipelineFailures] = useState<Array<{ table: string; error: string }>>([]);
   const [syncPending, setSyncPending] = useState<number | null>(null);
   const [syncBaselineTs, setSyncBaselineTs] = useState<string | null>(null);
   const [syncLastAppliedTs, setSyncLastAppliedTs] = useState<string | null>(null);
@@ -114,7 +116,10 @@ export default function MigracionPage() {
       try {
         const res = await fetch('/api/migracion/ddl-coverage', { cache: 'no-store' });
         const json = await res.json().catch(() => null);
-        if (res.ok && json?.success && Array.isArray(json.missing)) setDdlMissing(json.missing);
+        if (res.ok && json?.success) {
+          if (Array.isArray(json.missing)) setDdlMissing(json.missing);
+          if (Array.isArray(json.pipelineFailures)) setPipelineFailures(json.pipelineFailures);
+        }
       } catch {
         // ignore
       }
@@ -471,6 +476,34 @@ export default function MigracionPage() {
           Migrar esas tablas fallará hasta añadir un <code>CREATE TABLE</code> en{' '}
           <code>supabase/migrations</code> o <code>supabase/*.sql</code> (o quitarlas del plan en{' '}
           <code>lib/migracion/tablasOrder.ts</code>).
+        </div>
+      ) : null}
+
+      {pipelineFailures.length > 0 ? (
+        <div
+          role="status"
+          style={{
+            maxWidth: '960px',
+            margin: '0 auto 1rem',
+            padding: '0.65rem 1rem',
+            borderRadius: 12,
+            background: 'rgba(248, 113, 113, 0.12)',
+            border: '1px solid rgba(248, 113, 113, 0.45)',
+            color: '#fecaca',
+            fontSize: '0.85rem',
+            lineHeight: 1.5,
+          }}
+        >
+          <strong>Problemas de esquema local (pipeline Tables API, sin llamar a InsForge)</strong> —{' '}
+          {pipelineFailures.length} tabla(s). Revisa antes de migrar:
+          <ul style={{ margin: '0.5rem 0 0', paddingLeft: '1.25rem' }}>
+            {pipelineFailures.map((p) => (
+              <li key={p.table}>
+                <span style={{ fontFamily: 'ui-monospace, monospace' }}>{p.table}</span>
+                {p.error ? <span style={{ color: '#fca5a5' }}> — {p.error}</span> : null}
+              </li>
+            ))}
+          </ul>
         </div>
       ) : null}
 
