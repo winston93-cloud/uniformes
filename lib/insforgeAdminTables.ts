@@ -63,10 +63,37 @@ export async function insforgeCreateTable(opts: { tableName: string; rlsEnabled?
   if (!token) throw new Error('Falta INSFORGE_ADMIN_TOKEN');
 
   const url = new URL('/api/database/tables', baseUrl).toString();
+
+  // Algunas instancias esperan el shape {columnName,isNullable,isUnique,defaultValue}
+  // (consistente con Tables API schema). Enviamos ese shape.
+  const payload = {
+    tableName: opts.tableName,
+    rlsEnabled: Boolean(opts.rlsEnabled),
+    columns: (opts.columns || []).map((c) => {
+      const out: any = {
+        columnName: c.name,
+        type: c.type,
+        isNullable: c.nullable,
+        isUnique: Boolean(c.unique),
+      };
+      if (c.defaultValue !== undefined && c.defaultValue !== null && String(c.defaultValue).length) {
+        out.defaultValue = String(c.defaultValue);
+      }
+      if (c.foreignKey) {
+        out.foreignKey = {
+          referenceTable: c.foreignKey.table,
+          referenceColumn: c.foreignKey.column,
+          onDelete: c.foreignKey.onDelete || 'RESTRICT',
+        };
+      }
+      return out;
+    }),
+  };
+
   const res = await fetch(url, {
     method: 'POST',
     headers: { ...authHeaders(token), 'content-type': 'application/json; charset=utf-8' },
-    body: JSON.stringify(opts),
+    body: JSON.stringify(payload),
     cache: 'no-store',
   });
   const text = await res.text();
