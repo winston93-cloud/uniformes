@@ -16,6 +16,8 @@ function normIdKey(id: string): string {
   return id.trim().toLowerCase();
 }
 
+const COSTOS_EMBED = `*, tallas(*), prendas(*)`;
+
 function normalizeCostoRow(row: Record<string, unknown>): Costo {
   const tr = row.talla ?? row.tallas;
   const pr = row.prenda ?? row.prendas;
@@ -78,7 +80,23 @@ export function useCostos(sucursal_id?: string) {
   const fetchCostos = async () => {
     try {
       setLoading(true);
-      /** InsForge rechaza `costos` con embed `tallas(*),prendas(*)`: siempre lectura plana + enrich en cliente. */
+      let query = supabase.from('costos').select(COSTOS_EMBED).order('created_at', { ascending: false });
+      let { data, error } = await query;
+
+      if (!error && data?.length) {
+        let rows = (data || []).map((r) => r as Record<string, unknown>);
+        rows = filtrarFilasPorSucursalSiHayColumna(rows, sucursal_id);
+        setCostos(
+          sortCostosPorFecha(
+            rows.map((r) =>
+              normalizeCostoRow(normalizarCamposCostoApi(r as Record<string, unknown>))
+            )
+          )
+        );
+        setError(null);
+        return;
+      }
+
       let fallback = await supabase.from('costos').select('*').order('created_at', { ascending: false });
       if (fallback.error) {
         fallback = await supabase.from('costos').select('*');
@@ -142,7 +160,7 @@ export function useCostos(sucursal_id?: string) {
     }
   };
 
-  /** Solo columnas de `costos`: InsForge suele no tener FK costos↔tallas/prepar en cache para embeds. */
+  /** Por prenda; prueba FK snake_case y camelCase (`fetchCostosRowsByPrenda`). */
   const getCostosByPrenda = async (prenda_id: string) => {
     try {
       const rows = await fetchCostosRowsByPrenda(supabase, prenda_id);

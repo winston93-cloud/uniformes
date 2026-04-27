@@ -1,6 +1,6 @@
 /**
- * InsForge a veces expone columnas FK en camelCase en el esquema real,
- * y el cliente devuelve JSON acorde; unificamos a snake_case esperado por la app.
+ * Unifica variantes de nombre de FK (camelCase/PascalCase) sobre la fila API;
+ * válido para Supabase y otros PostgREST.
  */
 export function normalizarCamposPrendaApi(row: Record<string, unknown>): Record<string, unknown> {
   const categoriaId =

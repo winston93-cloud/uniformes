@@ -12,7 +12,12 @@ export function useTallas() {
   const fetchTallas = async () => {
     try {
       setLoading(true);
-      /** InsForge suele no tener la función Postgres `obtener_tallas_ordenadas` → solo tabla + orden local (evita 404 en red). */
+      const rpc = await supabase.rpc('obtener_tallas_ordenadas');
+      if (!rpc.error && rpc.data != null && (rpc.data as unknown[]).length > 0) {
+        setTallas((rpc.data || []) as Talla[]);
+        setError(null);
+        return;
+      }
       let fb = await supabase.from('tallas').select('*').order('orden', { ascending: true });
       if (fb.error) {
         fb = await supabase.from('tallas').select('*');

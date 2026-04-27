@@ -1,38 +1,17 @@
-# Cutover: app → InsForge
+# InsForge: migración y entorno (no es el runtime de la app)
 
-## Qué ya hace el código
+## Runtime de la app (producción)
 
-`lib/supabase.ts` exporta el mismo `supabase` que usan hooks y páginas. Si en Vercel define:
+La UI y los hooks usan **solo** el cliente en `lib/supabase.ts` → **Supabase** (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`).
 
-- `NEXT_PUBLIC_DATABASE_PROVIDER=insforge` (o `NEXT_PUBLIC_USE_INSFORGE=true`)
+No hace falta `NEXT_PUBLIC_DATABASE_PROVIDER` ni `NEXT_PUBLIC_INSFORGE_*` para que pedidos, prendas, etc. funcionen contra tu proyecto Supabase.
 
-entonces **`.from()` y `.rpc()`** van al **PostgREST de InsForge**.  
-**Storage** usa el SDK de InsForge con un adaptador compatible (upload / remove / URL pública).
+## InsForge en este repo
 
-## Tu checklist en Vercel (producción)
+- **`lib/insforge.ts`** y rutas **`/api/migracion/*`**: cliente InsForge para copiar datos, DDL, wipe, sync, etc.
+- Variables típicas solo si usas esa herramienta: `NEXT_PUBLIC_INSFORGE_URL`, `NEXT_PUBLIC_INSFORGE_ANON_KEY`, `INSFORGE_ADMIN_TOKEN`.
+- **`SUPABASE_SERVICE_ROLE_KEY`** + **`NEXT_PUBLIC_SUPABASE_URL`**: servidor para leer Supabase como **origen** durante migraciones.
 
-1. **InsForge (públicas, van al bundle del cliente)**  
-   - `NEXT_PUBLIC_INSFORGE_URL` — host API del proyecto (ej. `https://xxx.us-east.insforge.app`).  
-   - `NEXT_PUBLIC_INSFORGE_ANON_KEY` — anon key del proyecto InsForge.
+## Histórico
 
-2. **Activar el conmutador**  
-   - `NEXT_PUBLIC_DATABASE_PROVIDER=insforge`
-
-3. **Supabase solo donde sigue haciendo falta**  
-   - **Migración / sync:** la app sigue leyendo **Supabase como origen** con `SUPABASE_SERVICE_ROLE_KEY` + `NEXT_PUBLIC_SUPABASE_URL` (servidor). No quites eso hasta que dejes de usar `/migracion` contra ese proyecto.  
-   - Si **ya no** necesitas la UI de migración contra Supabase, puedes retirar las vars públicas de Supabase del cliente y dejar solo las del servidor (evaluar por entorno).
-
-4. **Admin InsForge** (ya lo usas para migraciones):  
-   - `INSFORGE_ADMIN_TOKEN` — sin cambiar.
-
-5. **Redeploy** del proyecto en Vercel tras guardar variables.
-
-## Verificación rápida
-
-- Abre la app (pedidos, insumos, etc.): deben cargar datos desde **InsForge**.  
-- RPC (`crear_pedido_atomico`, etc.) deben existir en la **misma base InsForge** donde migraste (funciones Postgres).  
-- Storage: si el bucket es **privado**, las URLs públicas pueden fallar; ajusta políticas o bucket en InsForge.
-
-## Rollback
-
-Quita `NEXT_PUBLIC_DATABASE_PROVIDER` o pon `supabase` y redeploy; la app vuelve al cliente Supabase.
+Antes existía un conmutador (`NEXT_PUBLIC_DATABASE_PROVIDER=insforge`) que enviaba el cliente “público” de la app a InsForge; se **retiró**: la app quedó explícitamente en Supabase para evitar cortar dualidad en producción.
