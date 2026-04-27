@@ -12,6 +12,39 @@ function isSafeTableName(name: string) {
   return /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name);
 }
 
+function quoteIdent(name: string) {
+  return `"${String(name).replace(/"/g, '""')}"`;
+}
+
+function pgCastForColumn(meta: { data_type: string; udt_name: string }): string {
+  const dt = String(meta.data_type || '').toLowerCase();
+  const udt = String(meta.udt_name || '').toLowerCase();
+
+  if (dt === 'uuid' || udt === 'uuid') return 'uuid';
+
+  if (dt === 'boolean') return 'boolean';
+
+  if (dt === 'smallint') return 'smallint';
+  if (dt === 'integer') return 'integer';
+  if (dt === 'bigint') return 'bigint';
+
+  if (dt === 'numeric' || dt === 'real' || dt === 'double precision') return 'numeric';
+
+  if (dt === 'json' || udt === 'json') return 'json';
+  if (dt === 'jsonb' || udt === 'jsonb') return 'jsonb';
+
+  if (dt === 'date') return 'date';
+  if (dt === 'timestamp with time zone') return 'timestamptz';
+  if (dt === 'timestamp without time zone') return 'timestamp';
+  if (dt.includes('timestamp')) return 'timestamptz';
+
+  // USER-DEFINED (enums, etc.): llegan como texto desde JSON; Postgres los casteará si el texto coincide.
+  if (dt === 'user-defined') return 'text';
+
+  // varchar/text y el resto
+  return 'text';
+}
+
 export async function copyTableDataFromSupabaseToInsforge(opts: {
   table: string;
   batchSize?: number;
@@ -34,8 +67,6 @@ export async function copyTableDataFromSupabaseToInsforge(opts: {
   // truncateDestination se maneja a nivel de migrate-one (delete+recreate tabla)
   void truncateDestination;
 
-  // Descubrir columnas reales del destino (InsForge agrega `uuid`, `created_at`, etc.)
-  // y puede no tener la misma PK/columna que Supabase (p.ej. `id`).
   const destColsRes = await runInsforgeRawSql<{ rows?: Array<{ column_name: string }> }>(
     `SELECT column_name
      FROM information_schema.columns
@@ -49,10 +80,24 @@ export async function copyTableDataFromSupabaseToInsforge(opts: {
     throw new Error(`InsForge table not found: public.${table}`);
   }
 
-  const requiredColsRes = await runInsforgeRawSql<{
-    rows?: Array<{ column_name: string; is_nullable: string; column_default: string | null }>;
+  const metaRes = await runInsforgeRawSql<{
+    rows?: Array<{ column_name: string; data_type: string; udt_name: string }>;
   }>(
-    `SELECT column_name, is_nullable, column_default
+    `SELECT column_name, data_type, udt_name
+     FROM information_schema.columns
+     WHERE table_schema = 'public' AND table_name = $1
+     ORDER BY ordinal_position`,
+    [table]
+  );
+  const colMeta = new Map<string, { data_type: string; udt_name: string }>();
+  for (const r of metaRes?.rows || []) {
+    colMeta.set(String(r.column_name), { data_type: String(r.data_type), udt_name: String(r.udt_name) });
+  }
+
+  const requiredColsRes = await runInsforgeRawSql<{
+    rows?: Array<{ column_name: string }>;
+  }>(
+    `SELECT column_name
      FROM information_schema.columns
      WHERE table_schema = 'public'
        AND table_name = $1
@@ -95,7 +140,6 @@ export async function copyTableDataFromSupabaseToInsforge(opts: {
     if (insErr === null || insErr === undefined) return 'Error desconocido';
     if (typeof insErr === 'string') return insErr;
 
-    // PostgrestError hereda Error: message/details/hint/code NO son enumerable con getOwnPropertyNames()
     const msg =
       typeof (insErr as any)?.message === 'string' && String((insErr as any).message).trim().length
         ? String((insErr as any).message)
@@ -113,7 +157,6 @@ export async function copyTableDataFromSupabaseToInsforge(opts: {
         for (const k of Object.getOwnPropertyNames(insErr)) {
           out[k] = errObj[k];
         }
-        // Captura props de Error aunque no salgan en ownPropertyNames en algunos runtimes
         if (!out.message && (insErr as any).message) out.message = (insErr as any).message;
         return safeJson(out);
       } catch {
@@ -146,10 +189,58 @@ export async function copyTableDataFromSupabaseToInsforge(opts: {
     if (!insErr) return;
     const pk = rowIn?.id ?? rowIn?.uuid ?? rowIn?.usuario_id ?? '¿?';
     throw new Error(
-      `InsForge insert fallo en ${table} (pk=${safeJson(pk)}): ${formatInsforgeInsertError(insErr)} · payload=${safeJson(
-        rowOut
-      ).slice(0, 1200)}`
+      `InsForge insert (fallback PostgREST) fallo en ${table} (pk=${safeJson(pk)}): ${formatInsforgeInsertError(
+        insErr
+      )} · payload=${safeJson(rowOut).slice(0, 1200)}`
     );
+  };
+
+  /**
+   * Insert masivo vía SQL admin: evita muchos edge-cases del cliente PostgREST durante migración.
+   * Usamos json_to_recordset + casts explícitos por columnas del destino.
+   */
+  const insertChunkViaSql = async (normalized: any[]) => {
+    if (normalized.length === 0) return;
+
+    const keyUnion = new Set<string>();
+    for (const r of normalized) {
+      if (!r || typeof r !== 'object') continue;
+      for (const k of Object.keys(r)) {
+        if (destCols.has(k)) keyUnion.add(k);
+      }
+    }
+
+    const insertCols = [...keyUnion].sort();
+    if (insertCols.length === 0) {
+      throw new Error(`InsForge SQL insert: no hay columnas compatibles para public.${table}`);
+    }
+
+    const jsonRows = normalized.map((r) => {
+      const o: any = {};
+      for (const c of insertCols) {
+        o[c] = r?.[c] ?? null;
+      }
+      return o;
+    });
+
+    const recordsetCols = insertCols
+      .map((c) => {
+        const meta = colMeta.get(c) || { data_type: 'text', udt_name: 'text' };
+        const cast = pgCastForColumn(meta);
+        return `${quoteIdent(c)} ${cast}`;
+      })
+      .join(', ');
+
+    const targetCols = insertCols.map((c) => quoteIdent(c)).join(', ');
+    const jsonParam = JSON.stringify(jsonRows);
+
+    const sql = `
+INSERT INTO public.${quoteIdent(table)} (${targetCols})
+SELECT ${insertCols.map((c) => `x.${quoteIdent(c)}`).join(', ')}
+FROM json_to_recordset($1::json) AS x(${recordsetCols});
+`;
+
+    await runInsforgeRawSql(sql, [jsonParam]);
   };
 
   let offset = startOffset;
@@ -175,19 +266,29 @@ export async function copyTableDataFromSupabaseToInsforge(opts: {
         validateRequiredAfterNormalize(out);
         return out;
       });
-      // eslint-disable-next-line no-await-in-loop
-      const { error: insErr } = await insforge.database.from(table).insert(normalized);
-      if (insErr) {
-        // Fallback: intentar fila por fila para ubicar el registro que truena y enseñar payload útil.
-        // (Sigue siendo una sola interacción “humana”: el error ya trae pk + payload truncado.)
+
+      try {
         // eslint-disable-next-line no-await-in-loop
-        for (let k = 0; k < chunk.length; k += 1) {
+        await insertChunkViaSql(normalized);
+      } catch (sqlErr: any) {
+        // Fallback conservador (no rompe el flujo anterior): PostgREST + row-level para aislar PK conflictivo.
+        const { error: insErr } = await insforge.database.from(table).insert(normalized);
+        if (insErr) {
           // eslint-disable-next-line no-await-in-loop
-          await insertSingleWithContext(chunk[k], normalized[k]);
+          for (let k = 0; k < chunk.length; k += 1) {
+            try {
+              // eslint-disable-next-line no-await-in-loop
+              await insertSingleWithContext(chunk[k], normalized[k]);
+            } catch (rowErr: any) {
+              throw new Error(
+                `${rowErr?.message || String(rowErr)}\n\nSQL batch previo falló: ${sqlErr?.message || String(sqlErr)}`
+              );
+            }
+          }
+          throw new Error(`InsForge insert fallo en ${table}: ${formatInsforgeInsertError(insErr)}`);
         }
-        // Si el batch falló pero singles no, esto no debería pasar; dejamos error claro.
-        throw new Error(`InsForge insert fallo en ${table}: ${formatInsforgeInsertError(insErr)}`);
       }
+
       totalInserted += chunk.length;
     }
 
