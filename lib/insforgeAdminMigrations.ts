@@ -57,6 +57,64 @@ function enforceInsforgeTablesApiReservedColumns(
   return { columns: next, extraRename };
 }
 
+/**
+ * InsForge Tables API serializa defaultValue como literal; expresiones SQL (`CURRENT_TIMESTAMP`)
+ * provocan: invalid input syntax for type timestamp with time zone: "CURRENT_TIMESTAMP".
+ */
+function sanitizeColumnDefaultsForInsforgeApi(columns: InsforgeColumn[]): InsforgeColumn[] {
+  return columns.map((col) => {
+    const raw = col.defaultValue;
+    if (raw == null || String(raw).trim() === '') return { ...col, defaultValue: null };
+
+    let v = String(raw).trim().replace(/,\s*$/, '');
+    const vLower = v.toLowerCase();
+
+    // Siempre: la API no acepta expresiones SQL como literal de fecha/uuid en JSON.
+    if (vLower === 'current_timestamp' || /^now\s*\(\s*\)$/i.test(v)) {
+      return { ...col, defaultValue: null };
+    }
+
+    // Literales entre comillas simples (Postgres)
+    const sqlStringLiteral = /^'(?:[^']|'')*'$/;
+    if (sqlStringLiteral.test(v)) {
+      return { ...col, defaultValue: v };
+    }
+
+    if (col.type === 'datetime') {
+      if (
+        vLower === 'current_timestamp' ||
+        vLower === 'current_date' ||
+        vLower === 'current_time' ||
+        vLower === 'localtimestamp' ||
+        vLower === 'localtime' ||
+        /^now\s*\(\s*\)$/.test(vLower) ||
+        /^transaction_timestamp\s*\(\s*\)$/.test(vLower) ||
+        /^statement_timestamp\s*\(\s*\)$/.test(vLower) ||
+        /^clock_timestamp\s*\(\s*\)$/.test(vLower) ||
+        /^timezone\s*\(/.test(vLower)
+      ) {
+        return { ...col, defaultValue: null };
+      }
+    }
+
+    if (col.type === 'uuid') {
+      if (/gen_random_uuid\s*\(|uuid_generate_v4\s*\(|random_uuid\s*\(/i.test(v)) {
+        return { ...col, defaultValue: null };
+      }
+    }
+
+    // Cualquier llamada a función u operador típico de SQL
+    if (/[()]/.test(v)) {
+      return { ...col, defaultValue: null };
+    }
+
+    // nextval, secuencias
+    if (/nextval\s*\(/i.test(v)) return { ...col, defaultValue: null };
+
+    return { ...col, defaultValue: v };
+  });
+}
+
 type InsforgeMigrationResponse = {
   success?: boolean;
   error?: string;
@@ -161,7 +219,8 @@ export async function runInsforgeMigrationsSql(sql: string) {
   }
   const enforced = enforceInsforgeTablesApiReservedColumns(parsed.columns, parsed.tableName);
   const mergedRename: InsforgeTablesApiRenameMap = { ...tablesApiRename, ...enforced.extraRename };
-  await insforgeCreateTable({ tableName: parsed.tableName, rlsEnabled: false, columns: enforced.columns });
+  const columnsReady = sanitizeColumnDefaultsForInsforgeApi(enforced.columns);
+  await insforgeCreateTable({ tableName: parsed.tableName, rlsEnabled: false, columns: columnsReady });
   return {
     ok: true,
     raw: JSON.stringify({ tableName: parsed.tableName }),
