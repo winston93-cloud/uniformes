@@ -3,6 +3,7 @@
 import { useEffect, useState, use } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
+import { mapAlumnoRow } from '@/lib/hooks/useAlumnos';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import LayoutWrapper from '@/components/LayoutWrapper';
@@ -124,12 +125,15 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
       // Si hay alumno_id, obtener sus datos
       let alumnoData = null;
       if (pedidoData.alumno_id) {
-        const { data: alumno } = await supabase
+        const { data: row } = await supabase
           .from('alumno')
-          .select('nivel, grado')
-          .eq('id', pedidoData.alumno_id)
-          .single();
-        alumnoData = alumno;
+          .select('*')
+          .eq('alumno_id', pedidoData.alumno_id)
+          .maybeSingle();
+        if (row) {
+          const m = mapAlumnoRow(row as Record<string, unknown>);
+          alumnoData = { nivel: m.nivel, grado: m.grado };
+        }
       }
 
       // Obtener detalles con nombres de prendas y tallas

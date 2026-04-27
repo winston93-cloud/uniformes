@@ -6,13 +6,26 @@ export function isUuid(value: string): boolean {
   );
 }
 
-/** Si `alumno_id` no es UUID, resolvemos por referencia en la tabla `alumno`. */
+function soloDigitos(value: string): boolean {
+  return /^\d+$/.test(value.trim());
+}
+
+/**
+ * Resuelve el id a guardar en `cotizaciones.alumno_id`.
+ * - UUID: se devuelve tal cual (si tu FK sigue siendo UUID).
+ * - Numérico (id legado): se devuelve como string.
+ * - Otro: busca o crea fila en `alumno` por `alumno_ref`.
+ */
 export async function resolverAlumnoUuidParaCotizacion(
   legacyId: string,
   referencia: string | undefined,
   nombre: string
 ): Promise<string> {
   if (isUuid(legacyId)) return legacyId;
+
+  if (soloDigitos(legacyId)) {
+    return legacyId.trim();
+  }
 
   const ref = referencia?.trim();
   if (!ref) {
@@ -24,12 +37,16 @@ export async function resolverAlumnoUuidParaCotizacion(
   const { data: row, error } = await supabase
     .from('alumno')
     .upsert(
-      { nombre: nombre?.trim() || 'Alumno', referencia: ref, activo: true },
-      { onConflict: 'referencia' }
+      {
+        alumno_ref: ref,
+        alumno_nombre_completo: nombre?.trim() || 'Alumno',
+        alumno_status: 1,
+      },
+      { onConflict: 'alumno_ref' }
     )
-    .select('id')
+    .select('alumno_id')
     .single();
 
   if (error) throw error;
-  return row!.id as string;
+  return String((row as { alumno_id: number | string }).alumno_id);
 }

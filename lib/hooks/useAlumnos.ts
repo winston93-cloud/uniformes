@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../supabase';
+import { getSupabaseErrorMessage, supabase } from '../supabase';
 
 export interface AlumnoFromDB {
   alumno_id: number;
@@ -72,7 +72,37 @@ export const mapAlumnoFromDB = (db: AlumnoFromDB): Alumno => {
   };
 };
 
-/** Tabla en Supabase: `public.alumno` (singular). */
+/** Esquema legado `public.alumno` (alumno_id, alumno_*). Sin columna `activo`: usamos alumno_status. */
+function coerceLegacyRow(raw: Record<string, unknown>): AlumnoFromDB {
+  const idRaw = raw.alumno_id ?? raw.alumnoId;
+  return {
+    alumno_id: typeof idRaw === 'number' ? idRaw : Number(idRaw ?? 0),
+    alumno_ref: String(raw.alumno_ref ?? raw.alumnoRef ?? ''),
+    alumno_app: raw.alumno_app != null ? String(raw.alumno_app) : null,
+    alumno_apm: raw.alumno_apm != null ? String(raw.alumno_apm) : null,
+    alumno_nombre: raw.alumno_nombre != null ? String(raw.alumno_nombre) : null,
+    alumno_nivel:
+      raw.alumno_nivel != null ? Number(raw.alumno_nivel) : raw.alumnoNivel != null ? Number(raw.alumnoNivel) : null,
+    alumno_grado:
+      raw.alumno_grado != null ? Number(raw.alumno_grado) : raw.alumnoGrado != null ? Number(raw.alumnoGrado) : null,
+    alumno_grupo:
+      raw.alumno_grupo != null ? Number(raw.alumno_grupo) : raw.alumnoGrupo != null ? Number(raw.alumnoGrupo) : null,
+    alumno_ciclo_escolar:
+      raw.alumno_ciclo_escolar != null
+        ? Number(raw.alumno_ciclo_escolar)
+        : raw.alumnoCicloEscolar != null
+          ? Number(raw.alumnoCicloEscolar)
+          : raw.ciclo_escolar != null
+            ? Number(raw.ciclo_escolar)
+            : null,
+    alumno_nombre_completo:
+      raw.alumno_nombre_completo != null ? String(raw.alumno_nombre_completo) : null,
+    alumno_status:
+      raw.alumno_status != null ? Number(raw.alumno_status) : raw.alumnoStatus != null ? Number(raw.alumnoStatus) : null,
+  };
+}
+
+/** Variante UUID/nombre corto (si existiera otro esquema). */
 export function mapAlumnoPublic(row: Record<string, unknown>): Alumno {
   return {
     id: String(row.id ?? ''),
@@ -87,6 +117,13 @@ export function mapAlumnoPublic(row: Record<string, unknown>): Alumno {
   };
 }
 
+export function mapAlumnoRow(raw: Record<string, unknown>): Alumno {
+  if (raw.alumno_id != null || raw.alumnoId != null) {
+    return mapAlumnoFromDB(coerceLegacyRow(raw));
+  }
+  return mapAlumnoPublic(raw);
+}
+
 function escaparWildcards(valor: string) {
   return valor.replace(/[%_\\]/g, '\\$&');
 }
@@ -99,7 +136,12 @@ export function useAlumnos(cicloEscolar?: number) {
   const fetchAlumnos = async () => {
     try {
       setLoading(true);
-      const { data, error: err } = await supabase.from('alumno').select('*').eq('activo', true).limit(5000);
+      /** Activo = alumno_status 1 (no existe columna `activo`). */
+      const { data, error: err } = await supabase
+        .from('alumno')
+        .select('*')
+        .eq('alumno_status', 1)
+        .limit(5000);
 
       if (err) throw err;
 
@@ -113,13 +155,12 @@ export function useAlumnos(cicloEscolar?: number) {
         });
       }
 
-      const rows = rawRows.map((r) => mapAlumnoPublic(r as Record<string, unknown>));
+      const rows = rawRows.map((r) => mapAlumnoRow(r as Record<string, unknown>));
       rows.sort((a, b) => a.referencia.localeCompare(b.referencia, 'es'));
       setAlumnos(rows);
       setError(null);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setError(msg);
+      setError(getSupabaseErrorMessage(err));
       console.error('Error fetching alumnos:', err);
     } finally {
       setLoading(false);
@@ -138,8 +179,10 @@ export function useAlumnos(cicloEscolar?: number) {
       const { data, error } = await supabase
         .from('alumno')
         .select('*')
-        .eq('activo', true)
-        .or(`referencia.ilike.%${consulta}%,nombre.ilike.%${consulta}%`)
+        .eq('alumno_status', 1)
+        .or(
+          `alumno_ref.ilike.%${consulta}%,alumno_nombre_completo.ilike.%${consulta}%,alumno_nombre.ilike.%${consulta}%,alumno_app.ilike.%${consulta}%,alumno_apm.ilike.%${consulta}%`
+        )
         .limit(100);
 
       if (error) throw error;
@@ -148,13 +191,13 @@ export function useAlumnos(cicloEscolar?: number) {
       if (cicloEscolar !== undefined) {
         rawRows = rawRows.filter((raw) => {
           const r = raw as Record<string, unknown>;
-          const c = r.ciclo_escolar ?? r.cicloEscolar;
+          const c = r.ciclo_escolar ?? r.cicloEscolar ?? r.alumno_ciclo_escolar;
           if (c === undefined || c === null) return true;
           return Number(c) === cicloEscolar;
         });
       }
 
-      return rawRows.map((r) => mapAlumnoPublic(r as Record<string, unknown>));
+      return rawRows.map((r) => mapAlumnoRow(r as Record<string, unknown>));
     },
     [cicloEscolar]
   );
