@@ -16,9 +16,6 @@ function normIdKey(id: string): string {
   return id.trim().toLowerCase();
 }
 
-/** InsForge PostgREST a veces rechaza alias `talla:tallas(*)`; usamos embeds sin alias y mapeamos. */
-const COSTOS_EMBED = `*, tallas(*), prendas(*)`;
-
 function normalizeCostoRow(row: Record<string, unknown>): Costo {
   const tr = row.talla ?? row.tallas;
   const pr = row.prenda ?? row.prendas;
@@ -81,35 +78,16 @@ export function useCostos(sucursal_id?: string) {
   const fetchCostos = async () => {
     try {
       setLoading(true);
-      let query = supabase.from('costos').select(COSTOS_EMBED).order('created_at', { ascending: false });
-
-      let { data, error } = await query;
-
-      if (error) {
-        let q2 = supabase.from('costos').select('*').order('created_at', { ascending: false });
-        let fallback = await q2;
-        if (fallback.error) {
-          fallback = await supabase.from('costos').select('*');
-        }
-        if (fallback.error) throw fallback.error;
-        let plain = (fallback.data || []) as Record<string, unknown>[];
-        plain = filtrarFilasPorSucursalSiHayColumna(plain, sucursal_id);
-        const enriched = await enrichCostosFromPlainRows(plain);
-        setCostos(sortCostosPorFecha(enriched));
-        setError(null);
-        return;
+      /** InsForge rechaza `costos` con embed `tallas(*),prendas(*)`: siempre lectura plana + enrich en cliente. */
+      let fallback = await supabase.from('costos').select('*').order('created_at', { ascending: false });
+      if (fallback.error) {
+        fallback = await supabase.from('costos').select('*');
       }
-
-      let rows = (data || []).map((r) => r as Record<string, unknown>);
-      rows = filtrarFilasPorSucursalSiHayColumna(rows, sucursal_id);
-
-      setCostos(
-        sortCostosPorFecha(
-          rows.map((r) =>
-            normalizeCostoRow(normalizarCamposCostoApi(r as Record<string, unknown>))
-          )
-        )
-      );
+      if (fallback.error) throw fallback.error;
+      let plain = (fallback.data || []) as Record<string, unknown>[];
+      plain = filtrarFilasPorSucursalSiHayColumna(plain, sucursal_id);
+      const enriched = await enrichCostosFromPlainRows(plain);
+      setCostos(sortCostosPorFecha(enriched));
       setError(null);
     } catch (err: unknown) {
       setError(getSupabaseErrorMessage(err));
