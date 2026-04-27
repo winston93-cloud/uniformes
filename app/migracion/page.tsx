@@ -73,6 +73,9 @@ export default function MigracionPage() {
   const [schemaModalOpen, setSchemaModalOpen] = useState(false);
   const [schemaSql, setSchemaSql] = useState<string>('');
   const [schemaFiles, setSchemaFiles] = useState<string[]>([]);
+  const [syncPending, setSyncPending] = useState<number | null>(null);
+  const [syncBaselineTs, setSyncBaselineTs] = useState<string | null>(null);
+  const [syncLastAppliedTs, setSyncLastAppliedTs] = useState<string | null>(null);
 
   const seleccionadas = useMemo(() => TABLAS_34.filter((t) => seleccion[t]), [seleccion]);
   const todasOk = useMemo(() => TABLAS_34.every((t) => estado[t]?.status === 'OK'), [estado]);
@@ -92,6 +95,81 @@ export default function MigracionPage() {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const refreshSyncStatus = async () => {
+    try {
+      const res = await fetch('/api/migracion/sync-status', { cache: 'no-store' });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.success) throw new Error(json?.error || 'No se pudo leer sync-status');
+      setSyncBaselineTs(json.baselineTs ?? null);
+      setSyncLastAppliedTs(json.lastAppliedTs ?? null);
+      setSyncPending(typeof json.pendingCount === 'number' ? json.pendingCount : null);
+    } catch (e: any) {
+      addLog(`ERROR sync-status: ${e?.message || String(e)}`);
+    }
+  };
+
+  useEffect(() => {
+    refreshSyncStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const iniciarBaseline = async () => {
+    setBusy(true);
+    try {
+      addLog('Inicializando baseline de conciliación (sync-baseline)…');
+      const res = await fetch('/api/migracion/sync-baseline', { method: 'POST', cache: 'no-store' });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.success) throw new Error(json?.error || 'No se pudo iniciar baseline');
+      setSyncBaselineTs(json.baselineTs ?? null);
+      setSyncLastAppliedTs(json.lastAppliedTs ?? null);
+      setSyncPending(0);
+      addLog(`Baseline OK: ${json.baselineTs}`);
+      alert('✅ Baseline creado. A partir de ahora se detectan movimientos nuevos para conciliación.');
+    } catch (e: any) {
+      addLog(`ERROR baseline: ${e?.message || String(e)}`);
+      alert(`❌ No se pudo iniciar baseline: ${e?.message || String(e)}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const aplicarConciliacion = async () => {
+    setBusy(true);
+    try {
+      addLog('Aplicando conciliación (auditoria → InsForge)…');
+      let loops = 0;
+      for (;;) {
+        loops += 1;
+        if (loops > 20) break;
+        // eslint-disable-next-line no-await-in-loop
+        const res = await fetch('/api/migracion/sync-apply', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          cache: 'no-store',
+          body: JSON.stringify({ limit: 500 }),
+        });
+        // eslint-disable-next-line no-await-in-loop
+        const json = await res.json().catch(() => null);
+        if (!res.ok || !json?.success) throw new Error(json?.error || 'No se pudo aplicar sync');
+        addLog(
+          `Sync: fetched=${json.fetched} applied=${json.applied} skipped=${json.skipped} last=${json.lastAppliedTsAfter}`
+        );
+        if (Array.isArray(json.errors) && json.errors.length) {
+          addLog(`⚠️ Sync errores (muestra): ${json.errors.slice(0, 3).map((x: any) => `${x.tabla}:${x.operacion}`).join(', ')}`);
+        }
+        // eslint-disable-next-line no-await-in-loop
+        await refreshSyncStatus();
+        if (!json.hasMore) break;
+      }
+      alert('✅ Conciliación aplicada.');
+    } catch (e: any) {
+      addLog(`ERROR sync-apply: ${e?.message || String(e)}`);
+      alert(`❌ Error conciliando: ${e?.message || String(e)}`);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const toggleAll = (v: boolean) => {
     setSeleccion(Object.fromEntries(TABLAS_34.map((t) => [t, v])));
@@ -163,6 +241,8 @@ export default function MigracionPage() {
           )} (deben existir en InsForge antes, si el CREATE trae FKs).`
         );
       }
+      // Verificación automática al terminar
+      await verificarTabla(table);
     } catch (e: any) {
       setEstado((s) => ({ ...s, [table]: { status: 'ERROR', error: e?.message || String(e) } }));
       addLog(`ERROR ${table}: ${e?.message || String(e)}`);
@@ -341,6 +421,31 @@ export default function MigracionPage() {
         </button>
         <button className="btn btn-secondary" type="button" disabled={busy} onClick={probarTokenAdminInsForge}>
           Probar token InsForge admin
+        </button>
+        <button
+          className="btn"
+          type="button"
+          disabled={busy}
+          onClick={syncBaselineTs ? aplicarConciliacion : iniciarBaseline}
+          style={{
+            background:
+              typeof syncPending === 'number' && syncPending > 0
+                ? '#16a34a'
+                : syncBaselineTs
+                  ? '#64748b'
+                  : '#dc2626',
+            color: 'white',
+            border: 'none',
+          }}
+          title={
+            syncBaselineTs
+              ? `Pendientes: ${syncPending ?? '¿?'} · Último aplicado: ${syncLastAppliedTs ?? '—'}`
+              : 'Primero define baseline (inicio de ventana de migración)'
+          }
+        >
+          {syncBaselineTs
+            ? `Update/Conciliar (${syncPending ?? '¿?'})`
+            : '⛔ Iniciar ventana (baseline)'}
         </button>
         <button className="btn btn-primary" type="button" disabled={busy} onClick={migrarSeleccionadas}>
           Migrar seleccionadas
