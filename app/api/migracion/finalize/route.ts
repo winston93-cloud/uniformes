@@ -9,7 +9,7 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       message:
-        'Cutover listo.\n\nPara pasar TODO el sistema a InsForge:\n1) En Vercel, configura NEXT_PUBLIC_INSFORGE_URL y NEXT_PUBLIC_INSFORGE_ANON_KEY.\n2) (Recomendado) deshabilita/retira NEXT_PUBLIC_SUPABASE_* para evitar confusión.\n3) Redeploy.\n\nSiguiente paso: cambiar el código para que los hooks ya no usen Supabase. (Esto es un refactor grande y se hace en un commit separado.)',
+        'Cutover en código listo.\n\nTu parte en Vercel:\n1) Variables: NEXT_PUBLIC_DATABASE_PROVIDER=insforge · NEXT_PUBLIC_INSFORGE_URL · NEXT_PUBLIC_INSFORGE_ANON_KEY.\n2) Mantén SUPABASE_SERVICE_ROLE_KEY y NEXT_PUBLIC_SUPABASE_URL para la página /migracion (origen de datos al copiar).\n3) Guardar proyecto → redeploy.\n\nLee CUTOVER_INSFORGE.md en el repo.',
     });
   } catch (e: any) {
     return NextResponse.json({ success: false, error: e?.message || String(e) }, { status: 500 });
