@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { TABLAS_MIGRACION_ORDER } from '@/lib/migracion/tablasOrder';
 
 const STORAGE_KEY_ESTADO = 'uniformes_migracion_estado_v1';
@@ -59,6 +59,8 @@ export default function MigracionPage() {
   const [syncLastAppliedTs, setSyncLastAppliedTs] = useState<string | null>(null);
 
   const seleccionadas = useMemo(() => TABLAS_34.filter((t) => seleccion[t]), [seleccion]);
+  const todasSeleccionadas = seleccionadas.length === TABLAS_34.length;
+  const masterCheckboxRef = useRef<HTMLInputElement>(null);
   const todasOk = useMemo(() => TABLAS_34.every((t) => estado[t]?.status === 'OK'), [estado]);
 
   const addLog = (line: string) => setLogs((prev) => [`${new Date().toLocaleString('es-MX')} — ${line}`, ...prev]);
@@ -105,6 +107,12 @@ export default function MigracionPage() {
       // ignore
     }
   }, [estado]);
+
+  useEffect(() => {
+    const el = masterCheckboxRef.current;
+    if (!el) return;
+    el.indeterminate = seleccionadas.length > 0 && seleccionadas.length < TABLAS_34.length;
+  }, [seleccionadas.length]);
 
   useEffect(() => {
     (async () => {
@@ -717,8 +725,19 @@ export default function MigracionPage() {
             borderBottom: '1px solid rgba(148, 163, 184, 0.22)',
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.75rem' }}>
-            <h2 style={{ margin: 0, fontSize: '1.05rem' }}>Supabase (origen)</h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
+              <input
+                ref={masterCheckboxRef}
+                type="checkbox"
+                checked={todasSeleccionadas}
+                disabled={busy}
+                onChange={() => toggleAll(!todasSeleccionadas)}
+                aria-label={todasSeleccionadas ? 'Desmarcar todas las tablas' : 'Seleccionar todas las tablas'}
+                title={todasSeleccionadas ? 'Desmarcar todas' : 'Seleccionar todas'}
+              />
+              <h2 style={{ margin: 0, fontSize: '1.05rem' }}>Supabase (origen)</h2>
+            </div>
             <span style={{ fontSize: '0.85rem', color: '#64748b', whiteSpace: 'nowrap' }}>
               {seleccionadas.length} seleccionadas
             </span>
