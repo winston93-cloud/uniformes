@@ -50,6 +50,8 @@ export default function MigracionPage() {
   const [schemaModalOpen, setSchemaModalOpen] = useState(false);
   const [schemaSql, setSchemaSql] = useState<string>('');
   const [schemaFiles, setSchemaFiles] = useState<string[]>([]);
+  /** Tablas del plan sin CREATE TABLE local en el repo (fallará migrate-one hasta tener SQL). */
+  const [ddlMissing, setDdlMissing] = useState<string[]>([]);
   const [syncPending, setSyncPending] = useState<number | null>(null);
   const [syncBaselineTs, setSyncBaselineTs] = useState<string | null>(null);
   const [syncLastAppliedTs, setSyncLastAppliedTs] = useState<string | null>(null);
@@ -105,6 +107,18 @@ export default function MigracionPage() {
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/migracion/ddl-coverage', { cache: 'no-store' });
+        const json = await res.json().catch(() => null);
+        if (res.ok && json?.success && Array.isArray(json.missing)) setDdlMissing(json.missing);
+      } catch {
+        // ignore
+      }
+    })();
   }, []);
 
   const refreshSyncStatus = async () => {
@@ -436,6 +450,29 @@ export default function MigracionPage() {
           )}
         </div>
       </div>
+
+      {ddlMissing.length > 0 ? (
+        <div
+          role="status"
+          style={{
+            maxWidth: '900px',
+            margin: '0 auto 1rem',
+            padding: '0.65rem 1rem',
+            borderRadius: 12,
+            background: 'rgba(234, 179, 8, 0.15)',
+            border: '1px solid rgba(234, 179, 8, 0.45)',
+            color: '#fef9c3',
+            fontSize: '0.88rem',
+            lineHeight: 1.45,
+          }}
+        >
+          <strong>Sin DDL en el repositorio</strong> ({ddlMissing.length}):{' '}
+          <span style={{ fontFamily: 'ui-monospace, monospace' }}>{ddlMissing.join(', ')}</span>.
+          Migrar esas tablas fallará hasta añadir un <code>CREATE TABLE</code> en{' '}
+          <code>supabase/migrations</code> o <code>supabase/*.sql</code> (o quitarlas del plan en{' '}
+          <code>lib/migracion/tablasOrder.ts</code>).
+        </div>
+      ) : null}
 
       <div style={{ display: 'flex', justifyContent: 'center', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
         <button
