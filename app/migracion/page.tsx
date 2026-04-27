@@ -216,6 +216,49 @@ export default function MigracionPage() {
     setSeleccion(Object.fromEntries(TABLAS_34.map((t) => [t, v])));
   };
 
+  /** Borra en InsForge las 34 tablas del plan + estado baseline; deja BD lista para migrar de cero. */
+  const borrarPlanInsForge = async () => {
+    const ok = window.confirm(
+      '¿Borrar en InsForge las 34 tablas del plan uniformes + el estado de baseline (uniformes_migracion_state)?\n\n' +
+        'Irreversible: tendrás que crear esquema / migrar de nuevo y volver a iniciar baseline.'
+    );
+    if (!ok) return;
+    setBusy(true);
+    addLog('Borrando tablas uniformes en InsForge (orden inverso por FKs)…');
+    try {
+      const res = await fetch('/api/migracion/wipe-insforge', { method: 'POST', cache: 'no-store' });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json) throw new Error(json?.error || 'wipe-insforge falló');
+
+      setEstado(Object.fromEntries(TABLAS_34.map((t) => [t, { status: 'PENDIENTE' as const }])));
+      setSyncBaselineTs(null);
+      setSyncLastAppliedTs(null);
+      setSyncPending(null);
+      setSchemaStatus('PENDIENTE');
+
+      const failed = Array.isArray(json.failed) ? json.failed : [];
+      if (failed.length) {
+        addLog(`Wipe parcial: ${failed.length} error(es). Ejemplo: ${failed[0]?.table} — ${failed[0]?.error}`);
+        alert(
+          `⚠️ Borrado con errores (${failed.length}). Revisa logs / InsForge.\n${failed
+            .slice(0, 5)
+            .map((x: { table: string; error: string }) => `${x.table}: ${x.error}`)
+            .join('\n')}`
+        );
+      } else {
+        addLog(`InsForge vaciado: ${json.deletedCount ?? json.deleted?.length ?? '?'} objeto(s).`);
+        alert(
+          '✅ Tablas del plan borradas en InsForge.\nSiguiente: crear estructuras → migrar tablas → iniciar baseline cuando toque.'
+        );
+      }
+    } catch (e: any) {
+      addLog(`ERROR wipe InsForge: ${e?.message || String(e)}`);
+      alert(`❌ ${e?.message || String(e)}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const crearEstructurasEnInsForge = async () => {
     setBusy(true);
     addLog('Creando estructuras en InsForge desde migrations de Supabase…');
@@ -575,6 +618,16 @@ export default function MigracionPage() {
         <a className="btn btn-secondary" href="/migracion/insforge-tablas">
           Ver tablas en InsForge (UI)
         </a>
+        <button
+          className="btn"
+          type="button"
+          disabled={busy}
+          onClick={borrarPlanInsForge}
+          style={{ background: '#b91c1c', color: 'white', border: 'none' }}
+          title="Elimina las 34 tablas del plan + estado de baseline en InsForge"
+        >
+          Borrar plan en InsForge (34 tablas)
+        </button>
         <button
           className="btn"
           type="button"
