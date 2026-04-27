@@ -12,13 +12,36 @@ function normalizeUuidKey(id: string): string {
 function readCategoriaIdFk(row: Record<string, unknown>): string | null {
   const v =
     row.categoria_id ??
-    row['categoriaId'] ??
-    row['categoria_Id'];
+    row.categoriaId ??
+    row['categoria_Id'] ??
+    row.category_id ??
+    row.categoryId;
   if (v == null || v === '') return null;
   return String(v).trim();
 }
 
-/** InsForge a veces no expone FK en schema cache → el embed `categorias_prendas(*)` falla. Unimos por categoria_id en cliente. */
+/** Texto legado si la BD aún tiene columna `categoria` sin migrar a UUID */
+function readNombreCategoriaLegacy(row: Record<string, unknown>): string | null {
+  const v = row.categoria ?? row.Categoria;
+  if (v == null || v === '') return null;
+  if (typeof v === 'string') {
+    const t = v.trim();
+    return t.length ? t : null;
+  }
+  return String(v).trim() || null;
+}
+
+function rowACategoriaPrenda(c: Record<string, unknown>): CategoriaPrenda {
+  const idVal = c.id ?? c.Id ?? c.ID;
+  return {
+    ...(c as object),
+    id: idVal != null ? String(idVal).trim() : '',
+    nombre: String(c.nombre ?? c.Nombre ?? ''),
+    activo: Boolean(c.activo ?? c.Activo ?? true),
+  } as CategoriaPrenda;
+}
+
+/** InsForge: sin embed; categorías en paralelo. Si existe solo `categoria` VARCHAR, enlazamos por nombre. */
 export function usePrendas() {
   const [prendas, setPrendas] = useState<Prenda[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,40 +50,47 @@ export function usePrendas() {
   const fetchPrendas = async () => {
     try {
       setLoading(true);
-      const preRes = await supabase.from('prendas').select('*').order('nombre', { ascending: true });
+      const [preRes, catRes] = await Promise.all([
+        supabase.from('prendas').select('*').order('nombre', { ascending: true }),
+        supabase.from('categorias_prendas').select('*'),
+      ]);
       if (preRes.error) throw preRes.error;
+      if (catRes.error) throw catRes.error;
 
       const prendasRows = preRes.data || [];
-      const categoriaIds = [
-        ...new Set(
-          prendasRows
-            .map((row) => readCategoriaIdFk(row as Record<string, unknown>))
-            .filter((id): id is string => Boolean(id))
-        ),
-      ];
+      const categoriasRows = catRes.data || [];
 
-      let catById = new Map<string, CategoriaPrenda>();
-      if (categoriaIds.length > 0) {
-        const catRes = await supabase.from('categorias_prendas').select('*').in('id', categoriaIds);
-        if (catRes.error) throw catRes.error;
-        catById = new Map(
-          (catRes.data || []).map((c) => {
-            const raw = c as Record<string, unknown>;
-            const idVal = raw.id ?? raw['Id'] ?? raw['ID'];
-            const cat = { ...(c as object), id: idVal != null ? String(idVal).trim() : '' } as CategoriaPrenda;
-            const key = idVal != null ? normalizeUuidKey(String(idVal)) : '';
-            return [key, cat] as const;
-          })
-        );
+      const catById = new Map<string, CategoriaPrenda>();
+      const catByNombreNorm = new Map<string, CategoriaPrenda>();
+      for (const c of categoriasRows) {
+        const raw = c as Record<string, unknown>;
+        const cat = rowACategoriaPrenda(raw);
+        if (cat.id) catById.set(normalizeUuidKey(cat.id), cat);
+        const nn = cat.nombre.trim().toLowerCase();
+        if (nn) catByNombreNorm.set(nn, cat);
       }
 
       const mapped: Prenda[] = prendasRows.map((row) => {
         const raw = row as Record<string, unknown>;
         const fk = readCategoriaIdFk(raw);
-        const cat = fk ? catById.get(normalizeUuidKey(fk)) ?? undefined : undefined;
+        let cat: CategoriaPrenda | undefined = fk ? catById.get(normalizeUuidKey(fk)) : undefined;
+        if (!cat) {
+          const legacyNombre = readNombreCategoriaLegacy(raw);
+          if (legacyNombre) {
+            cat =
+              catByNombreNorm.get(legacyNombre.toLowerCase()) ??
+              ({
+                id: '',
+                nombre: legacyNombre,
+                activo: true,
+              } as CategoriaPrenda);
+          }
+        }
         const r = row as Prenda;
         const resolvedCategoriaId =
-          fk ?? (r.categoria_id != null ? String(r.categoria_id).trim() : null);
+          fk ??
+          (r.categoria_id != null ? String(r.categoria_id).trim() : null) ??
+          (cat?.id ? cat.id : null);
         return { ...r, categoria_id: resolvedCategoriaId, categoria: cat };
       });
       setPrendas(mapped);
