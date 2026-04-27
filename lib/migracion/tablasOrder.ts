@@ -1,6 +1,8 @@
 /**
  * Orden de importación Supabase → InsForge (FKs hacia arriba en la lista primero).
  * Úsalo en la UI y en migración por lotes para un solo origen de verdad.
+ *
+ * Mapa archivo SQL ↔ tabla: `supabase/SCHEMA_TABLAS.md`
  */
 export const TABLAS_MIGRACION_ORDER = [
   'usuario_perfil',
