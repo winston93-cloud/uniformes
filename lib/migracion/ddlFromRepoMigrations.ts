@@ -6,23 +6,16 @@ function isSafeTableName(name: string) {
 }
 
 /**
- * Busca en `supabase/migrations/*.sql` el `CREATE TABLE ...` para public.<tabla>.
- * (No intenta replicar TODA la evolución histórica: toma el fragmento de CREATE TABLE
- *  tal como está en el repo, que normalmente es la estructura final o base.)
+ * Busca DDL `CREATE TABLE ... public.<tabla>` en el repo:
+ * - `supabase/migrations/*.sql`
+ * - `supabase/*.sql` (scripts legacy fuera de migrations, ej. `crear_tabla_presentaciones.sql`)
+ *
+ * Si no aparece ahí, intenta `supabase/schema.sql` y normaliza a `public.<tabla>`.
+ *
+ * No intenta replicar TODA la evolución histórica: toma el fragmento CREATE TABLE tal cual.
  */
 export async function extractCreateTableDdlForPublicTable(table: string) {
   if (!isSafeTableName(table)) throw new Error('Tabla inválida');
-
-  const dir = join(process.cwd(), 'supabase', 'migrations');
-  const files = (await readdir(dir))
-    .filter((f) => f.toLowerCase().endsWith('.sql'))
-    .sort();
-
-  // Priorizar archivos “create_*”
-  const ordered = [
-    ...files.filter((f) => f.toLowerCase().startsWith('create_')),
-    ...files.filter((f) => !f.toLowerCase().startsWith('create_')),
-  ];
 
   const reTable = new RegExp(
     `CREATE\\s+TABLE\\s+IF\\s+NOT\\s+EXISTS\\s+public\\.${table}\\b[\\s\\S]*?\\);`,
@@ -31,13 +24,36 @@ export async function extractCreateTableDdlForPublicTable(table: string) {
   // Variante sin IF NOT EXISTS (por si algún SQL legacy lo traía)
   const reTableLoose = new RegExp(`CREATE\\s+TABLE\\s+public\\.${table}\\b[\\s\\S]*?\\);`, 'i');
 
-  for (const f of ordered) {
-    const text = await readFile(join(dir, f), 'utf8');
-    const m = text.match(reTable) || text.match(reTableLoose);
-    if (m?.[0]) {
-      return { file: f, sql: m[0].trim() + '\n' };
+  async function scanDir(relDir: string, labelPrefix: string) {
+    let dirFiles: string[] = [];
+    try {
+      dirFiles = (await readdir(join(process.cwd(), relDir)))
+        .filter((f) => f.toLowerCase().endsWith('.sql'))
+        .sort();
+    } catch {
+      return null;
     }
+
+    const ordered = [
+      ...dirFiles.filter((f) => f.toLowerCase().startsWith('create_')),
+      ...dirFiles.filter((f) => !f.toLowerCase().startsWith('create_')),
+    ];
+
+    for (const f of ordered) {
+      const text = await readFile(join(process.cwd(), relDir, f), 'utf8');
+      const m = text.match(reTable) || text.match(reTableLoose);
+      if (m?.[0]) {
+        return { file: `${labelPrefix}${f}`, sql: m[0].trim() + '\n' };
+      }
+    }
+    return null;
   }
+
+  const fromMigrations = await scanDir('supabase/migrations', '');
+  if (fromMigrations) return fromMigrations;
+
+  const fromSupabaseRoot = await scanDir('supabase', 'supabase/');
+  if (fromSupabaseRoot) return fromSupabaseRoot;
 
   // Fallback: `supabase/schema.sql` suele contener el schema completo sin prefijo `public.`
   // (p. ej. "CREATE TABLE IF NOT EXISTS tallas (...)"). Lo normalizamos a `public.<tabla>`
