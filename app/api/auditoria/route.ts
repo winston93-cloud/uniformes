@@ -41,6 +41,11 @@ export async function GET(req: Request) {
 
     if (tabla && tabla.trim()) {
       q = q.eq('tabla', tabla.trim());
+    } else {
+      // Esta instancia comparte BD con otros sistemas (ej. Agenda con prefijo `ag_`).
+      // Si el usuario no filtra por tabla, ocultamos esas tablas para que la Bitácora
+      // sea útil en Uniformes por defecto.
+      q = q.not('tabla', 'ilike', 'ag\\_%');
     }
     if (operacion && operacion.trim()) {
       q = q.eq('operacion', operacion.trim().toUpperCase());
