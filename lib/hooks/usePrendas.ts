@@ -9,15 +9,79 @@ function normalizeUuidKey(id: string): string {
   return String(id).trim().toLowerCase();
 }
 
+/** UUID v4 aproximado (InsForge puede mandar el FK en cualquier campo con nombre raro). */
+function looksLikeUuid(s: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    s.trim()
+  );
+}
+
 function readCategoriaIdFk(row: Record<string, unknown>): string | null {
-  const v =
+  const direct =
     row.categoria_id ??
     row.categoriaId ??
     row['categoria_Id'] ??
     row.category_id ??
-    row.categoryId;
-  if (v == null || v === '') return null;
-  return String(v).trim();
+    row.categoryId ??
+    row.CategoriaId ??
+    row.CategoryId ??
+    row.categoriaPrendaId ??
+    row.categoria_prenda_id ??
+    row.CategoriaPrendaId;
+  if (direct != null && direct !== '') return String(direct).trim();
+
+  for (const [key, val] of Object.entries(row)) {
+    if (val == null || val === '') continue;
+    const kl = key.toLowerCase();
+    if (
+      kl.includes('categoria') &&
+      kl.includes('id') &&
+      typeof val !== 'object'
+    ) {
+      const s = String(val).trim();
+      if (s.length && looksLikeUuid(s)) return s;
+    }
+  }
+  return null;
+}
+
+/** Si InsForge devuelve la fila relacionada embebida (nombre distinto al embed PostgREST clásico). */
+function readCategoriaNested(row: Record<string, unknown>): CategoriaPrenda | undefined {
+  const candidates = [
+    row.categorias_prendas,
+    row.categoria_prenda,
+    row.categoriaPrenda,
+    row.CategoriasPrendas,
+    row.categoria,
+  ];
+  for (const c of candidates) {
+    if (c == null) continue;
+    const obj = Array.isArray(c) ? c[0] : c;
+    if (obj && typeof obj === 'object') {
+      const o = obj as Record<string, unknown>;
+      const nombre = o.nombre ?? o.Nombre;
+      const id = o.id ?? o.Id ?? o.ID;
+      if ((nombre != null && String(nombre).trim() !== '') || id != null) {
+        return rowACategoriaPrenda(o);
+      }
+    }
+  }
+  return undefined;
+}
+
+/** Último recurso: algún valor del objeto es UUID que coincide con una categoría cargada (FK con nombre no estándar). */
+function categoriaPorUuidEnValores(
+  row: Record<string, unknown>,
+  catById: Map<string, CategoriaPrenda>
+): CategoriaPrenda | undefined {
+  for (const val of Object.values(row)) {
+    if (typeof val !== 'string' && typeof val !== 'number') continue;
+    const s = String(val).trim();
+    if (!looksLikeUuid(s)) continue;
+    const hit = catById.get(normalizeUuidKey(s));
+    if (hit) return hit;
+  }
+  return undefined;
 }
 
 /** Texto legado si la BD aún tiene columna `categoria` sin migrar a UUID */
@@ -70,10 +134,35 @@ export function usePrendas() {
         if (nn) catByNombreNorm.set(nn, cat);
       }
 
+      /** FKs en prendas que no aparecieron en el listado global (RLS, paginación del API, etc.) */
+      const fkDesdePrendas = new Set<string>();
+      for (const pr of prendasRows) {
+        const fk = readCategoriaIdFk(pr as Record<string, unknown>);
+        if (fk) fkDesdePrendas.add(normalizeUuidKey(fk));
+      }
+      const idsFaltantes = [...fkDesdePrendas].filter((id) => !catById.has(id));
+      if (idsFaltantes.length > 0) {
+        const { data: catExtra, error: errExtra } = await supabase
+          .from('categorias_prendas')
+          .select('*')
+          .in('id', idsFaltantes);
+        if (!errExtra && catExtra?.length) {
+          for (const c of catExtra) {
+            const raw = c as Record<string, unknown>;
+            const cat = rowACategoriaPrenda(raw);
+            if (cat.id) catById.set(normalizeUuidKey(cat.id), cat);
+            const nn = cat.nombre.trim().toLowerCase();
+            if (nn) catByNombreNorm.set(nn, cat);
+          }
+        }
+      }
+
       const mapped: Prenda[] = prendasRows.map((row) => {
         const raw = row as Record<string, unknown>;
         const fk = readCategoriaIdFk(raw);
         let cat: CategoriaPrenda | undefined = fk ? catById.get(normalizeUuidKey(fk)) : undefined;
+        if (!cat) cat = readCategoriaNested(raw);
+        if (!cat) cat = categoriaPorUuidEnValores(raw, catById);
         if (!cat) {
           const legacyNombre = readNombreCategoriaLegacy(raw);
           if (legacyNombre) {
@@ -89,8 +178,8 @@ export function usePrendas() {
         const r = row as Prenda;
         const resolvedCategoriaId =
           fk ??
-          (r.categoria_id != null ? String(r.categoria_id).trim() : null) ??
-          (cat?.id && String(cat.id).trim() !== '' ? cat.id : null);
+          (cat?.id && String(cat.id).trim() !== '' ? cat.id : null) ??
+          (r.categoria_id != null ? String(r.categoria_id).trim() : null);
         return { ...r, categoria_id: resolvedCategoriaId, categoria: cat };
       });
       setPrendas(mapped);
