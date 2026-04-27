@@ -87,7 +87,7 @@ export interface Externo {
   updated_at?: string;
 }
 
-/** Receptor fiscal (SAT / CFDI) ligado a `alumnos` o `externos`. */
+/** Receptor fiscal (SAT / CFDI) ligado a `alumno` o `externos`. */
 export interface DatosFiscalesCliente {
   id: string;
   alumno_id: string | null;

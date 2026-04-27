@@ -13,7 +13,7 @@ const TABLAS_UNIFORMES = [
   'usuario',
   'usuarios',
   'usuarios_uniformes',
-  'alumnos',
+  'alumno',
   'externos',
   'prendas',
   'insumos',

@@ -26,7 +26,7 @@ export interface PartidaCotizacion {
 
 export interface NuevaCotizacion {
   alumno_id?: string;
-  /** Referencia del alumno (tabla legacy `alumno`); sirve para resolver UUID en `alumnos`. */
+  /** Referencia del alumno; sirve para resolver UUID en la tabla `alumno`. */
   alumno_referencia?: string;
   alumno_nombre?: string;
   externo_id?: string;
@@ -56,7 +56,7 @@ export function useCotizaciones() {
         .from('cotizaciones')
         .select(`
           *,
-          alumno:alumnos(*),
+          alumno:alumno(*),
           externo:externos(*)
         `);
 
@@ -77,7 +77,7 @@ export function useCotizaciones() {
         .from('cotizaciones')
         .select(`
           *,
-          alumno:alumnos(*),
+          alumno:alumno(*),
           externo:externos(*)
         `)
         .eq('id', id)

@@ -6,7 +6,7 @@ export function isUuid(value: string): boolean {
   );
 }
 
-/** La UI busca en `alumno` (id numérico); `cotizaciones.alumno_id` apunta a `alumnos.id` (UUID). */
+/** Si `alumno_id` no es UUID, resolvemos por referencia en la tabla `alumno`. */
 export async function resolverAlumnoUuidParaCotizacion(
   legacyId: string,
   referencia: string | undefined,
@@ -17,12 +17,12 @@ export async function resolverAlumnoUuidParaCotizacion(
   const ref = referencia?.trim();
   if (!ref) {
     throw new Error(
-      'El alumno no tiene referencia escolar; no se puede vincular a cotizaciones. Usa un alumno con referencia o da de alta el alumno en la tabla alumnos.'
+      'El alumno no tiene referencia escolar; no se puede vincular a cotizaciones. Usa un alumno con referencia o da de alta el alumno en la tabla alumno.'
     );
   }
 
   const { data: row, error } = await supabase
-    .from('alumnos')
+    .from('alumno')
     .upsert(
       { nombre: nombre?.trim() || 'Alumno', referencia: ref, activo: true },
       { onConflict: 'referencia' }

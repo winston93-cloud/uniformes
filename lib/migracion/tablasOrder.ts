@@ -16,7 +16,7 @@ export const TABLAS_MIGRACION_ORDER = [
   'usuario',
   'usuarios',
   'usuarios_uniformes',
-  'alumnos',
+  'alumno',
   'externos',
   'prendas',
   'insumos',

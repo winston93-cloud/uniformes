@@ -72,7 +72,7 @@ export const mapAlumnoFromDB = (db: AlumnoFromDB): Alumno => {
   };
 };
 
-/** Tabla estándar del proyecto (UUID, InsForge): public.alumnos */
+/** Tabla en Supabase: `public.alumno` (singular). */
 export function mapAlumnoPublic(row: Record<string, unknown>): Alumno {
   return {
     id: String(row.id ?? ''),
@@ -99,7 +99,7 @@ export function useAlumnos(cicloEscolar?: number) {
   const fetchAlumnos = async () => {
     try {
       setLoading(true);
-      const { data, error: err } = await supabase.from('alumnos').select('*').eq('activo', true).limit(5000);
+      const { data, error: err } = await supabase.from('alumno').select('*').eq('activo', true).limit(5000);
 
       if (err) throw err;
 
@@ -136,7 +136,7 @@ export function useAlumnos(cicloEscolar?: number) {
       if (!consulta) return [];
 
       const { data, error } = await supabase
-        .from('alumnos')
+        .from('alumno')
         .select('*')
         .eq('activo', true)
         .or(`referencia.ilike.%${consulta}%,nombre.ilike.%${consulta}%`)

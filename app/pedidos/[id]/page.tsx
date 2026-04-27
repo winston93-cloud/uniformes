@@ -125,9 +125,9 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
       let alumnoData = null;
       if (pedidoData.alumno_id) {
         const { data: alumno } = await supabase
-          .from('alumnos')
+          .from('alumno')
           .select('nivel, grado')
-          .eq('alumno_id', pedidoData.alumno_id)
+          .eq('id', pedidoData.alumno_id)
           .single();
         alumnoData = alumno;
       }
