@@ -160,18 +160,19 @@ export function useCostos(sucursal_id?: string) {
     }
   };
 
-  /** Por prenda; prueba FK snake_case y camelCase (`fetchCostosRowsByPrenda`). */
+  /** Por prenda; prueba FK snake_case y camelCase (`fetchCostosRowsByPrenda`). Enriquece tallas/prendas como `fetchCostos`. */
   const getCostosByPrenda = async (prenda_id: string) => {
     try {
-      const rows = await fetchCostosRowsByPrenda(supabase, prenda_id);
-      return {
-        data: rows.map((r) =>
-          normalizeCostoRow(normalizarCamposCostoApi(r as Record<string, unknown>))
-        ),
-        error: null,
-      };
-    } catch (err: any) {
-      return { data: [], error: err.message };
+      let rows = await fetchCostosRowsByPrenda(supabase, prenda_id);
+      rows = filtrarFilasPorSucursalSiHayColumna(rows as Record<string, unknown>[], sucursal_id) as Record<
+        string,
+        unknown
+      >[];
+      const enriched = await enrichCostosFromPlainRows(rows);
+      return { data: enriched, error: null };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { data: [], error: msg };
     }
   };
 

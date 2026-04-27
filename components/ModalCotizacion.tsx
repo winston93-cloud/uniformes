@@ -136,7 +136,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   const [modalDatosFiscalesAbierto, setModalDatosFiscalesAbierto] = useState(false);
   const esModoEdicion = cotizacionEditId !== null;
   
-  const { cicloEscolar } = useAuth();
+  const { cicloEscolar, sesion } = useAuth();
   const {
     crearCotizacion,
     cotizaciones,
@@ -153,7 +153,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   const { searchAlumnos } = useAlumnos(cicloEscolar);
   const { searchExternos } = useExternos();
   const { prendas } = usePrendas();
-  const { getCostosByPrenda } = useCostos();
+  const { getCostosByPrenda } = useCostos(sesion?.sucursal_id);
   type CostoSlim = {
     id: string;
     prenda_id: string;
@@ -449,7 +449,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       setErrorCargaCostos(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prendaSeleccionada]);
+  }, [prendaSeleccionada, sesion?.sucursal_id]);
 
   // NUEVO: Funciones para manejar sub-partidas
   const agregarSubPartida = () => {
