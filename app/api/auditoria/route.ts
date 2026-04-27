@@ -27,9 +27,15 @@ export async function GET(req: Request) {
     const limit = clampInt(Number(url.searchParams.get('limit') || 100), 1, 500);
     const offset = clampInt(Number(url.searchParams.get('offset') || 0), 0, 50_000);
 
+    // Evitar full-scan accidental: si no mandan rango, default a últimos 7 días.
+    const now = new Date();
+    const defaultDesde = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const defaultHasta = now.toISOString();
+
     let q = supabase
       .from('auditoria')
-      .select('*', { count: 'exact' })
+      // Evitar `count: 'exact'` (caro) para no disparar statement timeout.
+      .select('id,tabla,operacion,registro_id,registro_pk,usuario_id,timestamp,datos_anteriores,datos_nuevos')
       .order('timestamp', { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -39,20 +45,19 @@ export async function GET(req: Request) {
     if (operacion && operacion.trim()) {
       q = q.eq('operacion', operacion.trim().toUpperCase());
     }
-    if (desde && /^\d{4}-\d{2}-\d{2}$/.test(desde)) {
-      q = q.gte('timestamp', `${desde}T00:00:00.000Z`);
-    }
-    if (hasta && /^\d{4}-\d{2}-\d{2}$/.test(hasta)) {
-      q = q.lte('timestamp', `${hasta}T23:59:59.999Z`);
-    }
+    if (desde && /^\d{4}-\d{2}-\d{2}$/.test(desde)) q = q.gte('timestamp', `${desde}T00:00:00.000Z`);
+    else q = q.gte('timestamp', defaultDesde);
 
-    const { data, error, count } = await q;
+    if (hasta && /^\d{4}-\d{2}-\d{2}$/.test(hasta)) q = q.lte('timestamp', `${hasta}T23:59:59.999Z`);
+    else q = q.lte('timestamp', defaultHasta);
+
+    const { data, error } = await q;
     if (error) throw error;
 
     return NextResponse.json({
       success: true,
       rows: data || [],
-      count: count ?? null,
+      count: null,
       limit,
       offset,
       debug: {

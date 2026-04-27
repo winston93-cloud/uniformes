@@ -57,6 +57,7 @@ export default function ModalBitacora({
       setLoading(true);
       setError(null);
       try {
+        // Si el usuario no eligió rango, mantener vacío y dejar que el backend default a últimos 7 días.
         const params = new URLSearchParams();
         if (desde) params.set('desde', desde);
         if (hasta) params.set('hasta', hasta);
