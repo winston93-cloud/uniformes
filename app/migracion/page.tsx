@@ -769,7 +769,7 @@ export default function MigracionPage() {
                   minHeight: 44,
                   padding: '0.35rem 0',
                   borderBottom: '1px solid rgba(148, 163, 184, 0.1)',
-                  opacity: selected ? 1 : 0.55,
+                  opacity: selected ? 1 : 0.88,
                 }}
               >
                 <label
@@ -825,7 +825,13 @@ export default function MigracionPage() {
                   >
                     {badge.text}
                   </span>
-                  <button className="btn btn-secondary" type="button" disabled={busy || !selected} onClick={() => migrarTabla(t)}>
+                  <button
+                    className="btn btn-secondary"
+                    type="button"
+                    disabled={busy}
+                    onClick={() => migrarTabla(t)}
+                    title="Migrar esta tabla (no requiere marcar el checkbox; el check es para lotes)"
+                  >
                     Migrar
                   </button>
                   <button className="btn btn-secondary" type="button" disabled={busy} onClick={() => verificarTabla(t)}>
@@ -838,8 +844,8 @@ export default function MigracionPage() {
         </div>
 
         <p style={{ margin: '0.85rem 0 0', color: '#64748b', fontSize: '0.85rem' }}>
-          Al dar <strong>Migrar</strong>, se aplica el <strong>CREATE TABLE</strong> hacia InsForge (vía{' '}
-          <code>POST /api/database/migrations</code> si existe; si no, Tables API con saneado de columnas reservadas) y luego se copian datos desde Supabase. Las tablas referenciadas por FK deben existir ya en InsForge (orden de la lista).
+          <strong>Migrar</strong> en cada fila no requiere checkbox: el check solo agrupa para «Migrar seleccionadas». Se aplica{' '}
+          <strong>CREATE TABLE</strong> hacia InsForge (vía <code>POST /api/database/migrations</code> si existe; si no, Tables API con saneado de columnas reservadas) y luego se copian datos desde Supabase. Las tablas referenciadas por FK deben existir ya en InsForge (orden de la lista).
         </p>
       </div>
 

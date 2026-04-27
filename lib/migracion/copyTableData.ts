@@ -83,8 +83,14 @@ export async function copyTableDataFromSupabaseToInsforge(opts: {
     const fq = `public.${quoteIdent(table)}`;
     try {
       await runInsforgeRawSql(`TRUNCATE TABLE ${fq} RESTART IDENTITY`);
-    } catch {
-      await runInsforgeRawSql(`DELETE FROM ${fq}`);
+    } catch (truncateErr: any) {
+      try {
+        await runInsforgeRawSql(`DELETE FROM ${fq}`);
+      } catch (delErr: any) {
+        throw new Error(
+          `No se pudo vaciar destino public.${table}: TRUNCATE ${truncateErr?.message || String(truncateErr)} · DELETE ${delErr?.message || String(delErr)}`
+        );
+      }
     }
   }
 
@@ -280,11 +286,22 @@ FROM json_to_recordset($1::json) AS x(${recordsetCols});
 
     for (let i = 0; i < rows.length; i += chunkSize) {
       const chunk = rows.slice(i, i + chunkSize);
-      const normalized = chunk.map((r) => {
+      let normalized = chunk.map((r) => {
         const out = normalizeRowForInsforge(r);
         validateRequiredAfterNormalize(out);
         return out;
       });
+      if (table === 'auditoria' && destCols.has('id')) {
+        const seen = new Set<string>();
+        normalized = normalized.filter((row) => {
+          const id = row?.id != null ? String(row.id) : '';
+          if (!id) return true;
+          if (seen.has(id)) return false;
+          seen.add(id);
+          return true;
+        });
+      }
+      if (normalized.length === 0) continue;
 
       try {
         // eslint-disable-next-line no-await-in-loop
@@ -308,7 +325,7 @@ FROM json_to_recordset($1::json) AS x(${recordsetCols});
         }
       }
 
-      totalInserted += chunk.length;
+      totalInserted += normalized.length;
     }
 
     if (rows.length < batchSize) break;

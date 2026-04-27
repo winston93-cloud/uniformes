@@ -20,6 +20,20 @@ async function auditoriaTableExistsInInsforge(): Promise<boolean> {
  * (puede fallar si faltan tablas referenciadas, p. ej. `usuario` — entonces toca
  * «Crear estructuras» o migrar en orden).
  */
+/** Evita 23505 si quedaron filas de un baseline fallido o réplica parcial. */
+async function vaciarAuditoriaInsforgeAntesDelVolcado(): Promise<void> {
+  await runInsforgeRawSql(`DELETE FROM public.auditoria`);
+  const cnt = await runInsforgeRawSql<{ rows?: Array<{ c: string }> }>(
+    `SELECT COUNT(*)::text AS c FROM public.auditoria`
+  );
+  const n = Number(String((cnt?.rows?.[0] as { c?: string })?.c ?? '0'));
+  if (!Number.isFinite(n) || n !== 0) {
+    throw new Error(
+      `No se pudo vaciar public.auditoria antes del volcado (filas restantes=${String(n)}).`
+    );
+  }
+}
+
 async function ensureAuditoriaTableInInsforge(): Promise<{ created: boolean; ddlFile?: string }> {
   if (await auditoriaTableExistsInInsforge()) {
     return { created: false };
@@ -48,6 +62,9 @@ function baselineErrorHint(original: string): string {
   if (msg.includes('table not found') || msg.includes('public.auditoria')) {
     return `${original}\n\nSi acabas de vaciar InsForge, crea el esquema (botón Crear estructuras) o migra al menos las tablas de las que depende auditoría antes del baseline.`;
   }
+  if (msg.includes('23505') || msg.includes('duplicate key')) {
+    return `${original}\n\nSi persiste: en InsForge vacía manualmente public.auditoria o vuelve a «Borrar plan» y recrea esquema antes del baseline.`;
+  }
   return original;
 }
 
@@ -61,6 +78,7 @@ export async function POST() {
     const nowIso = new Date().toISOString();
 
     await ensureAuditoriaTableInInsforge();
+    await vaciarAuditoriaInsforgeAntesDelVolcado();
 
     const auditoriaCopy = await copyTableDataFromSupabaseToInsforge({
       table: 'auditoria',
