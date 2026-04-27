@@ -66,9 +66,6 @@ export async function copyTableDataFromSupabaseToInsforge(opts: {
 
   const supabaseAdmin = getSupabaseAdmin();
 
-  // truncateDestination se maneja a nivel de migrate-one (delete+recreate tabla)
-  void truncateDestination;
-
   const destColsRes = await runInsforgeRawSql<{ rows?: Array<{ column_name: string }> }>(
     `SELECT column_name
      FROM information_schema.columns
@@ -80,6 +77,15 @@ export async function copyTableDataFromSupabaseToInsforge(opts: {
 
   if (destCols.size === 0) {
     throw new Error(`InsForge table not found: public.${table}`);
+  }
+
+  if (truncateDestination) {
+    const fq = `public.${quoteIdent(table)}`;
+    try {
+      await runInsforgeRawSql(`TRUNCATE TABLE ${fq} RESTART IDENTITY`);
+    } catch {
+      await runInsforgeRawSql(`DELETE FROM ${fq}`);
+    }
   }
 
   const metaRes = await runInsforgeRawSql<{

@@ -246,13 +246,23 @@ export default function MigracionPage() {
 
   const migrarTabla = async (table: string, opts?: { silentVerify?: boolean }) => {
     setEstado((s) => ({ ...s, [table]: { status: 'MIGRANDO', progreso: 'Iniciando…' } }));
-    addLog(`Migrando ${table} (DDL + datos)…`);
+    const soloDatos = table === 'auditoria';
+    addLog(
+      soloDatos
+        ? `Migrando ${table} (solo datos desde Supabase; tabla ya en InsForge)…`
+        : `Migrando ${table} (DDL + datos)…`
+    );
     try {
       const res = await fetch('/api/migracion/migrate-one', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         cache: 'no-store',
-        body: JSON.stringify({ table, batchSize: 1000, chunkSize: 250 }),
+        body: JSON.stringify({
+          table,
+          batchSize: 1000,
+          chunkSize: 250,
+          ...(soloDatos ? { dataOnly: true } : {}),
+        }),
       });
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.success) throw new Error(json?.error || `Migración falló en ${table}`);
@@ -260,10 +270,16 @@ export default function MigracionPage() {
         ...s,
         [table]: {
           status: 'OK',
-          detalle: `Insertados: ${json.totalInserted ?? 0} · DDL: ${String(json.ddlFile || '—')}`,
+          detalle: soloDatos
+            ? `Insertados desde Supabase: ${json.totalInserted ?? 0}`
+            : `Insertados: ${json.totalInserted ?? 0} · DDL: ${String(json.ddlFile || '—')}`,
         },
       }));
-      addLog(`OK ${table}: insertados ${json.totalInserted ?? 0} (DDL: ${String(json.ddlFile || '—')})`);
+      addLog(
+        soloDatos
+          ? `OK ${table}: ${json.totalInserted ?? 0} filas desde Supabase (sin recrear DDL)`
+          : `OK ${table}: insertados ${json.totalInserted ?? 0} (DDL: ${String(json.ddlFile || '—')})`
+      );
       if (Array.isArray(json?.prerequisiteTables) && json.prerequisiteTables.length) {
         addLog(
           `⚠️ ${table} referencia a: ${json.prerequisiteTables.join(
