@@ -1,5 +1,6 @@
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { insforge } from '@/lib/insforge';
+import { runInsforgeRawSql } from '@/lib/insforgeAdminRawSql';
 
 function clampInt(v: unknown, min: number, max: number) {
   const n = Number(v);
@@ -33,6 +34,63 @@ export async function copyTableDataFromSupabaseToInsforge(opts: {
   // truncateDestination se maneja a nivel de migrate-one (delete+recreate tabla)
   void truncateDestination;
 
+  // Descubrir columnas reales del destino (InsForge agrega `uuid`, `created_at`, etc.)
+  // y puede no tener la misma PK/columna que Supabase (p.ej. `id`).
+  const destColsRes = await runInsforgeRawSql<{ rows?: Array<{ column_name: string }> }>(
+    `SELECT column_name
+     FROM information_schema.columns
+     WHERE table_schema = 'public' AND table_name = $1
+     ORDER BY ordinal_position`,
+    [table]
+  );
+  const destCols = new Set((destColsRes?.rows || []).map((r) => String(r.column_name)));
+
+  if (destCols.size === 0) {
+    throw new Error(`InsForge table not found: public.${table}`);
+  }
+
+  const hasUuid = destCols.has('uuid');
+  const hasId = destCols.has('id');
+
+  const normalizeRowForInsforge = (row: any) => {
+    if (!row || typeof row !== 'object') return row;
+    const out: any = {};
+
+    // Caso común: InsForge usa `uuid` como PK, Supabase usa `id`.
+    // Si el destino NO tiene `id` pero sí `uuid`, mapeamos.
+    if (!hasId && hasUuid && row.id !== undefined && out.uuid === undefined) {
+      out.uuid = row.id;
+    }
+
+    for (const [k, v] of Object.entries(row)) {
+      if (k === 'id' && !hasId && hasUuid) continue; // ya mapeado a uuid
+      if (!destCols.has(k)) continue; // omitir columnas que no existen en destino
+      out[k] = v;
+    }
+    return out;
+  };
+
+  const formatInsforgeInsertError = (insErr: any) => {
+    if (!insErr) return 'Error desconocido';
+    const msg = insErr?.message ? String(insErr.message) : '';
+    const code = insErr?.code ? String(insErr.code) : '';
+    const details = insErr?.details ? String(insErr.details) : '';
+    const hint = insErr?.hint ? String(insErr.hint) : '';
+    const own = (() => {
+      try {
+        const keys = Object.getOwnPropertyNames(insErr);
+        const pick: any = {};
+        for (const k of keys) pick[k] = (insErr as any)[k];
+        return JSON.stringify(pick);
+      } catch {
+        return '';
+      }
+    })();
+    return [code && `code=${code}`, msg, details && `details=${details}`, hint && `hint=${hint}`, own && `raw=${own}`]
+      .filter(Boolean)
+      .join(' · ');
+  };
+
   let offset = startOffset;
   let totalRead = 0;
   let totalInserted = 0;
@@ -51,10 +109,11 @@ export async function copyTableDataFromSupabaseToInsforge(opts: {
 
     for (let i = 0; i < rows.length; i += chunkSize) {
       const chunk = rows.slice(i, i + chunkSize);
+      const normalized = chunk.map(normalizeRowForInsforge);
       // eslint-disable-next-line no-await-in-loop
-      const { error: insErr } = await insforge.database.from(table).insert(chunk);
+      const { error: insErr } = await insforge.database.from(table).insert(normalized);
       if (insErr) {
-        throw new Error(`InsForge insert fallo en ${table}: ${insErr.message || JSON.stringify(insErr)}`);
+        throw new Error(`InsForge insert fallo en ${table}: ${formatInsforgeInsertError(insErr)}`);
       }
       totalInserted += chunk.length;
     }
