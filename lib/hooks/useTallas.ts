@@ -15,20 +15,12 @@ export function useTallas() {
       
       // Ordenar: números primero (ascendente numérico), luego letras (ascendente alfabético)
       const { data, error } = await supabase.rpc('obtener_tallas_ordenadas');
-
-      // Si la función RPC no existe, usar ordenamiento simple por orden
-      if (error && error.message.includes('function')) {
-        const fallback = await supabase
-          .from('tallas')
-          .select('*')
-          .order('orden', { ascending: true });
-        
-        if (fallback.error) throw fallback.error;
+      if (error) {
+        const fallback = await supabase.from('tallas').select('*').order('orden', { ascending: true });
+        if (fallback.error) throw error;
         setTallas(fallback.data || []);
         return;
       }
-
-      if (error) throw error;
       setTallas(data || []);
     } catch (err: any) {
       setError(err.message);

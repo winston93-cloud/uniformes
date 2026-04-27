@@ -2,6 +2,48 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
 import type { Insumo } from '../types';
 
+/** Sin alias `foo:tabla(*)` — InsForge puede responder 400. */
+const INSUMOS_EMBED = `
+          *,
+          presentaciones(*),
+          ubicaciones_almacenamiento(*),
+          insumo_ubicaciones (
+            id,
+            insumo_id,
+            cantidad,
+            ubicacion_almacenamiento_id,
+            ubicaciones_almacenamiento ( id, nombre )
+          )
+        `;
+
+function normalizeInsumo(row: Record<string, unknown>): Insumo {
+  const r = row as Record<string, unknown> & {
+    presentacion?: unknown;
+    presentaciones?: unknown;
+    ubicacion_almacenamiento?: unknown;
+    ubicaciones_almacenamiento?: unknown;
+    insumo_ubicaciones?: Array<Record<string, unknown>>;
+  };
+  const presRaw = r.presentacion ?? r.presentaciones;
+  const uaRaw = r.ubicacion_almacenamiento ?? r.ubicaciones_almacenamiento;
+  const pres = Array.isArray(presRaw) ? presRaw[0] : presRaw;
+  const ua = Array.isArray(uaRaw) ? uaRaw[0] : uaRaw;
+  const locs = (r.insumo_ubicaciones || []).map((iu) => {
+    const x = iu as Record<string, unknown>;
+    const ur = x.ubicacion ?? x.ubicaciones_almacenamiento;
+    const ub = Array.isArray(ur) ? ur[0] : ur;
+    const { ubicaciones_almacenamiento: _a, ubicacion: _b, ...iuRest } = x;
+    return { ...iuRest, ubicacion: ub };
+  });
+  const { presentaciones: _p, ubicaciones_almacenamiento: _ua, ...rest } = r;
+  return {
+    ...rest,
+    presentacion: pres as Insumo['presentacion'],
+    ubicacion_almacenamiento: ua as Insumo['ubicacion_almacenamiento'],
+    insumo_ubicaciones: locs as Insumo['insumo_ubicaciones'],
+  } as Insumo;
+}
+
 export function useInsumos() {
   const [insumos, setInsumos] = useState<Insumo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -10,24 +52,10 @@ export function useInsumos() {
   const fetchInsumos = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('insumos')
-        .select(`
-          *,
-          presentacion:presentaciones(*),
-          ubicacion_almacenamiento:ubicaciones_almacenamiento(*),
-          insumo_ubicaciones (
-            id,
-            insumo_id,
-            cantidad,
-            ubicacion_almacenamiento_id,
-            ubicacion:ubicaciones_almacenamiento ( id, nombre )
-          )
-        `)
-        .order('created_at', { ascending: false});
+      const { data, error } = await supabase.from('insumos').select(INSUMOS_EMBED).order('created_at', { ascending: false });
 
       if (error) throw error;
-      setInsumos(data || []);
+      setInsumos((data || []).map((row) => normalizeInsumo(row as Record<string, unknown>)));
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -164,23 +192,12 @@ export function useInsumos() {
     try {
       const { data, error } = await supabase
         .from('insumos')
-        .select(`
-          *,
-          presentacion:presentaciones(*),
-          ubicacion_almacenamiento:ubicaciones_almacenamiento(*),
-          insumo_ubicaciones (
-            id,
-            insumo_id,
-            cantidad,
-            ubicacion_almacenamiento_id,
-            ubicacion:ubicaciones_almacenamiento ( id, nombre )
-          )
-        `)
+        .select(INSUMOS_EMBED)
         .or(`nombre.ilike.%${query}%,codigo.ilike.%${query}%,descripcion.ilike.%${query}%`)
         .order('nombre', { ascending: true });
 
       if (error) throw error;
-      return data || [];
+      return (data || []).map((row) => normalizeInsumo(row as Record<string, unknown>));
     } catch (err: any) {
       console.error('Error buscando insumos:', err);
       return [];

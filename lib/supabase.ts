@@ -43,6 +43,22 @@ function createInsforgeBrowserClient() {
     anonKey: anonKey && looksLikeJwt(anonKey) ? anonKey : undefined,
   });
 
+  /**
+   * InsForge no expone el Realtime de Supabase. Devolvemos un stub encadenable
+   * para que useInsumos / usePresentaciones / useUbicaciones no crasheen.
+   */
+  const createRealtimeChannelStub = () => {
+    const chain = {
+      on(_event: string, _filter: unknown, _cb: () => void) {
+        return chain;
+      },
+      subscribe(_cb?: (status: string) => void) {
+        return { unsubscribe: () => {} };
+      },
+    };
+    return chain;
+  };
+
   const storageWrapper = {
     from(bucketName: string) {
       const bucket = client.storage.from(bucketName);
@@ -86,6 +102,7 @@ function createInsforgeBrowserClient() {
     rpc: (fn: string, args?: Record<string, unknown>, opts?: Parameters<typeof client.database.rpc>[2]) =>
       client.database.rpc(fn, args, opts),
     storage: storageWrapper,
+    channel: (_name: string) => createRealtimeChannelStub(),
   };
 }
 

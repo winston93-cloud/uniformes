@@ -36,11 +36,11 @@ export function useAlertasStockPrendas(sucursal_id?: string) {
           stock_minimo,
           precio_mayoreo,
           precio_menudeo,
-          prendas!inner (
+          prendas (
             nombre,
             codigo
           ),
-          tallas!inner (
+          tallas (
             nombre
           )
         `)

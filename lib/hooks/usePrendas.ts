@@ -14,14 +14,20 @@ export function usePrendas() {
       setLoading(true);
       const { data, error } = await supabase
         .from('prendas')
-        .select(`
-          *,
-          categoria:categorias_prendas(*)
-        `)
+        .select(`*, categorias_prendas(*)`)
         .order('nombre', { ascending: true });
 
       if (error) throw error;
-      setPrendas(data || []);
+      const rows = (data || []) as Array<
+        Prenda & { categorias_prendas?: Prenda['categoria'] | Prenda['categoria'][] }
+      >;
+      const mapped: Prenda[] = rows.map((row) => {
+        const cp = row.categorias_prendas;
+        const cat = Array.isArray(cp) ? cp[0] : cp;
+        const { categorias_prendas: _drop, ...rest } = row;
+        return { ...rest, categoria: cat ?? rest.categoria };
+      });
+      setPrendas(mapped);
     } catch (err: any) {
       setError(err.message);
       console.error('Error fetching prendas:', err);

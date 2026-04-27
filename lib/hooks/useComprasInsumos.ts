@@ -27,6 +27,35 @@ export interface CompraInsumo {
   };
 }
 
+/** Embeds sin alias ni !inner — compatible con InsForge/PostgREST estricto. */
+const COMPRAS_INSUMOS_EMBED = `
+          *,
+          insumos (
+            id,
+            codigo,
+            nombre,
+            presentaciones (
+              nombre,
+              descripcion
+            )
+          )
+        `;
+
+function normalizeCompraRow(row: Record<string, unknown>): CompraInsumo {
+  const r = row as Record<string, unknown> & { insumo?: unknown; insumos?: unknown };
+  const insRaw = r.insumo ?? r.insumos;
+  const insObj = (Array.isArray(insRaw) ? insRaw[0] : insRaw) as Record<string, unknown> | undefined;
+  const { insumos: _i, insumo: _io, ...rest } = r;
+  if (!insObj) return rest as unknown as CompraInsumo;
+  const presRaw = insObj.presentacion ?? insObj.presentaciones;
+  const pres = Array.isArray(presRaw) ? presRaw[0] : presRaw;
+  const { presentaciones: _p, ...insRest } = insObj;
+  return {
+    ...rest,
+    insumo: { ...insRest, presentacion: pres } as CompraInsumo['insumo'],
+  } as unknown as CompraInsumo;
+}
+
 export interface NuevaCompraInsumo {
   insumo_id: string;
   cantidad_comprada: number;
@@ -57,29 +86,12 @@ export function useComprasInsumos(insumo_id?: string) {
 
       const { data, error: errorCompras } = await supabase
         .from('compras_insumos')
-        .select(`
-          *,
-          insumo:insumos!inner (
-            id,
-            codigo,
-            nombre,
-            presentacion:presentaciones!inner (
-              nombre,
-              descripcion
-            )
-          )
-        `)
+        .select(COMPRAS_INSUMOS_EMBED)
         .order('fecha_compra', { ascending: false });
 
       if (errorCompras) throw errorCompras;
 
-      // Procesar datos para manejar arrays
-      const comprasProcesadas = (data || []).map((compra: any) => ({
-        ...compra,
-        insumo: Array.isArray(compra.insumo) ? compra.insumo[0] : compra.insumo,
-      }));
-
-      setCompras(comprasProcesadas);
+      setCompras((data || []).map((row) => normalizeCompraRow(row as Record<string, unknown>)));
     } catch (err) {
       console.error('Error al obtener compras:', err);
       setError(err instanceof Error ? err.message : 'Error desconocido');
@@ -95,30 +107,13 @@ export function useComprasInsumos(insumo_id?: string) {
 
       const { data, error: errorCompras } = await supabase
         .from('compras_insumos')
-        .select(`
-          *,
-          insumo:insumos!inner (
-            id,
-            codigo,
-            nombre,
-            presentacion:presentaciones!inner (
-              nombre,
-              descripcion
-            )
-          )
-        `)
+        .select(COMPRAS_INSUMOS_EMBED)
         .eq('insumo_id', insumoId)
         .order('fecha_compra', { ascending: false });
 
       if (errorCompras) throw errorCompras;
 
-      // Procesar datos para manejar arrays
-      const comprasProcesadas = (data || []).map((compra: any) => ({
-        ...compra,
-        insumo: Array.isArray(compra.insumo) ? compra.insumo[0] : compra.insumo,
-      }));
-
-      setCompras(comprasProcesadas);
+      setCompras((data || []).map((row) => normalizeCompraRow(row as Record<string, unknown>)));
     } catch (err) {
       console.error('Error al obtener compras por insumo:', err);
       setError(err instanceof Error ? err.message : 'Error desconocido');

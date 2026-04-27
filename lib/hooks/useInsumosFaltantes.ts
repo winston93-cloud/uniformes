@@ -50,14 +50,14 @@ export function useInsumosFaltantes() {
         .select(`
           cantidad,
           costo_id,
-          costos!inner (
+          costos (
             prenda_id,
             talla_id,
-            prendas!inner (
+            prendas (
               id,
               nombre
             ),
-            tallas!inner (
+            tallas (
               id,
               nombre
             )
@@ -90,12 +90,12 @@ export function useInsumosFaltantes() {
           .select(`
             cantidad,
             insumo_id,
-            insumos!inner (
+            insumos (
               id,
               nombre,
               codigo,
               presentacion_id,
-              presentaciones!inner (
+              presentaciones (
                 nombre,
                 descripcion
               )

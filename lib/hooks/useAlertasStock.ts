@@ -34,7 +34,7 @@ export function useAlertasStock() {
           nombre,
           codigo,
           stock_minimo,
-          presentaciones!inner (
+          presentaciones (
             nombre,
             descripcion
           )
