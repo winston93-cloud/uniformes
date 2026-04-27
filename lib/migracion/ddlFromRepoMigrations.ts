@@ -39,6 +39,32 @@ export async function extractCreateTableDdlForPublicTable(table: string) {
     }
   }
 
+  // Fallback: `supabase/schema.sql` suele contener el schema completo sin prefijo `public.`
+  // (p. ej. "CREATE TABLE IF NOT EXISTS tallas (...)"). Lo normalizamos a `public.<tabla>`
+  // porque nuestro parser de Tables API espera `public.<name>`.
+  try {
+    const schemaPath = join(process.cwd(), 'supabase', 'schema.sql');
+    const schemaText = await readFile(schemaPath, 'utf8');
+    const reSchema = new RegExp(
+      `CREATE\\s+TABLE\\s+IF\\s+NOT\\s+EXISTS\\s+(?:public\\.)?${table}\\b[\\s\\S]*?\\);`,
+      'i'
+    );
+    const reSchemaLoose = new RegExp(`CREATE\\s+TABLE\\s+(?:public\\.)?${table}\\b[\\s\\S]*?\\);`, 'i');
+    const mm = schemaText.match(reSchema) || schemaText.match(reSchemaLoose);
+    if (mm?.[0]) {
+      const raw = mm[0].trim();
+      const normalized = raw
+        .replace(
+          new RegExp(`CREATE\\s+TABLE\\s+IF\\s+NOT\\s+EXISTS\\s+(?:public\\.)?${table}\\b`, 'i'),
+          `CREATE TABLE IF NOT EXISTS public.${table}`
+        )
+        .replace(new RegExp(`CREATE\\s+TABLE\\s+(?:public\\.)?${table}\\b`, 'i'), `CREATE TABLE public.${table}`);
+      return { file: 'supabase/schema.sql', sql: normalized.trim() + '\n' };
+    }
+  } catch {
+    // ignore
+  }
+
   return null;
 }
 
