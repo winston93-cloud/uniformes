@@ -596,102 +596,124 @@ export default function MigracionPage() {
         </button>
       </div>
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: '1rem',
-          alignItems: 'start',
-          maxWidth: '1100px',
-          margin: '0 auto',
-        }}
-      >
-        <div className="card" style={{ padding: '1rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.75rem' }}>
+      <div className="card" style={{ padding: '1rem', maxWidth: '1100px', margin: '0 auto' }}>
+        {/* Una fila = una tabla: columnas alineadas (no dos listas independientes). */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
+            columnGap: '1.25rem',
+            alignItems: 'center',
+            paddingBottom: '0.65rem',
+            marginBottom: '0.35rem',
+            borderBottom: '1px solid rgba(148, 163, 184, 0.22)',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.75rem' }}>
             <h2 style={{ margin: 0, fontSize: '1.05rem' }}>Supabase (origen)</h2>
-            <div style={{ fontSize: '0.85rem', color: '#64748b' }}>{seleccionadas.length} seleccionadas</div>
+            <span style={{ fontSize: '0.85rem', color: '#64748b', whiteSpace: 'nowrap' }}>
+              {seleccionadas.length} seleccionadas
+            </span>
           </div>
-          <div style={{ display: 'grid', gap: '0.35rem' }}>
-            {TABLAS_34.map((t) => (
-              <label key={t} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                <input
-                  type="checkbox"
-                  checked={!!seleccion[t]}
-                  disabled={busy}
-                  onChange={(e) => setSeleccion((s) => ({ ...s, [t]: e.target.checked }))}
-                />
-                <span style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }}>
-                  {t}
-                </span>
-              </label>
-            ))}
-          </div>
+          <h2 style={{ margin: 0, fontSize: '1.05rem' }}>InsForge (destino)</h2>
         </div>
 
-        <div className="card" style={{ padding: '1rem' }}>
-          <h2 style={{ margin: '0 0 0.75rem', fontSize: '1.05rem' }}>InsForge (destino)</h2>
-          <div style={{ display: 'grid', gap: '0.35rem' }}>
-            {TABLAS_34.map((t) => {
-              const st = estado[t];
-              const selected = !!seleccion[t];
-              const badge =
-                st.status === 'OK'
-                  ? { bg: '#16a34a', text: st.detalle || 'OK' }
-                  : st.status === 'ERROR'
-                    ? { bg: '#dc2626', text: 'ERROR' }
-                    : st.status === 'MIGRANDO'
-                      ? { bg: '#2563eb', text: 'MIGRANDO' }
-                      : { bg: '#64748b', text: 'PENDIENTE' };
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          {TABLAS_34.map((t) => {
+            const st = estado[t];
+            const selected = !!seleccion[t];
+            const badge =
+              st.status === 'OK'
+                ? { bg: '#16a34a', text: st.detalle || 'OK' }
+                : st.status === 'ERROR'
+                  ? { bg: '#dc2626', text: 'ERROR' }
+                  : st.status === 'MIGRANDO'
+                    ? { bg: '#2563eb', text: 'MIGRANDO' }
+                    : { bg: '#64748b', text: 'PENDIENTE' };
 
-              return (
-                <div
-                  key={t}
+            return (
+              <div
+                key={t}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
+                  columnGap: '1.25rem',
+                  alignItems: 'center',
+                  minHeight: 44,
+                  padding: '0.35rem 0',
+                  borderBottom: '1px solid rgba(148, 163, 184, 0.1)',
+                  opacity: selected ? 1 : 0.55,
+                }}
+              >
+                <label
                   style={{
                     display: 'flex',
-                    justifyContent: 'space-between',
+                    gap: '0.5rem',
                     alignItems: 'center',
-                    gap: '0.75rem',
-                    opacity: selected ? 1 : 0.55,
+                    minWidth: 0,
+                    cursor: busy ? 'default' : 'pointer',
                   }}
                 >
-                  <span style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }}>
+                  <input
+                    type="checkbox"
+                    checked={!!seleccion[t]}
+                    disabled={busy}
+                    onChange={(e) => setSeleccion((s) => ({ ...s, [t]: e.target.checked }))}
+                  />
+                  <span
+                    style={{
+                      fontFamily:
+                        'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                    title={t}
+                  >
                     {t}
                   </span>
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <span
-                      style={{
-                        padding: '0.2rem 0.5rem',
-                        borderRadius: 999,
-                        background: badge.bg,
-                        color: 'white',
-                        fontSize: '0.78rem',
-                        cursor: st.status === 'ERROR' ? 'pointer' : 'default',
-                      }}
-                      title={st.status === 'ERROR' ? st.error : ''}
-                      onClick={() => {
-                        if (st.status === 'ERROR') {
-                          alert(`❌ Error en ${t}\n\n${st.error}`);
-                        }
-                      }}
-                    >
-                      {badge.text}
-                    </span>
-                    <button className="btn btn-secondary" type="button" disabled={busy || !selected} onClick={() => migrarTabla(t)}>
-                      Migrar
-                    </button>
-                    <button className="btn btn-secondary" type="button" disabled={busy} onClick={() => verificarTabla(t)}>
-                      Verificar
-                    </button>
-                  </div>
+                </label>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.45rem', minWidth: 0 }}>
+                  <span
+                    style={{
+                      padding: '0.2rem 0.5rem',
+                      borderRadius: 999,
+                      background: badge.bg,
+                      color: 'white',
+                      fontSize: '0.78rem',
+                      cursor: st.status === 'ERROR' ? 'pointer' : 'default',
+                      maxWidth: 'min(100%, 240px)',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      flexShrink: 1,
+                    }}
+                    title={st.status === 'ERROR' ? st.error : badge.text}
+                    onClick={() => {
+                      if (st.status === 'ERROR') {
+                        alert(`❌ Error en ${t}\n\n${st.error}`);
+                      }
+                    }}
+                  >
+                    {badge.text}
+                  </span>
+                  <button className="btn btn-secondary" type="button" disabled={busy || !selected} onClick={() => migrarTabla(t)}>
+                    Migrar
+                  </button>
+                  <button className="btn btn-secondary" type="button" disabled={busy} onClick={() => verificarTabla(t)}>
+                    Verificar
+                  </button>
                 </div>
-              );
-            })}
-          </div>
-          <p style={{ margin: '0.85rem 0 0', color: '#64748b', fontSize: '0.85rem' }}>
-            Al dar <strong>Migrar</strong>, se aplica el <strong>CREATE TABLE</strong> hacia InsForge (vía{' '}
-            <code>POST /api/database/migrations</code> si existe; si no, Tables API con saneado de columnas reservadas) y luego se copian datos desde Supabase. Las tablas referenciadas por FK deben existir ya en InsForge (orden de la lista).
-          </p>
+              </div>
+            );
+          })}
         </div>
+
+        <p style={{ margin: '0.85rem 0 0', color: '#64748b', fontSize: '0.85rem' }}>
+          Al dar <strong>Migrar</strong>, se aplica el <strong>CREATE TABLE</strong> hacia InsForge (vía{' '}
+          <code>POST /api/database/migrations</code> si existe; si no, Tables API con saneado de columnas reservadas) y luego se copian datos desde Supabase. Las tablas referenciadas por FK deben existir ya en InsForge (orden de la lista).
+        </p>
       </div>
 
       <div className="card" style={{ padding: '1rem', maxWidth: '1100px', margin: '1rem auto 0' }}>
