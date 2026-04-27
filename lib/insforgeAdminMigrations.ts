@@ -1,7 +1,61 @@
 import { assertInsforgeConfigured } from '@/lib/insforge';
 import { insforgeCreateTable, type InsforgeColumn } from '@/lib/insforgeAdminTables';
-import { sanitizeCreateTableSqlForInsforgeTablesApi } from '@/lib/migracion/insforgeTablesApiSanitize';
+import {
+  sanitizeCreateTableSqlForInsforgeTablesApi,
+  type InsforgeTablesApiRenameMap,
+} from '@/lib/migracion/insforgeTablesApiSanitize';
 import { extractFirstPublicCreateTable } from '@/lib/migracion/extractPublicCreateTable';
+
+function slugFromTableForInsforge(table: string) {
+  const t = String(table || '').replace(/[^a-zA-Z0-9]+/g, '_');
+  const parts = t.split('_').filter(Boolean);
+  return parts.length ? parts[parts.length - 1] : 'row';
+}
+
+/**
+ * Última línea de defensa antes de POST /api/database/tables: InsForge reserva `id` (solo uuid),
+ * y a menudo `created_at` / `updated_at`. Si el saneador SQL o el parser fallaron, igual no enviamos `id` entero.
+ */
+function enforceInsforgeTablesApiReservedColumns(
+  columns: InsforgeColumn[],
+  tableName: string
+): { columns: InsforgeColumn[]; extraRename: InsforgeTablesApiRenameMap } {
+  const short = slugFromTableForInsforge(tableName);
+  const extraRename: InsforgeTablesApiRenameMap = {};
+  const taken = new Set(columns.map((c) => c.name));
+
+  const bump = (base: string) => {
+    let out = base;
+    let i = 2;
+    while (taken.has(out)) {
+      out = `${base}_${i}`;
+      i += 1;
+    }
+    taken.add(out);
+    return out;
+  };
+
+  const next = columns.map((col) => {
+    if (col.name === 'id' && col.type !== 'uuid') {
+      const nn = bump(`${short}_id`);
+      extraRename.id = nn;
+      return { ...col, name: nn };
+    }
+    if (col.name === 'created_at') {
+      const nn = bump('created_src');
+      extraRename.created_at = nn;
+      return { ...col, name: nn };
+    }
+    if (col.name === 'updated_at') {
+      const nn = bump('updated_src');
+      extraRename.updated_at = nn;
+      return { ...col, name: nn };
+    }
+    return col;
+  });
+
+  return { columns: next, extraRename };
+}
 
 type InsforgeMigrationResponse = {
   success?: boolean;
@@ -105,14 +159,16 @@ export async function runInsforgeMigrationsSql(sql: string) {
       'InsForge no soporta POST /api/database/migrations en esta instancia y no pude convertir el SQL a Tables API.'
     );
   }
-  await insforgeCreateTable({ tableName: parsed.tableName, rlsEnabled: false, columns: parsed.columns });
+  const enforced = enforceInsforgeTablesApiReservedColumns(parsed.columns, parsed.tableName);
+  const mergedRename: InsforgeTablesApiRenameMap = { ...tablesApiRename, ...enforced.extraRename };
+  await insforgeCreateTable({ tableName: parsed.tableName, rlsEnabled: false, columns: enforced.columns });
   return {
     ok: true,
     raw: JSON.stringify({ tableName: parsed.tableName }),
     json: null,
     mode: 'tables',
     path: '/api/database/tables',
-    tablesApiRename,
+    tablesApiRename: mergedRename,
   };
 }
 

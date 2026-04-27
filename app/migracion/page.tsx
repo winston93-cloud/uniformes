@@ -1,59 +1,11 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { TABLAS_MIGRACION_ORDER } from '@/lib/migracion/tablasOrder';
 
 const STORAGE_KEY_ESTADO = 'uniformes_migracion_estado_v1';
 
-/**
- * Orden de importación (Winston → destino) — mismo criterio que usamos en CSV.
- * Si una tabla tiene FKs, respeta este orden de arriba hacia abajo.
- */
-const TABLAS_34 = [
-  'usuario_perfil',
-  'roles_uniformes',
-  'tallas',
-  'categorias_prendas',
-  'presentaciones',
-  'ubicaciones_almacenamiento',
-  'sucursales',
-  'ciclos_escolares',
-  'usuario',
-  'usuarios',
-  'usuarios_uniformes',
-  'alumnos',
-  'externos',
-  'prendas',
-  'insumos',
-  'costos',
-  'prenda_talla_insumos',
-  'compras_insumos',
-  'costo_ubicaciones',
-  'insumo_ubicaciones',
-
-  // Datos fiscales
-  'datos_fiscales_cliente',
-
-  // Cotizaciones
-  'cotizaciones',
-  'detalle_cotizacion',
-
-  // Pedidos y movimientos
-  'pedidos',
-  'detalle_pedidos',
-  'movimientos',
-
-  // Cortes / transferencias / devoluciones
-  'cortes',
-  'detalle_cortes',
-  'transferencias',
-  'detalle_transferencias',
-  'devoluciones',
-  'detalle_devoluciones',
-
-  // Auditoría / snapshots
-  'auditoria',
-  'snapshot_insumos_pedido',
-] as const;
+const TABLAS_34 = TABLAS_MIGRACION_ORDER;
 
 type EstadoTabla =
   | { status: 'PENDIENTE' }
@@ -273,7 +225,7 @@ export default function MigracionPage() {
     addLog(`SQL listo (${n} archivos de migration).`);
   };
 
-  const migrarTabla = async (table: string) => {
+  const migrarTabla = async (table: string, opts?: { silentVerify?: boolean }) => {
     setEstado((s) => ({ ...s, [table]: { status: 'MIGRANDO', progreso: 'Iniciando…' } }));
     addLog(`Migrando ${table} (DDL + datos)…`);
     try {
@@ -300,15 +252,14 @@ export default function MigracionPage() {
           )} (deben existir en InsForge antes, si el CREATE trae FKs).`
         );
       }
-      // Verificación automática al terminar
-      await verificarTabla(table);
+      await verificarTabla(table, { silent: opts?.silentVerify });
     } catch (e: any) {
       setEstado((s) => ({ ...s, [table]: { status: 'ERROR', error: e?.message || String(e) } }));
       addLog(`ERROR ${table}: ${e?.message || String(e)}`);
     }
   };
 
-  const verificarTabla = async (table: string) => {
+  const verificarTabla = async (table: string, opts?: { silent?: boolean }) => {
     addLog(`Verificando ${table}…`);
     try {
       const res = await fetch('/api/migracion/verify-table', {
@@ -339,14 +290,40 @@ export default function MigracionPage() {
               error: `Verificación: Supabase=${String(supa)} · InsForge=${String(insf)} · coincide=${String(match)}`,
             },
       }));
-      alert(
-        ok
-          ? `✅ ${table}\nSupabase: ${supa}\nInsForge: ${insf}\nCoinciden: sí`
-          : `⚠️ ${table}\nSupabase: ${String(supa)}\nInsForge: ${String(insf)}\nCoinciden: ${String(match)}`
-      );
+      if (!opts?.silent) {
+        alert(
+          ok
+            ? `✅ ${table}\nSupabase: ${supa}\nInsForge: ${insf}\nCoinciden: sí`
+            : `⚠️ ${table}\nSupabase: ${String(supa)}\nInsForge: ${String(insf)}\nCoinciden: ${String(match)}`
+        );
+      }
     } catch (e: any) {
       addLog(`ERROR verificación ${table}: ${e?.message || String(e)}`);
-      alert(`❌ Verificación ${table}: ${e?.message || String(e)}`);
+      if (!opts?.silent) alert(`❌ Verificación ${table}: ${e?.message || String(e)}`);
+    }
+  };
+
+  /** Todas las que no están en OK (pendientes + errores), en orden de lista — sin un solo request largo (Vercel). */
+  const migrarColaFaltantes = async () => {
+    const cola = TABLAS_34.filter((t) => estado[t]?.status !== 'OK');
+    if (!cola.length) {
+      addLog('No hay tablas por migrar: todas están en OK.');
+      return;
+    }
+    const ok = confirm(
+      `Se migrarán ${cola.length} tabla(s) en orden fijo (las que no están en OK).\n\n` +
+        `Primera: ${cola[0]} · Última: ${cola[cola.length - 1]}.\n\n¿Continuar?`
+    );
+    if (!ok) return;
+    setBusy(true);
+    try {
+      for (const t of cola) {
+        // eslint-disable-next-line no-await-in-loop
+        await migrarTabla(t, { silentVerify: true });
+      }
+      addLog(`Cola finalizada (${cola.length} tablas). Revisa logs y badges.`);
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -533,6 +510,16 @@ export default function MigracionPage() {
         </button>
         <button className="btn btn-primary" type="button" disabled={busy} onClick={migrarSeleccionadas}>
           Migrar seleccionadas
+        </button>
+        <button
+          className="btn btn-primary"
+          type="button"
+          disabled={busy || TABLAS_34.every((t) => estado[t]?.status === 'OK')}
+          title="Recorre el orden fijo de tablas y migra todas las que no están en OK (sin alerts por tabla)"
+          onClick={migrarColaFaltantes}
+          style={{ background: '#7c3aed', border: 'none', color: 'white' }}
+        >
+          Migrar cola (todas las que faltan)
         </button>
         <button className="btn btn-secondary" type="button" disabled={busy} onClick={verificarSeleccionadas}>
           Verificar conteos
