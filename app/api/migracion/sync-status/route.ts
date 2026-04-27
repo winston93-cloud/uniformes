@@ -35,7 +35,6 @@ const TABLAS_UNIFORMES = [
   'detalle_transferencias',
   'devoluciones',
   'detalle_devoluciones',
-  'auditoria',
   'snapshot_insumos_pedido',
 ] as const;
 
