@@ -62,7 +62,7 @@ export async function POST(req: Request) {
     }
 
     // 2) Copiar datos
-    const copy = await copyTableDataFromSupabaseToInsforge({ table });
+    const copy = await copyTableDataFromSupabaseToInsforge({ table, truncateDestination: true });
 
     return NextResponse.json({
       success: true,

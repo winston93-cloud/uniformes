@@ -25,7 +25,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Tabla inválida.' }, { status: 400 });
     }
 
-    const r = await copyTableDataFromSupabaseToInsforge({ table, batchSize, chunkSize, startOffset });
+    const r = await copyTableDataFromSupabaseToInsforge({ table, batchSize, chunkSize, startOffset, truncateDestination: true });
     return NextResponse.json({ success: true, ...r });
   } catch (e: any) {
     return NextResponse.json({ success: false, error: e?.message || String(e) }, { status: 500 });

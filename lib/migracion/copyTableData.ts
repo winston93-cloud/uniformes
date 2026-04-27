@@ -1,5 +1,6 @@
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { insforge } from '@/lib/insforge';
+import { runInsforgeRawSql } from '@/lib/insforgeAdminRawSql';
 
 function clampInt(v: unknown, min: number, max: number) {
   const n = Number(v);
@@ -16,6 +17,7 @@ export async function copyTableDataFromSupabaseToInsforge(opts: {
   batchSize?: number;
   chunkSize?: number;
   startOffset?: number;
+  truncateDestination?: boolean;
 }) {
   const table = String(opts.table || '').trim();
   if (!table || !isSafeTableName(table)) {
@@ -25,8 +27,15 @@ export async function copyTableDataFromSupabaseToInsforge(opts: {
   const batchSize = clampInt(opts.batchSize ?? 1000, 50, 5000);
   const chunkSize = clampInt(opts.chunkSize ?? 250, 25, 1000);
   const startOffset = clampInt(opts.startOffset ?? 0, 0, 10_000_000);
+  const truncateDestination = opts.truncateDestination !== false;
 
   const supabaseAdmin = getSupabaseAdmin();
+
+  if (truncateDestination) {
+    // Evitar choques por UNIQUE/PK si la tabla ya tenía datos.
+    // CASCADE para dependientes; en migración inicial esto es deseable.
+    await runInsforgeRawSql(`TRUNCATE TABLE public.${table} CASCADE;`);
+  }
 
   let offset = startOffset;
   let totalRead = 0;
@@ -49,7 +58,7 @@ export async function copyTableDataFromSupabaseToInsforge(opts: {
       // eslint-disable-next-line no-await-in-loop
       const { error: insErr } = await insforge.database.from(table).insert(chunk);
       if (insErr) {
-        throw new Error(`InsForge insert fallo en ${table}: ${insErr.message || String(insErr)}`);
+        throw new Error(`InsForge insert fallo en ${table}: ${insErr.message || JSON.stringify(insErr)}`);
       }
       totalInserted += chunk.length;
     }
