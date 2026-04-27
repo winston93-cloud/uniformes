@@ -91,11 +91,20 @@ function PedidosPageContent() {
   const [mesSeleccionado, setMesSeleccionado] = useState(fechaActual.getMonth() + 1); // 1-12
   const [añoSeleccionado, setAñoSeleccionado] = useState(fechaActual.getFullYear());
   
-  // Filtrar pedidos por mes y año
+  // Filtrar pedidos por mes y año (fecha legible es es-MX; usar siempre timestamp ISO de API)
   const pedidos = pedidosDB.filter((pedido: any) => {
-    const fechaPedido = new Date(pedido.created_at || pedido.fecha);
-    return fechaPedido.getMonth() + 1 === mesSeleccionado && 
-           fechaPedido.getFullYear() === añoSeleccionado;
+    const raw =
+      pedido.created_at ??
+      pedido.createdAt ??
+      (typeof pedido.fecha === 'string' && pedido.fecha.includes('-')
+        ? pedido.fecha
+        : pedido.updated_at ?? pedido.updatedAt);
+    const fechaPedido = raw ? new Date(raw) : null;
+    if (!fechaPedido || Number.isNaN(fechaPedido.getTime())) return true;
+    return (
+      fechaPedido.getMonth() + 1 === mesSeleccionado &&
+      fechaPedido.getFullYear() === añoSeleccionado
+    );
   }).map((p: any) => ({
     ...p,
     fecha: p.fecha || new Date(p.created_at).toISOString().split('T')[0],

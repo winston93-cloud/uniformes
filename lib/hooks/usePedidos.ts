@@ -34,6 +34,22 @@ interface DetallePedido {
   especificaciones?: string;
 }
 
+/** InsForge/SDK a veces devuelve camelCase; sucursal en datos viejos puede ser null y .eq excluye todo. */
+function normalizarFilaPedidoApi(p: Record<string, unknown>) {
+  const created_at =
+    (p.created_at ?? p.createdAt ?? p.updated_at ?? p.updatedAt) as string | undefined;
+  const tipo_cliente = (p.tipo_cliente ?? p.tipoCliente) as string | undefined;
+  const sucursal_id = (p.sucursal_id ?? p.sucursalId) as string | null | undefined;
+  const cliente_nombre = (p.cliente_nombre ?? p.clienteNombre) as string | undefined;
+  return {
+    ...p,
+    created_at,
+    tipo_cliente,
+    sucursal_id,
+    cliente_nombre: cliente_nombre ?? p.cliente_nombre,
+  };
+}
+
 export function usePedidos(sucursal_id?: string) {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,27 +57,41 @@ export function usePedidos(sucursal_id?: string) {
   const fetchPedidos = useCallback(async () => {
     try {
       setLoading(true);
-      let query = supabase
-        .from('pedidos')
-        .select('*')
-        .order('created_at', { ascending: false});
+      let query = supabase.from('pedidos').select('*').order('created_at', { ascending: false });
 
-      // Filtrar por sucursal si se proporciona
+      // Incluir filas sin sucursal (migraciones) además de la sesión actual
       if (sucursal_id) {
-        query = query.eq('sucursal_id', sucursal_id);
+        query = query.or(`sucursal_id.eq.${sucursal_id},sucursal_id.is.null`);
       }
 
-      const { data, error } = await query;
+      let { data, error } = await query;
 
       if (error) throw error;
-      
-      // Mapear tipo_cliente a cliente_tipo para compatibilidad
-      const pedidosMapeados = (data || []).map((p: any) => ({
-        ...p,
-        cliente_tipo: p.tipo_cliente,
-        fecha: new Date(p.created_at).toLocaleDateString('es-MX'),
-      }));
-      
+
+      // Sesión (env) puede apuntar a otro UUID que los pedidos migrados en InsForge
+      if (sucursal_id && (!data || data.length === 0)) {
+        const fb = await supabase.from('pedidos').select('*').order('created_at', { ascending: false });
+        if (!fb.error && fb.data && fb.data.length > 0) {
+          console.warn(
+            '[pedidos] Sin resultados para la sucursal de la sesión; mostrando todos los pedidos. Revisa NEXT_PUBLIC_DEFAULT_SUCURSAL_ID vs pedidos.sucursal_id en InsForge.'
+          );
+          data = fb.data;
+        }
+      }
+
+      const pedidosMapeados = (data || []).map((raw) => {
+        const p = normalizarFilaPedidoApi(raw as Record<string, unknown>);
+        const fechaStr =
+          p.created_at && !Number.isNaN(Date.parse(String(p.created_at)))
+            ? new Date(String(p.created_at)).toLocaleDateString('es-MX')
+            : '';
+        return {
+          ...p,
+          cliente_tipo: p.tipo_cliente,
+          fecha: fechaStr,
+        } as unknown as Pedido;
+      });
+
       setPedidos(pedidosMapeados);
     } catch (error) {
       console.error('Error al cargar pedidos:', error);
