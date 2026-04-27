@@ -98,6 +98,19 @@ export default function MigracionPage() {
   const [schemaModalOpen, setSchemaModalOpen] = useState(false);
   const [schemaSql, setSchemaSql] = useState<string>('');
   const [schemaFiles, setSchemaFiles] = useState<string[]>([]);
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
+  const [previewData, setPreviewData] = useState<{
+    rows: Array<{
+      table: string;
+      ok: boolean;
+      ddlFile?: string;
+      prerequisiteTables: string[];
+      missingDdl?: string;
+      tablesFallback?: { issues: string[]; tablesApiParseOk: boolean; columnCount: number };
+    }>;
+    summary: { total: number; ok: number; problems: number };
+    disclaimer: string;
+  } | null>(null);
   const [syncPending, setSyncPending] = useState<number | null>(null);
   const [syncBaselineTs, setSyncBaselineTs] = useState<string | null>(null);
   const [syncLastAppliedTs, setSyncLastAppliedTs] = useState<string | null>(null);
@@ -382,6 +395,40 @@ export default function MigracionPage() {
     }
   };
 
+  /** DDL local + parser Tables API; no borra ni crea nada en InsForge. */
+  const ejecutarPrechequeo = async (tables: string[]) => {
+    if (!tables.length) {
+      addLog('Prechequeo: no hay tablas en la lista.');
+      return;
+    }
+    setBusy(true);
+    try {
+      addLog(`Prechequeo de ${tables.length} tabla(s) (solo repo + reglas Tables API, sin InsForge)…`);
+      const res = await fetch('/api/migracion/preview-tables', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tables }),
+        cache: 'no-store',
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.success) throw new Error(json?.error || 'Prechequeo falló');
+      setPreviewData({
+        rows: json.rows,
+        summary: json.summary,
+        disclaimer: String(json.disclaimer || ''),
+      });
+      setPreviewModalOpen(true);
+      addLog(
+        `Prechequeo listo: ${json.summary?.ok ?? 0}/${json.summary?.total ?? 0} OK para el camino Tables API · ${json.summary?.problems ?? 0} a revisar`
+      );
+    } catch (e: any) {
+      addLog(`ERROR prechequeo: ${e?.message || String(e)}`);
+      alert(`❌ ${e?.message || String(e)}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const probarTokenAdminInsForge = async () => {
     setBusy(true);
     try {
@@ -537,6 +584,28 @@ export default function MigracionPage() {
         <button className="btn btn-secondary" type="button" disabled={busy} onClick={verificarSeleccionadas}>
           Verificar conteos
         </button>
+        <button
+          className="btn btn-secondary"
+          type="button"
+          disabled={busy || seleccionadas.length === 0}
+          title="Valida DDL del repo y el saneado para InsForge Tables API (no llama a InsForge)"
+          onClick={() => ejecutarPrechequeo(seleccionadas)}
+        >
+          Prechequeo (seleccionadas)
+        </button>
+        <button
+          className="btn btn-secondary"
+          type="button"
+          disabled={
+            busy || !TABLAS_34.some((t) => estado[t]?.status === 'PENDIENTE')
+          }
+          title="Solo tablas con estado PENDIENTE en esta pantalla"
+          onClick={() =>
+            ejecutarPrechequeo(TABLAS_34.filter((t) => estado[t]?.status === 'PENDIENTE'))
+          }
+        >
+          Prechequeo (pendientes)
+        </button>
       </div>
 
       <div
@@ -631,7 +700,8 @@ export default function MigracionPage() {
             })}
           </div>
           <p style={{ margin: '0.85rem 0 0', color: '#64748b', fontSize: '0.85rem' }}>
-            Nota: al dar <strong>Migrar</strong>, el sistema primero aplica el <strong>CREATE TABLE</strong> (con sus relaciones inline) hacia InsForge vía <code>POST /api/database/migrations</code>, y luego copia los datos desde Supabase. Si la tabla trae llaves a otras tablas, esas tablas referenciadas deben existir ya en InsForge (mígralas antes en el orden de la lista).
+            Usa <strong>Prechequeo</strong> arriba para ver problemas de esquema <em>antes</em> de pulsar Migrar (validación local + reglas del fallback Tables API). Nota al migrar: primero el <strong>CREATE TABLE</strong> vía{' '}
+            <code>POST /api/database/migrations</code> (si existe en tu InsForge); si no, fallback Tables API. Luego se copian datos desde Supabase. Las FKs requieren que las tablas referenciadas ya existan en InsForge (orden de la lista).
           </p>
         </div>
       </div>
@@ -759,6 +829,93 @@ export default function MigracionPage() {
               }}
               placeholder="Cargando SQL…"
             />
+          </div>
+        </div>
+      ) : null}
+
+      {previewModalOpen && previewData ? (
+        <div className="modal-overlay" style={{ zIndex: 12000 }} onClick={() => setPreviewModalOpen(false)}>
+          <div
+            className="modal-content"
+            style={{
+              maxWidth: 'min(960px, 100vw - 1.5rem)',
+              width: '100%',
+              maxHeight: '90vh',
+              overflow: 'auto',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
+              <div>
+                <h2 style={{ margin: 0 }}>Prechequeo de migración</h2>
+                <p style={{ margin: '0.35rem 0 0', fontSize: '0.9rem', color: '#64748b' }}>
+                  Resumen:{' '}
+                  <strong style={{ color: '#16a34a' }}>{previewData.summary.ok} OK</strong> ·{' '}
+                  <strong style={{ color: previewData.summary.problems ? '#dc2626' : '#64748b' }}>
+                    {previewData.summary.problems} a revisar
+                  </strong>{' '}
+                  ({previewData.summary.total} tablas). No se ha modificado InsForge.
+                </p>
+                {previewData.disclaimer ? (
+                  <p style={{ margin: '0.5rem 0 0', fontSize: '0.82rem', color: '#94a3b8' }}>{previewData.disclaimer}</p>
+                ) : null}
+              </div>
+              <button type="button" className="modal-close-btn" onClick={() => setPreviewModalOpen(false)}>
+                ✕
+              </button>
+            </div>
+
+            <div style={{ overflowX: 'auto', marginTop: '0.75rem' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                <thead>
+                  <tr style={{ textAlign: 'left', borderBottom: '1px solid rgba(148,163,184,0.35)' }}>
+                    <th style={{ padding: '0.45rem 0.35rem' }}>Tabla</th>
+                    <th style={{ padding: '0.45rem 0.35rem' }}>Tables API</th>
+                    <th style={{ padding: '0.45rem 0.35rem' }}>DDL</th>
+                    <th style={{ padding: '0.45rem 0.35rem' }}>FK previas</th>
+                    <th style={{ padding: '0.45rem 0.35rem' }}>Detalle</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {previewData.rows.map((r) => {
+                    const detail =
+                      r.missingDdl ||
+                      (r.tablesFallback?.issues?.length ? r.tablesFallback.issues.join(' ') : '') ||
+                      (r.ok ? '—' : 'Ver parser / DDL');
+                    return (
+                      <tr key={r.table} style={{ borderBottom: '1px solid rgba(148,163,184,0.15)' }}>
+                        <td style={{ padding: '0.45rem 0.35rem', fontFamily: 'ui-monospace, monospace' }}>{r.table}</td>
+                        <td style={{ padding: '0.45rem 0.35rem' }}>
+                          <span
+                            style={{
+                              padding: '0.15rem 0.45rem',
+                              borderRadius: 999,
+                              background: r.ok ? '#16a34a' : '#dc2626',
+                              color: 'white',
+                              fontSize: '0.78rem',
+                            }}
+                          >
+                            {r.ok ? 'OK' : 'REVISAR'}
+                          </span>
+                        </td>
+                        <td style={{ padding: '0.45rem 0.35rem', color: '#94a3b8' }}>
+                          {r.ddlFile ?? '—'}
+                        </td>
+                        <td style={{ padding: '0.45rem 0.35rem', color: '#94a3b8', maxWidth: 220 }}>
+                          {r.prerequisiteTables?.length ? r.prerequisiteTables.join(', ') : '—'}
+                        </td>
+                        <td style={{ padding: '0.45rem 0.35rem', color: '#cbd5e1', maxWidth: 360 }}>
+                          {detail}
+                          {!r.ok && typeof r.tablesFallback?.columnCount === 'number' ? (
+                            <span style={{ color: '#64748b' }}> · columnas parseadas: {r.tablesFallback.columnCount}</span>
+                          ) : null}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       ) : null}

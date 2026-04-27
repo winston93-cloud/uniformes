@@ -3,22 +3,11 @@ import { assertInsforgeConfigured } from '@/lib/insforge';
 import { runInsforgeMigrationsSql } from '@/lib/insforgeAdminMigrations';
 import { insforgeDeleteTable } from '@/lib/insforgeAdminTables';
 import { extractCreateTableDdlForPublicTable, prependExtensionIfNeeded } from '@/lib/migracion/ddlFromRepoMigrations';
+import { extractReferencedPublicTablesFromDdl } from '@/lib/migracion/ddlReferencedTables';
 import { copyTableDataFromSupabaseToInsforge } from '@/lib/migracion/copyTableData';
 
 function isSafeTableName(name: string) {
   return /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name);
-}
-
-function extractReferencedPublicTablesFromDdl(ddl: string) {
-  const refs = new Set<string>();
-  const re = /REFERENCES\s+public\.([a-zA-Z_][a-zA-Z0-9_]*)/gi;
-  let m: RegExpExecArray | null;
-  for (;;) {
-    m = re.exec(ddl);
-    if (!m) break;
-    refs.add(m[1]);
-  }
-  return [...refs];
 }
 
 export async function POST(req: Request) {
