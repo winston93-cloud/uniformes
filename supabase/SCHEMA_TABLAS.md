@@ -18,7 +18,7 @@ Esta tabla enlaza cada nombre **con el archivo donde está el `CREATE TABLE`** q
 | usuarios | `schema.sql` |
 | usuarios_uniformes | `migrations/create_usuarios_uniformes.sql` |
 | alumnos, externos, prendas, costos | `schema.sql` |
-| insumos | `crear_tabla_insumos.sql` |
+| insumos | **`migrations/create_insumos.sql`** (actual con `presentacion_id`); el script `crear_tabla_insumos.sql` es legacy con `presentacion` VARCHAR |
 | prenda_talla_insumos | `crear_tabla_prenda_talla_insumos.sql` |
 | compras_insumos | `crear_tabla_compras_insumos.sql` |
 | costo_ubicaciones | `migrations/create_costo_ubicaciones.sql` |

@@ -1,4 +1,9 @@
 -- Crear tabla de insumos para el catálogo de materiales
+--
+-- ⚠️ Esquema histórico: aquí aparece `presentacion` VARCHAR; en BD actual se usa
+-- `presentacion_id` (ver crear_tabla_presentaciones.sql). Para InsForge / migración
+-- el DDL canónico es `supabase/migrations/create_insumos.sql` (lo encuentra antes el scanner).
+--
 CREATE TABLE IF NOT EXISTS public.insumos (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     codigo VARCHAR(50) NOT NULL UNIQUE,
