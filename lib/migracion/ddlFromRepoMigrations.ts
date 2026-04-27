@@ -17,12 +17,34 @@ function isSafeTableName(name: string) {
 export async function extractCreateTableDdlForPublicTable(table: string) {
   if (!isSafeTableName(table)) throw new Error('Tabla inválida');
 
-  const reTable = new RegExp(
+  const reTablePublic = new RegExp(
     `CREATE\\s+TABLE\\s+IF\\s+NOT\\s+EXISTS\\s+public\\.${table}\\b[\\s\\S]*?\\);`,
     'i'
   );
+  const reTableBare = new RegExp(
+    `CREATE\\s+TABLE\\s+IF\\s+NOT\\s+EXISTS\\s+${table}\\b[\\s\\S]*?\\);`,
+    'i'
+  );
   // Variante sin IF NOT EXISTS (por si algún SQL legacy lo traía)
-  const reTableLoose = new RegExp(`CREATE\\s+TABLE\\s+public\\.${table}\\b[\\s\\S]*?\\);`, 'i');
+  const reTableLoosePublic = new RegExp(`CREATE\\s+TABLE\\s+public\\.${table}\\b[\\s\\S]*?\\);`, 'i');
+  const reTableLooseBare = new RegExp(`CREATE\\s+TABLE\\s+${table}\\b[\\s\\S]*?\\);`, 'i');
+
+  function normalizeExtractedCreateTable(sql: string) {
+    const s = sql.trim();
+    // Si venía sin esquema, normalizar a public.<tabla> para el parser de InsForge.
+    if (new RegExp(`CREATE\\s+TABLE\\s+IF\\s+NOT\\s+EXISTS\\s+${table}\\b`, 'i').test(s)) {
+      return s
+        .replace(
+          new RegExp(`CREATE\\s+TABLE\\s+IF\\s+NOT\\s+EXISTS\\s+${table}\\b`, 'i'),
+          `CREATE TABLE IF NOT EXISTS public.${table}`
+        )
+        .trim();
+    }
+    if (new RegExp(`CREATE\\s+TABLE\\s+${table}\\b`, 'i').test(s) && !/CREATE\s+TABLE\s+public\./i.test(s)) {
+      return s.replace(new RegExp(`CREATE\\s+TABLE\\s+${table}\\b`, 'i'), `CREATE TABLE public.${table}`).trim();
+    }
+    return s;
+  }
 
   async function scanDir(relDir: string, labelPrefix: string) {
     let dirFiles: string[] = [];
@@ -41,9 +63,13 @@ export async function extractCreateTableDdlForPublicTable(table: string) {
 
     for (const f of ordered) {
       const text = await readFile(join(process.cwd(), relDir, f), 'utf8');
-      const m = text.match(reTable) || text.match(reTableLoose);
+      const m =
+        text.match(reTablePublic) ||
+        text.match(reTableBare) ||
+        text.match(reTableLoosePublic) ||
+        text.match(reTableLooseBare);
       if (m?.[0]) {
-        return { file: `${labelPrefix}${f}`, sql: m[0].trim() + '\n' };
+        return { file: `${labelPrefix}${f}`, sql: normalizeExtractedCreateTable(m[0]).trim() + '\n' };
       }
     }
     return null;

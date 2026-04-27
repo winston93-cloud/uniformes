@@ -36,7 +36,7 @@ export async function POST(req: Request) {
         {
           success: false,
           error:
-            `No encontré CREATE TABLE para public.${table} en supabase/migrations. Necesitamos agregar/ajustar la migration en el repo o soportar introspección directa desde Postgres.`,
+            `No encontré CREATE TABLE para public.${table} en el repo (revisé supabase/migrations, supabase/*.sql y supabase/schema.sql). Agrega/ajusta el SQL o soporta introspección directa desde Postgres.`,
         },
         { status: 400 }
       );
