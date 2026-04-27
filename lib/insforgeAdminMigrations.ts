@@ -116,32 +116,6 @@ export async function runInsforgeMigrationsSql(sql: string) {
   };
 }
 
-export function previewDdlForInsforgeTablesApi(sql: string) {
-  const { sql: tablesSql, rename: tablesApiRename } = sanitizeCreateTableSqlForInsforgeTablesApi(sql);
-  const parsed = parseCreateTableSqlForTablesApi(tablesSql);
-  const issues: string[] = [];
-  if (!parsed) {
-    issues.push(
-      'No se pudo interpretar el CREATE TABLE (ya saneado) como columnas para la Tables API. Suele pasar con DDL muy complejo; el camino POST /api/database/migrations podría seguir funcionando.'
-    );
-  } else {
-    const idCol = parsed.columns.find((c) => c.name === 'id');
-    if (idCol && idCol.type !== 'uuid') {
-      issues.push(
-        `La columna 'id' sigue como tipo "${idCol.type}"; InsForge reserva 'id' solo para UUID. El saneador debería renombrarla — revisar el DDL.`
-      );
-    }
-  }
-  return {
-    sanitizedSql: tablesSql,
-    tablesApiRename,
-    tablesApiParseOk: parsed !== null,
-    tableName: parsed?.tableName ?? null,
-    columnCount: parsed?.columns.length ?? 0,
-    issues,
-  };
-}
-
 function parseCreateTableSqlForTablesApi(sql: string): { tableName: string; columns: InsforgeColumn[] } | null {
   const extracted = extractFirstPublicCreateTable(sql);
   let tableName: string;

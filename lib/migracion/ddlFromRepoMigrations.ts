@@ -1,5 +1,6 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { extractCreateTableStatementForTable } from '@/lib/migracion/extractPublicCreateTable';
 
 function isSafeTableName(name: string) {
   return /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name);
@@ -16,18 +17,6 @@ function isSafeTableName(name: string) {
  */
 export async function extractCreateTableDdlForPublicTable(table: string) {
   if (!isSafeTableName(table)) throw new Error('Tabla inválida');
-
-  const reTablePublic = new RegExp(
-    `CREATE\\s+TABLE\\s+IF\\s+NOT\\s+EXISTS\\s+public\\.${table}\\b[\\s\\S]*?\\);`,
-    'i'
-  );
-  const reTableBare = new RegExp(
-    `CREATE\\s+TABLE\\s+IF\\s+NOT\\s+EXISTS\\s+${table}\\b[\\s\\S]*?\\);`,
-    'i'
-  );
-  // Variante sin IF NOT EXISTS (por si algún SQL legacy lo traía)
-  const reTableLoosePublic = new RegExp(`CREATE\\s+TABLE\\s+public\\.${table}\\b[\\s\\S]*?\\);`, 'i');
-  const reTableLooseBare = new RegExp(`CREATE\\s+TABLE\\s+${table}\\b[\\s\\S]*?\\);`, 'i');
 
   function normalizeExtractedCreateTable(sql: string) {
     const s = sql.trim();
@@ -63,13 +52,9 @@ export async function extractCreateTableDdlForPublicTable(table: string) {
 
     for (const f of ordered) {
       const text = await readFile(join(process.cwd(), relDir, f), 'utf8');
-      const m =
-        text.match(reTablePublic) ||
-        text.match(reTableBare) ||
-        text.match(reTableLoosePublic) ||
-        text.match(reTableLooseBare);
-      if (m?.[0]) {
-        return { file: `${labelPrefix}${f}`, sql: normalizeExtractedCreateTable(m[0]).trim() + '\n' };
+      const extracted = extractCreateTableStatementForTable(text, table);
+      if (extracted) {
+        return { file: `${labelPrefix}${f}`, sql: normalizeExtractedCreateTable(extracted).trim() + '\n' };
       }
     }
     return null;
@@ -87,14 +72,9 @@ export async function extractCreateTableDdlForPublicTable(table: string) {
   try {
     const schemaPath = join(process.cwd(), 'supabase', 'schema.sql');
     const schemaText = await readFile(schemaPath, 'utf8');
-    const reSchema = new RegExp(
-      `CREATE\\s+TABLE\\s+IF\\s+NOT\\s+EXISTS\\s+(?:public\\.)?${table}\\b[\\s\\S]*?\\);`,
-      'i'
-    );
-    const reSchemaLoose = new RegExp(`CREATE\\s+TABLE\\s+(?:public\\.)?${table}\\b[\\s\\S]*?\\);`, 'i');
-    const mm = schemaText.match(reSchema) || schemaText.match(reSchemaLoose);
-    if (mm?.[0]) {
-      const raw = mm[0].trim();
+    const extracted = extractCreateTableStatementForTable(schemaText, table);
+    if (extracted) {
+      const raw = extracted.trim();
       const normalized = raw
         .replace(
           new RegExp(`CREATE\\s+TABLE\\s+IF\\s+NOT\\s+EXISTS\\s+(?:public\\.)?${table}\\b`, 'i'),
