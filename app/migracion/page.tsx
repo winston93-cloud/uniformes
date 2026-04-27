@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
+const STORAGE_KEY_ESTADO = 'uniformes_migracion_estado_v1';
+
 /**
  * Orden de importación (Winston → destino) — mismo criterio que usamos en CSV.
  * Si una tabla tiene FKs, respeta este orden de arriba hacia abajo.
@@ -63,9 +65,32 @@ export default function MigracionPage() {
   const [seleccion, setSeleccion] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(TABLAS_34.map((t) => [t, false]))
   );
-  const [estado, setEstado] = useState<Record<string, EstadoTabla>>(() =>
-    Object.fromEntries(TABLAS_34.map((t) => [t, { status: 'PENDIENTE' }]))
-  );
+  const [estado, setEstado] = useState<Record<string, EstadoTabla>>(() => {
+    // Estado persistido para que al recargar no se “pierdan” tablas ya migradas.
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = window.localStorage.getItem(STORAGE_KEY_ESTADO);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && typeof parsed === 'object') {
+            const next: Record<string, EstadoTabla> = Object.fromEntries(
+              TABLAS_34.map((t) => [t, { status: 'PENDIENTE' } as EstadoTabla])
+            );
+            for (const t of TABLAS_34) {
+              const v = (parsed as any)[t];
+              if (v && typeof v === 'object' && typeof v.status === 'string') {
+                next[t] = v as EstadoTabla;
+              }
+            }
+            return next;
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+    return Object.fromEntries(TABLAS_34.map((t) => [t, { status: 'PENDIENTE' }]));
+  });
   const [logs, setLogs] = useState<string[]>([]);
   const [ping, setPing] = useState<{ supabaseHost: string | null; insforgeHost: string | null } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -82,6 +107,15 @@ export default function MigracionPage() {
 
   const addLog = (line: string) => setLogs((prev) => [`${new Date().toLocaleString('es-MX')} — ${line}`, ...prev]);
 
+  // Persistir estado en localStorage para sobrevivir recargas.
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(STORAGE_KEY_ESTADO, JSON.stringify(estado));
+    } catch {
+      // ignore
+    }
+  }, [estado]);
+
   useEffect(() => {
     (async () => {
       try {
@@ -91,6 +125,31 @@ export default function MigracionPage() {
         setPing({ supabaseHost: json.supabaseHost ?? null, insforgeHost: json.insforgeHost ?? null });
       } catch (e: any) {
         addLog(`Ping error: ${e?.message || String(e)}`);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Al cargar: si InsForge ya tiene una tabla, marcar como OK (estructura presente),
+  // y mantener OK/ERROR persistido si ya estaba.
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/migracion/insforge-tables', { cache: 'no-store' });
+        const json = await res.json().catch(() => null);
+        if (!res.ok || !json?.success) return;
+        const found = new Set<string>(Array.isArray(json.foundUniformes) ? json.foundUniformes : []);
+        setEstado((prev) => {
+          const next = { ...prev };
+          for (const t of TABLAS_34) {
+            const st = prev[t];
+            if (st?.status === 'OK' || st?.status === 'ERROR' || st?.status === 'MIGRANDO') continue;
+            if (found.has(t)) next[t] = { status: 'OK', detalle: 'Estructura detectada en InsForge (reconstruido al recargar).' };
+          }
+          return next;
+        });
+      } catch {
+        // ignore
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
