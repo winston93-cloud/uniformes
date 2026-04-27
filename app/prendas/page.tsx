@@ -225,8 +225,8 @@ export default function PrendasPage() {
     const cargarTallasAsociadas = async () => {
       if (prendaEditando) {
         const { data } = await getCostosByPrenda(prendaEditando.id);
-        if (data) {
-          const tallasIds = data.map(c => c.talla_id);
+        if (data && data.length > 0) {
+          const tallasIds = [...new Set(data.map((c) => c.talla_id))];
           setTallasAsociadas(tallasIds);
           setTallasSeleccionadas(tallasIds);
         }
@@ -501,8 +501,8 @@ export default function PrendasPage() {
     
     // Cargar tallas asociadas ANTES de mostrar el formulario
     const { data: costos } = await getCostosByPrenda(prenda.id);
-    if (costos) {
-      const tallasIds = costos.map(c => c.talla_id);
+    if (costos && costos.length > 0) {
+      const tallasIds = [...new Set(costos.map((c) => c.talla_id))];
       setTallasAsociadas(tallasIds);
       setTallasSeleccionadas(tallasIds);
       
