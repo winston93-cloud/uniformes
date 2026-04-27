@@ -6,6 +6,14 @@ La UI y los hooks usan **solo** el cliente en `lib/supabase.ts` → **Supabase**
 
 No hace falta `NEXT_PUBLIC_DATABASE_PROVIDER` ni `NEXT_PUBLIC_INSFORGE_*` para que pedidos, prendas, etc. funcionen contra tu proyecto Supabase.
 
+## Producción semanal y gastos fijos semanales (sigue en InsForge)
+
+Esas rutas **no** usan `lib/supabase.ts` para guardar el plan: importan **`insforge`** desde **`lib/insforge.ts`** y escriben en InsForge (`produccion_plan_semanal`, `produccion_plan_semanal_items`, `semanas`, tablas de gastos fijos, etc.). El rollback del cliente “general” a Supabase **no cambió** ese diseño.
+
+En Vercel, para que producción semanal siga funcionando hace falta **`NEXT_PUBLIC_INSFORGE_URL`** y **`NEXT_PUBLIC_INSFORGE_ANON_KEY`** (las mismas que usa `lib/insforge.ts`). Opcionalmente `assertInsforgeConfigured()` en servidor.
+
+La ruta **`POST /api/produccion-semanal/plan`** además lee **`detalle_cotizacion`** con **`supabase`** (`lib/supabase.ts`) solo para **validar cantidades** contra cotizaciones que siguen en Supabase; el guardado del plan sigue siendo por **`insforge.database`**.
+
 ## InsForge en este repo
 
 - **`lib/insforge.ts`** y rutas **`/api/migracion/*`**: cliente InsForge para copiar datos, DDL, wipe, sync, etc.
