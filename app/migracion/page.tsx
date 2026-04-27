@@ -422,6 +422,9 @@ export default function MigracionPage() {
         <button className="btn btn-secondary" type="button" disabled={busy} onClick={probarTokenAdminInsForge}>
           Probar token InsForge admin
         </button>
+        <a className="btn btn-secondary" href="/migracion/insforge-tablas">
+          Ver tablas en InsForge (UI)
+        </a>
         <button
           className="btn"
           type="button"
