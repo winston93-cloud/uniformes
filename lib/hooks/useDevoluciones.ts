@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { filtrarFilasPorSucursalSiHayColumna } from '@/lib/sucursalCliente';
 import { getSupabaseErrorMessage, supabase } from '@/lib/supabase';
 
 function readFk(row: Record<string, unknown>, snake: string, camel: string): string | null {
@@ -77,17 +78,13 @@ export function useDevoluciones(sucursal_id?: string) {
       setLoading(true);
       setError(null);
 
-      let query = supabase.from('devoluciones').select('*').order('created_at', { ascending: false });
-      if (sucursal_id) {
-        query = query.eq('sucursal_id', sucursal_id);
-      }
-
-      let { data, error: fetchError } = await query;
+      let { data, error: fetchError } = await supabase
+        .from('devoluciones')
+        .select('*')
+        .order('created_at', { ascending: false });
 
       if (fetchError) {
-        let q2 = supabase.from('devoluciones').select('*');
-        if (sucursal_id) q2 = q2.eq('sucursal_id', sucursal_id);
-        const fb = await q2;
+        const fb = await supabase.from('devoluciones').select('*');
         if (!fb.error && fb.data) {
           data = fb.data;
           fetchError = null;
@@ -101,7 +98,10 @@ export function useDevoluciones(sucursal_id?: string) {
 
       if (fetchError) throw fetchError;
 
-      const devs = data || [];
+      const devs = filtrarFilasPorSucursalSiHayColumna(
+        (data || []) as Record<string, unknown>[],
+        sucursal_id
+      );
       const pedidoIds = [
         ...new Set(devs.map((d) => readFk(d as Record<string, unknown>, 'pedido_id', 'pedidoId')).filter(Boolean)),
       ] as string[];
@@ -177,7 +177,7 @@ export function useDevoluciones(sucursal_id?: string) {
         const uid = dr.usuario_id ?? dr.usuarioId;
 
         devolucionesConDetalles.push({
-          ...(dev as Devolucion),
+          ...(dev as unknown as Devolucion),
           detalles: detalles || [],
           pedido: pid ? pedidoPorId.get(pid) : undefined,
           usuario:

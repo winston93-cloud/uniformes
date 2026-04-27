@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { getSupabaseErrorMessage, supabase } from '@/lib/supabase';
+import { filtrarFilasPorSucursalSiHayColumna } from '@/lib/sucursalCliente';
 
 function readFk(row: Record<string, unknown>, snake: string, camel: string): string | null {
   const v = row[snake] ?? row[camel];
@@ -37,31 +38,26 @@ export function useAlertasStockPrendas(sucursal_id?: string) {
       setCargando(true);
       setError(null);
 
-      // select('*') sin filtros en URL — columnas pueden faltar o nombrarse distinto en InsForge
-      let query = supabase.from('costos').select('*');
-
-      if (sucursal_id) {
-        query = query.eq('sucursal_id', sucursal_id);
-      }
-
-      let { data: costosData, error: costosError } = await query;
+      // Nunca .eq('sucursal_id') en URL: en InsForge a veces no existe la columna (400).
+      const { data: costosRaw, error: costosError } = await supabase.from('costos').select('*');
 
       if (costosError) throw costosError;
 
-      if (sucursal_id && (!costosData || costosData.length === 0)) {
-        const fb = await supabase.from('costos').select('*');
-        if (!fb.error && fb.data && fb.data.length > 0) {
-          costosData = fb.data;
-        }
-      }
+      let costosData = filtrarFilasPorSucursalSiHayColumna(
+        (costosRaw || []) as Record<string, unknown>[],
+        sucursal_id
+      );
 
-      costosData = (costosData || []).filter((row) => {
+      costosData = costosData.filter((row) => {
         const r = row as Record<string, unknown>;
         const sm = Number(r.stock_minimo ?? r.stockMinimo ?? 0);
         const act = r.activo ?? r.activo;
         return sm > 0 && act !== false;
       });
-      costosData.sort((a, b) => Number((a as { stock?: unknown }).stock ?? 0) - Number((b as { stock?: unknown }).stock ?? 0));
+      costosData.sort(
+        (a, b) =>
+          Number((a as { stock?: unknown }).stock ?? 0) - Number((b as { stock?: unknown }).stock ?? 0)
+      );
 
       if (!costosData.length) {
         setAlertas([]);

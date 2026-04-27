@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { getSupabaseErrorMessage, supabase } from '../supabase';
+import { filtrarFilasPorSucursalSiHayColumna } from '@/lib/sucursalCliente';
 import type { Costo } from '../types';
 
 function readCol(r: Record<string, unknown>, snake: string, camel: string): string | null {
@@ -80,29 +81,29 @@ export function useCostos(sucursal_id?: string) {
       setLoading(true);
       let query = supabase.from('costos').select(COSTOS_EMBED).order('created_at', { ascending: false });
 
-      if (sucursal_id) {
-        query = query.eq('sucursal_id', sucursal_id);
-      }
-
       let { data, error } = await query;
 
       if (error) {
         let q2 = supabase.from('costos').select('*').order('created_at', { ascending: false });
-        if (sucursal_id) q2 = q2.eq('sucursal_id', sucursal_id);
         let fallback = await q2;
         if (fallback.error) {
-          let q3 = supabase.from('costos').select('*');
-          if (sucursal_id) q3 = q3.eq('sucursal_id', sucursal_id);
-          fallback = await q3;
+          fallback = await supabase.from('costos').select('*');
         }
         if (fallback.error) throw fallback.error;
-        const enriched = await enrichCostosFromPlainRows((fallback.data || []) as Record<string, unknown>[]);
+        let plain = (fallback.data || []) as Record<string, unknown>[];
+        plain = filtrarFilasPorSucursalSiHayColumna(plain, sucursal_id);
+        const enriched = await enrichCostosFromPlainRows(plain);
         setCostos(sortCostosPorFecha(enriched));
         setError(null);
         return;
       }
 
-      setCostos(sortCostosPorFecha((data || []).map((r) => normalizeCostoRow(r as Record<string, unknown>))));
+      let rows = (data || []).map((r) => r as Record<string, unknown>);
+      rows = filtrarFilasPorSucursalSiHayColumna(rows, sucursal_id);
+
+      setCostos(
+        sortCostosPorFecha(rows.map((r) => normalizeCostoRow(r as Record<string, unknown>)))
+      );
       setError(null);
     } catch (err: unknown) {
       setError(getSupabaseErrorMessage(err));
