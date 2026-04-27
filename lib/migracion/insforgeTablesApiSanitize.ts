@@ -6,6 +6,8 @@
  * (cuando no existe `POST /api/database/migrations`).
  */
 
+import { extractFirstPublicCreateTable } from '@/lib/migracion/extractPublicCreateTable';
+
 export type InsforgeTablesApiRenameMap = Record<string, string>;
 
 function slugFromTable(table: string) {
@@ -18,14 +20,11 @@ export function sanitizeCreateTableSqlForInsforgeTablesApi(sql: string): {
   sql: string;
   rename: InsforgeTablesApiRenameMap;
 } {
-  const m =
-    sql.match(/create\s+table\s+if\s+not\s+exists\s+public\.([a-zA-Z_][a-zA-Z0-9_]*)\s*\(([\s\S]*)\)\s*;?/i) ||
-    sql.match(/create\s+table\s+public\.([a-zA-Z_][a-zA-Z0-9_]*)\s*\(([\s\S]*)\)\s*;?/i);
+  const extracted = extractFirstPublicCreateTable(sql);
+  if (!extracted) return { sql, rename: {} };
 
-  if (!m) return { sql, rename: {} };
-
-  const tableName = m[1];
-  const body = m[2];
+  const tableName = extracted.tableName;
+  const body = extracted.body;
   const short = slugFromTable(tableName);
 
   const rename: InsforgeTablesApiRenameMap = {};
@@ -101,12 +100,18 @@ export function sanitizeCreateTableSqlForInsforgeTablesApi(sql: string): {
 
   const rebuiltBody = nextLines.join('\n');
 
-  const headerMatch = sql.match(/^create\s+table\s+(if\s+not\s+exists\s+)?public\.[a-zA-Z_][a-zA-Z0-9_]*\s*\(/i);
-  const header = headerMatch ? headerMatch[0].replace(/\($/, '(') : `CREATE TABLE IF NOT EXISTS public.${tableName} (`;
+  const rebuiltFull = `${extracted.header}\n${rebuiltBody}\n);\n`;
 
-  const outSql = `${header}\n${rebuiltBody}\n);\n`;
+  const marker = extracted.fullStatement;
+  const markerIdx = sql.indexOf(marker);
+  if (markerIdx >= 0) {
+    const before = sql.slice(0, markerIdx);
+    const after = sql.slice(markerIdx + marker.length);
+    const outSql = `${before}${rebuiltFull}${after}`;
+    return { sql: outSql, rename };
+  }
 
-  return { sql: outSql, rename };
+  return { sql: rebuiltFull, rename };
 }
 
 function quoteIdent(name: string) {

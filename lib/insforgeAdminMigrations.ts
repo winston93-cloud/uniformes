@@ -1,6 +1,7 @@
 import { assertInsforgeConfigured } from '@/lib/insforge';
 import { insforgeCreateTable, type InsforgeColumn } from '@/lib/insforgeAdminTables';
 import { sanitizeCreateTableSqlForInsforgeTablesApi } from '@/lib/migracion/insforgeTablesApiSanitize';
+import { extractFirstPublicCreateTable } from '@/lib/migracion/extractPublicCreateTable';
 
 type InsforgeMigrationResponse = {
   success?: boolean;
@@ -98,7 +99,7 @@ export async function runInsforgeMigrationsSql(sql: string) {
   // 2) Fallback: crear tabla vía Tables API (admin) cuando migrations POST no existe.
   // Soportamos CREATE TABLE sencillo para el caso de uniformes.
   const { sql: tablesSql, rename: tablesApiRename } = sanitizeCreateTableSqlForInsforgeTablesApi(sql);
-  const parsed = parseCreateTableSqlForTablesApi(tablesSql) || parseCreateTableSqlForTablesApi(sql);
+  const parsed = parseCreateTableSqlForTablesApi(tablesSql);
   if (!parsed) {
     throw new Error(
       'InsForge no soporta POST /api/database/migrations en esta instancia y no pude convertir el SQL a Tables API.'
@@ -116,11 +117,20 @@ export async function runInsforgeMigrationsSql(sql: string) {
 }
 
 function parseCreateTableSqlForTablesApi(sql: string): { tableName: string; columns: InsforgeColumn[] } | null {
-  // CREATE TABLE IF NOT EXISTS public.<name> ( ... );
-  const m = sql.match(/create\s+table\s+if\s+not\s+exists\s+public\.([a-zA-Z_][a-zA-Z0-9_]*)\s*\(([\s\S]*)\)\s*;?/i);
-  if (!m) return null;
-  const tableName = m[1];
-  const body = m[2];
+  const extracted = extractFirstPublicCreateTable(sql);
+  let tableName: string;
+  let body: string;
+
+  if (!extracted) {
+    // compat: intento regex legacy (peor con CHECK anidados)
+    const m = sql.match(/create\s+table\s+if\s+not\s+exists\s+public\.([a-zA-Z_][a-zA-Z0-9_]*)\s*\(([\s\S]*)\)\s*;?/i);
+    if (!m) return null;
+    tableName = m[1];
+    body = m[2];
+  } else {
+    tableName = extracted.tableName;
+    body = extracted.body;
+  }
 
   const lines = body
     .split('\n')
@@ -138,10 +148,17 @@ function parseCreateTableSqlForTablesApi(sql: string): { tableName: string; colu
     if (/^unique\b/i.test(raw)) continue;
     // cortar coma final
     const l = raw.replace(/,+$/, '');
-    const cm2 = l.match(/^"?([a-zA-Z_][a-zA-Z0-9_]*)"?\s+([a-zA-Z_][a-zA-Z0-9_]*(?:\([^)]+\))?)([\s\S]*)$/);
+    const cm2 = l.match(/^"?([a-zA-Z_][a-zA-Z0-9_]*)"?\s+(.+)$/);
     const name = cm2?.[1];
-    const typeRaw0 = cm2?.[2];
-    const rest0 = cm2?.[3];
+    const restLine = cm2?.[2];
+    if (!name || !restLine) continue;
+
+    // tipo: primera “palabra/pattern” hasta encontrar PRIMARY/UNIQUE/REFERENCES/CHECK/NOT NULL/DEFAULT/DEFERRABLE/COLLATE/COMMENT
+    const typeMatch = restLine.match(
+      /^([\s\S]*?)(\s+(?:primary\s+key|unique|references|check|not\s+null|null|default|collate)\b|\s*$)/i
+    );
+    const typeRaw0 = typeMatch?.[1]?.trim() || restLine.trim();
+    const rest0 = restLine.slice(typeRaw0.length).trimStart();
     if (!name || !typeRaw0) continue;
     const typeRaw = typeRaw0.toLowerCase();
     const rest = (rest0 || '').toLowerCase();
