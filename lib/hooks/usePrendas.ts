@@ -4,6 +4,20 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
 import type { CategoriaPrenda, Prenda } from '../types';
 
+/** InsForge / SDK pueden devolver camelCase o UUID con distinta capitalización → normalizar antes de hacer Map.get */
+function normalizeUuidKey(id: string): string {
+  return String(id).trim().toLowerCase();
+}
+
+function readCategoriaIdFk(row: Record<string, unknown>): string | null {
+  const v =
+    row.categoria_id ??
+    row['categoriaId'] ??
+    row['categoria_Id'];
+  if (v == null || v === '') return null;
+  return String(v).trim();
+}
+
 /** InsForge a veces no expone FK en schema cache → el embed `categorias_prendas(*)` falla. Unimos por categoria_id en cliente. */
 export function usePrendas() {
   const [prendas, setPrendas] = useState<Prenda[]>([]);
@@ -13,21 +27,41 @@ export function usePrendas() {
   const fetchPrendas = async () => {
     try {
       setLoading(true);
-      const [preRes, catRes] = await Promise.all([
-        supabase.from('prendas').select('*').order('nombre', { ascending: true }),
-        supabase.from('categorias_prendas').select('*'),
-      ]);
+      const preRes = await supabase.from('prendas').select('*').order('nombre', { ascending: true });
       if (preRes.error) throw preRes.error;
-      if (catRes.error) throw catRes.error;
 
-      const catById = new Map<string, CategoriaPrenda>(
-        (catRes.data || []).map((c) => [c.id, c as CategoriaPrenda])
-      );
-      const mapped: Prenda[] = (preRes.data || []).map((row) => {
+      const prendasRows = preRes.data || [];
+      const categoriaIds = [
+        ...new Set(
+          prendasRows
+            .map((row) => readCategoriaIdFk(row as Record<string, unknown>))
+            .filter((id): id is string => Boolean(id))
+        ),
+      ];
+
+      let catById = new Map<string, CategoriaPrenda>();
+      if (categoriaIds.length > 0) {
+        const catRes = await supabase.from('categorias_prendas').select('*').in('id', categoriaIds);
+        if (catRes.error) throw catRes.error;
+        catById = new Map(
+          (catRes.data || []).map((c) => {
+            const raw = c as Record<string, unknown>;
+            const idVal = raw.id ?? raw['Id'] ?? raw['ID'];
+            const cat = { ...(c as object), id: idVal != null ? String(idVal).trim() : '' } as CategoriaPrenda;
+            const key = idVal != null ? normalizeUuidKey(String(idVal)) : '';
+            return [key, cat] as const;
+          })
+        );
+      }
+
+      const mapped: Prenda[] = prendasRows.map((row) => {
+        const raw = row as Record<string, unknown>;
+        const fk = readCategoriaIdFk(raw);
+        const cat = fk ? catById.get(normalizeUuidKey(fk)) ?? undefined : undefined;
         const r = row as Prenda;
-        const categoria =
-          r.categoria_id != null ? catById.get(r.categoria_id) ?? undefined : undefined;
-        return { ...r, categoria };
+        const resolvedCategoriaId =
+          fk ?? (r.categoria_id != null ? String(r.categoria_id).trim() : null);
+        return { ...r, categoria_id: resolvedCategoriaId, categoria: cat };
       });
       setPrendas(mapped);
     } catch (err: any) {
