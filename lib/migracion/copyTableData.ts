@@ -49,6 +49,19 @@ export async function copyTableDataFromSupabaseToInsforge(opts: {
     throw new Error(`InsForge table not found: public.${table}`);
   }
 
+  const requiredColsRes = await runInsforgeRawSql<{
+    rows?: Array<{ column_name: string; is_nullable: string; column_default: string | null }>;
+  }>(
+    `SELECT column_name, is_nullable, column_default
+     FROM information_schema.columns
+     WHERE table_schema = 'public'
+       AND table_name = $1
+       AND is_nullable = 'NO'
+       AND column_default IS NULL`,
+    [table]
+  );
+  const requiredCols = new Set((requiredColsRes?.rows || []).map((r) => String(r.column_name)));
+
   const hasUuid = destCols.has('uuid');
   const hasId = destCols.has('id');
 
@@ -70,25 +83,73 @@ export async function copyTableDataFromSupabaseToInsforge(opts: {
     return out;
   };
 
+  const safeJson = (v: any) => {
+    try {
+      return JSON.stringify(v);
+    } catch {
+      return String(v);
+    }
+  };
+
   const formatInsforgeInsertError = (insErr: any) => {
-    if (!insErr) return 'Error desconocido';
-    const msg = insErr?.message ? String(insErr.message) : '';
-    const code = insErr?.code ? String(insErr.code) : '';
-    const details = insErr?.details ? String(insErr.details) : '';
-    const hint = insErr?.hint ? String(insErr.hint) : '';
-    const own = (() => {
+    if (insErr === null || insErr === undefined) return 'Error desconocido';
+    if (typeof insErr === 'string') return insErr;
+
+    // PostgrestError hereda Error: message/details/hint/code NO son enumerable con getOwnPropertyNames()
+    const msg =
+      typeof (insErr as any)?.message === 'string' && String((insErr as any).message).trim().length
+        ? String((insErr as any).message)
+        : '';
+    const code = (insErr as any)?.code !== undefined && (insErr as any)?.code !== null ? String((insErr as any).code) : '';
+    const details =
+      (insErr as any)?.details !== undefined && (insErr as any)?.details !== null ? String((insErr as any).details) : '';
+    const hint =
+      (insErr as any)?.hint !== undefined && (insErr as any)?.hint !== null ? String((insErr as any).hint) : '';
+
+    const extra = (() => {
       try {
-        const keys = Object.getOwnPropertyNames(insErr);
-        const pick: any = {};
-        for (const k of keys) pick[k] = (insErr as any)[k];
-        return JSON.stringify(pick);
+        const out: Record<string, any> = {};
+        const errObj = insErr as Record<string, unknown>;
+        for (const k of Object.getOwnPropertyNames(insErr)) {
+          out[k] = errObj[k];
+        }
+        // Captura props de Error aunque no salgan en ownPropertyNames en algunos runtimes
+        if (!out.message && (insErr as any).message) out.message = (insErr as any).message;
+        return safeJson(out);
       } catch {
-        return '';
+        return String(insErr);
       }
     })();
-    return [code && `code=${code}`, msg, details && `details=${details}`, hint && `hint=${hint}`, own && `raw=${own}`]
+
+    return [code && `code=${code}`, msg, details && `details=${details}`, hint && `hint=${hint}`, `raw=${extra}`]
       .filter(Boolean)
       .join(' · ');
+  };
+
+  const validateRequiredAfterNormalize = (rowOut: any) => {
+    const missing: string[] = [];
+    for (const c of requiredCols) {
+      const v = rowOut?.[c];
+      if (v === undefined || v === null) missing.push(c);
+    }
+    if (missing.length) {
+      throw new Error(
+        `Faltan columnas obligatorias en destino (${table}): ${missing.join(
+          ', '
+        )}. Revisa mapeo id/uuid y nombres de columnas vs InsForge.`
+      );
+    }
+  };
+
+  const insertSingleWithContext = async (rowIn: any, rowOut: any) => {
+    const { error: insErr } = await insforge.database.from(table).insert([rowOut]);
+    if (!insErr) return;
+    const pk = rowIn?.id ?? rowIn?.uuid ?? rowIn?.usuario_id ?? '¿?';
+    throw new Error(
+      `InsForge insert fallo en ${table} (pk=${safeJson(pk)}): ${formatInsforgeInsertError(insErr)} · payload=${safeJson(
+        rowOut
+      ).slice(0, 1200)}`
+    );
   };
 
   let offset = startOffset;
@@ -109,10 +170,22 @@ export async function copyTableDataFromSupabaseToInsforge(opts: {
 
     for (let i = 0; i < rows.length; i += chunkSize) {
       const chunk = rows.slice(i, i + chunkSize);
-      const normalized = chunk.map(normalizeRowForInsforge);
+      const normalized = chunk.map((r) => {
+        const out = normalizeRowForInsforge(r);
+        validateRequiredAfterNormalize(out);
+        return out;
+      });
       // eslint-disable-next-line no-await-in-loop
       const { error: insErr } = await insforge.database.from(table).insert(normalized);
       if (insErr) {
+        // Fallback: intentar fila por fila para ubicar el registro que truena y enseñar payload útil.
+        // (Sigue siendo una sola interacción “humana”: el error ya trae pk + payload truncado.)
+        // eslint-disable-next-line no-await-in-loop
+        for (let k = 0; k < chunk.length; k += 1) {
+          // eslint-disable-next-line no-await-in-loop
+          await insertSingleWithContext(chunk[k], normalized[k]);
+        }
+        // Si el batch falló pero singles no, esto no debería pasar; dejamos error claro.
         throw new Error(`InsForge insert fallo en ${table}: ${formatInsforgeInsertError(insErr)}`);
       }
       totalInserted += chunk.length;
