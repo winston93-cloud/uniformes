@@ -34,7 +34,7 @@ export async function copyTableDataFromSupabaseToInsforge(opts: {
   if (truncateDestination) {
     // Evitar choques por UNIQUE/PK si la tabla ya tenía datos.
     // CASCADE para dependientes; en migración inicial esto es deseable.
-    await runInsforgeRawSql(`TRUNCATE TABLE public.${table} CASCADE;`);
+    await runInsforgeRawSql(`TRUNCATE TABLE IF EXISTS public.${table} CASCADE;`);
   }
 
   let offset = startOffset;
