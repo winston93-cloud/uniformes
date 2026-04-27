@@ -90,7 +90,7 @@ export function usePrendas() {
         const resolvedCategoriaId =
           fk ??
           (r.categoria_id != null ? String(r.categoria_id).trim() : null) ??
-          (cat?.id ? cat.id : null);
+          (cat?.id && String(cat.id).trim() !== '' ? cat.id : null);
         return { ...r, categoria_id: resolvedCategoriaId, categoria: cat };
       });
       setPrendas(mapped);

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { getSupabaseErrorMessage, supabase } from '../supabase';
+import { normalizarCamposCostoApi } from '@/lib/costoQueries';
 import { filtrarFilasPorSucursalSiHayColumna } from '@/lib/sucursalCliente';
 import type { Costo } from '../types';
 
@@ -52,7 +53,8 @@ async function enrichCostosFromPlainRows(rows: Record<string, unknown>[]): Promi
       return [normIdKey(id), p] as const;
     })
   );
-  return rows.map((row) => {
+  return rows.map((raw) => {
+    const row = normalizarCamposCostoApi(raw as Record<string, unknown>);
     const tid = readCol(row, 'talla_id', 'tallaId');
     const pid = readCol(row, 'prenda_id', 'prendaId');
     const enriched: Record<string, unknown> = { ...row };
@@ -102,7 +104,11 @@ export function useCostos(sucursal_id?: string) {
       rows = filtrarFilasPorSucursalSiHayColumna(rows, sucursal_id);
 
       setCostos(
-        sortCostosPorFecha(rows.map((r) => normalizeCostoRow(r as Record<string, unknown>)))
+        sortCostosPorFecha(
+          rows.map((r) =>
+            normalizeCostoRow(normalizarCamposCostoApi(r as Record<string, unknown>))
+          )
+        )
       );
       setError(null);
     } catch (err: unknown) {
@@ -165,7 +171,9 @@ export function useCostos(sucursal_id?: string) {
 
       if (error) throw error;
       return {
-        data: (data || []).map((r) => normalizeCostoRow(r as Record<string, unknown>)),
+        data: (data || []).map((r) =>
+          normalizeCostoRow(normalizarCamposCostoApi(r as Record<string, unknown>))
+        ),
         error: null,
       };
     } catch (err: any) {

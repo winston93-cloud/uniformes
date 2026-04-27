@@ -9,6 +9,7 @@ import { useTallas } from '@/lib/hooks/useTallas';
 import { useCostos } from '@/lib/hooks/useCostos';
 import { usePrendaTallaInsumos } from '@/lib/hooks/usePrendaTallaInsumos';
 import { useUbicacionesAlmacenamiento } from '@/lib/hooks/useUbicacionesAlmacenamiento';
+import { fetchCostoStockModal } from '@/lib/costoQueries';
 import { supabase } from '@/lib/supabase';
 import type { Prenda } from '@/lib/types';
 import ModalInsumosTalla from '@/components/ModalInsumosTalla';
@@ -132,15 +133,13 @@ export default function PrendasPage() {
   // Cargar valores de stock y partidas por ubicación cuando se abre el modal
   useEffect(() => {
     const cargarStockExistente = async () => {
-      if (modalStockAbierto && prendaEditando && tallaSeleccionadaStock && sesion?.sucursal_id) {
+      if (modalStockAbierto && prendaEditando && tallaSeleccionadaStock) {
         try {
-          const { data: costoExistente } = await supabase
-            .from('costos')
-            .select('id, stock_inicial, stock_minimo, stock, ubicacion_almacenamiento_id')
-            .eq('prenda_id', prendaEditando.id)
-            .eq('talla_id', tallaSeleccionadaStock.id)
-            .eq('sucursal_id', sesion.sucursal_id)
-            .single();
+          const costoExistente = await fetchCostoStockModal(supabase, {
+            prendaId: prendaEditando.id,
+            tallaId: tallaSeleccionadaStock.id,
+            sucursalId: sesion?.sucursal_id ?? null,
+          });
 
           if (costoExistente) {
             const totalNum = Number(costoExistente.stock ?? costoExistente.stock_inicial ?? 0);
@@ -177,7 +176,11 @@ export default function PrendasPage() {
               setPartidasUbicacion([
                 {
                   tempId: `legacy-${costoExistente.id}`,
-                  ubicacion_id: costoExistente.ubicacion_almacenamiento_id,
+                  ubicacion_id: String(
+                    costoExistente.ubicacion_almacenamiento_id ??
+                      (costoExistente as Record<string, unknown>).ubicacionAlmacenamientoId ??
+                      ''
+                  ),
                   cantidad: (() => {
                     const c = Number(costoExistente.stock ?? 0);
                     return Number.isFinite(c) ? c.toLocaleString('en-US') : '0';
@@ -1147,7 +1150,7 @@ export default function PrendasPage() {
       )}
 
       {/* Modal de Stock */}
-      {modalStockAbierto && prendaEditando && tallaSeleccionadaStock && sesion?.sucursal_id && (
+      {modalStockAbierto && prendaEditando && tallaSeleccionadaStock && (
         <div
           style={{
             position: 'fixed',
@@ -1205,17 +1208,11 @@ export default function PrendasPage() {
               e.preventDefault();
               
               try {
-                const { data: costoExistente, error: errorBusqueda } = await supabase
-                  .from('costos')
-                  .select('id, stock_inicial, stock_minimo, stock, ubicacion_almacenamiento_id')
-                  .eq('prenda_id', prendaEditando.id)
-                  .eq('talla_id', tallaSeleccionadaStock.id)
-                  .eq('sucursal_id', sesion.sucursal_id)
-                  .single();
-
-                if (errorBusqueda && errorBusqueda.code !== 'PGRST116') {
-                  throw errorBusqueda;
-                }
+                const costoExistente = await fetchCostoStockModal(supabase, {
+                  prendaId: prendaEditando.id,
+                  tallaId: tallaSeleccionadaStock.id,
+                  sucursalId: sesion?.sucursal_id ?? null,
+                });
 
                 if (!costoExistente) {
                   setMensajeError('❌ No se encontró el registro de costo para esta combinación. Asegúrate de que la talla esté asociada a la prenda.');
@@ -1262,7 +1259,7 @@ export default function PrendasPage() {
                     stock: total,
                     ubicacion_almacenamiento_id: null,
                   })
-                  .eq('id', costoExistente.id);
+                  .eq('id', String(costoExistente.id));
 
                 if (errorActualizacion) throw errorActualizacion;
 

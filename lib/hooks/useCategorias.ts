@@ -27,7 +27,18 @@ export function useCategorias() {
         query = query.eq('activo', true);
       }
       
-      const { data, error } = await query.order('nombre', { ascending: true });
+      let { data, error } = await query.order('nombre', { ascending: true });
+
+      if (error && soloActivas) {
+        const fallback = await supabase
+          .from('categorias_prendas')
+          .select('*')
+          .order('nombre', { ascending: true });
+        if (!fallback.error) {
+          data = fallback.data;
+          error = null;
+        }
+      }
 
       if (error) throw error;
       setCategorias(data || []);
