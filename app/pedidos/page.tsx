@@ -674,13 +674,14 @@ function PedidosPageContent() {
       prenda_id: detalle.prenda_id,
       talla_id: detalle.talla_id,
       cantidad: detalle.cantidad,
-      cantidad_con_stock: detalle.cantidad_con_stock || detalle.cantidad, // Cuánto descontar del inventario
-      cantidad_pendiente: detalle.cantidad_pendiente || 0, // Cuánto queda pendiente
+      // IMPORTANTE: usar nullish coalescing, porque 0 es un valor válido (todo pendiente)
+      cantidad_con_stock: detalle.cantidad_con_stock ?? detalle.cantidad, // Cuánto descontar del inventario
+      cantidad_pendiente: detalle.cantidad_pendiente ?? 0, // Cuánto queda pendiente
       precio_unitario: detalle.precio,
       subtotal: detalle.total,
-      pendiente: detalle.cantidad_pendiente || 0, // Campo pendiente en BD
+      pendiente: detalle.cantidad_pendiente ?? 0, // Campo pendiente en BD
       especificaciones: detalle.especificaciones,
-      tiene_stock: (detalle.cantidad_con_stock || 0) > 0, // Tiene stock si hay al menos algo disponible
+      tiene_stock: (detalle.cantidad_con_stock ?? 0) > 0, // Tiene stock si hay al menos algo disponible
     }));
 
     // Crear el pedido en la base de datos
