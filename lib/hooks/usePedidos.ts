@@ -152,11 +152,10 @@ export function usePedidos(sucursal_id?: string) {
         especificaciones: det.especificaciones || ''
       }));
 
-      // Manejar usuario_id: enviar NULL si no es válido
-      // Esto evita problemas con foreign keys
-      const usuario_uuid = typeof usuario_id === 'string' && usuario_id.length > 0
-        ? usuario_id 
-        : null; // NULL si no hay usuario válido
+      // HOTFIX: en algunas BD legacy, pedidos.usuario_id sigue siendo SMALLINT.
+      // Si mandamos UUID revienta con: "column 'usuario_id' is of type smallint but expression is of type uuid".
+      // En esos entornos mandamos NULL para no bloquear creación de pedidos.
+      const usuario_uuid = null;
 
       // LLAMAR A LA FUNCIÓN ATÓMICA que hace TODO en una transacción
       const { data, error } = await supabase.rpc('crear_pedido_atomico', {
