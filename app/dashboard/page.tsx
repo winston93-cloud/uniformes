@@ -9,11 +9,13 @@ import TarjetaAlertasStock from '@/components/TarjetaAlertasStock';
 import TarjetaAlertasStockPrendas from '@/components/TarjetaAlertasStockPrendas';
 import UserCard from '@/components/UserCard';
 import ModalBitacora from '@/components/ModalBitacora';
+import ModalActualizarBaseDatos from '@/components/ModalActualizarBaseDatos';
 
 export default function Dashboard() {
   const { sesion, loading, sesionError, recargarSesion } = useAuth();
   const [tarjetaExpandida, setTarjetaExpandida] = useState<'insumos' | 'alertas' | 'prendas' | null>(null);
   const [bitacoraAbierta, setBitacoraAbierta] = useState(false);
+  const [actualizarBDAbierto, setActualizarBDAbierto] = useState(false);
 
   const handleToggleInsumos = () => {
     setTarjetaExpandida(prev => prev === 'insumos' ? null : 'insumos');
@@ -401,6 +403,51 @@ export default function Dashboard() {
             </p>
           </Link>
 
+          {/* Actualizar base de datos (alumnos MySQL → Supabase) */}
+          <button
+            type="button"
+            className="card"
+            onClick={() => setActualizarBDAbierto(true)}
+            style={{
+              background: 'linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%)',
+              border: '2px solid rgba(14, 165, 233, 0.35)',
+              cursor: 'pointer',
+              textAlign: 'left',
+            }}
+            title="Sincronizar alumnos desde phpMyAdmin/MySQL hacia Supabase"
+          >
+            <div 
+              style={{
+                fontSize: '2.5rem',
+                background: 'rgba(255, 255, 255, 0.25)',
+                borderRadius: '12px',
+                width: '60px',
+                height: '60px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 1rem',
+              }}
+            >
+              🔄
+            </div>
+            <h3 style={{ 
+              margin: '0 0 0.5rem 0',
+              fontSize: '1.3rem',
+              fontWeight: '600',
+              color: 'white',
+            }}>
+              Actualizar base de datos
+            </h3>
+            <p style={{ 
+              margin: 0,
+              fontSize: '0.95rem',
+              color: 'rgba(255, 255, 255, 0.9)',
+            }}>
+              Traer alumnos nuevos/actualizados desde phpMyAdmin a Supabase
+            </p>
+          </button>
+
           {/* Clientes Externos - Módulo de Clientes */}
           <Link 
             href="/externos" 
@@ -753,6 +800,7 @@ export default function Dashboard() {
       </div>
 
       <ModalBitacora abierto={bitacoraAbierta} onClose={() => setBitacoraAbierta(false)} />
+      <ModalActualizarBaseDatos abierto={actualizarBDAbierto} onClose={() => setActualizarBDAbierto(false)} />
     </LayoutWrapper>
   );
 }
