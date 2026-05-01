@@ -5,6 +5,12 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 
 export const runtime = 'nodejs';
 
+function parsePositiveInt(v: string | null, def: number, min: number, max: number) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return def;
+  return Math.max(min, Math.min(max, Math.trunc(n)));
+}
+
 const BodySchema = z
   .object({
     /** Límite por corrida (protección). */
@@ -65,6 +71,21 @@ function toPgDateOrNull(v: unknown): string | null {
   const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
   const dd = String(d.getUTCDate()).padStart(2, '0');
   return `${yyyy}-${mm}-${dd}`;
+}
+
+export async function GET(req: Request) {
+  // Vercel Cron hace requests GET; delegamos a POST con defaults.
+  // Permite opcionalmente: ?limit=5000&since=2026-05-01T00:00:00.000Z
+  const url = new URL(req.url);
+  const limit = parsePositiveInt(url.searchParams.get('limit'), 5000, 1, 20000);
+  const since = url.searchParams.get('since') ?? undefined;
+  return POST(
+    new Request(req.url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ limit, ...(since ? { since } : {}) }),
+    })
+  );
 }
 
 export async function POST(req: Request) {

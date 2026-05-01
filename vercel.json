@@ -1,4 +1,13 @@
 {
+  "crons": [
+    {
+      "path": "/api/alumno/sync-mysql",
+      "schedule": "0 0 * * *"
+    }
+  ]
+}
+
+{
   "framework": "nextjs",
   "buildCommand": "npm run build",
   "headers": [
