@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import mysql from 'mysql2/promise';
 import { z } from 'zod';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
+import { sendEmailReport } from '@/lib/emailReport';
 
 export const runtime = 'nodejs';
 
@@ -89,6 +90,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const startedAt = Date.now();
   try {
     const bodyRaw = await req.json().catch(() => ({}));
     const parsed = BodySchema.safeParse(bodyRaw);
@@ -209,7 +211,7 @@ export async function POST(req: Request) {
         ? String(mapped[mapped.length - 1]?.alumno_actualizacion ?? '')
         : sinceTs;
 
-      return NextResponse.json({
+      const payload = {
         success: true,
         sinceTs,
         fetched: totalFetched,
@@ -217,13 +219,56 @@ export async function POST(req: Request) {
         upserted,
         lastAppliedTs: lastTs || null,
         hasMore: totalFetched === limit,
-      });
+      } as const;
+
+      // Notificar por email (no bloquea si falla)
+      try {
+        const ms = Date.now() - startedAt;
+        const host = process.env.MYSQL_HOST ?? '';
+        const subject = `Uniformes: sync alumnos OK (upsert=${upserted}, fetched=${totalFetched})`;
+        const text = [
+          'Sincronización de alumnos (MySQL → Supabase) completada.',
+          '',
+          `MYSQL_HOST: ${host}`,
+          `Desde (sinceTs): ${sinceTs ?? '—'}`,
+          `Last applied: ${payload.lastAppliedTs ?? '—'}`,
+          `Fetched: ${totalFetched}`,
+          `Mapped: ${totalMapped}`,
+          `Upserted: ${upserted}`,
+          `Has more: ${payload.hasMore}`,
+          `Duración: ${ms} ms`,
+        ].join('\n');
+        await sendEmailReport({ subject, text });
+      } catch {
+        // ignore
+      }
+
+      return NextResponse.json(payload);
     } finally {
       await conn.end();
     }
   } catch (e: any) {
+    const message = e?.message || String(e);
+    // Notificar error por email (no bloquea si falla)
+    try {
+      const ms = Date.now() - startedAt;
+      const host = process.env.MYSQL_HOST ?? '';
+      const subject = 'Uniformes: sync alumnos ERROR';
+      const text = [
+        'Sincronización de alumnos (MySQL → Supabase) falló.',
+        '',
+        `MYSQL_HOST: ${host}`,
+        `Duración: ${ms} ms`,
+        '',
+        `Error: ${message}`,
+      ].join('\n');
+      await sendEmailReport({ subject, text });
+    } catch {
+      // ignore
+    }
+
     // Devolver 200 con success=false para que el frontend siempre pueda leer JSON y mostrar el error real.
-    return NextResponse.json({ success: false, error: e?.message || String(e) });
+    return NextResponse.json({ success: false, error: message });
   }
 }
 
