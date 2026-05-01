@@ -190,7 +190,8 @@ export async function POST(req: Request) {
       await conn.end();
     }
   } catch (e: any) {
-    return NextResponse.json({ success: false, error: e?.message || String(e) }, { status: 500 });
+    // Devolver 200 con success=false para que el frontend siempre pueda leer JSON y mostrar el error real.
+    return NextResponse.json({ success: false, error: e?.message || String(e) });
   }
 }
 

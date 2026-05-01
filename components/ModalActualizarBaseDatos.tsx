@@ -64,10 +64,8 @@ export default function ModalActualizarBaseDatos({
       cache: 'no-store',
     });
     const json = (await res.json().catch(() => null)) as SyncResponse | null;
-    if (!res.ok || !json) {
-      return { success: false, error: `HTTP ${res.status}: No se pudo leer respuesta` };
-    }
-    return json;
+    if (json) return json;
+    return { success: false, error: `HTTP ${res.status}: Respuesta no-JSON (revisa logs/variables en Vercel)` };
   }
 
   async function iniciarSync() {
