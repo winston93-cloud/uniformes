@@ -57,6 +57,16 @@ function toIsoOrNull(v: unknown): string | null {
   return d.toISOString();
 }
 
+function toPgDateOrNull(v: unknown): string | null {
+  if (v === null || v === undefined || v === '') return null;
+  const d = v instanceof Date ? v : new Date(String(v));
+  if (Number.isNaN(d.getTime())) return null;
+  const yyyy = d.getUTCFullYear();
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(d.getUTCDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 export async function POST(req: Request) {
   try {
     const bodyRaw = await req.json().catch(() => ({}));
@@ -148,7 +158,8 @@ export async function POST(req: Request) {
             alumno_grado: toIntOrNull(r.alumno_grado),
             alumno_grupo: toIntOrNull(r.alumno_grupo),
             alumno_nuevo_ingreso: toIntOrNull(r.alumno_nuevo_ingreso),
-            alumno_registro: toTextOrNull(r.alumno_registro), // date string ok
+            // En Supabase es tipo DATE: enviar YYYY-MM-DD (no "Tue Feb 03 ...")
+            alumno_registro: toPgDateOrNull(r.alumno_registro),
             alumno_alta: toIsoOrNull(r.alumno_alta), // si viene date, lo convertimos a ISO
             alumno_actualizacion: toIsoOrNull(r.alumno_actualizacion) ?? new Date().toISOString(),
             alumno_boleta: toIntOrNull(r.alumno_boleta),
