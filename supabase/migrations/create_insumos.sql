@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS public.insumos (
   nombre VARCHAR(255) NOT NULL,
   descripcion TEXT,
   presentacion_id UUID REFERENCES public.presentaciones(id) ON DELETE RESTRICT,
-  cantidad_por_presentacion DECIMAL(10, 2) NOT NULL DEFAULT 1,
+  cantidad_por_presentacion DECIMAL(10, 2) NOT NULL DEFAULT 0,
   unidad_medida VARCHAR(80) NOT NULL DEFAULT 'unidades',
   costo_compra DECIMAL(10, 2) NOT NULL DEFAULT 0,
   stock_inicial DECIMAL(10, 2) DEFAULT 0,

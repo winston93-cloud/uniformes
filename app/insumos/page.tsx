@@ -284,7 +284,7 @@ export default function InsumosPage() {
     codigo: '',
     descripcion: '',
     presentacion_id: '',
-    cantidad_por_presentacion: '',
+    cantidad_por_presentacion: '0',
     unidad_medida: 'unidades',
     costo_compra: '',
     stock_inicial: '',
@@ -495,11 +495,7 @@ export default function InsumosPage() {
     setBotonEstado('normal');
 
     const cantPresentacion = cantidadPorPresentacionNum();
-    if (cantPresentacion <= 0) {
-      setMensajeError('❌ La cantidad por presentación debe ser mayor a 0.');
-      setModalErrorAbierto(true);
-      return;
-    }
+    // Se permite 0 (para capturar después). En cálculo de costos, 0 se considera inválido.
 
     // Stock existente y mínimo permiten 0 (alta sin inventario / sin umbral de alerta). Nunca negativos (CHECK en BD).
     const totalStock = Math.max(0, round2(parseNumeroFormateado(formData.stock_inicial)));
@@ -583,7 +579,7 @@ export default function InsumosPage() {
         codigo: '',
         descripcion: '',
         presentacion_id: '',
-        cantidad_por_presentacion: '',
+        cantidad_por_presentacion: '0',
         unidad_medida: 'unidades',
         costo_compra: '',
         stock_inicial: '',
@@ -683,7 +679,7 @@ export default function InsumosPage() {
       codigo: '',
       descripcion: '',
       presentacion_id: '',
-      cantidad_por_presentacion: '',
+      cantidad_por_presentacion: '0',
       unidad_medida: 'unidades',
       costo_compra: '',
       stock_inicial: '',
@@ -1019,7 +1015,6 @@ export default function InsumosPage() {
                         })
                       }
                       placeholder="Ej: 500"
-                      required
                       style={{ borderLeft: '4px solid #6366f1' }}
                     />
                   </div>

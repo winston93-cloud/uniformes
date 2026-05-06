@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS public.insumos (
     nombre VARCHAR(255) NOT NULL,
     descripcion TEXT,
     presentacion VARCHAR(50) NOT NULL, -- kilo, bolsa, metro, rollo, caja, etc.
-    cantidad_por_presentacion DECIMAL(10, 2) NOT NULL DEFAULT 1, -- cantidad que contiene cada presentación
+    cantidad_por_presentacion DECIMAL(10, 2) NOT NULL DEFAULT 0, -- cantidad que contiene cada presentación
     activo BOOLEAN DEFAULT true,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL

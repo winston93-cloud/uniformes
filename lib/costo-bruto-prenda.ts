@@ -14,8 +14,8 @@ export function precioUnitarioInsumo(insumo: {
   const cantPresentacion = Number(insumo.cantidad_por_presentacion);
   // Regla: costo unitario por pieza = costo_compra / cantidad_por_presentacion.
   // No depende del stock (el stock cambia y no altera el costo unitario pactado).
-  const divisor = Number.isFinite(cantPresentacion) && cantPresentacion > 0 ? cantPresentacion : 1;
-  return costo / divisor;
+  if (!(Number.isFinite(cantPresentacion) && cantPresentacion > 0)) return 0;
+  return costo / cantPresentacion;
 }
 
 /**
