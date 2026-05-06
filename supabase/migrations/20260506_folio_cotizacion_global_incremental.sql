@@ -65,7 +65,9 @@ DECLARE
   v_count int := 0;
 BEGIN
   -- Reiniciar secuencia en base al orden cronológico real
-  PERFORM setval('public.cotizacion_folio_seq', 0, false);
+  -- Nota: las sequences de Postgres empiezan en 1; 0 es inválido.
+  -- setval(seq, 1, false) hace que el siguiente nextval() retorne 1.
+  PERFORM setval('public.cotizacion_folio_seq', 1, false);
 
   FOR r IN
     SELECT id, fecha_cotizacion, created_at
