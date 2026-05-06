@@ -292,6 +292,23 @@ export default function InsumosPage() {
     activo: true,
   });
 
+  const cantidadPorPresentacionNum = () => {
+    const n = parseNumeroFormateado(formData.cantidad_por_presentacion);
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  };
+
+  const costoCompraNum = () => {
+    const n = parseNumeroFormateado(formData.costo_compra);
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  };
+
+  const costoUnitarioEstimado = () => {
+    const cant = cantidadPorPresentacionNum();
+    const costo = costoCompraNum();
+    if (cant <= 0 || costo <= 0) return 0;
+    return round2(costo / cant);
+  };
+
   const stockTotalInsumoForm = () => parseNumeroFormateado(formData.stock_inicial);
   const sumUbicacionesInsumo = () =>
     ubicacionesInsumo.reduce((s, p) => s + parseNumeroFormateado(p.cantidad), 0);
@@ -477,6 +494,13 @@ export default function InsumosPage() {
     e.preventDefault();
     setBotonEstado('normal');
 
+    const cantPresentacion = cantidadPorPresentacionNum();
+    if (cantPresentacion <= 0) {
+      setMensajeError('❌ La cantidad por presentación debe ser mayor a 0.');
+      setModalErrorAbierto(true);
+      return;
+    }
+
     // Stock existente y mínimo permiten 0 (alta sin inventario / sin umbral de alerta). Nunca negativos (CHECK en BD).
     const totalStock = Math.max(0, round2(parseNumeroFormateado(formData.stock_inicial)));
     const stockMinimo = Math.max(0, round2(parseNumeroFormateado(formData.stock_minimo)));
@@ -520,9 +544,7 @@ export default function InsumosPage() {
       descripcion: formData.descripcion || null,
       presentacion_id: formData.presentacion_id.trim() ? formData.presentacion_id : null,
       cantidad_por_presentacion:
-        insumoEditando != null
-          ? insumoEditando.cantidad_por_presentacion
-          : 1,
+        cantPresentacion,
       unidad_medida: (formData.unidad_medida || 'unidades').trim() || 'unidades',
       costo_compra: parseNumeroFormateado(formData.costo_compra),
       stock_inicial: totalStock,
@@ -954,26 +976,63 @@ export default function InsumosPage() {
               </div>
 
               <div className="form-group">
-                <label className="form-label">💰 Costo de Compra</label>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  autoComplete="off"
-                  className="form-input"
-                  value={formData.costo_compra}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      costo_compra: formatearNumeroMilesDecimalesAlEscribir(e.target.value),
-                    })
-                  }
-                  placeholder="Ej: 1,500.00"
+                <div
                   style={{
-                    borderLeft: '4px solid #10b981',
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                    gap: '0.75rem',
                   }}
-                />
+                >
+                  <div>
+                    <label className="form-label">💰 Costo de compra</label>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      autoComplete="off"
+                      className="form-input"
+                      value={formData.costo_compra}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          costo_compra: formatearNumeroMilesDecimalesAlEscribir(e.target.value),
+                        })
+                      }
+                      placeholder="Ej: 450.00"
+                      style={{
+                        borderLeft: '4px solid #10b981',
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="form-label">📦 Cantidad por presentación *</label>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      autoComplete="off"
+                      className="form-input"
+                      value={formData.cantidad_por_presentacion}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          cantidad_por_presentacion: formatearNumeroMilesDecimalesAlEscribir(e.target.value),
+                        })
+                      }
+                      placeholder="Ej: 500"
+                      required
+                      style={{ borderLeft: '4px solid #6366f1' }}
+                    />
+                  </div>
+                </div>
                 <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
-                  Costo de compra por presentación (Ej: si una bolsa de 500 botones cuesta $150.00, ingresar 150.00). Si no se ingresa, se establece en $0.00
+                  El costo unitario por pieza se calcula como: <strong>costo de compra ÷ cantidad por presentación</strong>.
+                  {costoUnitarioEstimado() > 0 ? (
+                    <>
+                      {' '}
+                      (Estimado: <strong>${formatoNumeroDesdeDb(costoUnitarioEstimado())}</strong> por{' '}
+                      <strong>{(formData.unidad_medida || 'unidad').trim() || 'unidad'}</strong>)
+                    </>
+                  ) : null}
                 </small>
               </div>
 
