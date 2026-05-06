@@ -11,10 +11,23 @@ export function precioUnitarioInsumo(insumo: {
   insumo_ubicaciones?: { cantidad?: number | null }[] | null;
 }): number {
   const costo = Number(insumo.costo_compra) || 0;
+  const stockActual = Number(insumo.stock);
+  const stockPorUbicaciones = Array.isArray(insumo.insumo_ubicaciones)
+    ? insumo.insumo_ubicaciones.reduce((s, u) => s + (Number(u?.cantidad) || 0), 0)
+    : 0;
   const cantPresentacion = Number(insumo.cantidad_por_presentacion);
-  // Prorrateo correcto: costo del paquete / unidades por presentación.
-  // NO debe depender del stock actual; el stock cambia y no altera el costo unitario pactado.
-  const divisor = Number.isFinite(cantPresentacion) && cantPresentacion > 0 ? cantPresentacion : 1;
+  // En producción semanal, el prorrateo correcto es por "unidades existentes" del insumo
+  // (equivalente a "stock_existente" en tu ejemplo). En este proyecto, esa cifra puede
+  // venir de `insumo_ubicaciones` (stock por ubicaciones) o del campo `stock`.
+  // Si no existe, usamos `cantidad_por_presentacion` como último respaldo.
+  const divisor =
+    stockPorUbicaciones > 0
+      ? stockPorUbicaciones
+      : stockActual > 0
+        ? stockActual
+        : cantPresentacion > 0
+          ? cantPresentacion
+          : 1;
   return costo / divisor;
 }
 
@@ -44,8 +57,15 @@ function insumoTieneCostoValido(insumo: {
   insumo_ubicaciones?: { cantidad?: number | null }[] | null;
 }): boolean {
   const costo = Number(insumo.costo_compra);
+  const stockActual = Number(insumo.stock);
+  const stockPorUbicaciones = Array.isArray(insumo.insumo_ubicaciones)
+    ? insumo.insumo_ubicaciones.reduce((s, u) => s + (Number(u?.cantidad) || 0), 0)
+    : 0;
   const cantPresentacion = Number(insumo.cantidad_por_presentacion);
-  const tieneDivisorValido = Number.isFinite(cantPresentacion) && cantPresentacion > 0;
+  const tieneDivisorValido =
+    (Number.isFinite(stockPorUbicaciones) && stockPorUbicaciones > 0) ||
+    (Number.isFinite(stockActual) && stockActual > 0) ||
+    (Number.isFinite(cantPresentacion) && cantPresentacion > 0);
   return Number.isFinite(costo) && costo > 0 && tieneDivisorValido;
 }
 
