@@ -7,6 +7,8 @@ import { mapAlumnoRow } from '@/lib/hooks/useAlumnos';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import LayoutWrapper from '@/components/LayoutWrapper';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 interface DetallePedido {
   id: string;
@@ -53,6 +55,7 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
   const [loading, setLoading] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
   const [showPrintCal, setShowPrintCal] = useState(false);
+  const [generandoPdf, setGenerandoPdf] = useState(false);
 
   const [printCal, setPrintCal] = useState({
     // Defaults calibrados para HP LaserJet (taller)
@@ -178,7 +181,64 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
     }
   };
 
-  const imprimirRecibo = () => {
+  const esIOS = () => {
+    if (typeof navigator === 'undefined') return false;
+    const ua = navigator.userAgent || '';
+    const iOS =
+      /iPad|iPhone|iPod/i.test(ua) ||
+      // iPadOS 13+ reporta "MacIntel" pero con touchpoints
+      (navigator.platform === 'MacIntel' && (navigator as any).maxTouchPoints > 1);
+    return Boolean(iOS);
+  };
+
+  const generarPdfReciboIOS = async () => {
+    if (!isMounted) return;
+    const target =
+      (document.getElementById('recibo-impresion') as HTMLElement | null) ||
+      (document.getElementById('recibo-impresion-screen') as HTMLElement | null);
+    if (!target) {
+      alert('No se encontró el recibo para generar PDF.');
+      return;
+    }
+
+    // Abrir ventana antes (evita bloqueo de popups en iOS).
+    const w = window.open('about:blank', '_blank');
+    setGenerandoPdf(true);
+    try {
+      const canvas = await html2canvas(target, {
+        backgroundColor: '#ffffff',
+        scale: 2,
+        useCORS: true,
+      });
+      const imgData = canvas.toDataURL('image/png');
+
+      // Carta/3 exacto: 216mm × 93mm (landscape)
+      const doc = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: [216, 93],
+        compress: true,
+      });
+      doc.addImage(imgData, 'PNG', 0, 0, 216, 93, undefined, 'FAST');
+      const url = String(doc.output('bloburl'));
+
+      if (w) w.location.href = url;
+      else window.location.href = url;
+    } catch (e: any) {
+      console.error(e);
+      if (w) w.close();
+      alert(`No se pudo generar el PDF del recibo: ${e?.message || e}`);
+    } finally {
+      setGenerandoPdf(false);
+    }
+  };
+
+  const imprimirRecibo = async () => {
+    // En iPad/Safari AirPrint reinterpreta @page y recorta HTML; PDF fija el layout.
+    if (esIOS()) {
+      await generarPdfReciboIOS();
+      return;
+    }
     window.print();
   };
 
@@ -528,7 +588,7 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
             ← Volver
           </button>
           <button
-            onClick={imprimirRecibo}
+            onClick={() => void imprimirRecibo()}
             style={{
               padding: '0.5rem 1rem',
               backgroundColor: '#3b82f6',
@@ -538,8 +598,9 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
               cursor: 'pointer',
               fontWeight: '600'
             }}
+            disabled={generandoPdf}
           >
-            🖨️ Imprimir Recibo
+            {generandoPdf ? 'Generando PDF…' : '🖨️ Imprimir Recibo'}
           </button>
           <button
             onClick={() => setShowPrintCal((v) => !v)}
