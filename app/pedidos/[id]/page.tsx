@@ -211,64 +211,7 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
         useCORS: true,
       });
 
-      const recortarBordesBlancos = (src: HTMLCanvasElement) => {
-        const w = src.width;
-        const h = src.height;
-        const ctx = src.getContext('2d');
-        if (!ctx) return src;
-
-        const data = ctx.getImageData(0, 0, w, h).data;
-        const isWhite = (idx: number) =>
-          data[idx] > 245 && data[idx + 1] > 245 && data[idx + 2] > 245 && data[idx + 3] > 245;
-
-        let top = 0;
-        let bottom = h - 1;
-        let left = 0;
-        let right = w - 1;
-
-        const rowHasInk = (y: number) => {
-          const base = y * w * 4;
-          for (let x = 0; x < w; x++) {
-            const i = base + x * 4;
-            if (!isWhite(i)) return true;
-          }
-          return false;
-        };
-        const colHasInk = (x: number) => {
-          const base = x * 4;
-          for (let y = 0; y < h; y++) {
-            const i = y * w * 4 + base;
-            if (!isWhite(i)) return true;
-          }
-          return false;
-        };
-
-        while (top < h && !rowHasInk(top)) top++;
-        while (bottom > top && !rowHasInk(bottom)) bottom--;
-        while (left < w && !colHasInk(left)) left++;
-        while (right > left && !colHasInk(right)) right--;
-
-        // Si todo es blanco, no recortar
-        if (top >= bottom || left >= right) return src;
-
-        // Padding ligero para no "comerse" líneas
-        const pad = Math.floor(Math.min(w, h) * 0.01);
-        const sx = Math.max(0, left - pad);
-        const sy = Math.max(0, top - pad);
-        const sw = Math.min(w - sx, right - left + 1 + pad * 2);
-        const sh = Math.min(h - sy, bottom - top + 1 + pad * 2);
-
-        const out = document.createElement('canvas');
-        out.width = sw;
-        out.height = sh;
-        const octx = out.getContext('2d');
-        if (!octx) return src;
-        octx.drawImage(src, sx, sy, sw, sh, 0, 0, sw, sh);
-        return out;
-      };
-
-      const cropped = recortarBordesBlancos(canvas);
-      const imgData = cropped.toDataURL('image/png');
+      const imgData = canvas.toDataURL('image/png');
 
       // Carta/3 exacto: 216mm × 93mm (landscape)
       const doc = new jsPDF({
@@ -280,21 +223,13 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
       const pageW = 216;
       const pageH = 93;
 
-      // AirPrint/HP: dejamos márgenes internos chicos y ajustamos a página sin distorsión.
-      const marginL = 2.5;
-      const marginR = 2.5;
-      const marginT = 2.0;
-      const marginB = 2.0;
-      const availW = pageW - marginL - marginR;
-      const availH = pageH - marginT - marginB;
-
-      const pxW = cropped.width;
-      const pxH = cropped.height;
-      const fit = Math.min(availW / pxW, availH / pxH);
-      const imgW = pxW * fit;
-      const imgH = pxH * fit;
-      const x = marginL + (availW - imgW) / 2;
-      const y = marginT + (availH - imgH) / 2;
+      // Volver al ajuste estable (iPad): +2cm a la derecha y letra ~1.5pts menos.
+      const scale = 0.90;
+      const imgW = pageW * scale;
+      const imgH = pageH * scale;
+      const shiftRightMm = 20.0;
+      const x = (pageW - imgW) / 2 + shiftRightMm;
+      const y = (pageH - imgH) / 2;
       doc.addImage(imgData, 'PNG', x, y, imgW, imgH, undefined, 'FAST');
       const url = String(doc.output('bloburl'));
 
