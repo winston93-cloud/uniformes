@@ -222,11 +222,11 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
       // AirPrint/HP suele tener márgenes no imprimibles; reducimos y desplazamos a la derecha.
       const pageW = 216;
       const pageH = 93;
-      // Ajuste taller (iPad): mover ~2cm a la derecha y reducir un poco más.
-      const scale = 0.90;
+      // Ajuste taller (iPad): compensar márgenes no imprimibles sin recortar.
+      const scale = 0.92;
       const imgW = pageW * scale;
       const imgH = pageH * scale;
-      const shiftRightMm = 20.0;
+      const shiftRightMm = 10.0;
       const x = (pageW - imgW) / 2 + shiftRightMm;
       const y = (pageH - imgH) / 2;
       doc.addImage(imgData, 'PNG', x, y, imgW, imgH, undefined, 'FAST');
