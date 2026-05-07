@@ -219,7 +219,16 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
         format: [216, 93],
         compress: true,
       });
-      doc.addImage(imgData, 'PNG', 0, 0, 216, 93, undefined, 'FAST');
+      // AirPrint/HP suele tener márgenes no imprimibles; reducimos y desplazamos a la derecha.
+      const pageW = 216;
+      const pageH = 93;
+      const scale = 0.94;
+      const imgW = pageW * scale;
+      const imgH = pageH * scale;
+      const shiftRightMm = 3.0;
+      const x = (pageW - imgW) / 2 + shiftRightMm;
+      const y = (pageH - imgH) / 2;
+      doc.addImage(imgData, 'PNG', x, y, imgW, imgH, undefined, 'FAST');
       const url = String(doc.output('bloburl'));
 
       if (w) w.location.href = url;
