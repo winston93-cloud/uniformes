@@ -81,7 +81,15 @@ export async function GET(req: Request) {
 
     const ms = Date.now() - startedAt;
     // Redirige a dashboard (o destino) tras completar
-    return NextResponse.redirect(new URL(`${redirectTo}?sync=ok&ms=${ms}`, url.origin));
+    const fetched = Number(json?.fetched ?? 0) || 0;
+    const upserted = Number(json?.upserted ?? 0) || 0;
+    const mapped = Number(json?.mapped ?? 0) || 0;
+    return NextResponse.redirect(
+      new URL(
+        `${redirectTo}?sync=ok&ms=${ms}&fetched=${fetched}&mapped=${mapped}&upserted=${upserted}`,
+        url.origin
+      )
+    );
   } catch (e: any) {
     const url = new URL(req.url);
     const message = e?.message || String(e);

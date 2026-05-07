@@ -12,25 +12,34 @@ import UserCard from '@/components/UserCard';
 import ModalBitacora from '@/components/ModalBitacora';
 import ModalActualizarBaseDatos from '@/components/ModalActualizarBaseDatos';
 
-function AlumnoSyncToast() {
+function AlumnoSyncModal() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const [ocultar, setOcultar] = useState(false);
-  const [toastState, setToastState] = useState<null | {
+  const [abierta, setAbierta] = useState(false);
+  const [modalState, setModalState] = useState<null | {
     kind: 'ok' | 'error';
     title: string;
     detail: string;
   }>(null);
 
-  const toastFromUrl = useMemo(() => {
+  const fromUrl = useMemo(() => {
     const sync = searchParams.get('sync');
     if (!sync) return null;
     if (sync === 'ok') {
       const ms = searchParams.get('ms');
+      const fetched = searchParams.get('fetched');
+      const mapped = searchParams.get('mapped');
+      const upserted = searchParams.get('upserted');
+      const partes = [
+        ms ? `Duración: ${(Number(ms) / 1000).toFixed(1)}s` : null,
+        fetched ? `Leídos: ${fetched}` : null,
+        mapped ? `Mapeados: ${mapped}` : null,
+        upserted ? `Transferidos: ${upserted}` : null,
+      ].filter(Boolean);
       return {
         kind: 'ok' as const,
-        title: 'Alumno actualizado',
-        detail: ms ? `Éxito · ${(Number(ms) / 1000).toFixed(1)}s` : 'Éxito',
+        title: 'Actualización de alumno exitosa',
+        detail: partes.length ? partes.join(' · ') : 'Éxito',
       };
     }
     if (sync === 'error') {
@@ -45,48 +54,60 @@ function AlumnoSyncToast() {
   }, [searchParams]);
 
   useEffect(() => {
-    if (!toastFromUrl) return;
-    setToastState(toastFromUrl);
-    setOcultar(false);
-    const t = setTimeout(() => setOcultar(true), 9000);
-    return () => clearTimeout(t);
-  }, [toastFromUrl]);
+    if (!fromUrl) return;
+    setModalState(fromUrl);
+    setAbierta(true);
+  }, [fromUrl]);
 
-  useEffect(() => {
-    if (!toastFromUrl) return;
-    // Limpia la URL sin "apagar" el toast (ya está en estado).
+  const aceptar = () => {
+    setAbierta(false);
     const url = new URL(window.location.href);
     url.searchParams.delete('sync');
     url.searchParams.delete('ms');
     url.searchParams.delete('msg');
+    url.searchParams.delete('fetched');
+    url.searchParams.delete('mapped');
+    url.searchParams.delete('upserted');
     router.replace(url.pathname + (url.search ? url.search : ''), { scroll: false });
-  }, [toastFromUrl, router]);
+  };
 
-  if (!toastState || ocultar) return null;
+  if (!modalState || !abierta) return null;
   return (
     <div
-      role="status"
-      aria-live="polite"
+      role="dialog"
+      aria-modal="true"
+      aria-label={modalState.title}
       style={{
         position: 'fixed',
-        top: 16,
-        right: 16,
-        zIndex: 5000,
-        maxWidth: 420,
-        background: toastState.kind === 'ok' ? 'rgba(16, 185, 129, 0.95)' : 'rgba(239, 68, 68, 0.95)',
-        color: 'white',
-        borderRadius: 12,
-        padding: '0.75rem 0.9rem',
-        boxShadow: '0 10px 25px rgba(0,0,0,0.25)',
-        fontSize: '0.9rem',
-        lineHeight: 1.35,
-        cursor: 'pointer',
+        inset: 0,
+        background: 'rgba(0,0,0,0.55)',
+        zIndex: 6000,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '1rem',
       }}
-      onClick={() => setOcultar(true)}
-      title="Click para cerrar"
     >
-      <div style={{ fontWeight: 800 }}>{toastState.title}</div>
-      <div style={{ opacity: 0.95, marginTop: 2 }}>{toastState.detail}</div>
+      <div
+        style={{
+          width: 'min(520px, 100%)',
+          background: 'white',
+          borderRadius: 12,
+          padding: '1.1rem 1.1rem 1rem',
+          boxShadow: '0 18px 50px rgba(0,0,0,0.35)',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{ fontSize: '1.05rem', fontWeight: 900, color: '#0f172a' }}>{modalState.title}</div>
+        <div style={{ marginTop: 8, fontSize: '0.95rem', color: '#334155', lineHeight: 1.45 }}>
+          {modalState.detail}
+        </div>
+        <div style={{ marginTop: 14, display: 'flex', justifyContent: 'flex-end' }}>
+          <button type="button" className="btn btn-primary" onClick={aceptar}>
+            Aceptar
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -175,7 +196,7 @@ export default function Dashboard() {
     <LayoutWrapper>
       <div className="main-container">
         <Suspense fallback={null}>
-          <AlumnoSyncToast />
+          <AlumnoSyncModal />
         </Suspense>
 
         <h1 className="page-title">
