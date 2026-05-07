@@ -59,11 +59,11 @@ export function useReportes(sucursal_id?: string) {
       const { startLocal, endLocal } = rangoLocalAIso(fechaInicio, fechaFin);
 
       // En este proyecto los estados son PENDIENTE/COMPLETADO/CANCELADO...
-      // Para ventas por periodo usamos COMPLETADO y fecha created_at.
+      // Para ventas por periodo incluimos ingresos de pedidos PENDIENTE + COMPLETADO (excluye cancelados).
       let query = supabase
         .from('pedidos')
         .select('id, created_at, total, tipo_cliente, cliente_nombre, estado, sucursal_id')
-        .in('estado', ['COMPLETADO'])
+        .in('estado', ['PENDIENTE', 'COMPLETADO'])
         .order('created_at', { ascending: true });
 
       // Filtrar por sucursal si se proporciona
