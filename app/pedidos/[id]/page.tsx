@@ -227,7 +227,8 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
       const scale = 0.90;
       const imgW = pageW * scale;
       const imgH = pageH * scale;
-      const shiftRightMm = 20.0;
+      // Ajuste fino: evitar recorte del lado derecho (~3mm a la izquierda)
+      const shiftRightMm = 17.0;
       const x = (pageW - imgW) / 2 + shiftRightMm;
       const y = (pageH - imgH) / 2;
       doc.addImage(imgData, 'PNG', x, y, imgW, imgH, undefined, 'FAST');
