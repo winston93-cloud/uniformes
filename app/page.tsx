@@ -17,12 +17,13 @@ export default function Home() {
         const ya = sessionStorage.getItem(key);
         if (!ya) {
           sessionStorage.setItem(key, '1');
-          window.location.replace('https://www.winston93.edu.mx/migrar/migrar.php?run=1');
+          // Emula migrar.php dentro de Uniformes (sin abrir winston93.edu.mx)
+          window.location.replace('/api/alumno/refresh-full?redirect=/dashboard');
           return;
         }
       } catch {
         // Si sessionStorage no está disponible, intentamos de todos modos.
-        window.location.replace('https://www.winston93.edu.mx/migrar/migrar.php?run=1');
+        window.location.replace('/api/alumno/refresh-full?redirect=/dashboard');
         return;
       }
       router.replace('/dashboard');
