@@ -132,7 +132,9 @@ export async function POST(req: Request) {
     try {
       // Seleccionamos SOLO columnas que existen en Supabase hoy (evita tocar esquema por ahora).
       // `alumno_ref` en MySQL puede ser numeric; lo convertimos a string para Supabase (TEXT).
-      const where = sinceTs ? 'WHERE alumno_actualizacion > ?' : '';
+      const where = sinceTs
+        ? 'WHERE alumno_actualizacion > ? AND alumno_ciclo_escolar IN (22, 23)'
+        : 'WHERE alumno_ciclo_escolar IN (22, 23)';
       const params: any[] = [];
       if (sinceTs) params.push(new Date(sinceTs));
       params.push(limit);
