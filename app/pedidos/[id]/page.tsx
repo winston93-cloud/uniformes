@@ -226,12 +226,12 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
       const pageW = 216;
       const pageH = 93;
 
-      // Ajuste iPad: calibración para centrar y evitar recorte.
-      const scale = 0.89;
+      // Ajuste iPad: bajar escala para evitar recorte.
+      const scale = 0.85;
       const imgW = pageW * scale;
       const imgH = pageH * scale;
       // Ajuste fino: mover a la izquierda para que NO se corte a la derecha
-      const shiftRightMm = 18.0;
+      const shiftRightMm = 17.0;
       const x = (pageW - imgW) / 2 + shiftRightMm;
       const y = (pageH - imgH) / 2;
       doc.addImage(imgData, 'PNG', x, y, imgW, imgH, undefined, 'FAST');
