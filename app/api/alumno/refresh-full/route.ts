@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import mysql from 'mysql2/promise';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 
 export const runtime = 'nodejs';
@@ -54,30 +53,10 @@ function nombreCompleto(row: { alumno_nombre?: unknown; alumno_app?: unknown; al
     .trim();
 }
 
-async function vaciarSupabaseAlumnoPorLotes(supabaseAdmin: ReturnType<typeof getSupabaseAdmin>) {
-  const batchSize = 200;
-  let total = 0;
-  for (let ronda = 0; ronda < 100000; ronda++) {
-    const { data: ids, error: selErr } = await supabaseAdmin
-      .from('alumno')
-      .select('alumno_id')
-      .limit(batchSize);
-    if (selErr) throw selErr;
-    if (!ids || ids.length === 0) break;
-
-    const inList = (ids as any[])
-      .map((r) => r?.alumno_id)
-      .filter((x) => x !== null && x !== undefined && x !== '');
-
-    if (inList.length === 0) {
-      throw new Error('No se pudieron leer alumno_id para vaciar la tabla alumno');
-    }
-
-    const { error: delErr } = await supabaseAdmin.from('alumno').delete().in('alumno_id', inList);
-    if (delErr) throw delErr;
-    total += inList.length;
-  }
-  return total;
+function parsePositiveInt(v: string | null, def: number, min: number, max: number) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return def;
+  return Math.max(min, Math.min(max, Math.trunc(n)));
 }
 
 export async function GET(req: Request) {
@@ -85,92 +64,19 @@ export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
     const redirectTo = url.searchParams.get('redirect') || '/dashboard';
-
-    const mysqlHost = requiredEnv('MYSQL_HOST');
-    const mysqlUser = requiredEnv('MYSQL_USER');
-    const mysqlPassword = requiredEnv('MYSQL_PASSWORD');
-    const mysqlDatabase = requiredEnv('MYSQL_DATABASE');
-    const mysqlPort = toIntOrNull(optEnv('MYSQL_PORT')) ?? 3306;
+    const limit = parsePositiveInt(url.searchParams.get('limit'), 5000, 1, 20000);
 
     const supabaseAdmin = getSupabaseAdmin();
 
-    // 1) Vaciar Supabase (tabla alumno) por lotes (como migrar.php)
-    await vaciarSupabaseAlumnoPorLotes(supabaseAdmin);
-
-    // 2) Leer TODO alumno de MySQL
-    const conn = await mysql.createConnection({
-      host: mysqlHost,
-      user: mysqlUser,
-      password: mysqlPassword,
-      database: mysqlDatabase,
-      port: mysqlPort,
-      ssl: optEnv('MYSQL_SSL') === 'true' ? { rejectUnauthorized: false } : undefined,
+    // Refresh "safe" en Vercel: delega a sync incremental existente.
+    // (Evita timeouts de vaciado + carga completa en una sola invocación).
+    const res = await fetch(new URL(`/api/alumno/sync-mysql?limit=${limit}`, url.origin), {
+      method: 'GET',
+      headers: { accept: 'application/json' },
     });
-
-    let rows: any[] = [];
-    try {
-      const [r] = await conn.execute(
-        `
-        SELECT
-          alumno_ref,
-          alumno_app,
-          alumno_apm,
-          alumno_nombre,
-          alumno_nivel,
-          alumno_grado,
-          alumno_grupo,
-          alumno_nuevo_ingreso,
-          alumno_registro,
-          alumno_alta,
-          alumno_actualizacion,
-          alumno_boleta,
-          mes,
-          alumno_status,
-          alumno_ciclo_escolar
-        FROM alumno
-        ORDER BY alumno_actualizacion ASC
-        `
-      );
-      rows = (r as any[]) || [];
-    } finally {
-      await conn.end();
-    }
-
-    // 3) Mapear y upsert en lotes
-    const mapped = rows
-      .map((r: any) => {
-        const ref = toTextOrNull(r.alumno_ref);
-        if (!ref) return null;
-        const alumno_nombre = toTextOrNull(r.alumno_nombre);
-        const alumno_app = toTextOrNull(r.alumno_app);
-        const alumno_apm = toTextOrNull(r.alumno_apm);
-        const full = nombreCompleto({ alumno_nombre, alumno_app, alumno_apm }) || null;
-        return {
-          alumno_ref: ref,
-          alumno_app,
-          alumno_apm,
-          alumno_nombre,
-          alumno_nivel: toIntOrNull(r.alumno_nivel),
-          alumno_grado: toIntOrNull(r.alumno_grado),
-          alumno_grupo: toIntOrNull(r.alumno_grupo),
-          alumno_nuevo_ingreso: toIntOrNull(r.alumno_nuevo_ingreso),
-          alumno_registro: toPgDateOrNull(r.alumno_registro),
-          alumno_alta: toIsoOrNull(r.alumno_alta),
-          alumno_actualizacion: toIsoOrNull(r.alumno_actualizacion) ?? new Date().toISOString(),
-          alumno_boleta: toIntOrNull(r.alumno_boleta),
-          mes: toIntOrNull(r.mes),
-          alumno_status: toIntOrNull(r.alumno_status),
-          alumno_ciclo_escolar: toIntOrNull(r.alumno_ciclo_escolar),
-          alumno_nombre_completo: full,
-        };
-      })
-      .filter(Boolean) as Record<string, unknown>[];
-
-    const chunkSize = 500;
-    for (let i = 0; i < mapped.length; i += chunkSize) {
-      const chunk = mapped.slice(i, i + chunkSize);
-      const { error } = await supabaseAdmin.from('alumno').upsert(chunk, { onConflict: 'alumno_ref' });
-      if (error) throw error;
+    const json = await res.json().catch(() => null);
+    if (!json?.success) {
+      throw new Error(json?.error || `Sync incremental falló (HTTP ${res.status})`);
     }
 
     const ms = Date.now() - startedAt;
