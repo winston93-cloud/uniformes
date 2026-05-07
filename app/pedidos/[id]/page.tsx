@@ -205,11 +205,14 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
     const w = window.open('about:blank', '_blank');
     setGenerandoPdf(true);
     try {
+      // Solo para iPad: adelgazar texto (no afecta laptop).
+      document.documentElement.classList.add('ios-ticket-pdf');
       const canvas = await html2canvas(target, {
         backgroundColor: '#ffffff',
         scale: 2,
         useCORS: true,
       });
+      document.documentElement.classList.remove('ios-ticket-pdf');
 
       const imgData = canvas.toDataURL('image/png');
 
@@ -223,12 +226,12 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
       const pageW = 216;
       const pageH = 93;
 
-      // Volver al ajuste estable (iPad): +2cm a la derecha y letra ~1.5pts menos.
-      const scale = 0.90;
+      // Ajuste iPad: reducir un poco más para evitar recorte derecho.
+      const scale = 0.88;
       const imgW = pageW * scale;
       const imgH = pageH * scale;
-      // Ajuste fino: evitar recorte del lado derecho (~3mm a la izquierda)
-      const shiftRightMm = 17.0;
+      // Ajuste fino: mover a la izquierda para que NO se corte a la derecha
+      const shiftRightMm = 12.0;
       const x = (pageW - imgW) / 2 + shiftRightMm;
       const y = (pageH - imgH) / 2;
       doc.addImage(imgData, 'PNG', x, y, imgW, imgH, undefined, 'FAST');
@@ -238,6 +241,11 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
       else window.location.href = url;
     } catch (e: any) {
       console.error(e);
+      try {
+        document.documentElement.classList.remove('ios-ticket-pdf');
+      } catch {
+        // ignore
+      }
       if (w) w.close();
       alert(`No se pudo generar el PDF del recibo: ${e?.message || e}`);
     } finally {
@@ -529,6 +537,15 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
 
   return (
     <LayoutWrapper>
+      <style jsx global>{`
+        /* Solo durante generación de PDF en iPad */
+        .ios-ticket-pdf #recibo-impresion,
+        .ios-ticket-pdf #recibo-impresion *,
+        .ios-ticket-pdf #recibo-impresion-screen,
+        .ios-ticket-pdf #recibo-impresion-screen * {
+          font-weight: 400 !important;
+        }
+      `}</style>
       <style jsx global>{`
         @media print {
           @page {
