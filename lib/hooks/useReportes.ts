@@ -45,21 +45,25 @@ export interface ReporteGanancias {
 export function useReportes(sucursal_id?: string) {
   const [loading, setLoading] = useState(false);
 
+  const rangoLocalAIso = (fechaInicio: string, fechaFin: string) => {
+    const [y1, m1, d1] = fechaInicio.split('-').map(Number);
+    const [y2, m2, d2] = fechaFin.split('-').map(Number);
+    const startLocal = new Date(y1, m1 - 1, d1, 0, 0, 0, 0);
+    const endLocal = new Date(y2, m2 - 1, d2, 23, 59, 59, 999);
+    return { startLocal, endLocal, startIso: startLocal.toISOString(), endIso: endLocal.toISOString() };
+  };
+
   const ventasPorPeriodo = async (fechaInicio: string, fechaFin: string): Promise<ReporteVentas[]> => {
     try {
       setLoading(true);
-      // Crear fechas en timezone local para evitar problemas de interpretación UTC
-      const [yearInicio, mesInicio, diaInicio] = fechaInicio.split('-').map(Number);
-      const fechaInicioObj = new Date(yearInicio, mesInicio - 1, diaInicio, 0, 0, 0, 0);
-      
-      const [yearFin, mesFin, diaFin] = fechaFin.split('-').map(Number);
-      const fechaFinObj = new Date(yearFin, mesFin - 1, diaFin, 23, 59, 59, 999);
+      const { startLocal, endLocal } = rangoLocalAIso(fechaInicio, fechaFin);
 
-      // Obtener todos los pedidos liquidados con el nombre del cliente
+      // En este proyecto los estados son PENDIENTE/COMPLETADO/CANCELADO...
+      // Para ventas por periodo usamos COMPLETADO y fecha created_at.
       let query = supabase
         .from('pedidos')
-        .select('id, created_at, total, fecha_liquidacion, tipo_cliente, cliente_nombre')
-        .eq('estado', 'LIQUIDADO')
+        .select('id, created_at, total, tipo_cliente, cliente_nombre, estado, sucursal_id')
+        .in('estado', ['COMPLETADO'])
         .order('created_at', { ascending: true });
 
       // Filtrar por sucursal si se proporciona
@@ -74,29 +78,23 @@ export function useReportes(sucursal_id?: string) {
         throw error;
       }
 
-      // Filtrar por fecha (solo año-mes-día) y mapear a detalle individual
-      const pedidosDetalle = data?.filter((pedido: any) => {
-        const fechaPedido = new Date(pedido.fecha_liquidacion || pedido.created_at);
-        
-        // Comparar solo fechas (año, mes, día) sin horas para evitar problemas de timezone
-        const fechaPedidoSolo = new Date(fechaPedido.getFullYear(), fechaPedido.getMonth(), fechaPedido.getDate());
-        const fechaInicioSolo = new Date(fechaInicioObj.getFullYear(), fechaInicioObj.getMonth(), fechaInicioObj.getDate());
-        const fechaFinSolo = new Date(fechaFinObj.getFullYear(), fechaFinObj.getMonth(), fechaFinObj.getDate());
-        
-        const incluido = fechaPedidoSolo >= fechaInicioSolo && fechaPedidoSolo <= fechaFinSolo;
-        
-        return incluido;
-      }).map((pedido: any) => {
-        const fechaPedido = new Date(pedido.fecha_liquidacion || pedido.created_at);
-        
-        return {
-          id: pedido.id,
-          fecha: fechaPedido.toISOString(),
-          cliente: pedido.cliente_nombre || 'Sin cliente',
-          tipo_cliente: pedido.tipo_cliente,
-          total: parseFloat(pedido.total.toString()),
-        };
-      }) || [];
+      // Filtrar por fecha en local (día completo) y mapear
+      const pedidosDetalle =
+        data
+          ?.filter((pedido: any) => {
+            const fechaPedido = new Date(pedido.created_at);
+            return fechaPedido >= startLocal && fechaPedido <= endLocal;
+          })
+          .map((pedido: any) => {
+            const fechaPedido = new Date(pedido.created_at);
+            return {
+              id: pedido.id,
+              fecha: fechaPedido.toISOString(),
+              cliente: pedido.cliente_nombre || 'Sin cliente',
+              tipo_cliente: pedido.tipo_cliente,
+              total: parseFloat(pedido.total?.toString?.() ?? String(pedido.total ?? 0)),
+            };
+          }) || [];
 
       return pedidosDetalle;
     } catch (err: any) {
@@ -122,12 +120,13 @@ export function useReportes(sucursal_id?: string) {
         .limit(20);
 
       if (fechaInicio && fechaFin) {
+        const { startIso, endIso } = rangoLocalAIso(fechaInicio, fechaFin);
         const { data: pedidos } = await supabase
           .from('pedidos')
           .select('id')
-          .eq('estado', 'LIQUIDADO')
-          .gte('fecha_liquidacion', fechaInicio)
-          .lte('fecha_liquidacion', fechaFin);
+          .in('estado', ['COMPLETADO'])
+          .gte('created_at', startIso)
+          .lte('created_at', endIso);
 
         if (pedidos && pedidos.length > 0) {
           const pedidoIds = pedidos.map(p => p.id);
@@ -226,7 +225,7 @@ export function useReportes(sucursal_id?: string) {
       const { data: pedidos, error } = await supabase
         .from('pedidos')
         .select('cliente_nombre, tipo_cliente, total')
-        .eq('estado', 'LIQUIDADO');
+        .in('estado', ['COMPLETADO']);
 
       if (error) throw error;
 
@@ -273,7 +272,7 @@ export function useReportes(sucursal_id?: string) {
         { data: costos },
       ] = await Promise.all([
         supabase.from('pedidos').select('*', { count: 'exact', head: true }),
-        supabase.from('pedidos').select('total').eq('estado', 'LIQUIDADO'),
+        supabase.from('pedidos').select('total').in('estado', ['COMPLETADO']),
         supabase.from('alumno').select('*', { count: 'exact', head: true }),
         supabase.from('costos').select('stock').eq('activo', true),
       ]);
@@ -304,28 +303,20 @@ export function useReportes(sucursal_id?: string) {
     try {
       setLoading(true);
       
-      // Crear fechas en timezone local
-      const [yearInicio, mesInicio, diaInicio] = fechaInicio.split('-').map(Number);
-      const fechaInicioObj = new Date(yearInicio, mesInicio - 1, diaInicio, 0, 0, 0, 0);
-      
-      const [yearFin, mesFin, diaFin] = fechaFin.split('-').map(Number);
-      const fechaFinObj = new Date(yearFin, mesFin - 1, diaFin, 23, 59, 59, 999);
+      const { startLocal, endLocal } = rangoLocalAIso(fechaInicio, fechaFin);
 
       // Obtener pedidos liquidados en el periodo
       const { data: pedidos, error: pedidosError } = await supabase
         .from('pedidos')
-        .select('id, created_at, fecha_liquidacion')
-        .eq('estado', 'LIQUIDADO');
+        .select('id, created_at')
+        .in('estado', ['COMPLETADO']);
 
       if (pedidosError) throw pedidosError;
 
       // Filtrar por fecha
       const pedidosEnPeriodo = pedidos?.filter((pedido: any) => {
-        const fechaPedido = new Date(pedido.fecha_liquidacion || pedido.created_at);
-        const fechaPedidoSolo = new Date(fechaPedido.getFullYear(), fechaPedido.getMonth(), fechaPedido.getDate());
-        const fechaInicioSolo = new Date(fechaInicioObj.getFullYear(), fechaInicioObj.getMonth(), fechaInicioObj.getDate());
-        const fechaFinSolo = new Date(fechaFinObj.getFullYear(), fechaFinObj.getMonth(), fechaFinObj.getDate());
-        return fechaPedidoSolo >= fechaInicioSolo && fechaPedidoSolo <= fechaFinSolo;
+        const fechaPedido = new Date(pedido.created_at);
+        return fechaPedido >= startLocal && fechaPedido <= endLocal;
       }) || [];
 
       if (pedidosEnPeriodo.length === 0) {
