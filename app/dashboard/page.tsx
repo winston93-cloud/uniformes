@@ -1,10 +1,9 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import Link from 'next/link';
-import { useSearchParams, useRouter } from 'next/navigation';
 import TarjetaInsumosFaltantes from '@/components/TarjetaInsumosFaltantes';
 import TarjetaAlertasStock from '@/components/TarjetaAlertasStock';
 import TarjetaAlertasStockPrendas from '@/components/TarjetaAlertasStockPrendas';
@@ -13,8 +12,6 @@ import ModalBitacora from '@/components/ModalBitacora';
 import ModalActualizarBaseDatos from '@/components/ModalActualizarBaseDatos';
 
 function AlumnoSyncModal() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
   const [abierta, setAbierta] = useState(false);
   const [modalState, setModalState] = useState<null | {
     kind: 'ok' | 'error';
@@ -22,53 +19,55 @@ function AlumnoSyncModal() {
     detail: string;
   }>(null);
 
-  const fromUrl = useMemo(() => {
-    const sync = searchParams.get('sync');
-    if (!sync) return null;
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const sp = new URLSearchParams(window.location.search);
+    const sync = sp.get('sync');
+    if (!sync) return;
     if (sync === 'ok') {
-      const ms = searchParams.get('ms');
-      const fetched = searchParams.get('fetched');
-      const mapped = searchParams.get('mapped');
-      const upserted = searchParams.get('upserted');
+      const ms = sp.get('ms');
+      const fetched = sp.get('fetched');
+      const mapped = sp.get('mapped');
+      const upserted = sp.get('upserted');
       const partes = [
         ms ? `Duración: ${(Number(ms) / 1000).toFixed(1)}s` : null,
         fetched ? `Leídos: ${fetched}` : null,
         mapped ? `Mapeados: ${mapped}` : null,
         upserted ? `Transferidos: ${upserted}` : null,
       ].filter(Boolean);
-      return {
-        kind: 'ok' as const,
+      setModalState({
+        kind: 'ok',
         title: 'Actualización de alumno exitosa',
         detail: partes.length ? partes.join(' · ') : 'Éxito',
-      };
+      });
+      setAbierta(true);
+      return;
     }
     if (sync === 'error') {
-      const msg = searchParams.get('msg');
-      return {
-        kind: 'error' as const,
+      const msg = sp.get('msg');
+      setModalState({
+        kind: 'error',
         title: 'Falló actualización de alumno',
         detail: msg ? decodeURIComponent(msg).slice(0, 140) : 'Error',
-      };
+      });
+      setAbierta(true);
     }
-    return null;
-  }, [searchParams]);
-
-  useEffect(() => {
-    if (!fromUrl) return;
-    setModalState(fromUrl);
-    setAbierta(true);
-  }, [fromUrl]);
+  }, []);
 
   const aceptar = () => {
     setAbierta(false);
-    const url = new URL(window.location.href);
-    url.searchParams.delete('sync');
-    url.searchParams.delete('ms');
-    url.searchParams.delete('msg');
-    url.searchParams.delete('fetched');
-    url.searchParams.delete('mapped');
-    url.searchParams.delete('upserted');
-    router.replace(url.pathname + (url.search ? url.search : ''), { scroll: false });
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('sync');
+      url.searchParams.delete('ms');
+      url.searchParams.delete('msg');
+      url.searchParams.delete('fetched');
+      url.searchParams.delete('mapped');
+      url.searchParams.delete('upserted');
+      window.history.replaceState(null, '', url.pathname + (url.search ? url.search : ''));
+    } catch {
+      // ignore
+    }
   };
 
   if (!modalState || !abierta) return null;
@@ -195,9 +194,7 @@ export default function Dashboard() {
   return (
     <LayoutWrapper>
       <div className="main-container">
-        <Suspense fallback={null}>
-          <AlumnoSyncModal />
-        </Suspense>
+        <AlumnoSyncModal />
 
         <h1 className="page-title">
           Sistema de Uniformes Winston Churchill
