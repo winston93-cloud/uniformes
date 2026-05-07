@@ -16,8 +16,13 @@ function AlumnoSyncToast() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [ocultar, setOcultar] = useState(false);
+  const [toastState, setToastState] = useState<null | {
+    kind: 'ok' | 'error';
+    title: string;
+    detail: string;
+  }>(null);
 
-  const toast = useMemo(() => {
+  const toastFromUrl = useMemo(() => {
     const sync = searchParams.get('sync');
     if (!sync) return null;
     if (sync === 'ok') {
@@ -40,22 +45,24 @@ function AlumnoSyncToast() {
   }, [searchParams]);
 
   useEffect(() => {
-    if (!toast) return;
+    if (!toastFromUrl) return;
+    setToastState(toastFromUrl);
     setOcultar(false);
     const t = setTimeout(() => setOcultar(true), 9000);
     return () => clearTimeout(t);
-  }, [toast]);
+  }, [toastFromUrl]);
 
   useEffect(() => {
-    if (!toast) return;
+    if (!toastFromUrl) return;
+    // Limpia la URL sin "apagar" el toast (ya está en estado).
     const url = new URL(window.location.href);
     url.searchParams.delete('sync');
     url.searchParams.delete('ms');
     url.searchParams.delete('msg');
     router.replace(url.pathname + (url.search ? url.search : ''), { scroll: false });
-  }, [toast, router]);
+  }, [toastFromUrl, router]);
 
-  if (!toast || ocultar) return null;
+  if (!toastState || ocultar) return null;
   return (
     <div
       role="status"
@@ -66,7 +73,7 @@ function AlumnoSyncToast() {
         right: 16,
         zIndex: 5000,
         maxWidth: 420,
-        background: toast.kind === 'ok' ? 'rgba(16, 185, 129, 0.95)' : 'rgba(239, 68, 68, 0.95)',
+        background: toastState.kind === 'ok' ? 'rgba(16, 185, 129, 0.95)' : 'rgba(239, 68, 68, 0.95)',
         color: 'white',
         borderRadius: 12,
         padding: '0.75rem 0.9rem',
@@ -78,8 +85,8 @@ function AlumnoSyncToast() {
       onClick={() => setOcultar(true)}
       title="Click para cerrar"
     >
-      <div style={{ fontWeight: 800 }}>{toast.title}</div>
-      <div style={{ opacity: 0.95, marginTop: 2 }}>{toast.detail}</div>
+      <div style={{ fontWeight: 800 }}>{toastState.title}</div>
+      <div style={{ opacity: 0.95, marginTop: 2 }}>{toastState.detail}</div>
     </div>
   );
 }
