@@ -62,7 +62,7 @@ export function useReportes(sucursal_id?: string) {
       // Para ventas por periodo incluimos ingresos de pedidos PENDIENTE + COMPLETADO (excluye cancelados).
       let query = supabase
         .from('pedidos')
-        .select('id, created_at, total, tipo_cliente, cliente_nombre, estado, sucursal_id')
+        .select('id, created_at, updated_at, fecha, total, tipo_cliente, cliente_nombre, estado, sucursal_id')
         .in('estado', ['PENDIENTE', 'COMPLETADO'])
         .order('created_at', { ascending: true });
 
@@ -82,11 +82,14 @@ export function useReportes(sucursal_id?: string) {
       const pedidosDetalle =
         data
           ?.filter((pedido: any) => {
-            const fechaPedido = new Date(pedido.created_at);
+            const rawFecha = pedido.created_at ?? pedido.updated_at ?? pedido.fecha;
+            const fechaPedido = rawFecha ? new Date(rawFecha) : null;
+            if (!fechaPedido || Number.isNaN(fechaPedido.getTime())) return false;
             return fechaPedido >= startLocal && fechaPedido <= endLocal;
           })
           .map((pedido: any) => {
-            const fechaPedido = new Date(pedido.created_at);
+            const rawFecha = pedido.created_at ?? pedido.updated_at ?? pedido.fecha;
+            const fechaPedido = rawFecha ? new Date(rawFecha) : new Date();
             return {
               id: pedido.id,
               fecha: fechaPedido.toISOString(),
