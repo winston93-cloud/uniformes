@@ -75,7 +75,7 @@ function AlumnoSyncModal() {
     if (!abierta) return;
     const t = window.setTimeout(() => {
       aceptar();
-    }, 2000);
+    }, 1000);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [abierta]);
