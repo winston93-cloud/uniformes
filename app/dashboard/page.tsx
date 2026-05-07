@@ -1,15 +1,88 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import Link from 'next/link';
+import { useSearchParams, useRouter } from 'next/navigation';
 import TarjetaInsumosFaltantes from '@/components/TarjetaInsumosFaltantes';
 import TarjetaAlertasStock from '@/components/TarjetaAlertasStock';
 import TarjetaAlertasStockPrendas from '@/components/TarjetaAlertasStockPrendas';
 import UserCard from '@/components/UserCard';
 import ModalBitacora from '@/components/ModalBitacora';
 import ModalActualizarBaseDatos from '@/components/ModalActualizarBaseDatos';
+
+function AlumnoSyncToast() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const [ocultar, setOcultar] = useState(false);
+
+  const toast = useMemo(() => {
+    const sync = searchParams.get('sync');
+    if (!sync) return null;
+    if (sync === 'ok') {
+      const ms = searchParams.get('ms');
+      return {
+        kind: 'ok' as const,
+        title: 'Alumno actualizado',
+        detail: ms ? `Éxito · ${(Number(ms) / 1000).toFixed(1)}s` : 'Éxito',
+      };
+    }
+    if (sync === 'error') {
+      const msg = searchParams.get('msg');
+      return {
+        kind: 'error' as const,
+        title: 'Falló actualización de alumno',
+        detail: msg ? decodeURIComponent(msg).slice(0, 140) : 'Error',
+      };
+    }
+    return null;
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!toast) return;
+    setOcultar(false);
+    const t = setTimeout(() => setOcultar(true), 9000);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete('sync');
+    url.searchParams.delete('ms');
+    url.searchParams.delete('msg');
+    router.replace(url.pathname + (url.search ? url.search : ''), { scroll: false });
+  }, [toast, router]);
+
+  if (!toast || ocultar) return null;
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      style={{
+        position: 'fixed',
+        top: 16,
+        right: 16,
+        zIndex: 5000,
+        maxWidth: 420,
+        background: toast.kind === 'ok' ? 'rgba(16, 185, 129, 0.95)' : 'rgba(239, 68, 68, 0.95)',
+        color: 'white',
+        borderRadius: 12,
+        padding: '0.75rem 0.9rem',
+        boxShadow: '0 10px 25px rgba(0,0,0,0.25)',
+        fontSize: '0.9rem',
+        lineHeight: 1.35,
+        cursor: 'pointer',
+      }}
+      onClick={() => setOcultar(true)}
+      title="Click para cerrar"
+    >
+      <div style={{ fontWeight: 800 }}>{toast.title}</div>
+      <div style={{ opacity: 0.95, marginTop: 2 }}>{toast.detail}</div>
+    </div>
+  );
+}
 
 export default function Dashboard() {
   const { sesion, loading, sesionError, recargarSesion } = useAuth();
@@ -94,6 +167,10 @@ export default function Dashboard() {
   return (
     <LayoutWrapper>
       <div className="main-container">
+        <Suspense fallback={null}>
+          <AlumnoSyncToast />
+        </Suspense>
+
         <h1 className="page-title">
           Sistema de Uniformes Winston Churchill
           <span className="title-icon">✨</span>
