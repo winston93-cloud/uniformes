@@ -70,6 +70,16 @@ function AlumnoSyncModal() {
     }
   };
 
+  // Auto-cierre a los 2s, aunque no den Aceptar.
+  useEffect(() => {
+    if (!abierta) return;
+    const t = window.setTimeout(() => {
+      aceptar();
+    }, 2000);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [abierta]);
+
   if (!modalState || !abierta) return null;
   return (
     <div
