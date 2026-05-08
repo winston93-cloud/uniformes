@@ -1251,38 +1251,26 @@ export default function PrendasPage() {
                   }
                 }
 
-                const { error: errorActualizacion } = await supabase
-                  .from('costos')
-                  .update({
-                    stock_inicial: total,
-                    stock_minimo: stockMinimo,
-                    stock: total,
-                    ubicacion_almacenamiento_id: null,
-                  })
-                  .eq('id', String(costoExistente.id));
+                const partidas = partidasUbicacion
+                  .map((p) => ({
+                    ubicacion_almacenamiento_id: p.ubicacion_id,
+                    cantidad: parseEnteroFormateado(p.cantidad),
+                  }))
+                  .filter((row) => row.cantidad > 0);
 
-                if (errorActualizacion) throw errorActualizacion;
-
-                const { error: delErr } = await supabase
-                  .from('costo_ubicaciones')
-                  .delete()
-                  .eq('costo_id', costoExistente.id);
-                if (delErr) throw delErr;
-
-                if (total > 0 && partidasUbicacion.length > 0) {
-                  const inserts = partidasUbicacion
-                    .map((p) => ({
-                      costo_id: costoExistente.id,
-                      ubicacion_almacenamiento_id: p.ubicacion_id,
-                      cantidad: parseEnteroFormateado(p.cantidad),
-                    }))
-                    .filter((row) => row.cantidad > 0);
-                  if (inserts.length > 0) {
-                    const { error: insErr } = await supabase
-                      .from('costo_ubicaciones')
-                      .insert(inserts);
-                    if (insErr) throw insErr;
+                const { data: rpcData, error: rpcErr } = await supabase.rpc(
+                  'configurar_stock_costo_atomico',
+                  {
+                    p_costo_id: String(costoExistente.id),
+                    p_stock: total,
+                    p_stock_minimo: stockMinimo,
+                    p_partidas: partidas,
                   }
+                );
+
+                if (rpcErr) throw rpcErr;
+                if (rpcData?.success === false) {
+                  throw new Error(String(rpcData?.error || 'No se pudo configurar el stock.'));
                 }
 
                 setMensajeExitoStock('✅ Stock configurado correctamente');
