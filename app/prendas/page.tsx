@@ -1258,19 +1258,19 @@ export default function PrendasPage() {
                   }))
                   .filter((row) => row.cantidad > 0);
 
-                const { data: rpcData, error: rpcErr } = await supabase.rpc(
-                  'configurar_stock_costo_atomico',
-                  {
-                    p_costo_id: String(costoExistente.id),
-                    p_stock: total,
-                    p_stock_minimo: stockMinimo,
-                    p_partidas: partidas,
-                  }
-                );
-
-                if (rpcErr) throw rpcErr;
-                if (rpcData?.success === false) {
-                  throw new Error(String(rpcData?.error || 'No se pudo configurar el stock.'));
+                const res = await fetch('/api/costos/configurar-stock', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    costo_id: String(costoExistente.id),
+                    stock: total,
+                    stock_minimo: stockMinimo,
+                    partidas,
+                  }),
+                });
+                const json = await res.json().catch(() => null);
+                if (!json?.success) {
+                  throw new Error(String(json?.error || `No se pudo configurar el stock (HTTP ${res.status})`));
                 }
 
                 setMensajeExitoStock('✅ Stock configurado correctamente');
