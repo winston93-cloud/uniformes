@@ -182,6 +182,34 @@ export function usePedidos(sucursal_id?: string) {
         throw new Error(data.error || data.message || 'Error desconocido');
       }
 
+      // Post-fix: en Supabase prod puede existir una versión vieja de crear_pedido_atomico
+      // que descuenta costos.stock pero no costo_ubicaciones. Para garantizar consistencia,
+      // reconciliamos ubicaciones vs stock por cada costo vendido (cantidad_con_stock > 0).
+      try {
+        const sucId = pedido_sucursal_id || sucursal_id;
+        const vendidos = detallesJsonb.filter((d: any) => Number(d?.cantidad_con_stock ?? 0) > 0);
+        for (const d of vendidos) {
+          if (!sucId) continue;
+          // eslint-disable-next-line no-await-in-loop
+          const { data: costoRow, error: costoErr } = await supabase
+            .from('costos')
+            .select('id')
+            .eq('prenda_id', String(d.prenda_id))
+            .eq('talla_id', String(d.talla_id))
+            .eq('sucursal_id', String(sucId))
+            .maybeSingle();
+          if (costoErr || !costoRow?.id) continue;
+          // eslint-disable-next-line no-await-in-loop
+          await fetch('/api/costos/reconciliar-ubicaciones', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ costo_id: String(costoRow.id) }),
+          }).catch(() => null);
+        }
+      } catch {
+        // No bloquear la venta por esto: es corrección de consistencia.
+      }
+
       await fetchPedidos();
       return { 
         success: true, 
