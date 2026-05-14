@@ -882,8 +882,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
 
     // El JPG del formato ya trae impresos los títulos de columna en la franja azul.
     // No dibujar fila de encabezado con autoTable (evita empalme/duplicado CANT./CANTIDAD, etc.).
-    // Sin fila `head` de autoTable, la tabla subía; bajar ~2 renglones (~8 mm) vs 52.
-    const tableTopY = 60;
+    // Sin fila `head` de autoTable, la tabla subía; calibración respecto al JPG del formato.
+    const tableTopY = 62;
     autoTable(doc, {
       // Importante: startY solo aplica a la primera página.
       // Para páginas siguientes, hay que usar margin.top para que el encabezado
