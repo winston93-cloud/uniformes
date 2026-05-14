@@ -26,6 +26,18 @@ import {
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+/** Moneda en PDF cotización: miles con separador y 2 decimales (es-MX). */
+function formatoMonedaPdfCotizacion(n: number): string {
+  const v = Number(n);
+  if (!Number.isFinite(v)) return '$0.00';
+  return new Intl.NumberFormat('es-MX', {
+    style: 'currency',
+    currency: 'MXN',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(v);
+}
+
 interface ModalCotizacionProps {
   onClose: () => void;
 }
@@ -868,10 +880,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       if (moneda) doc.text(doc.splitTextToSize(moneda, 28), xR, yMoneda);
     };
 
-    // Ajuste: el encabezado de columnas debe caer sobre la franja azul del JPG,
-    // y NO debe dibujarse un bloque oscuro extra por parte del PDF.
-    // Subir encabezados + partidas ~8 renglones
-    // Ajuste fino: bajar medio renglón la tabla
+    // El JPG del formato ya trae impresos los títulos de columna en la franja azul.
+    // No dibujar fila de encabezado con autoTable (evita empalme/duplicado CANT./CANTIDAD, etc.).
     const tableTopY = 52;
     autoTable(doc, {
       // Importante: startY solo aplica a la primera página.
@@ -879,21 +889,17 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       // de la tabla NO se vaya hasta arriba y quede alineado al bloque azul del formato.
       startY: tableTopY,
       margin: { left: 14, right: 14, top: tableTopY, bottom: 28 },
-      showHead: 'everyPage',
-      head: [['CANT.', 'DESCRIPCIÓN', 'TALLA', 'COLOR', 'P. UNITARIO', 'VALOR DE VENTA']],
+      showHead: false,
       body: data.partidas.map((p) => [
         String(p.cantidad),
         p.prenda_nombre + (p.especificaciones ? `\n${p.especificaciones}` : ''),
         p.talla,
         p.color || '-',
-        `$${p.precio_unitario.toFixed(2)}`,
-        `$${p.subtotal.toFixed(2)}`,
+        formatoMonedaPdfCotizacion(p.precio_unitario),
+        formatoMonedaPdfCotizacion(p.subtotal),
       ]),
       theme: 'grid',
       styles: { fontSize: 9, cellPadding: 2, textColor: [15, 23, 42] },
-      // El fondo del encabezado lo aporta el JPG (franja azul).
-      // Importante: desactivar relleno del head (sin bloque blanco) y usar texto blanco.
-      headStyles: { fillColor: false as any, textColor: [255, 255, 255], fontStyle: 'bold' },
       columnStyles: {
         0: { cellWidth: 16, halign: 'right' },
         1: { cellWidth: 78 },
@@ -917,12 +923,12 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
     let yTot = Math.min(finalY + 10, pageH - 70);
-    doc.text(`Subtotal: $${data.totales.subtotal.toFixed(2)}`, 140, yTot);
+    doc.text(`Subtotal: ${formatoMonedaPdfCotizacion(data.totales.subtotal)}`, 140, yTot);
     if (data.incluirIva) {
       yTot += 7;
       doc.setFont('helvetica', 'normal');
       doc.text(
-        `IVA (${(TASA_IVA_TRASLADADO * 100).toFixed(0)}%): $${data.totales.montoIva.toFixed(2)}`,
+        `IVA (${(TASA_IVA_TRASLADADO * 100).toFixed(0)}%): ${formatoMonedaPdfCotizacion(data.totales.montoIva)}`,
         140,
         yTot
       );
@@ -930,7 +936,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     if (data.incluirIsr) {
       yTot += 7;
       doc.text(
-        `Ret. ISR RESICO (${(TASA_ISR_RETENCION * 100).toFixed(2)}% s/importe sin IVA): −$${data.totales.montoIsrRet.toFixed(2)}`,
+        `Ret. ISR RESICO (${(TASA_ISR_RETENCION * 100).toFixed(2)}% s/importe sin IVA): −${formatoMonedaPdfCotizacion(data.totales.montoIsrRet)}`,
         140,
         yTot
       );
@@ -938,7 +944,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     yTot += 12;
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(14);
-    doc.text(`TOTAL: $${data.totales.total.toFixed(2)}`, 140, yTot);
+    doc.text(`TOTAL: ${formatoMonedaPdfCotizacion(data.totales.total)}`, 140, yTot);
 
     // Condiciones
     const yCond = yTot + 16;
