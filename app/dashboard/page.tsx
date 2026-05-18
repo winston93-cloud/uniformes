@@ -126,19 +126,18 @@ export default function Dashboard() {
   const [tarjetaExpandida, setTarjetaExpandida] = useState<'insumos' | 'alertas' | 'prendas' | null>(null);
   const [bitacoraAbierta, setBitacoraAbierta] = useState(false);
   const [actualizarBDAbierto, setActualizarBDAbierto] = useState(false);
-  const [syncDisparado, setSyncDisparado] = useState(false);
-
-  // Si se entra directo a /dashboard (Android/iOS/restore tab), forzar sync para que siempre haya modal.
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if (syncDisparado) return;
-    const sp = new URLSearchParams(window.location.search);
-    const sync = sp.get('sync');
-    if (!sync) {
-      setSyncDisparado(true);
-      window.location.replace('/api/alumno/refresh-full?redirect=/dashboard');
-    }
-  }, [syncDisparado]);
+  // Respaldo MySQL → Supabase desactivado temporalmente (cambio de servidor).
+  // const [syncDisparado, setSyncDisparado] = useState(false);
+  // useEffect(() => {
+  //   if (typeof window === 'undefined') return;
+  //   if (syncDisparado) return;
+  //   const sp = new URLSearchParams(window.location.search);
+  //   const sync = sp.get('sync');
+  //   if (!sync) {
+  //     setSyncDisparado(true);
+  //     window.location.replace('/api/alumno/refresh-full?redirect=/dashboard');
+  //   }
+  // }, [syncDisparado]);
 
   const handleToggleInsumos = () => {
     setTarjetaExpandida(prev => prev === 'insumos' ? null : 'insumos');

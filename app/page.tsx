@@ -10,8 +10,9 @@ export default function Home() {
 
   useEffect(() => {
     if (!loading) {
-      // Forzar sync siempre al abrir Uniformes.
-      window.location.replace('/api/alumno/refresh-full?redirect=/dashboard');
+      // Respaldo MySQL → Supabase desactivado temporalmente (cambio de servidor / ETIMEDOUT).
+      // window.location.replace('/api/alumno/refresh-full?redirect=/dashboard');
+      router.replace('/dashboard');
     }
   }, [loading, router]);
 
