@@ -70,7 +70,9 @@ export async function GET(req: Request) {
 
     // Refresh "safe" en Vercel: delega a sync incremental existente.
     // (Evita timeouts de vaciado + carga completa en una sola invocación).
-    const res = await fetch(new URL(`/api/alumno/sync-mysql?limit=${limit}`, url.origin), {
+    const full = url.searchParams.get('full') === '1' || url.searchParams.get('full') === 'true';
+    const syncUrl = `/api/alumno/sync-mysql?limit=${limit}${full ? '&full=1' : ''}`;
+    const res = await fetch(new URL(syncUrl, url.origin), {
       method: 'GET',
       headers: { accept: 'application/json' },
     });

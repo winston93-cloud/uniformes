@@ -18,6 +18,8 @@ const BodySchema = z
     limit: z.number().int().positive().max(20000).default(5000),
     /** Forzar desde una fecha ISO (opcional). Si no, usa MAX(alumno_actualizacion) en Supabase. */
     since: z.string().min(10).optional(),
+    /** true = ignorar última fecha en Supabase y traer todos los del filtro de ciclo (recuperación). */
+    full: z.boolean().optional(),
   })
   .default({ limit: 5000 });
 
@@ -80,11 +82,12 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const limit = parsePositiveInt(url.searchParams.get('limit'), 5000, 1, 20000);
   const since = url.searchParams.get('since') ?? undefined;
+  const full = url.searchParams.get('full') === '1' || url.searchParams.get('full') === 'true';
   return POST(
     new Request(req.url, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ limit, ...(since ? { since } : {}) }),
+      body: JSON.stringify({ limit, ...(since ? { since } : {}), ...(full ? { full: true } : {}) }),
     })
   );
 }
@@ -98,11 +101,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Body inválido', issues: parsed.error.issues }, { status: 400 });
     }
 
-    const { limit, since } = parsed.data;
+    const { limit, since, full } = parsed.data;
     const supabaseAdmin = getSupabaseAdmin();
 
-    let sinceTs: string | null = since ? toIsoOrNull(since) : null;
-    if (!sinceTs) {
+    let sinceTs: string | null = full ? null : since ? toIsoOrNull(since) : null;
+    if (!sinceTs && !full) {
       // Nota: `alumno_actualizacion` existe y trae timestamptz en Supabase.
       const { data, error } = await supabaseAdmin
         .from('alumno')
@@ -126,6 +129,7 @@ export async function POST(req: Request) {
       password: mysqlPassword,
       database: mysqlDatabase,
       port: mysqlPort,
+      connectTimeout: 15_000,
       ssl: optEnv('MYSQL_SSL') === 'true' ? { rejectUnauthorized: false } : undefined,
     });
 
@@ -216,6 +220,7 @@ export async function POST(req: Request) {
       const payload = {
         success: true,
         sinceTs,
+        full: Boolean(full),
         fetched: totalFetched,
         mapped: totalMapped,
         upserted,
