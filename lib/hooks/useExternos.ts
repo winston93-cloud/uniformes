@@ -92,7 +92,6 @@ export function useExternos() {
         .from('externos')
         .select('*')
         .or(`nombre.ilike.%${consulta}%,email.ilike.%${consulta}%,telefono.ilike.%${consulta}%`)
-        .eq('activo', true)
         .order('nombre', { ascending: true })
         .limit(20);
 

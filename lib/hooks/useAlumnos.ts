@@ -1,6 +1,11 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import {
+  ciclosAlumnoParaBusqueda,
+  nombreCompletoAlumno,
+  textoBusquedaAlumno,
+} from '../alumnoDisplay';
 import { getSupabaseErrorMessage, supabase } from '../supabase';
 
 export interface AlumnoFromDB {
@@ -54,10 +59,7 @@ const numeroAGrupo = (num: number | null): string | null => {
 };
 
 export const mapAlumnoFromDB = (db: AlumnoFromDB): Alumno => {
-  const nombreCompleto =
-    db.alumno_nombre_completo ||
-    [db.alumno_nombre, db.alumno_app, db.alumno_apm].filter(Boolean).join(' ') ||
-    'Sin nombre';
+  const nombreCompleto = nombreCompletoAlumno(db) || 'Sin nombre';
 
   return {
     id: db.alumno_id.toString(),
@@ -146,14 +148,13 @@ export function useAlumnos(cicloEscolar?: number) {
       if (err) throw err;
 
       let rawRows = data || [];
-      if (cicloEscolar !== undefined) {
-        rawRows = rawRows.filter((raw) => {
-          const r = raw as Record<string, unknown>;
-          const c = r.ciclo_escolar ?? r.cicloEscolar ?? r.alumno_ciclo_escolar;
-          if (c === undefined || c === null) return true;
-          return Number(c) === cicloEscolar;
-        });
-      }
+      const ciclosPermitidos = new Set(ciclosAlumnoParaBusqueda(cicloEscolar));
+      rawRows = rawRows.filter((raw) => {
+        const r = raw as Record<string, unknown>;
+        const c = r.alumno_ciclo_escolar ?? r.ciclo_escolar ?? r.cicloEscolar;
+        if (c === undefined || c === null) return true;
+        return ciclosPermitidos.has(Number(c));
+      });
 
       const rows = rawRows.map((r) => mapAlumnoRow(r as Record<string, unknown>));
       rows.sort((a, b) => a.referencia.localeCompare(b.referencia, 'es'));
@@ -176,28 +177,46 @@ export function useAlumnos(cicloEscolar?: number) {
       const consulta = escaparWildcards(query.trim());
       if (!consulta) return [];
 
-      const { data, error } = await supabase
+      const qLower = query.trim().toLowerCase();
+      const ciclos = ciclosAlumnoParaBusqueda(cicloEscolar);
+
+      // Sin `alumno_nombre_completo` en el esquema nuevo: buscar por ref y por partes del nombre.
+      let q = supabase
         .from('alumno')
         .select('*')
-        .eq('alumno_status', 1)
         .or(
-          `alumno_ref.ilike.%${consulta}%,alumno_nombre_completo.ilike.%${consulta}%,alumno_nombre.ilike.%${consulta}%,alumno_app.ilike.%${consulta}%,alumno_apm.ilike.%${consulta}%`
+          `alumno_ref.ilike.%${consulta}%,alumno_nombre.ilike.%${consulta}%,alumno_app.ilike.%${consulta}%,alumno_apm.ilike.%${consulta}%`
         )
-        .limit(100);
+        .limit(150);
 
+      if (ciclos.length === 1) {
+        q = q.eq('alumno_ciclo_escolar', ciclos[0]);
+      } else if (ciclos.length > 1) {
+        q = q.in('alumno_ciclo_escolar', ciclos);
+      }
+
+      const { data, error } = await q;
       if (error) throw error;
 
-      let rawRows = data || [];
-      if (cicloEscolar !== undefined) {
-        rawRows = rawRows.filter((raw) => {
-          const r = raw as Record<string, unknown>;
-          const c = r.ciclo_escolar ?? r.cicloEscolar ?? r.alumno_ciclo_escolar;
-          if (c === undefined || c === null) return true;
-          return Number(c) === cicloEscolar;
+      let rawRows = (data || []) as Record<string, unknown>[];
+
+      // Activo: alumno_status === 1 (si viene otro valor, no mostrar)
+      rawRows = rawRows.filter((r) => {
+        const st = r.alumno_status ?? r.alumnoStatus;
+        if (st === undefined || st === null) return true;
+        return Number(st) === 1;
+      });
+
+      // Coincidencia por nombre completo armado (ej. "jana paola aguilar")
+      const tokens = qLower.split(/\s+/).filter(Boolean);
+      if (tokens.length > 0) {
+        rawRows = rawRows.filter((r) => {
+          const blob = textoBusquedaAlumno(r as Parameters<typeof textoBusquedaAlumno>[0]);
+          return tokens.every((t) => blob.includes(t));
         });
       }
 
-      return rawRows.map((r) => mapAlumnoRow(r as Record<string, unknown>));
+      return rawRows.slice(0, 100).map((r) => mapAlumnoRow(r));
     },
     [cicloEscolar]
   );

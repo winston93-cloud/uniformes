@@ -80,7 +80,7 @@ function PedidosPageContent() {
   const [mensajeExitoStock, setMensajeExitoStock] = useState('');
   const { costos, getCostosByPrenda, refetch: refetchCostos } = useCostos(sesion?.sucursal_id);
   const { alumnos, searchAlumnos } = useAlumnos(cicloEscolar);
-  const { externos } = useExternos();
+  const { searchExternos } = useExternos();
   const { prendas } = usePrendas();
   const { tallas } = useTallas();
   const { pedidos: pedidosDB, loading: loadingPedidos, crearPedido, actualizarEstadoPedido, eliminarPedidoDefinitivo } =
@@ -207,23 +207,19 @@ function PedidosPageContent() {
           });
         }
 
-        // Buscar en externos
-        const externosFiltrados = externos
-          .filter(e => e.activo && (
-            e.nombre.toLowerCase().includes(query) ||
-            (e.email && e.email.toLowerCase().includes(query)) ||
-            (e.telefono && e.telefono.includes(query))
-          ))
-          .slice(0, 10 - resultados.length);
-
-        externosFiltrados.forEach(externo => {
-          resultados.push({
-            id: externo.id,
-            nombre: externo.nombre,
-            tipo: 'externo',
-            datos: externo,
+        // Buscar en externos (servidor; la tabla puede no tener columna `activo`)
+        const externosEncontrados = await searchExternos(query);
+        if (isMounted && externosEncontrados?.length) {
+          externosEncontrados.slice(0, 10 - resultados.length).forEach((externo) => {
+            if (externo.activo === false) return;
+            resultados.push({
+              id: externo.id,
+              nombre: externo.nombre,
+              tipo: 'externo',
+              datos: externo,
+            });
           });
-        });
+        }
 
         if (isMounted) {
           setResultadosBusqueda(resultados.slice(0, 10));
