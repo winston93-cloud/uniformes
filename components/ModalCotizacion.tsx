@@ -912,18 +912,30 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       willDrawPage: () => {
         pintarFondo();
       },
-      didDrawPage: (hookData) => {
-        // Pintar encabezado en TODAS las páginas para que la tabla siempre
-        // arranque debajo del formato, y no se vea un encabezado suelto arriba.
+      didDrawPage: () => {
         pintarHeader();
       },
     });
 
-    // Totales (subtotal partidas + IVA / − ISR según checkboxes)
-    const finalY = (doc as any).lastAutoTable?.finalY || 105;
+    const margenInferior = 12;
+    const yTrasTabla = ((doc as any).lastAutoTable?.finalY as number | undefined) ?? tableTopY + 10;
+
+    /** Si no cabe el bloque, nueva página (solo fondo; sin repetir encabezado de cliente). */
+    const asegurarEspacioVertical = (y: number, altoNecesario: number) => {
+      if (y + altoNecesario <= pageH - margenInferior) return y;
+      doc.addPage();
+      pintarFondo();
+      doc.setTextColor(15, 23, 42);
+      return tableTopY + 6;
+    };
+
+    // Totales siempre debajo de la última fila de partidas (sin tope fijo que los empuje hacia arriba).
+    const altoTotales =
+      10 + (data.incluirIva ? 7 : 0) + (data.incluirIsr ? 7 : 0) + 12 + 6;
+    let yTot = asegurarEspacioVertical(yTrasTabla + 8, altoTotales);
+
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
-    let yTot = Math.min(finalY + 10, pageH - 70);
     doc.text(`Subtotal: ${formatoMonedaPdfCotizacion(data.totales.subtotal)}`, 140, yTot);
     if (data.incluirIva) {
       yTot += 7;
@@ -947,8 +959,13 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     doc.setFontSize(14);
     doc.text(`TOTAL: ${formatoMonedaPdfCotizacion(data.totales.total)}`, 140, yTot);
 
-    // Condiciones
-    const yCond = yTot + 16;
+    // Condiciones (debajo de totales; nueva página si hace falta)
+    const lineasObs = data.observaciones
+      ? doc.splitTextToSize(data.observaciones, 180)
+      : [];
+    const altoCondiciones = 16 + 7 + 13 + 7 + 13 + 7 + (data.observaciones ? 13 + lineasObs.length * 5 : 0);
+    let yCond = asegurarEspacioVertical(yTot + 14, altoCondiciones);
+
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     doc.text('Condiciones de Pago:', 14, yCond);
@@ -969,8 +986,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       doc.setFont('helvetica', 'bold');
       doc.text('Observaciones:', 14, yCond + 60);
       doc.setFont('helvetica', 'normal');
-      const lineas = doc.splitTextToSize(data.observaciones, 180);
-      doc.text(lineas, 14, yCond + 67);
+      doc.text(lineasObs, 14, yCond + 67);
     }
 
     return doc;
