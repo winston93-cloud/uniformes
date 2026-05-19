@@ -126,7 +126,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   const primeraSubPartidaInputRef = useRef<HTMLInputElement>(null);
   const primeraSubPartidaSelectRef = useRef<HTMLSelectElement>(null);
   const fondoCotizacionDataUrlRef = useRef<string | null>(null);
-  const fondoEtiquetasTotalesRecorteRef = useRef<string | null>(null);
+  const fondoHojaCotizacionDataUrlRef = useRef<string | null>(null);
   const [cargandoFondoCotizacionPdf, setCargandoFondoCotizacionPdf] = useState(false);
   
   // Estados para posicionamiento de dropdowns en portal
@@ -241,7 +241,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     void (async () => {
       try {
         setCargandoFondoCotizacionPdf(true);
-        await obtenerFondoCotizacionDataUrl();
+        await Promise.all([obtenerFondoCotizacionDataUrl(), obtenerFondoHojaCotizacionDataUrl()]);
       } finally {
         setCargandoFondoCotizacionPdf(false);
       }
@@ -306,33 +306,12 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     return dataUrl;
   }
 
-  async function recortarFondoEtiquetasTotales(
-    fondoDataUrl: string,
-    rectMm: { x: number; y: number; w: number; h: number },
-    pageMmW: number,
-    pageMmH: number
-  ): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onerror = () => reject(new Error('No se pudo recortar el fondo de cotización'));
-      img.onload = () => {
-        const sx = (rectMm.x / pageMmW) * img.width;
-        const sy = (rectMm.y / pageMmH) * img.height;
-        const sw = (rectMm.w / pageMmW) * img.width;
-        const sh = (rectMm.h / pageMmH) * img.height;
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.max(1, Math.round(sw));
-        canvas.height = Math.max(1, Math.round(sh));
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          reject(new Error('Canvas no disponible'));
-          return;
-        }
-        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL('image/jpeg', 0.92));
-      };
-      img.src = fondoDataUrl;
-    });
+  /** Fondo para hojas de partidas: mismo formato sin rótulos SUBTOTAL/IVA/TOTAL del JPG. */
+  async function obtenerFondoHojaCotizacionDataUrl(): Promise<string> {
+    if (fondoHojaCotizacionDataUrlRef.current) return fondoHojaCotizacionDataUrlRef.current;
+    const dataUrl = await cargarImagenComoDataUrl('/cotizacion-fondo-hoja.jpg');
+    fondoHojaCotizacionDataUrlRef.current = dataUrl;
+    return dataUrl;
   }
 
   // Calcular posición del dropdown de clientes cuando se muestra
@@ -833,32 +812,20 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     const doc = new jsPDF();
     const pageW = doc.internal.pageSize.getWidth();
     const pageH = doc.internal.pageSize.getHeight();
-    const fondo = await obtenerFondoCotizacionDataUrl();
+    const [fondoCierre, fondoHoja] = await Promise.all([
+      obtenerFondoCotizacionDataUrl(),
+      obtenerFondoHojaCotizacionDataUrl(),
+    ]);
 
-    // Zona del JPG con rótulos SUBTOTAL / DESCUENTO / IVA / TOTAL (solo debe verse al final).
-    const totalesEtiquetasRect = { x: 118, y: 232, w: 92, h: 48 };
-
-    const pintarFondo = (opts?: { ocultarEtiquetasTotales?: boolean }) => {
-      doc.addImage(fondo, 'JPEG', 0, 0, pageW, pageH);
-      if (opts?.ocultarEtiquetasTotales) {
-        const { x, y, w, h } = totalesEtiquetasRect;
-        doc.setFillColor(255, 255, 255);
-        doc.rect(x, y, w, h, 'F');
-      }
+    /** partidas = sin rótulos de totales; cierre = formato completo (solo última hoja). */
+    const pintarFondo = (variante: 'partidas' | 'cierre' = 'partidas') => {
+      const img = variante === 'cierre' ? fondoCierre : fondoHoja;
+      doc.addImage(img, 'JPEG', 0, 0, pageW, pageH);
     };
 
-    const obtenerRecorteEtiquetasTotales = async () => {
-      if (fondoEtiquetasTotalesRecorteRef.current) return fondoEtiquetasTotalesRecorteRef.current;
-      const recorte = await recortarFondoEtiquetasTotales(fondo, totalesEtiquetasRect, pageW, pageH);
-      fondoEtiquetasTotalesRecorteRef.current = recorte;
-      return recorte;
-    };
-
-    const restaurarEtiquetasTotales = async () => {
-      const recorte = await obtenerRecorteEtiquetasTotales();
-      const { x, y, w, h } = totalesEtiquetasRect;
-      doc.addImage(recorte, 'JPEG', x, y, w, h);
-    };
+    // Columna de importes alineada al JPG (rótulos fijos ~y 274–282 mm en hoja de cierre).
+    const xImportesTotales = 176;
+    const yImportesTotalesCierre = { subtotal: 274, iva: 279, total: 282 };
 
     const pintarHeader = () => {
       doc.setTextColor(15, 23, 42);
@@ -961,7 +928,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
         5: { cellWidth: 28, halign: 'right' },
       },
       willDrawPage: () => {
-        pintarFondo({ ocultarEtiquetasTotales: true });
+        pintarFondo('partidas');
       },
       didDrawPage: () => {
         pintarHeader();
@@ -973,77 +940,121 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     const paginaFinalTabla = doc.getNumberOfPages();
 
     /** Si no cabe el bloque, nueva página con el mismo encabezado (cliente + comprobante). */
-    const asegurarEspacioVertical = (y: number, altoNecesario: number) => {
-      if (y + altoNecesario <= pageH - margenInferior) return y;
+    const asegurarEspacioVertical = (
+      y: number,
+      altoNecesario: number,
+      fondoNuevaPagina: 'partidas' | 'cierre' = 'partidas'
+    ) => {
+      if (y + altoNecesario <= pageH - margenInferior) return { y, paginaCierre: false };
       doc.addPage();
-      pintarFondo(); // página de cierre: rótulos SUBTOTAL/IVA/TOTAL del formato visibles
+      pintarFondo(fondoNuevaPagina);
       pintarHeader();
       doc.setTextColor(15, 23, 42);
-      return tableTopY + 6;
+      return { y: tableTopY + 6, paginaCierre: fondoNuevaPagina === 'cierre' };
     };
 
     // Totales siempre debajo de la última fila de partidas (sin tope fijo que los empuje hacia arriba).
     const altoTotales =
       10 + (data.incluirIva ? 7 : 0) + (data.incluirIsr ? 7 : 0) + 12 + 6;
-    let yTot = asegurarEspacioVertical(yTrasTabla + 8, altoTotales);
-    const paginaTotales = doc.getNumberOfPages();
-    if (paginaTotales === paginaFinalTabla) {
-      await restaurarEtiquetasTotales();
-    }
+    const espacioTotales = asegurarEspacioVertical(yTrasTabla + 8, altoTotales, 'cierre');
+    const paginaCierreTotales =
+      espacioTotales.paginaCierre || doc.getNumberOfPages() > paginaFinalTabla;
 
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
-    doc.text(`Subtotal: ${formatoMonedaPdfCotizacion(data.totales.subtotal)}`, 140, yTot);
-    if (data.incluirIva) {
-      yTot += 7;
-      doc.setFont('helvetica', 'normal');
-      doc.text(
-        `IVA (${(TASA_IVA_TRASLADADO * 100).toFixed(0)}%): ${formatoMonedaPdfCotizacion(data.totales.montoIva)}`,
-        140,
-        yTot
-      );
-    }
-    if (data.incluirIsr) {
-      yTot += 7;
-      doc.text(
-        `Ret. ISR RESICO (${(TASA_ISR_RETENCION * 100).toFixed(2)}% s/importe sin IVA): −${formatoMonedaPdfCotizacion(data.totales.montoIsrRet)}`,
-        140,
-        yTot
-      );
-    }
-    yTot += 12;
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14);
-    doc.text(`TOTAL: ${formatoMonedaPdfCotizacion(data.totales.total)}`, 140, yTot);
-
-    // Condiciones (debajo de totales; nueva página si hace falta)
     const lineasObs = data.observaciones
       ? doc.splitTextToSize(data.observaciones, 180)
       : [];
     const altoCondiciones = 16 + 7 + 13 + 7 + 13 + 7 + (data.observaciones ? 13 + lineasObs.length * 5 : 0);
-    let yCond = asegurarEspacioVertical(yTot + 14, altoCondiciones);
 
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Condiciones de Pago:', 14, yCond);
-    doc.setFont('helvetica', 'normal');
-    doc.text(doc.splitTextToSize(data.condicionesPago || '—', 180), 14, yCond + 7);
-
-    doc.setFont('helvetica', 'bold');
-    doc.text('Tiempo de Entrega:', 14, yCond + 20);
-    doc.setFont('helvetica', 'normal');
-    doc.text(doc.splitTextToSize(data.tiempoEntrega || '—', 180), 14, yCond + 27);
-
-    doc.setFont('helvetica', 'bold');
-    doc.text('Fecha de Entrega:', 14, yCond + 40);
-    doc.setFont('helvetica', 'normal');
-    doc.text(data.fechaEntregaTexto || '—', 14, yCond + 47);
-
-    if (data.observaciones) {
+    const dibujarCondiciones = (yCond: number) => {
+      doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
-      doc.text('Observaciones:', 14, yCond + 60);
+      doc.text('Condiciones de Pago:', 14, yCond);
       doc.setFont('helvetica', 'normal');
-      doc.text(lineasObs, 14, yCond + 67);
+      doc.text(doc.splitTextToSize(data.condicionesPago || '—', 180), 14, yCond + 7);
+
+      doc.setFont('helvetica', 'bold');
+      doc.text('Tiempo de Entrega:', 14, yCond + 20);
+      doc.setFont('helvetica', 'normal');
+      doc.text(doc.splitTextToSize(data.tiempoEntrega || '—', 180), 14, yCond + 27);
+
+      doc.setFont('helvetica', 'bold');
+      doc.text('Fecha de Entrega:', 14, yCond + 40);
+      doc.setFont('helvetica', 'normal');
+      doc.text(data.fechaEntregaTexto || '—', 14, yCond + 47);
+
+      if (data.observaciones) {
+        doc.setFont('helvetica', 'bold');
+        doc.text('Observaciones:', 14, yCond + 60);
+        doc.setFont('helvetica', 'normal');
+        doc.text(lineasObs, 14, yCond + 67);
+      }
+    };
+
+    const dibujarImportesTotalesCierre = () => {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.text(
+        formatoMonedaPdfCotizacion(data.totales.subtotal),
+        xImportesTotales,
+        yImportesTotalesCierre.subtotal
+      );
+      if (data.incluirIva) {
+        doc.setFont('helvetica', 'normal');
+        doc.text(
+          formatoMonedaPdfCotizacion(data.totales.montoIva),
+          xImportesTotales,
+          yImportesTotalesCierre.iva
+        );
+      }
+      if (data.incluirIsr) {
+        doc.text(
+          `−${formatoMonedaPdfCotizacion(data.totales.montoIsrRet)}`,
+          xImportesTotales,
+          yImportesTotalesCierre.subtotal + 2.5
+        );
+      }
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.text(
+        formatoMonedaPdfCotizacion(data.totales.total),
+        xImportesTotales,
+        yImportesTotalesCierre.total
+      );
+    };
+
+    if (paginaCierreTotales) {
+      // Hoja de cierre: condiciones arriba (zona libre), importes al pie junto a rótulos del JPG.
+      dibujarCondiciones(espacioTotales.y);
+      dibujarImportesTotalesCierre();
+    } else {
+      let yTot = espacioTotales.y;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.text(`Subtotal: ${formatoMonedaPdfCotizacion(data.totales.subtotal)}`, 140, yTot);
+      if (data.incluirIva) {
+        yTot += 7;
+        doc.setFont('helvetica', 'normal');
+        doc.text(
+          `IVA (${(TASA_IVA_TRASLADADO * 100).toFixed(0)}%): ${formatoMonedaPdfCotizacion(data.totales.montoIva)}`,
+          140,
+          yTot
+        );
+      }
+      if (data.incluirIsr) {
+        yTot += 7;
+        doc.text(
+          `Ret. ISR RESICO (${(TASA_ISR_RETENCION * 100).toFixed(2)}% s/importe sin IVA): −${formatoMonedaPdfCotizacion(data.totales.montoIsrRet)}`,
+          140,
+          yTot
+        );
+      }
+      yTot += 12;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.text(`TOTAL: ${formatoMonedaPdfCotizacion(data.totales.total)}`, 140, yTot);
+
+      const espacioCond = asegurarEspacioVertical(yTot + 14, altoCondiciones, 'partidas');
+      dibujarCondiciones(espacioCond.y);
     }
 
     return doc;
