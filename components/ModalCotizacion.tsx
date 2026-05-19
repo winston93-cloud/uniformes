@@ -126,6 +126,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   const primeraSubPartidaInputRef = useRef<HTMLInputElement>(null);
   const primeraSubPartidaSelectRef = useRef<HTMLSelectElement>(null);
   const fondoCotizacionDataUrlRef = useRef<string | null>(null);
+  const fondoEtiquetasTotalesRecorteRef = useRef<string | null>(null);
   const [cargandoFondoCotizacionPdf, setCargandoFondoCotizacionPdf] = useState(false);
   
   // Estados para posicionamiento de dropdowns en portal
@@ -303,6 +304,35 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     const dataUrl = await cargarImagenComoDataUrl('/cotizacion-fondo.jpg');
     fondoCotizacionDataUrlRef.current = dataUrl;
     return dataUrl;
+  }
+
+  async function recortarFondoEtiquetasTotales(
+    fondoDataUrl: string,
+    rectMm: { x: number; y: number; w: number; h: number },
+    pageMmW: number,
+    pageMmH: number
+  ): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('No se pudo recortar el fondo de cotización'));
+      img.onload = () => {
+        const sx = (rectMm.x / pageMmW) * img.width;
+        const sy = (rectMm.y / pageMmH) * img.height;
+        const sw = (rectMm.w / pageMmW) * img.width;
+        const sh = (rectMm.h / pageMmH) * img.height;
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(sw));
+        canvas.height = Math.max(1, Math.round(sh));
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Canvas no disponible'));
+          return;
+        }
+        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', 0.92));
+      };
+      img.src = fondoDataUrl;
+    });
   }
 
   // Calcular posición del dropdown de clientes cuando se muestra
@@ -805,8 +835,29 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     const pageH = doc.internal.pageSize.getHeight();
     const fondo = await obtenerFondoCotizacionDataUrl();
 
-    const pintarFondo = () => {
+    // Zona del JPG con rótulos SUBTOTAL / DESCUENTO / IVA / TOTAL (solo debe verse al final).
+    const totalesEtiquetasRect = { x: 118, y: 232, w: 92, h: 48 };
+
+    const pintarFondo = (opts?: { ocultarEtiquetasTotales?: boolean }) => {
       doc.addImage(fondo, 'JPEG', 0, 0, pageW, pageH);
+      if (opts?.ocultarEtiquetasTotales) {
+        const { x, y, w, h } = totalesEtiquetasRect;
+        doc.setFillColor(255, 255, 255);
+        doc.rect(x, y, w, h, 'F');
+      }
+    };
+
+    const obtenerRecorteEtiquetasTotales = async () => {
+      if (fondoEtiquetasTotalesRecorteRef.current) return fondoEtiquetasTotalesRecorteRef.current;
+      const recorte = await recortarFondoEtiquetasTotales(fondo, totalesEtiquetasRect, pageW, pageH);
+      fondoEtiquetasTotalesRecorteRef.current = recorte;
+      return recorte;
+    };
+
+    const restaurarEtiquetasTotales = async () => {
+      const recorte = await obtenerRecorteEtiquetasTotales();
+      const { x, y, w, h } = totalesEtiquetasRect;
+      doc.addImage(recorte, 'JPEG', x, y, w, h);
     };
 
     const pintarHeader = () => {
@@ -910,7 +961,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
         5: { cellWidth: 28, halign: 'right' },
       },
       willDrawPage: () => {
-        pintarFondo();
+        pintarFondo({ ocultarEtiquetasTotales: true });
       },
       didDrawPage: () => {
         pintarHeader();
@@ -919,12 +970,13 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
 
     const margenInferior = 12;
     const yTrasTabla = ((doc as any).lastAutoTable?.finalY as number | undefined) ?? tableTopY + 10;
+    const paginaFinalTabla = doc.getNumberOfPages();
 
     /** Si no cabe el bloque, nueva página con el mismo encabezado (cliente + comprobante). */
     const asegurarEspacioVertical = (y: number, altoNecesario: number) => {
       if (y + altoNecesario <= pageH - margenInferior) return y;
       doc.addPage();
-      pintarFondo();
+      pintarFondo(); // página de cierre: rótulos SUBTOTAL/IVA/TOTAL del formato visibles
       pintarHeader();
       doc.setTextColor(15, 23, 42);
       return tableTopY + 6;
@@ -934,6 +986,10 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     const altoTotales =
       10 + (data.incluirIva ? 7 : 0) + (data.incluirIsr ? 7 : 0) + 12 + 6;
     let yTot = asegurarEspacioVertical(yTrasTabla + 8, altoTotales);
+    const paginaTotales = doc.getNumberOfPages();
+    if (paginaTotales === paginaFinalTabla) {
+      await restaurarEtiquetasTotales();
+    }
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
