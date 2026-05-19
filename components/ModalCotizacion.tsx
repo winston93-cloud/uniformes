@@ -920,11 +920,12 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     const margenInferior = 12;
     const yTrasTabla = ((doc as any).lastAutoTable?.finalY as number | undefined) ?? tableTopY + 10;
 
-    /** Si no cabe el bloque, nueva página (solo fondo; sin repetir encabezado de cliente). */
+    /** Si no cabe el bloque, nueva página con el mismo encabezado (cliente + comprobante). */
     const asegurarEspacioVertical = (y: number, altoNecesario: number) => {
       if (y + altoNecesario <= pageH - margenInferior) return y;
       doc.addPage();
       pintarFondo();
+      pintarHeader();
       doc.setTextColor(15, 23, 42);
       return tableTopY + 6;
     };
