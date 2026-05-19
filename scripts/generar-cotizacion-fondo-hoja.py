@@ -5,7 +5,7 @@ from PIL import Image, ImageDraw
 SRC = 'public/cotizacion-fondo.jpg'
 DEST = 'public/cotizacion-fondo-hoja.jpg'
 # mm en A4: panel gris + SUBTOTAL/DESCUENTO/IVA/TOTAL (deja domicilio a la izquierda)
-RECT_MM = (128, 249, 210, 287)
+RECT_MM = (128, 249, 210, 293)
 
 img = Image.open(SRC).convert('RGB')
 w, h = img.size

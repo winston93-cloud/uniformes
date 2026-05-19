@@ -309,7 +309,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   /** Fondo para hojas de partidas: mismo formato sin rótulos SUBTOTAL/IVA/TOTAL del JPG. */
   async function obtenerFondoHojaCotizacionDataUrl(): Promise<string> {
     if (fondoHojaCotizacionDataUrlRef.current) return fondoHojaCotizacionDataUrlRef.current;
-    const dataUrl = await cargarImagenComoDataUrl('/cotizacion-fondo-hoja.jpg?v=2');
+    const dataUrl = await cargarImagenComoDataUrl('/cotizacion-fondo-hoja.jpg?v=3');
     fondoHojaCotizacionDataUrlRef.current = dataUrl;
     return dataUrl;
   }
@@ -823,9 +823,14 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       doc.addImage(img, 'JPEG', 0, 0, pageW, pageH);
     };
 
-    // Columna de importes alineada al JPG (rótulos fijos ~y 274–282 mm en hoja de cierre).
+    // Columna de importes alineada a SUBTOTAL / DESCUENTO / IVA / TOTAL del JPG (mm, baseline).
     const xImportesTotales = 176;
-    const yImportesTotalesCierre = { subtotal: 274, iva: 279, total: 282 };
+    const yImportesTotalesCierre = {
+      subtotal: 276.4,
+      descuento: 277.2,
+      iva: 279.1,
+      total: 281.3,
+    };
 
     const pintarHeader = () => {
       doc.setTextColor(15, 23, 42);
@@ -991,35 +996,30 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     };
 
     const dibujarImportesTotalesCierre = () => {
+      const { subtotal, descuento, iva, total } = yImportesTotalesCierre;
+
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(10);
-      doc.text(
-        formatoMonedaPdfCotizacion(data.totales.subtotal),
-        xImportesTotales,
-        yImportesTotalesCierre.subtotal
-      );
-      if (data.incluirIva) {
-        doc.setFont('helvetica', 'normal');
-        doc.text(
-          formatoMonedaPdfCotizacion(data.totales.montoIva),
-          xImportesTotales,
-          yImportesTotalesCierre.iva
-        );
-      }
+      doc.text(formatoMonedaPdfCotizacion(data.totales.subtotal), xImportesTotales, subtotal);
+
+      // Ret. ISR RESICO en fila DESCUENTO del formato (no hay descuento comercial en cotización).
       if (data.incluirIsr) {
+        doc.setFont('helvetica', 'normal');
         doc.text(
           `−${formatoMonedaPdfCotizacion(data.totales.montoIsrRet)}`,
           xImportesTotales,
-          yImportesTotalesCierre.subtotal + 2.5
+          descuento
         );
       }
+
+      if (data.incluirIva) {
+        doc.setFont('helvetica', 'normal');
+        doc.text(formatoMonedaPdfCotizacion(data.totales.montoIva), xImportesTotales, iva);
+      }
+
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(14);
-      doc.text(
-        formatoMonedaPdfCotizacion(data.totales.total),
-        xImportesTotales,
-        yImportesTotalesCierre.total
-      );
+      doc.setFontSize(10);
+      doc.text(formatoMonedaPdfCotizacion(data.totales.total), xImportesTotales, total);
     };
 
     if (paginaCierreTotales) {
