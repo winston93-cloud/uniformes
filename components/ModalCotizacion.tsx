@@ -309,7 +309,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   /** Fondo para hojas de partidas: mismo formato sin rótulos SUBTOTAL/IVA/TOTAL del JPG. */
   async function obtenerFondoHojaCotizacionDataUrl(): Promise<string> {
     if (fondoHojaCotizacionDataUrlRef.current) return fondoHojaCotizacionDataUrlRef.current;
-    const dataUrl = await cargarImagenComoDataUrl('/cotizacion-fondo-hoja.jpg');
+    const dataUrl = await cargarImagenComoDataUrl('/cotizacion-fondo-hoja.jpg?v=2');
     fondoHojaCotizacionDataUrlRef.current = dataUrl;
     return dataUrl;
   }
