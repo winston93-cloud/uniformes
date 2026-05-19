@@ -823,13 +823,13 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       doc.addImage(img, 'JPEG', 0, 0, pageW, pageH);
     };
 
-    // Columna de importes alineada a SUBTOTAL / DESCUENTO / IVA / TOTAL del JPG (mm, baseline).
+    // Columna de importes (mm, baseline) calibrada al JPG: ~275 / 279 / 283 / 288.
     const xImportesTotales = 176;
     const yImportesTotalesCierre = {
-      subtotal: 276.4,
-      descuento: 277.2,
-      iva: 279.1,
-      total: 281.3,
+      subtotal: 275.2,
+      descuento: 279.8,
+      iva: 283.8,
+      total: 288.8,
     };
 
     const pintarHeader = () => {
@@ -996,30 +996,32 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     };
 
     const dibujarImportesTotalesCierre = () => {
-      const { subtotal, descuento, iva, total } = yImportesTotalesCierre;
+      const ySub = yImportesTotalesCierre.subtotal;
+      const yDesc = yImportesTotalesCierre.descuento;
+      const yIva = yImportesTotalesCierre.iva;
+      const yTotal = yImportesTotalesCierre.total;
 
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(10);
-      doc.text(formatoMonedaPdfCotizacion(data.totales.subtotal), xImportesTotales, subtotal);
+      doc.text(formatoMonedaPdfCotizacion(data.totales.subtotal), xImportesTotales, ySub);
 
-      // Ret. ISR RESICO en fila DESCUENTO del formato (no hay descuento comercial en cotización).
       if (data.incluirIsr) {
         doc.setFont('helvetica', 'normal');
         doc.text(
           `−${formatoMonedaPdfCotizacion(data.totales.montoIsrRet)}`,
           xImportesTotales,
-          descuento
+          yDesc
         );
       }
 
       if (data.incluirIva) {
         doc.setFont('helvetica', 'normal');
-        doc.text(formatoMonedaPdfCotizacion(data.totales.montoIva), xImportesTotales, iva);
+        doc.text(formatoMonedaPdfCotizacion(data.totales.montoIva), xImportesTotales, yIva);
       }
 
+      // Siempre en la fila TOTAL del formato (aunque no haya IVA ni retención).
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(10);
-      doc.text(formatoMonedaPdfCotizacion(data.totales.total), xImportesTotales, total);
+      doc.text(formatoMonedaPdfCotizacion(data.totales.total), xImportesTotales, yTotal);
     };
 
     if (paginaCierreTotales) {
