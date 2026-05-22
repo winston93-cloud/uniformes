@@ -108,6 +108,11 @@ export default function ReportesPage() {
     return Number.isFinite(inicial) ? Math.max(0, Math.round(inicial)) : 0;
   };
 
+  const stockMinimoReporte = (costo: { stock_minimo?: number | null }) => {
+    const n = Number(costo.stock_minimo);
+    return Number.isFinite(n) ? Math.max(0, Math.round(n)) : 0;
+  };
+
   const generarPDFInventario = (datos: any[]) => {
     const doc = new jsPDF();
 
@@ -118,11 +123,12 @@ export default function ReportesPage() {
 
     autoTable(doc, {
       startY: 35,
-      head: [['Prenda', 'Talla', 'Stock Existente']],
+      head: [['Prenda', 'Talla', 'Stock Existente', 'Stock Mínimo']],
       body: datos.map((i) => [
         i.prenda?.nombre || '-',
         i.talla?.nombre || '-',
         stockExistenteReporte(i).toLocaleString('es-MX'),
+        stockMinimoReporte(i).toLocaleString('es-MX'),
       ]),
     });
 

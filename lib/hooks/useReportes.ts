@@ -211,6 +211,7 @@ export function useReportes(sucursal_id?: string) {
           id,
           stock,
           stock_inicial,
+          stock_minimo,
           prenda:prendas(nombre),
           talla:tallas(nombre, orden)
         `)
