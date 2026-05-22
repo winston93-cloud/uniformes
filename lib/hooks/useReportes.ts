@@ -201,6 +201,46 @@ export function useReportes(sucursal_id?: string) {
     }
   };
 
+  /** Inventario completo: prenda ↑, talla ↑ (orden de catálogo y nombre). */
+  const estadoInventario = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('costos')
+        .select(`
+          id,
+          stock,
+          stock_inicial,
+          prenda:prendas(nombre),
+          talla:tallas(nombre, orden)
+        `)
+        .eq('activo', true);
+
+      if (error) throw error;
+
+      const filas = (data || []) as any[];
+      filas.sort((a, b) => {
+        const porPrenda = (a.prenda?.nombre || '').localeCompare(b.prenda?.nombre || '', 'es', {
+          sensitivity: 'base',
+        });
+        if (porPrenda !== 0) return porPrenda;
+        const ordenA = Number(a.talla?.orden ?? 0);
+        const ordenB = Number(b.talla?.orden ?? 0);
+        if (ordenA !== ordenB) return ordenA - ordenB;
+        return (a.talla?.nombre || '').localeCompare(b.talla?.nombre || '', 'es', {
+          sensitivity: 'base',
+        });
+      });
+
+      return filas;
+    } catch (err: any) {
+      console.error('Error en estadoInventario:', err);
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const pedidosPendientes = async () => {
     try {
       setLoading(true);
@@ -425,6 +465,7 @@ export function useReportes(sucursal_id?: string) {
     ventasPorPeriodo,
     prendasMasVendidas,
     stockBajo,
+    estadoInventario,
     pedidosPendientes,
     clientesFrecuentes,
     resumenGeneral,

@@ -14,7 +14,7 @@ export default function ReportesPage() {
     loading,
     ventasPorPeriodo,
     prendasMasVendidas,
-    stockBajo,
+    estadoInventario,
     pedidosPendientes,
     clientesFrecuentes,
     resumenGeneral,
@@ -101,27 +101,31 @@ export default function ReportesPage() {
     window.open(doc.output('bloburl'), '_blank');
   };
 
+  const stockExistenteReporte = (costo: { stock?: number | null; stock_inicial?: number | null }) => {
+    const actual = Number(costo.stock);
+    if (Number.isFinite(actual)) return Math.max(0, Math.round(actual));
+    const inicial = Number(costo.stock_inicial);
+    return Number.isFinite(inicial) ? Math.max(0, Math.round(inicial)) : 0;
+  };
+
   const generarPDFInventario = (datos: any[]) => {
     const doc = new jsPDF();
-    
+
     doc.setFontSize(18);
-    doc.text('Estado de Inventario - Stock Bajo', 14, 20);
+    doc.text('Estado de Inventario', 14, 20);
     doc.setFontSize(11);
     doc.text(`Generado: ${new Date().toLocaleDateString('es-MX')}`, 14, 28);
-    
+
     autoTable(doc, {
       startY: 35,
-      head: [['Prenda', 'Talla', 'Stock Existente', 'Stock Actual', 'Estado']],
-      body: datos.map(i => [
+      head: [['Prenda', 'Talla', 'Stock Existente']],
+      body: datos.map((i) => [
         i.prenda?.nombre || '-',
         i.talla?.nombre || '-',
-        (i.stock_inicial || 0).toString(),
-        i.stock.toString(),
-        '⚠️ Stock Bajo'
+        stockExistenteReporte(i).toLocaleString('es-MX'),
       ]),
     });
-    
-    // Mostrar PDF en nueva pestaña en lugar de descargar
+
     window.open(doc.output('bloburl'), '_blank');
   };
 
@@ -273,9 +277,9 @@ export default function ReportesPage() {
           break;
 
         case 'inventario':
-          datos = await stockBajo();
+          datos = await estadoInventario();
           if (datos.length === 0) {
-            alert('No hay productos con stock bajo');
+            alert('No hay prendas activas en inventario');
             return;
           }
           generarPDFInventario(datos);
@@ -423,7 +427,7 @@ export default function ReportesPage() {
             </div>
             <h3 className="card-title">Estado de Inventario</h3>
             <p className="card-description">
-              Stock actual y productos con stock bajo
+              Listado completo de stock por prenda y talla
             </p>
             <button
               className="btn btn-primary"
