@@ -710,7 +710,11 @@ function PedidosPageContent() {
     if (resultado.success) {
       console.log('✅ Estado actualizado correctamente');
       if (nuevoEstado === 'COMPLETADO') {
-        alert('✅ Pedido marcado como COMPLETADO');
+        const avisos =
+          'warnings' in resultado && Array.isArray(resultado.warnings) && resultado.warnings.length
+            ? '\n\n⚠️ Sin descontar inventario:\n' + resultado.warnings.join('\n')
+            : '';
+        alert('✅ Pedido marcado como COMPLETADO' + avisos);
       } else {
         alert('✅ Pedido actualizado correctamente');
       }

@@ -241,6 +241,13 @@ export function usePedidos(sucursal_id?: string) {
         if (data && data.success === false) {
           throw new Error(data.error || 'Error al completar pedido');
         }
+        const warnings = Array.isArray(data?.warnings)
+          ? (data.warnings as string[]).filter(Boolean)
+          : [];
+        if (warnings.length > 0) {
+          await fetchPedidos();
+          return { success: true, warnings };
+        }
       } else {
         const { error } = await supabase
           .from('pedidos')
