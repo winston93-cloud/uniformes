@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { getSupabaseErrorMessage, supabase } from '@/lib/supabase';
+import { getSupabaseErrorMessage, supabase, usuarioIdParaRpc } from '@/lib/supabase';
 import { REFETCH_PEDIDOS_EVENT } from '@/lib/refetchPedidosEvent';
 
 interface Pedido {
@@ -235,7 +235,7 @@ export function usePedidos(sucursal_id?: string) {
       if (nuevoEstado === 'COMPLETADO') {
         const { data, error } = await supabase.rpc('completar_pedido_atomico', {
           p_pedido_id: id,
-          p_usuario_id: usuario_id ?? null,
+          p_usuario_id: usuarioIdParaRpc(usuario_id),
         });
         if (error) throw error;
         if (data && data.success === false) {

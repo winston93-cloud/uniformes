@@ -1,6 +1,16 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 /** PostgrestError no es instancia de Error; usar esto en catch de llamadas a Supabase. */
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/** RPCs con p_usuario_id UUID: sesión legacy (SMALLINT, ej. 1) no es válida → null. */
+export function usuarioIdParaRpc(usuario_id?: number | string | null): string | null {
+  if (usuario_id == null || usuario_id === '') return null;
+  const s = String(usuario_id).trim();
+  return UUID_RE.test(s) ? s : null;
+}
+
 export function getSupabaseErrorMessage(err: unknown): string {
   if (err === null || err === undefined) return 'Error desconocido';
   if (typeof err === 'string') return err;
