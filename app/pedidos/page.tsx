@@ -715,8 +715,9 @@ function PedidosPageContent() {
         alert('✅ Pedido actualizado correctamente');
       }
     } else {
-      console.error('❌ Error al actualizar estado:', resultado.error);
-      alert('❌ Error al actualizar el estado del pedido');
+      const msg = typeof resultado.error === 'string' ? resultado.error : 'Error desconocido';
+      console.error('❌ Error al actualizar estado:', msg);
+      alert(`❌ Error al actualizar el estado del pedido\n\n${msg}`);
     }
   };
 

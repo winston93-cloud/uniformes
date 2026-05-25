@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/lib/supabase';
+import { getSupabaseErrorMessage, supabase } from '@/lib/supabase';
 import { REFETCH_PEDIDOS_EVENT } from '@/lib/refetchPedidosEvent';
 
 interface Pedido {
@@ -253,8 +253,9 @@ export function usePedidos(sucursal_id?: string) {
       await fetchPedidos();
       return { success: true };
     } catch (error) {
-      console.error('Error al actualizar estado:', error);
-      return { success: false, error };
+      const msg = getSupabaseErrorMessage(error);
+      console.error('Error al actualizar estado:', msg, error);
+      return { success: false, error: msg };
     }
   };
 
