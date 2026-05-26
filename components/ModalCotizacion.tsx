@@ -25,6 +25,11 @@ import {
 } from '@/lib/datosFiscalesPdf';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import {
+  abrirVentanaPdfPlaceholder,
+  cerrarVentanaPdf,
+  mostrarPdfJsPDF,
+} from '@/lib/abrirPdfNavegador';
 
 /** Moneda en PDF cotización: miles con separador y 2 decimales (es-MX). */
 function formatoMonedaPdfCotizacion(n: number): string {
@@ -1079,6 +1084,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       return;
     }
 
+    const ventanaPdf = abrirVentanaPdfPlaceholder();
+
     try {
       setGenerando(true);
 
@@ -1137,8 +1144,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
           : '—',
         observaciones: observaciones || undefined,
       });
-      const pdfUrl = pdf.output('bloburl');
-      window.open(pdfUrl, '_blank');
+      mostrarPdfJsPDF(pdf, `Cotizacion-${data.folio}`, ventanaPdf);
 
       alert(
         cotizacionEditId
@@ -1149,6 +1155,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       limpiarCotizacionNueva();
       setVista('historial');
     } catch (err) {
+      cerrarVentanaPdf(ventanaPdf);
       console.error('Error:', err);
       alert('Error al crear cotización: ' + (err instanceof Error ? err.message : 'Error desconocido'));
     } finally {
@@ -1158,6 +1165,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
 
   // Ver PDF de cotización
   const verPDF = async (cotizacion: any) => {
+    const ventanaPdf = abrirVentanaPdfPlaceholder();
     try {
       const { detalle } = await obtenerCotizacion(cotizacion.id);
       
@@ -1217,9 +1225,9 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
         observaciones: cotizacion.observaciones || undefined,
       });
 
-      const pdfUrl = doc.output('bloburl');
-      window.open(pdfUrl, '_blank');
+      mostrarPdfJsPDF(doc, `Cotizacion-${cotizacion.folio}`, ventanaPdf);
     } catch (err) {
+      cerrarVentanaPdf(ventanaPdf);
       console.error('Error al generar PDF:', err);
       alert('Error al generar PDF');
     }
