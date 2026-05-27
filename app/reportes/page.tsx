@@ -1,9 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import { useReportes } from '@/lib/hooks/useReportes';
+import { useCategorias } from '@/lib/hooks/useCategorias';
 import ModalReportes from '@/components/ModalReportes';
+import ModalFiltroInventario, { type FiltroInventarioSeleccion } from '@/components/ModalFiltroInventario';
+import { mostrarPdfJsPDF, abrirVentanaPdfPlaceholder, cerrarVentanaPdf } from '@/lib/abrirPdfNavegador';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -22,6 +25,10 @@ export default function ReportesPage() {
   } = useReportes();
   
   const [modalReportesAbierto, setModalReportesAbierto] = useState(false);
+  const [modalInventarioAbierto, setModalInventarioAbierto] = useState(false);
+  const [generandoInventario, setGenerandoInventario] = useState(false);
+
+  const { categorias, loading: loadingCategorias, refetch: refetchCategorias } = useCategorias();
 
   const [resumen, setResumen] = useState({
     totalPedidos: 0,
@@ -41,6 +48,7 @@ export default function ReportesPage() {
 
   useEffect(() => {
     cargarResumen();
+    refetchCategorias(false);
   }, []);
 
   const cargarResumen = async () => {
@@ -113,27 +121,98 @@ export default function ReportesPage() {
     return Number.isFinite(n) ? Math.max(0, Math.round(n)) : 0;
   };
 
-  const generarPDFInventario = (datos: any[]) => {
+  const generarPDFInventario = (datos: any[], categoriasEtiqueta: string[]) => {
     const doc = new jsPDF();
+    const fechaGen = new Date().toLocaleDateString('es-MX');
 
     doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
     doc.text('Estado de Inventario', 14, 20);
-    doc.setFontSize(11);
-    doc.text(`Generado: ${new Date().toLocaleDateString('es-MX')}`, 14, 28);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.text(`Generado: ${fechaGen}`, 14, 28);
 
-    autoTable(doc, {
-      startY: 35,
-      head: [['Prenda', 'Talla', 'Stock Existente', 'Stock Mínimo']],
-      body: datos.map((i) => [
-        i.prenda?.nombre || '-',
-        i.talla?.nombre || '-',
-        stockExistenteReporte(i).toLocaleString('es-MX'),
-        stockMinimoReporte(i).toLocaleString('es-MX'),
-      ]),
-    });
+    const resumenCat =
+      categoriasEtiqueta.length <= 5
+        ? categoriasEtiqueta.join(' · ')
+        : `${categoriasEtiqueta.length} categorías seleccionadas`;
+    const lineasCat = doc.splitTextToSize(`Categorías: ${resumenCat}`, 182);
+    doc.text(lineasCat, 14, 35);
 
-    window.open(doc.output('bloburl'), '_blank');
+    const grupos = new Map<string, any[]>();
+    for (const row of datos) {
+      const nombre = row.categoriaNombre || 'Sin categoría';
+      if (!grupos.has(nombre)) grupos.set(nombre, []);
+      grupos.get(nombre)!.push(row);
+    }
+
+    const nombresCategoria = Array.from(grupos.keys()).sort((a, b) =>
+      a.localeCompare(b, 'es', { sensitivity: 'base' })
+    );
+
+    let startY = 35 + lineasCat.length * 5 + 4;
+
+    for (const nombreCat of nombresCategoria) {
+      const filas = grupos.get(nombreCat) || [];
+      if (startY > 250) {
+        doc.addPage();
+        startY = 20;
+      }
+
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 64, 175);
+      doc.text(nombreCat, 14, startY);
+      doc.setTextColor(0, 0, 0);
+      doc.setFont('helvetica', 'normal');
+
+      autoTable(doc, {
+        startY: startY + 3,
+        head: [['Prenda', 'Talla', 'Stock Existente', 'Stock Mínimo']],
+        body: filas.map((i) => [
+          i.prenda?.nombre || '-',
+          i.talla?.nombre || '-',
+          stockExistenteReporte(i).toLocaleString('es-MX'),
+          stockMinimoReporte(i).toLocaleString('es-MX'),
+        ]),
+        theme: 'striped',
+        headStyles: { fillColor: [59, 130, 246], fontSize: 9 },
+        bodyStyles: { fontSize: 8 },
+        margin: { left: 14, right: 14 },
+      });
+
+      startY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? startY + 20;
+      startY += 10;
+    }
+
+    return doc;
   };
+
+  const generarInventarioConFiltro = useCallback(
+    async (filtro: FiltroInventarioSeleccion) => {
+      const ventanaPdf = abrirVentanaPdfPlaceholder();
+      setGenerandoInventario(true);
+      try {
+        const datos = await estadoInventario(filtro.categoriaIds, filtro.incluirSinCategoria);
+        if (datos.length === 0) {
+          cerrarVentanaPdf(ventanaPdf);
+          alert('No hay inventario para las categorías seleccionadas.');
+          return;
+        }
+        const doc = generarPDFInventario(datos, filtro.etiquetas);
+        const nombre = `Inventario-${new Date().toISOString().slice(0, 10)}.pdf`;
+        mostrarPdfJsPDF(doc, nombre, ventanaPdf);
+        setModalInventarioAbierto(false);
+      } catch (error: unknown) {
+        cerrarVentanaPdf(ventanaPdf);
+        const msg = error instanceof Error ? error.message : String(error);
+        alert(`Error al generar reporte: ${msg}`);
+      } finally {
+        setGenerandoInventario(false);
+      }
+    },
+    [estadoInventario]
+  );
 
   const generarPDFPendientes = (datos: any[]) => {
     const doc = new jsPDF();
@@ -282,15 +361,6 @@ export default function ReportesPage() {
           generarPDFPrendas(datos);
           break;
 
-        case 'inventario':
-          datos = await estadoInventario();
-          if (datos.length === 0) {
-            alert('No hay prendas activas en inventario');
-            return;
-          }
-          generarPDFInventario(datos);
-          break;
-
         case 'pendientes':
           datos = await pedidosPendientes();
           if (datos.length === 0) {
@@ -433,15 +503,15 @@ export default function ReportesPage() {
             </div>
             <h3 className="card-title">Estado de Inventario</h3>
             <p className="card-description">
-              Listado completo de stock por prenda y talla
+              Stock por prenda y talla, agrupado por categoría del catálogo
             </p>
             <button
               className="btn btn-primary"
               style={{ marginTop: '1rem' }}
-              onClick={() => handleGenerarReporte('inventario')}
-              disabled={loading}
+              onClick={() => setModalInventarioAbierto(true)}
+              disabled={loadingCategorias}
             >
-              {loading ? '⏳ Cargando...' : 'Generar Reporte'}
+              {loadingCategorias ? '⏳ Cargando…' : 'Elegir categorías y generar'}
             </button>
           </div>
 
@@ -522,6 +592,16 @@ export default function ReportesPage() {
       
       {modalReportesAbierto && (
         <ModalReportes onClose={() => setModalReportesAbierto(false)} />
+      )}
+
+      {modalInventarioAbierto && (
+        <ModalFiltroInventario
+          categorias={categorias}
+          loadingCategorias={loadingCategorias}
+          generando={generandoInventario || loading}
+          onClose={() => setModalInventarioAbierto(false)}
+          onGenerar={generarInventarioConFiltro}
+        />
       )}
     </LayoutWrapper>
   );

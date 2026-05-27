@@ -201,10 +201,58 @@ export function useReportes(sucursal_id?: string) {
     }
   };
 
-  /** Inventario completo: prenda ↑, talla ↑ (orden de catálogo y nombre). */
-  const estadoInventario = async () => {
+  const ordenarFilasInventario = (filas: any[]) => {
+    filas.sort((a, b) => {
+      const catA = a.categoriaNombre || '';
+      const catB = b.categoriaNombre || '';
+      const porCat = catA.localeCompare(catB, 'es', { sensitivity: 'base' });
+      if (porCat !== 0) return porCat;
+      const porPrenda = (a.prenda?.nombre || '').localeCompare(b.prenda?.nombre || '', 'es', {
+        sensitivity: 'base',
+      });
+      if (porPrenda !== 0) return porPrenda;
+      const ordenA = Number(a.talla?.orden ?? 0);
+      const ordenB = Number(b.talla?.orden ?? 0);
+      if (ordenA !== ordenB) return ordenA - ordenB;
+      return (a.talla?.nombre || '').localeCompare(b.talla?.nombre || '', 'es', {
+        sensitivity: 'base',
+      });
+    });
+    return filas;
+  };
+
+  /**
+   * Inventario por categorías elegidas (catálogo categorias_prendas).
+   * @param categoriaIds IDs a incluir; vacío = ninguna categoría del catálogo
+   * @param incluirSinCategoria incluir prendas sin categoría asignada
+   */
+  const estadoInventario = async (categoriaIds: string[], incluirSinCategoria = false) => {
     try {
       setLoading(true);
+
+      const prendaIds = new Set<string>();
+
+      if (categoriaIds.length > 0) {
+        const { data: prendasCat, error: errPrendas } = await supabase
+          .from('prendas')
+          .select('id')
+          .in('categoria_id', categoriaIds);
+        if (errPrendas) throw errPrendas;
+        (prendasCat || []).forEach((p) => prendaIds.add(p.id));
+      }
+
+      if (incluirSinCategoria) {
+        const { data: prendasSin, error: errSin } = await supabase
+          .from('prendas')
+          .select('id')
+          .is('categoria_id', null);
+        if (errSin) throw errSin;
+        (prendasSin || []).forEach((p) => prendaIds.add(p.id));
+      }
+
+      if (prendaIds.size === 0) return [];
+
+      const ids = Array.from(prendaIds);
       const { data, error } = await supabase
         .from('costos')
         .select(`
@@ -212,28 +260,24 @@ export function useReportes(sucursal_id?: string) {
           stock,
           stock_inicial,
           stock_minimo,
-          prenda:prendas(nombre),
+          prenda:prendas(nombre, categoria_id, categorias_prendas(id, nombre)),
           talla:tallas(nombre, orden)
         `)
-        .eq('activo', true);
+        .eq('activo', true)
+        .in('prenda_id', ids);
 
       if (error) throw error;
 
-      const filas = (data || []) as any[];
-      filas.sort((a, b) => {
-        const porPrenda = (a.prenda?.nombre || '').localeCompare(b.prenda?.nombre || '', 'es', {
-          sensitivity: 'base',
-        });
-        if (porPrenda !== 0) return porPrenda;
-        const ordenA = Number(a.talla?.orden ?? 0);
-        const ordenB = Number(b.talla?.orden ?? 0);
-        if (ordenA !== ordenB) return ordenA - ordenB;
-        return (a.talla?.nombre || '').localeCompare(b.talla?.nombre || '', 'es', {
-          sensitivity: 'base',
-        });
+      const filas = (data || []).map((row: any) => {
+        const cat = row.prenda?.categorias_prendas;
+        return {
+          ...row,
+          categoriaNombre: cat?.nombre || 'Sin categoría',
+          categoriaId: row.prenda?.categoria_id ?? null,
+        };
       });
 
-      return filas;
+      return ordenarFilasInventario(filas);
     } catch (err: any) {
       console.error('Error en estadoInventario:', err);
       return [];
