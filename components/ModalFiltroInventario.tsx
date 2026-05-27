@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { type CSSProperties, useEffect, useMemo, useState } from 'react';
 import type { CategoriaPrenda } from '@/lib/hooks/useCategorias';
 
 export type FiltroInventarioSeleccion = {
@@ -87,6 +87,32 @@ export default function ModalFiltroInventario({
     });
   };
 
+  const filaCategoriaStyle = (activa: boolean, variante: 'normal' | 'opcional' = 'normal'): CSSProperties => {
+    const esOpcional = variante === 'opcional';
+    return {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '0.65rem',
+      width: '100%',
+      minHeight: 44,
+      padding: '0.55rem 0.75rem',
+      borderRadius: 10,
+      border: activa
+        ? `2px solid ${esOpcional ? '#8b5cf6' : '#10b981'}`
+        : '1px solid rgba(148, 163, 184, 0.45)',
+      background: activa
+        ? esOpcional
+          ? 'linear-gradient(135deg, rgba(139, 92, 246, 0.12) 0%, rgba(124, 58, 237, 0.05) 100%)'
+          : 'linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(5, 150, 105, 0.05) 100%)'
+        : 'rgba(255, 255, 255, 0.95)',
+      color: activa ? (esOpcional ? '#5b21b6' : '#065f46') : 'var(--text-primary)',
+      cursor: 'pointer',
+      textAlign: 'left',
+      transition: 'border-color 0.12s ease, box-shadow 0.12s ease',
+      boxShadow: activa ? '0 2px 6px rgba(15, 23, 42, 0.08)' : 'none',
+    };
+  };
+
   return (
     <div
       role="dialog"
@@ -108,7 +134,7 @@ export default function ModalFiltroInventario({
       <div
         className="form-container"
         style={{
-          width: 'min(520px, 100%)',
+          width: 'min(440px, 100%)',
           maxHeight: 'min(90vh, 720px)',
           display: 'flex',
           flexDirection: 'column',
@@ -180,74 +206,129 @@ export default function ModalFiltroInventario({
             flex: 1,
             overflowY: 'auto',
             marginTop: '1rem',
-            padding: '0.25rem',
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: '0.5rem',
-            alignContent: 'flex-start',
-            minHeight: '120px',
-            maxHeight: 'min(42vh, 360px)',
+            minHeight: 120,
+            maxHeight: 'min(46vh, 400px)',
+            border: '1px solid rgba(148, 163, 184, 0.35)',
+            borderRadius: 12,
+            background: 'rgba(248, 250, 252, 0.65)',
           }}
         >
           {loadingCategorias ? (
-            <p style={{ color: 'var(--text-secondary)' }}>Cargando categorías…</p>
+            <p style={{ color: 'var(--text-secondary)', padding: '1rem' }}>Cargando categorías…</p>
           ) : filtradas.length === 0 && !busqueda ? (
-            <p style={{ color: 'var(--text-secondary)' }}>
+            <p style={{ color: 'var(--text-secondary)', padding: '1rem' }}>
               No hay categorías en el catálogo. Créalas en Gestión de Categorías de Prendas.
             </p>
+          ) : filtradas.length === 0 ? (
+            <p style={{ color: 'var(--text-secondary)', padding: '1rem' }}>No hay coincidencias con tu búsqueda.</p>
           ) : (
-            <>
-              {filtradas.map((cat) => {
+            <div
+              role="listbox"
+              aria-multiselectable="true"
+              aria-label="Categorías de prendas"
+              style={{ display: 'flex', flexDirection: 'column' }}
+            >
+              {filtradas.map((cat, index) => {
                 const activa = seleccion.has(cat.id);
+                const etiqueta = `${cat.nombre}${!cat.activo ? ' (inactiva)' : ''}`;
                 return (
                   <button
                     key={cat.id}
                     type="button"
+                    role="option"
+                    aria-selected={activa}
                     onClick={() => toggle(cat.id)}
                     style={{
-                      border: activa ? '2px solid #10b981' : '2px solid rgba(148, 163, 184, 0.45)',
-                      background: activa
-                        ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.18) 0%, rgba(5, 150, 105, 0.08) 100%)'
-                        : 'rgba(255,255,255,0.85)',
-                      color: activa ? '#065f46' : 'var(--text-primary)',
-                      borderRadius: '999px',
-                      padding: '0.45rem 0.9rem',
-                      fontSize: '0.88rem',
-                      fontWeight: activa ? 600 : 500,
-                      cursor: 'pointer',
-                      transition: 'transform 0.12s ease, box-shadow 0.12s ease',
-                      boxShadow: activa ? '0 2px 8px rgba(16, 185, 129, 0.25)' : 'none',
+                      ...filaCategoriaStyle(activa),
+                      borderBottom:
+                        index < filtradas.length - 1 ? '1px solid rgba(148, 163, 184, 0.22)' : undefined,
                     }}
+                    title={etiqueta}
                   >
-                    {activa ? '✓ ' : ''}
-                    {cat.nombre}
-                    {!cat.activo ? ' (inactiva)' : ''}
+                    <span
+                      aria-hidden
+                      style={{
+                        width: 20,
+                        height: 20,
+                        borderRadius: 6,
+                        flexShrink: 0,
+                        border: activa ? '2px solid #10b981' : '2px solid rgba(148, 163, 184, 0.55)',
+                        background: activa ? '#10b981' : '#fff',
+                        color: '#fff',
+                        fontSize: '0.72rem',
+                        fontWeight: 700,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      {activa ? '✓' : ''}
+                    </span>
+                    <span
+                      style={{
+                        flex: 1,
+                        fontSize: '0.9rem',
+                        fontWeight: activa ? 600 : 500,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {cat.nombre}
+                      {!cat.activo ? (
+                        <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}> (inactiva)</span>
+                      ) : null}
+                    </span>
                   </button>
                 );
               })}
-              {!busqueda && (
-                <button
-                  type="button"
-                  onClick={() => setIncluirSinCategoria((v) => !v)}
-                  style={{
-                    border: incluirSinCategoria ? '2px solid #8b5cf6' : '2px solid rgba(148, 163, 184, 0.45)',
-                    background: incluirSinCategoria
-                      ? 'linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(124, 58, 237, 0.08) 100%)'
-                      : 'rgba(255,255,255,0.85)',
-                    color: incluirSinCategoria ? '#5b21b6' : 'var(--text-secondary)',
-                    borderRadius: '999px',
-                    padding: '0.45rem 0.9rem',
-                    fontSize: '0.88rem',
-                    fontWeight: incluirSinCategoria ? 600 : 500,
-                    cursor: 'pointer',
-                  }}
-                >
-                  {incluirSinCategoria ? '✓ ' : ''}Sin categoría
-                </button>
-              )}
-            </>
+            </div>
           )}
         </div>
+
+        {!busqueda && (
+          <div style={{ marginTop: '0.85rem' }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                marginBottom: '0.5rem',
+              }}
+            >
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                Opcional
+              </span>
+              <span style={{ height: 1, background: 'rgba(148, 163, 184, 0.35)', flex: 1 }} />
+            </div>
+            <button
+              type="button"
+              onClick={() => setIncluirSinCategoria((v) => !v)}
+              style={filaCategoriaStyle(incluirSinCategoria, 'opcional')}
+            >
+              <span
+                aria-hidden
+                style={{
+                  width: 20,
+                  height: 20,
+                  borderRadius: 6,
+                  flexShrink: 0,
+                  border: incluirSinCategoria ? '2px solid #8b5cf6' : '2px solid rgba(148, 163, 184, 0.55)',
+                  background: incluirSinCategoria ? '#8b5cf6' : '#fff',
+                  color: '#fff',
+                  fontSize: '0.72rem',
+                  fontWeight: 700,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                {incluirSinCategoria ? '✓' : ''}
+              </span>
+              <span style={{ fontSize: '0.9rem', fontWeight: incluirSinCategoria ? 600 : 500 }}>Sin categoría</span>
+            </button>
+          </div>
+        )}
 
         <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.25rem', flexWrap: 'wrap' }}>
           <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={onClose} disabled={generando}>
