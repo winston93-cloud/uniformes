@@ -919,11 +919,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       }
       if (clienteDomicilio) {
         const lineasDomicilio = doc.splitTextToSize(clienteDomicilio, anchoTextoCliente);
-        const maxLineasDomicilio = Math.max(
-          1,
-          Math.floor((yRfc - yDomicilio - 1) / interlineadoDomicilio)
-        );
-        lineasDomicilio.slice(0, maxLineasDomicilio).forEach((linea: string, i: number) => {
+        // Sin tope artificial: antes floor(...) dejaba 1 sola línea y cortaba "CP. 89220".
+        lineasDomicilio.forEach((linea: string, i: number) => {
           doc.text(linea, xL, yDomicilio + i * interlineadoDomicilio);
         });
       }
