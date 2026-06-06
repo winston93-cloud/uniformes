@@ -1074,7 +1074,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
           xTotalesEtiqueta,
           yDesc
         );
-        pintarImporte(`−${formatoMonedaPdfCotizacion(data.totales.montoIsrRet)}`, yDesc);
+        pintarImporte(`-${formatoMonedaPdfCotizacion(data.totales.montoIsrRet)}`, yDesc);
       }
 
       if (data.incluirIva) {
@@ -1126,7 +1126,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
         yTot += 7;
         pintarLineaTotalPdf(
           `Ret. ISR RESICO (${(TASA_ISR_RETENCION * 100).toFixed(2)}%):`,
-          `−${formatoMonedaPdfCotizacion(data.totales.montoIsrRet)}`,
+          `-${formatoMonedaPdfCotizacion(data.totales.montoIsrRet)}`,
           yTot
         );
       }
