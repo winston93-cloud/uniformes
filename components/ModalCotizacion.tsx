@@ -984,6 +984,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       startY: tableTopY,
       margin: { left: 14, right: 14, top: tableTopY, bottom: 28 },
       showHead: false,
+      rowPageBreak: 'avoid',
       body: data.partidas.map((p) => [
         String(p.cantidad),
         p.prenda_nombre + (p.especificaciones ? `\n${p.especificaciones}` : ''),
