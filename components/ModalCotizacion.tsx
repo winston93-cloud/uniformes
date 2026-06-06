@@ -902,30 +902,36 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
         return Number.isFinite(n) ? String(n) : (data.folio || '');
       })();
 
-      // Caja izquierda (cliente) — ancho limitado para no invadir rótulos de pago (derecha)
+      // Caja izquierda (cliente) — Y fijas al JPG; solo domicilio puede usar 2+ renglones en su franja
       const xL = 37;
       const anchoTextoCliente = 92;
-      const interlineadoCliente = 4.2;
+      const interlineadoDomicilio = 3.8;
+      const yNombre = 35;
+      const yDomicilio = 39;
+      const yRfc = 47;
+      const yTel = 50.5;
       const clienteNombre = data.cliente.nombre || '';
       const clienteDomicilio = data.cliente.domicilio || '';
       const clienteRfc = data.cliente.rfc || '';
       const clienteTelefono = data.cliente.telefono || '';
-      let yCliente = 35;
       if (clienteNombre) {
-        doc.text(doc.splitTextToSize(clienteNombre, anchoTextoCliente), xL, yCliente);
-        yCliente += interlineadoCliente;
+        doc.text(doc.splitTextToSize(clienteNombre, anchoTextoCliente), xL, yNombre);
       }
       if (clienteDomicilio) {
         const lineasDomicilio = doc.splitTextToSize(clienteDomicilio, anchoTextoCliente);
-        doc.text(lineasDomicilio, xL, yCliente);
-        yCliente += lineasDomicilio.length * interlineadoCliente;
+        const maxLineasDomicilio = Math.max(
+          1,
+          Math.floor((yRfc - yDomicilio - 1) / interlineadoDomicilio)
+        );
+        lineasDomicilio.slice(0, maxLineasDomicilio).forEach((linea, i) => {
+          doc.text(linea, xL, yDomicilio + i * interlineadoDomicilio);
+        });
       }
       if (clienteRfc) {
-        doc.text(doc.splitTextToSize(clienteRfc, anchoTextoCliente), xL, yCliente);
-        yCliente += interlineadoCliente;
+        doc.text(doc.splitTextToSize(clienteRfc, anchoTextoCliente), xL, yRfc);
       }
       if (clienteTelefono) {
-        doc.text(doc.splitTextToSize(clienteTelefono, anchoTextoCliente), xL, yCliente);
+        doc.text(doc.splitTextToSize(clienteTelefono, anchoTextoCliente), xL, yTel);
       }
 
       // Caja derecha (comprobante / pago)
