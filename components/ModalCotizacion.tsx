@@ -45,6 +45,22 @@ function formatoMonedaPdfCotizacion(n: number): string {
   }).format(v);
 }
 
+/** Renumera orden 1…n tras insertar, eliminar o mover partidas. */
+function reordenarPartidasCotizacion(lista: PartidaCotizacion[]): PartidaCotizacion[] {
+  return lista.map((p, i) => ({ ...p, orden: i + 1 }));
+}
+
+function insertarPartidasEnPosicion(
+  actual: PartidaCotizacion[],
+  nuevas: PartidaCotizacion[],
+  insertarDespuesDeIndex: number | null
+): PartidaCotizacion[] {
+  const insertAt =
+    insertarDespuesDeIndex === null ? actual.length : insertarDespuesDeIndex + 1;
+  const merged = [...actual.slice(0, insertAt), ...nuevas, ...actual.slice(insertAt)];
+  return reordenarPartidasCotizacion(merged);
+}
+
 interface ModalCotizacionProps {
   onClose: () => void;
 }
@@ -84,6 +100,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   
   // Partidas
   const [partidas, setPartidas] = useState<PartidaCotizacion[]>([]);
+  /** null = al final; -1 = al inicio; N = después de la partida N (base 0). */
+  const [insertarDespuesDeIndex, setInsertarDespuesDeIndex] = useState<number | null>(null);
   
   // Estados para integración con costos
   const [prendaSeleccionada, setPrendaSeleccionada] = useState<string | null>(null);
@@ -598,7 +616,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       ui_key: crypto.randomUUID(),
     }));
 
-    setPartidas((prev) => [...prev, ...nuevasPartidas]);
+    setPartidas((prev) => insertarPartidasEnPosicion(prev, nuevasPartidas, insertarDespuesDeIndex));
     
     // Limpiar formulario según el modo
     if (cotizacionDirecta) {
@@ -621,7 +639,29 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
 
   // Eliminar partida
   const eliminarPartida = (index: number) => {
-    setPartidas((prev) => prev.filter((_, i) => i !== index));
+    setPartidas((prev) => reordenarPartidasCotizacion(prev.filter((_, i) => i !== index)));
+    setInsertarDespuesDeIndex((prevIdx) => {
+      if (prevIdx === null) return null;
+      if (index < prevIdx) return prevIdx - 1;
+      if (index === prevIdx) return null;
+      return prevIdx;
+    });
+  };
+
+  const moverPartida = (index: number, direccion: -1 | 1) => {
+    setPartidas((prev) => {
+      const destino = index + direccion;
+      if (destino < 0 || destino >= prev.length) return prev;
+      const next = [...prev];
+      [next[index], next[destino]] = [next[destino], next[index]];
+      return reordenarPartidasCotizacion(next);
+    });
+  };
+
+  const etiquetaPosicionInsercion = (): string => {
+    if (insertarDespuesDeIndex === null) return 'al final de la lista';
+    if (insertarDespuesDeIndex === -1) return 'al inicio (antes de la partida 1)';
+    return `después de la partida ${insertarDespuesDeIndex + 1}`;
   };
 
   const normalizarNumero = (raw: string, fallback: number) => {
@@ -1317,6 +1357,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     setClienteSeleccionado(null);
     setBusquedaCliente('');
     setPartidas([]);
+    setInsertarDespuesDeIndex(null);
     setObservaciones('');
     setCondicionesPago('50% anticipo, 50% contra entrega');
     setTiempoEntrega('5-7 días hábiles');
@@ -2482,7 +2523,22 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                         boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
                       }}
                     >
-                      💾 Guardar Todo ({subPartidas.filter(sp => sp.costo_id && sp.cantidad > 0).length} {subPartidas.filter(sp => sp.costo_id && sp.cantidad > 0).length === 1 ? 'partida' : 'partidas'})
+                      💾 Guardar
+                      {insertarDespuesDeIndex !== null ? ` (${etiquetaPosicionInsercion()})` : ' Todo'}
+                      {' '}
+                      ({subPartidas.filter((sp) =>
+                        cotizacionDirecta
+                          ? sp.talla.trim() && sp.cantidad > 0 && sp.precio_unitario > 0
+                          : sp.costo_id && sp.cantidad > 0
+                      ).length}{' '}
+                      {subPartidas.filter((sp) =>
+                        cotizacionDirecta
+                          ? sp.talla.trim() && sp.cantidad > 0 && sp.precio_unitario > 0
+                          : sp.costo_id && sp.cantidad > 0
+                      ).length === 1
+                        ? 'partida'
+                        : 'partidas'}
+                      )
                     </button>
                   </div>
                 </div>
@@ -2557,7 +2613,74 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
             {/* Lista de partidas */}
             {partidas.length > 0 && (
               <div style={{ marginBottom: '1.5rem' }}>
-                <h3 style={{ color: '#667eea' }}>📋 Partidas ({partidas.length})</h3>
+                <div
+                  style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '0.75rem',
+                    marginBottom: '0.75rem',
+                  }}
+                >
+                  <h3 style={{ color: '#667eea', margin: 0 }}>📋 Partidas ({partidas.length})</h3>
+                  <button
+                    type="button"
+                    onClick={() => setInsertarDespuesDeIndex(-1)}
+                    title="Las nuevas partidas quedarán al inicio"
+                    style={{
+                      padding: '0.45rem 0.85rem',
+                      background: insertarDespuesDeIndex === -1 ? '#fff7ed' : 'white',
+                      color: insertarDespuesDeIndex === -1 ? '#c2410c' : '#667eea',
+                      border: `2px solid ${insertarDespuesDeIndex === -1 ? '#f97316' : '#667eea'}`,
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                      fontSize: '0.85rem',
+                    }}
+                  >
+                    ⬆ Insertar al inicio
+                  </button>
+                </div>
+                <p style={{ margin: '0 0 0.75rem', fontSize: '0.88rem', color: '#64748b' }}>
+                  Pulsa <strong>➕</strong> en una fila para insertar la siguiente partida justo después de esa posición.
+                </p>
+                {insertarDespuesDeIndex !== null && (
+                  <div
+                    style={{
+                      marginBottom: '0.75rem',
+                      padding: '0.75rem 1rem',
+                      background: '#fff7ed',
+                      border: '2px solid #fdba74',
+                      borderRadius: '8px',
+                      color: '#9a3412',
+                      fontSize: '0.9rem',
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      alignItems: 'center',
+                      gap: '0.75rem',
+                    }}
+                  >
+                    <span>
+                      📍 Próxima partida nueva: <strong>{etiquetaPosicionInsercion()}</strong>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setInsertarDespuesDeIndex(null)}
+                      style={{
+                        padding: '0.35rem 0.75rem',
+                        background: 'white',
+                        border: '1px solid #fdba74',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontWeight: 600,
+                        color: '#9a3412',
+                      }}
+                    >
+                      Volver a insertar al final
+                    </button>
+                  </div>
+                )}
                 <div className="cotizacion-partidas-scroll">
                   <table className="cotizacion-partidas-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
@@ -2576,7 +2699,16 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                     </thead>
                     <tbody>
                       {partidas.map((partida, index) => (
-                        <tr key={partida.ui_key || `${partida.orden}-${partida.prenda_nombre}-${partida.talla}-${index}`} style={{ borderBottom: '1px solid #eee' }}>
+                        <tr
+                          key={partida.ui_key || `${partida.orden}-${partida.prenda_nombre}-${partida.talla}-${index}`}
+                          style={{
+                            borderBottom: '1px solid #eee',
+                            background:
+                              insertarDespuesDeIndex === index ? '#fff7ed' : undefined,
+                            outline:
+                              insertarDespuesDeIndex === index ? '2px solid #fdba74' : undefined,
+                          }}
+                        >
                           <td data-label="#" style={{ padding: '0.75rem' }}>{index + 1}</td>
                           <td data-label="Prenda" style={{ padding: '0.75rem', fontWeight: 'bold' }}>
                             {esModoEdicion ? (
@@ -2901,19 +3033,83 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                             ${partida.subtotal.toFixed(2)}
                           </td>
                           <td data-label="Acción" style={{ padding: '0.75rem', textAlign: 'center' }}>
-                            <button
-                              onClick={() => eliminarPartida(index)}
+                            <div
                               style={{
-                                background: '#ff4444',
-                                color: 'white',
-                                border: 'none',
-                                padding: '0.5rem 1rem',
-                                borderRadius: '4px',
-                                cursor: 'pointer',
+                                display: 'flex',
+                                flexWrap: 'wrap',
+                                gap: '0.35rem',
+                                justifyContent: 'center',
+                                alignItems: 'center',
                               }}
                             >
-                              🗑️
-                            </button>
+                              <button
+                                type="button"
+                                onClick={() => setInsertarDespuesDeIndex(index)}
+                                title={`Insertar nueva partida después de la #${index + 1}`}
+                                style={{
+                                  background:
+                                    insertarDespuesDeIndex === index ? '#f97316' : '#667eea',
+                                  color: 'white',
+                                  border: 'none',
+                                  padding: '0.45rem 0.65rem',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer',
+                                  fontWeight: 700,
+                                  minWidth: '2.25rem',
+                                }}
+                              >
+                                ➕
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => moverPartida(index, -1)}
+                                disabled={index === 0}
+                                title="Subir una posición"
+                                style={{
+                                  background: index === 0 ? '#e5e7eb' : '#94a3b8',
+                                  color: index === 0 ? '#9ca3af' : 'white',
+                                  border: 'none',
+                                  padding: '0.45rem 0.55rem',
+                                  borderRadius: '4px',
+                                  cursor: index === 0 ? 'not-allowed' : 'pointer',
+                                }}
+                              >
+                                ↑
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => moverPartida(index, 1)}
+                                disabled={index === partidas.length - 1}
+                                title="Bajar una posición"
+                                style={{
+                                  background:
+                                    index === partidas.length - 1 ? '#e5e7eb' : '#94a3b8',
+                                  color: index === partidas.length - 1 ? '#9ca3af' : 'white',
+                                  border: 'none',
+                                  padding: '0.45rem 0.55rem',
+                                  borderRadius: '4px',
+                                  cursor:
+                                    index === partidas.length - 1 ? 'not-allowed' : 'pointer',
+                                }}
+                              >
+                                ↓
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => eliminarPartida(index)}
+                                style={{
+                                  background: '#ff4444',
+                                  color: 'white',
+                                  border: 'none',
+                                  padding: '0.45rem 0.65rem',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer',
+                                }}
+                                title="Eliminar partida"
+                              >
+                                🗑️
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
