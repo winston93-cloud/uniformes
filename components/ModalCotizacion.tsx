@@ -923,7 +923,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
           1,
           Math.floor((yRfc - yDomicilio - 1) / interlineadoDomicilio)
         );
-        lineasDomicilio.slice(0, maxLineasDomicilio).forEach((linea, i) => {
+        lineasDomicilio.slice(0, maxLineasDomicilio).forEach((linea: string, i: number) => {
           doc.text(linea, xL, yDomicilio + i * interlineadoDomicilio);
         });
       }
