@@ -19,6 +19,7 @@ import {
 import type { Cotizacion } from '@/lib/types';
 import { supabase } from '@/lib/supabase';
 import ModalDatosFiscalesCliente from '@/components/ModalDatosFiscalesCliente';
+import PartidaAccionesToolbar from '@/components/cotizacion/PartidaAccionesToolbar';
 import {
   datosClientePdfDesdeFiscalesYContacto,
   obtenerDatosFiscalesClienteParaPdf,
@@ -3033,83 +3034,15 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                             ${partida.subtotal.toFixed(2)}
                           </td>
                           <td data-label="Acción" style={{ padding: '0.75rem', textAlign: 'center' }}>
-                            <div
-                              style={{
-                                display: 'flex',
-                                flexWrap: 'wrap',
-                                gap: '0.35rem',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                              }}
-                            >
-                              <button
-                                type="button"
-                                onClick={() => setInsertarDespuesDeIndex(index)}
-                                title={`Insertar nueva partida después de la #${index + 1}`}
-                                style={{
-                                  background:
-                                    insertarDespuesDeIndex === index ? '#f97316' : '#667eea',
-                                  color: 'white',
-                                  border: 'none',
-                                  padding: '0.45rem 0.65rem',
-                                  borderRadius: '4px',
-                                  cursor: 'pointer',
-                                  fontWeight: 700,
-                                  minWidth: '2.25rem',
-                                }}
-                              >
-                                ➕
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => moverPartida(index, -1)}
-                                disabled={index === 0}
-                                title="Subir una posición"
-                                style={{
-                                  background: index === 0 ? '#e5e7eb' : '#94a3b8',
-                                  color: index === 0 ? '#9ca3af' : 'white',
-                                  border: 'none',
-                                  padding: '0.45rem 0.55rem',
-                                  borderRadius: '4px',
-                                  cursor: index === 0 ? 'not-allowed' : 'pointer',
-                                }}
-                              >
-                                ↑
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => moverPartida(index, 1)}
-                                disabled={index === partidas.length - 1}
-                                title="Bajar una posición"
-                                style={{
-                                  background:
-                                    index === partidas.length - 1 ? '#e5e7eb' : '#94a3b8',
-                                  color: index === partidas.length - 1 ? '#9ca3af' : 'white',
-                                  border: 'none',
-                                  padding: '0.45rem 0.55rem',
-                                  borderRadius: '4px',
-                                  cursor:
-                                    index === partidas.length - 1 ? 'not-allowed' : 'pointer',
-                                }}
-                              >
-                                ↓
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => eliminarPartida(index)}
-                                style={{
-                                  background: '#ff4444',
-                                  color: 'white',
-                                  border: 'none',
-                                  padding: '0.45rem 0.65rem',
-                                  borderRadius: '4px',
-                                  cursor: 'pointer',
-                                }}
-                                title="Eliminar partida"
-                              >
-                                🗑️
-                              </button>
-                            </div>
+                            <PartidaAccionesToolbar
+                              index={index}
+                              totalPartidas={partidas.length}
+                              insertarActivo={insertarDespuesDeIndex === index}
+                              onInsertar={() => setInsertarDespuesDeIndex(index)}
+                              onSubir={() => moverPartida(index, -1)}
+                              onBajar={() => moverPartida(index, 1)}
+                              onEliminar={() => eliminarPartida(index)}
+                            />
                           </td>
                         </tr>
                       ))}

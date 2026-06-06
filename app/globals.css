@@ -542,6 +542,128 @@ body {
   display: inline;
 }
 
+/* Toolbar acciones partidas — cotizaciones */
+.cotizacion-partida-acciones {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.cotizacion-partida-acciones-orden {
+  display: inline-flex;
+  align-items: stretch;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid #c7d2fe;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.12);
+  background: #fff;
+}
+
+.cotizacion-partida-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 0.78rem;
+  line-height: 1;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    transform 0.1s ease,
+    box-shadow 0.15s ease,
+    border-color 0.15s ease;
+  min-height: 38px;
+  padding: 0 0.7rem;
+}
+
+.cotizacion-partida-btn:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.cotizacion-partida-btn--insert {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  padding: 0 0.9rem;
+  white-space: nowrap;
+}
+
+.cotizacion-partida-btn--insert:hover {
+  background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+}
+
+.cotizacion-partida-btn--insert.is-active {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.85);
+}
+
+.cotizacion-partida-btn--mover {
+  background: #f8fafc;
+  color: #334155;
+  border-left: 1px solid #e2e8f0;
+  width: 38px;
+  padding: 0;
+}
+
+.cotizacion-partida-btn--mover:hover:not(:disabled) {
+  background: #eef2ff;
+  color: #4338ca;
+}
+
+.cotizacion-partida-btn--mover:disabled {
+  opacity: 0.28;
+  cursor: not-allowed;
+  color: #94a3b8;
+}
+
+.cotizacion-partida-btn--eliminar {
+  background: linear-gradient(180deg, #fff5f5 0%, #fee2e2 100%);
+  color: #b91c1c;
+  border: 1px solid #fca5a5;
+  border-radius: 10px;
+  padding: 0 0.75rem;
+  box-shadow: 0 1px 4px rgba(239, 68, 68, 0.12);
+}
+
+.cotizacion-partida-btn--eliminar:hover {
+  background: linear-gradient(180deg, #fee2e2 0%, #fecaca 100%);
+  border-color: #f87171;
+  color: #991b1b;
+}
+
+.cotizacion-partida-btn svg {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+}
+
+.cotizacion-partidas-table th:last-child,
+.cotizacion-partidas-table td[data-label='Acción'] {
+  min-width: 11.5rem;
+}
+
+.modal-cotizacion-container .cotizacion-partidas-table tbody td[data-label='Acción'] {
+  justify-content: stretch;
+}
+
+.modal-cotizacion-container .cotizacion-partidas-table tbody td[data-label='Acción'] .cotizacion-partida-acciones {
+  width: 100%;
+  justify-content: stretch;
+}
+
+.modal-cotizacion-container .cotizacion-partidas-table tbody td[data-label='Acción'] .cotizacion-partida-acciones-orden {
+  flex: 1;
+}
+
+.modal-cotizacion-container .cotizacion-partidas-table tbody td[data-label='Acción'] .cotizacion-partida-btn--insert {
+  flex: 1;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   html, body {
@@ -942,11 +1064,47 @@ body {
   }
 
   .modal-cotizacion-container .cotizacion-partidas-table tbody td[data-label="Acción"] {
-    justify-content: flex-end;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: stretch;
+    gap: 0.5rem;
+    padding-top: 0.65rem !important;
+    margin-top: 0.35rem;
+    border-top: 1px dashed #e2e8f0 !important;
   }
 
   .modal-cotizacion-container .cotizacion-partidas-table tbody td[data-label="Acción"]::before {
     display: none;
+  }
+
+  .cotizacion-partida-acciones {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.45rem;
+  }
+
+  .cotizacion-partida-acciones-orden {
+    width: 100%;
+    display: flex;
+  }
+
+  .cotizacion-partida-btn {
+    min-height: 44px;
+  }
+
+  .cotizacion-partida-btn--insert {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .cotizacion-partida-btn--mover {
+    flex: 0 0 44px;
+    width: 44px;
+  }
+
+  .cotizacion-partida-btn--eliminar {
+    width: 100%;
+    justify-content: center;
   }
 
   .card-icon {
