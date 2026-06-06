@@ -71,7 +71,6 @@ export default function PartidaAccionesToolbar({
           aria-pressed={insertarActivo}
         >
           <IconInsertar />
-          <span className="cotizacion-partida-btn-text">Insertar</span>
         </button>
         <button
           type="button"

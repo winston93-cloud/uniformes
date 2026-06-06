@@ -2809,6 +2809,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                             {esModoEdicion ? (
                               !partida.es_manual && partida.prenda_id ? (
                                 <select
+                                  className="cotizacion-partida-campo-input"
                                   value={partida.costo_id || ''}
                                   ref={(el) => {
                                     editTallaRefs.current[index] = el;
@@ -2840,7 +2841,6 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                                     }
                                   }}
                                   style={{
-                                    width: '100%',
                                     padding: '0.4rem 0.5rem',
                                     borderRadius: 6,
                                     border: '1px solid #d1d5db',
@@ -2860,13 +2860,13 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                                 </select>
                               ) : (
                                 <input
+                                  className="cotizacion-partida-campo-input"
                                   value={partida.talla}
                                   onChange={(e) => actualizarPartida(index, 'talla', e.target.value)}
                                   ref={(el) => {
                                     editTallaRefs.current[index] = el;
                                   }}
                                   style={{
-                                    width: '100%',
                                     padding: '0.4rem 0.5rem',
                                     borderRadius: 6,
                                     border: '1px solid #d1d5db',
@@ -2881,13 +2881,13 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                           <td data-label="Color" style={{ padding: '0.75rem' }}>
                             {esModoEdicion ? (
                               <input
+                                className="cotizacion-partida-campo-input"
                                 value={partida.color || ''}
                                 onChange={(e) => actualizarPartida(index, 'color', e.target.value)}
                                 ref={(el) => {
                                   editColorRefs.current[index] = el;
                                 }}
                                 style={{
-                                  width: '100%',
                                   padding: '0.4rem 0.5rem',
                                   borderRadius: 6,
                                   border: '1px solid #d1d5db',
