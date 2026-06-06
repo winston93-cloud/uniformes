@@ -880,6 +880,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
 
     // Columna de importes (mm, baseline) calibrada al JPG: ~275 / 279 / 283 / 288.
     const xImportesTotales = 176;
+    const xTotalesEtiqueta = 118;
+    const xTotalesMonto = pageW - 14;
     const yImportesTotalesCierre = {
       subtotal: 275.2,
       descuento: 279.8,
@@ -1056,27 +1058,48 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       const yIva = yImportesTotalesCierre.iva;
       const yTotal = yImportesTotalesCierre.total;
 
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(10);
-      doc.text(formatoMonedaPdfCotizacion(data.totales.subtotal), xImportesTotales, ySub);
+      const pintarImporte = (importe: string, y: number, bold = false) => {
+        doc.setFont('helvetica', bold ? 'bold' : 'normal');
+        doc.setFontSize(10);
+        doc.text(importe, xImportesTotales, y, { align: 'right' });
+      };
+
+      pintarImporte(formatoMonedaPdfCotizacion(data.totales.subtotal), ySub, true);
 
       if (data.incluirIsr) {
         doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
         doc.text(
-          `−${formatoMonedaPdfCotizacion(data.totales.montoIsrRet)}`,
-          xImportesTotales,
+          `Ret. ISR RESICO (${(TASA_ISR_RETENCION * 100).toFixed(2)}%):`,
+          xTotalesEtiqueta,
           yDesc
         );
+        pintarImporte(`−${formatoMonedaPdfCotizacion(data.totales.montoIsrRet)}`, yDesc);
       }
 
       if (data.incluirIva) {
-        doc.setFont('helvetica', 'normal');
-        doc.text(formatoMonedaPdfCotizacion(data.totales.montoIva), xImportesTotales, yIva);
+        pintarImporte(formatoMonedaPdfCotizacion(data.totales.montoIva), yIva);
       }
 
-      // Siempre en la fila TOTAL del formato (aunque no haya IVA ni retención).
       doc.setFont('helvetica', 'bold');
-      doc.text(formatoMonedaPdfCotizacion(data.totales.total), xImportesTotales, yTotal);
+      doc.setFontSize(10);
+      doc.text(formatoMonedaPdfCotizacion(data.totales.total), xImportesTotales, yTotal, {
+        align: 'right',
+      });
+    };
+
+    const pintarLineaTotalPdf = (
+      etiqueta: string,
+      importe: string,
+      y: number,
+      opts?: { bold?: boolean; size?: number }
+    ) => {
+      const bold = opts?.bold ?? false;
+      const size = opts?.size ?? 10;
+      doc.setFont('helvetica', bold ? 'bold' : 'normal');
+      doc.setFontSize(size);
+      doc.text(etiqueta, xTotalesEtiqueta, y);
+      doc.text(importe, xTotalesMonto, y, { align: 'right' });
     };
 
     if (paginaCierreTotales) {
@@ -1085,30 +1108,35 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       dibujarImportesTotalesCierre();
     } else {
       let yTot = espacioTotales.y;
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(10);
-      doc.text(`Subtotal: ${formatoMonedaPdfCotizacion(data.totales.subtotal)}`, 140, yTot);
+      pintarLineaTotalPdf(
+        'Subtotal:',
+        formatoMonedaPdfCotizacion(data.totales.subtotal),
+        yTot,
+        { bold: true }
+      );
       if (data.incluirIva) {
         yTot += 7;
-        doc.setFont('helvetica', 'normal');
-        doc.text(
-          `IVA (${(TASA_IVA_TRASLADADO * 100).toFixed(0)}%): ${formatoMonedaPdfCotizacion(data.totales.montoIva)}`,
-          140,
+        pintarLineaTotalPdf(
+          `IVA (${(TASA_IVA_TRASLADADO * 100).toFixed(0)}%):`,
+          formatoMonedaPdfCotizacion(data.totales.montoIva),
           yTot
         );
       }
       if (data.incluirIsr) {
         yTot += 7;
-        doc.text(
-          `Ret. ISR RESICO (${(TASA_ISR_RETENCION * 100).toFixed(2)}% s/importe sin IVA): −${formatoMonedaPdfCotizacion(data.totales.montoIsrRet)}`,
-          140,
+        pintarLineaTotalPdf(
+          `Ret. ISR RESICO (${(TASA_ISR_RETENCION * 100).toFixed(2)}%):`,
+          `−${formatoMonedaPdfCotizacion(data.totales.montoIsrRet)}`,
           yTot
         );
       }
       yTot += 12;
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(14);
-      doc.text(`TOTAL: ${formatoMonedaPdfCotizacion(data.totales.total)}`, 140, yTot);
+      pintarLineaTotalPdf(
+        'TOTAL:',
+        formatoMonedaPdfCotizacion(data.totales.total),
+        yTot,
+        { bold: true, size: 14 }
+      );
 
       const espacioCond = asegurarEspacioVertical(yTot + 14, altoCondiciones, 'partidas');
       dibujarCondiciones(espacioCond.y);
