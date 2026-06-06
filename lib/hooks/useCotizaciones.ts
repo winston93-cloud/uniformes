@@ -23,6 +23,8 @@ export interface PartidaCotizacion {
   prenda_id?: string | null;
   costo_id?: string | null;
   es_manual: boolean;
+  /** Clave estable para listas en UI; no se persiste en BD. */
+  ui_key?: string;
 }
 
 /** Evita embed PostgREST `alumno(*)` cuando el FK no coincide (ej. alumno_id UUID vs tabla `alumno` con bigint). */
@@ -93,7 +95,8 @@ export interface NuevaCotizacion {
   incluir_isr?: boolean;
 }
 
-export function useCotizaciones() {
+export function useCotizaciones(options?: { autoCargar?: boolean }) {
+  const autoCargar = options?.autoCargar !== false;
   const [cotizaciones, setCotizaciones] = useState<Cotizacion[]>([]);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -221,11 +224,14 @@ export function useCotizaciones() {
       if (cotError) throw cotError;
 
       // 4. Crear partidas
-      const partidas = nuevaCotizacion.partidas.map((p, index) => ({
-        cotizacion_id: cotizacion.id,
-        ...p,
-        orden: index + 1,
-      }));
+      const partidas = nuevaCotizacion.partidas.map((p, index) => {
+        const { ui_key: _uiKey, ...resto } = p;
+        return {
+          cotizacion_id: cotizacion.id,
+          ...resto,
+          orden: index + 1,
+        };
+      });
 
       const { error: detError } = await supabase
         .from('detalle_cotizacion')
@@ -303,11 +309,14 @@ export function useCotizaciones() {
 
       if (delErr) throw delErr;
 
-      const partidas = datos.partidas.map((p, index) => ({
-        cotizacion_id: cotizacionId,
-        ...p,
-        orden: index + 1,
-      }));
+      const partidas = datos.partidas.map((p, index) => {
+        const { ui_key: _uiKey, ...resto } = p;
+        return {
+          cotizacion_id: cotizacionId,
+          ...resto,
+          orden: index + 1,
+        };
+      });
 
       const { error: insErr } = await supabase.from('detalle_cotizacion').insert(partidas);
       if (insErr) throw insErr;
@@ -397,8 +406,8 @@ export function useCotizaciones() {
   };
 
   useEffect(() => {
-    obtenerCotizaciones();
-  }, [obtenerCotizaciones]);
+    if (autoCargar) obtenerCotizaciones();
+  }, [obtenerCotizaciones, autoCargar]);
 
   return {
     cotizaciones,

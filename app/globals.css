@@ -891,6 +891,64 @@ body {
     padding: 1rem !important;
   }
 
+  /* Partidas guardadas: tarjetas apiladas (evita scroll horizontal anidado en iOS) */
+  .cotizacion-partidas-scroll {
+    overflow-x: visible !important;
+  }
+
+  .modal-cotizacion-container .cotizacion-partidas-table {
+    display: block !important;
+    width: 100% !important;
+    overflow: visible !important;
+  }
+
+  .modal-cotizacion-container .cotizacion-partidas-table thead {
+    display: none;
+  }
+
+  .modal-cotizacion-container .cotizacion-partidas-table tbody {
+    display: block;
+  }
+
+  .modal-cotizacion-container .cotizacion-partidas-table tbody tr {
+    display: block;
+    border: 2px solid #e5e7eb;
+    border-radius: 10px;
+    margin-bottom: 0.75rem;
+    padding: 0.35rem 0.5rem;
+    background: #fafafa;
+  }
+
+  .modal-cotizacion-container .cotizacion-partidas-table tbody td {
+    display: flex !important;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    white-space: normal !important;
+    border: none !important;
+    width: 100% !important;
+  }
+
+  .modal-cotizacion-container .cotizacion-partidas-table tbody td::before {
+    content: attr(data-label);
+    font-weight: 700;
+    color: #667eea;
+    flex-shrink: 0;
+    min-width: 5.5rem;
+  }
+
+  .modal-cotizacion-container .cotizacion-partidas-table tbody td[data-label="#"]::before {
+    content: 'Partida';
+  }
+
+  .modal-cotizacion-container .cotizacion-partidas-table tbody td[data-label="Acción"] {
+    justify-content: flex-end;
+  }
+
+  .modal-cotizacion-container .cotizacion-partidas-table tbody td[data-label="Acción"]::before {
+    display: none;
+  }
+
   .card-icon {
     width: 70px;
     height: 70px;

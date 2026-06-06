@@ -28,8 +28,10 @@ import autoTable from 'jspdf-autotable';
 import {
   abrirVentanaPdfPlaceholder,
   cerrarVentanaPdf,
+  esIOS,
   mostrarPdfJsPDF,
 } from '@/lib/abrirPdfNavegador';
+import { focusCotizacionSiEscritorio, focusSinScroll } from '@/lib/cotizacionUi';
 
 /** Moneda en PDF cotización: miles con separador y 2 decimales (es-MX). */
 function formatoMonedaPdfCotizacion(n: number): string {
@@ -132,7 +134,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   const primeraSubPartidaSelectRef = useRef<HTMLSelectElement>(null);
   const fondoCotizacionDataUrlRef = useRef<string | null>(null);
   const fondoHojaCotizacionDataUrlRef = useRef<string | null>(null);
-  const [cargandoFondoCotizacionPdf, setCargandoFondoCotizacionPdf] = useState(false);
+  const modalScrollRef = useRef<HTMLDivElement>(null);
   
   // Estados para posicionamiento de dropdowns en portal
   const [dropdownClientePos, setDropdownClientePos] = useState<{ top: number; left: number; width: number } | null>(null);
@@ -165,7 +167,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     actualizarEstado,
     actualizarCotizacionCompleta,
     eliminarCotizacion,
-  } = useCotizaciones();
+  } = useCotizaciones({ autoCargar: false });
   const [actualizandoEstadoId, setActualizandoEstadoId] = useState<string | null>(null);
   const [eliminandoCotizacionId, setEliminandoCotizacionId] = useState<string | null>(null);
   const { searchAlumnos } = useAlumnos(cicloEscolar);
@@ -236,22 +238,35 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   // Montar componente (necesario para portales)
   useEffect(() => {
     setMounted(true);
-    // Auto-focus a búsqueda de cliente al abrir el modal
-    setTimeout(() => {
-      if (inputClienteRef.current) {
-        inputClienteRef.current.focus();
-      }
-    }, 150);
-    // Precargar fondo del PDF (no bloquea)
-    void (async () => {
-      try {
-        setCargandoFondoCotizacionPdf(true);
-        await Promise.all([obtenerFondoCotizacionDataUrl(), obtenerFondoHojaCotizacionDataUrl()]);
-      } finally {
-        setCargandoFondoCotizacionPdf(false);
-      }
-    })();
+    const scrollY = window.scrollY;
+    const prevOverflow = document.body.style.overflow;
+    const prevPosition = document.body.style.position;
+    const prevTop = document.body.style.top;
+    const prevWidth = document.body.style.width;
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = '100%';
+
+    setTimeout(() => focusSinScroll(inputClienteRef.current), 150);
+
+    return () => {
+      setMounted(false);
+      document.body.style.overflow = prevOverflow;
+      document.body.style.position = prevPosition;
+      document.body.style.top = prevTop;
+      document.body.style.width = prevWidth;
+      window.scrollTo(0, scrollY);
+      fondoCotizacionDataUrlRef.current = null;
+      fondoHojaCotizacionDataUrlRef.current = null;
+    };
   }, []);
+
+  useEffect(() => {
+    if (vista === 'historial') {
+      void obtenerCotizaciones();
+    }
+  }, [vista, obtenerCotizaciones]);
 
   // En modo edición, precargar costos de prendas ya presentes en partidas (para selectors de prenda/talla/tipo).
   useEffect(() => {
@@ -321,39 +336,32 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
 
   // Calcular posición del dropdown de clientes cuando se muestra
   useEffect(() => {
-    console.log('📍 [POSICIÓN] Calculando posición dropdown...', { 
-      resultadosLength: resultadosBusqueda.length, 
-      clienteSeleccionado: !!clienteSeleccionado, 
-      inputRef: !!inputClienteRef.current 
-    });
     if (resultadosBusqueda.length > 0 && !clienteSeleccionado && inputClienteRef.current) {
       const rect = inputClienteRef.current.getBoundingClientRect();
-      const pos = {
+      setDropdownClientePos({
         top: rect.bottom + window.scrollY + 8,
         left: rect.left + window.scrollX,
-        width: rect.width
-      };
-      console.log('📍 [POSICIÓN] Posición calculada:', pos);
-      setDropdownClientePos(pos);
+        width: rect.width,
+      });
     } else {
-      console.log('📍 [POSICIÓN] Limpiando posición');
       setDropdownClientePos(null);
     }
   }, [resultadosBusqueda, clienteSeleccionado]);
 
-  // Cerrar dropdown de clientes al hacer scroll o resize (UX estándar)
+  // Cerrar dropdown de clientes al hacer scroll dentro del modal o resize
   useEffect(() => {
     if (resultadosBusqueda.length > 0 && !clienteSeleccionado) {
+      const root = modalScrollRef.current;
       const handleScrollOrResize = () => {
         setResultadosBusqueda([]);
         setIndiceSeleccionadoCliente(-1);
       };
 
-      window.addEventListener('scroll', handleScrollOrResize, true); // Capture phase
-      window.addEventListener('resize', handleScrollOrResize);
+      root?.addEventListener('scroll', handleScrollOrResize, { passive: true });
+      window.addEventListener('resize', handleScrollOrResize, { passive: true });
 
       return () => {
-        window.removeEventListener('scroll', handleScrollOrResize, true);
+        root?.removeEventListener('scroll', handleScrollOrResize);
         window.removeEventListener('resize', handleScrollOrResize);
       };
     }
@@ -373,73 +381,68 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     }
   }, [dropdownPrendaVisible]);
 
-  // Cerrar dropdown de prendas al hacer scroll o resize (UX estándar)
   useEffect(() => {
     if (dropdownPrendaVisible) {
+      const root = modalScrollRef.current;
       const handleScrollOrResize = () => {
         setDropdownPrendaVisible(false);
         setIndiceSeleccionadoPrenda(-1);
       };
 
-      window.addEventListener('scroll', handleScrollOrResize, true); // Capture phase
-      window.addEventListener('resize', handleScrollOrResize);
+      root?.addEventListener('scroll', handleScrollOrResize, { passive: true });
+      window.addEventListener('resize', handleScrollOrResize, { passive: true });
 
       return () => {
-        window.removeEventListener('scroll', handleScrollOrResize, true);
+        root?.removeEventListener('scroll', handleScrollOrResize);
         window.removeEventListener('resize', handleScrollOrResize);
       };
     }
   }, [dropdownPrendaVisible]);
 
-  // Cerrar mini-modal de precio al hacer clic fuera o scroll
+  // Cerrar mini-modal de precio al hacer clic fuera o scroll del modal
   useEffect(() => {
-    if (miniModalPrecioAbierto !== null) {
-      const handleClickOutside = () => {
-        setMiniModalPrecioAbierto(null);
-        setMiniModalPrecioPos(null);
-      };
-      const handleScroll = () => {
-        setMiniModalPrecioAbierto(null);
-        setMiniModalPrecioPos(null);
-      };
-      
-      setTimeout(() => {
-        document.addEventListener('click', handleClickOutside);
-        window.addEventListener('scroll', handleScroll, true);
-      }, 0);
+    if (miniModalPrecioAbierto === null) return;
 
-      return () => {
-        document.removeEventListener('click', handleClickOutside);
-        window.removeEventListener('scroll', handleScroll, true);
-      };
-    }
+    const root = modalScrollRef.current;
+    const handleClickOutside = () => {
+      setMiniModalPrecioAbierto(null);
+      setMiniModalPrecioPos(null);
+    };
+    const handleScroll = () => {
+      setMiniModalPrecioAbierto(null);
+      setMiniModalPrecioPos(null);
+    };
+
+    const timer = setTimeout(() => {
+      document.addEventListener('click', handleClickOutside);
+      root?.addEventListener('scroll', handleScroll, { passive: true });
+    }, 0);
+
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('click', handleClickOutside);
+      root?.removeEventListener('scroll', handleScroll);
+    };
   }, [miniModalPrecioAbierto]);
 
   // Buscar clientes
   useEffect(() => {
-    console.log('🔍 [BÚSQUEDA] Iniciando búsqueda...', { busquedaCliente, tipoCliente });
     const buscar = async () => {
       if (busquedaCliente.length < 2) {
-        console.log('🔍 [BÚSQUEDA] Muy corto, limpiando resultados');
         setResultadosBusqueda([]);
         return;
       }
 
-      console.log('🔍 [BÚSQUEDA] Ejecutando búsqueda...', { busquedaCliente, tipoCliente });
       try {
         if (tipoCliente === 'alumno') {
-          console.log('🔍 [BÚSQUEDA] Buscando alumnos...');
           const resultados = await searchAlumnos(busquedaCliente);
-          console.log('🔍 [BÚSQUEDA] Resultados alumnos:', resultados);
           setResultadosBusqueda(resultados);
         } else {
-          console.log('🔍 [BÚSQUEDA] Buscando externos...');
           const resultados = await searchExternos(busquedaCliente);
-          console.log('🔍 [BÚSQUEDA] Resultados externos:', resultados);
           setResultadosBusqueda(resultados);
         }
       } catch (err) {
-        console.error('❌ [BÚSQUEDA] Error al buscar:', err);
+        console.error('Error al buscar clientes:', err);
         setResultadosBusqueda([]);
       }
     };
@@ -509,25 +512,23 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   };
 
   const actualizarSubPartida = (id: string, campo: keyof SubPartida, valor: any) => {
-    setSubPartidas(subPartidas.map(sp => {
-      if (sp.id === id) {
+    setSubPartidas((prev) =>
+      prev.map((sp) => {
+        if (sp.id !== id) return sp;
         const actualizada = { ...sp, [campo]: valor };
-        
-        // Si cambia costo_id (talla), actualizar precio automáticamente
+
         if (campo === 'costo_id' && valor && tipoPrecio) {
-          const costo = costosDisponibles.find(c => c.id === valor);
+          const costo = costosDisponibles.find((c) => c.id === valor);
           if (costo) {
             actualizada.talla = costo.talla?.nombre || '';
-            actualizada.precio_unitario = tipoPrecio === 'mayoreo' 
-              ? costo.precio_mayoreo 
-              : costo.precio_menudeo;
+            actualizada.precio_unitario =
+              tipoPrecio === 'mayoreo' ? costo.precio_mayoreo : costo.precio_menudeo;
           }
         }
-        
+
         return actualizada;
-      }
-      return sp;
-    }));
+      })
+    );
   };
 
   const guardarTodasSubPartidas = () => {
@@ -594,9 +595,10 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       prenda_id: cotizacionDirecta ? null : prendaSeleccionada,
       costo_id: cotizacionDirecta ? null : sp.costo_id,
       es_manual: cotizacionDirecta,
+      ui_key: crypto.randomUUID(),
     }));
 
-    setPartidas([...partidas, ...nuevasPartidas]);
+    setPartidas((prev) => [...prev, ...nuevasPartidas]);
     
     // Limpiar formulario según el modo
     if (cotizacionDirecta) {
@@ -612,19 +614,14 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       { id: crypto.randomUUID(), costo_id: '', talla: '', cantidad: 0, precio_unitario: 0 }
     ]);
     
-    // Auto-focus al input de prenda para agregar otra partida
-    setTimeout(() => {
-      if (cotizacionDirecta && inputPrendaManualRef.current) {
-        inputPrendaManualRef.current.focus();
-      } else if (inputPrendaRef.current) {
-        inputPrendaRef.current.focus();
-      }
-    }, 100);
+    focusCotizacionSiEscritorio(
+      cotizacionDirecta ? inputPrendaManualRef.current : inputPrendaRef.current
+    );
   };
 
   // Eliminar partida
   const eliminarPartida = (index: number) => {
-    setPartidas(partidas.filter((_, i) => i !== index));
+    setPartidas((prev) => prev.filter((_, i) => i !== index));
   };
 
   const normalizarNumero = (raw: string, fallback: number) => {
@@ -825,7 +822,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     /** partidas = sin rótulos de totales; cierre = formato completo (solo última hoja). */
     const pintarFondo = (variante: 'partidas' | 'cierre' = 'partidas') => {
       const img = variante === 'cierre' ? fondoCierre : fondoHoja;
-      doc.addImage(img, 'JPEG', 0, 0, pageW, pageH);
+      const compresion = esIOS() ? 'FAST' : 'MEDIUM';
+      doc.addImage(img, 'JPEG', 0, 0, pageW, pageH, undefined, compresion);
     };
 
     // Columna de importes (mm, baseline) calibrada al JPG: ~275 / 279 / 283 / 288.
@@ -1114,6 +1112,10 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
         throw new Error(error || 'Error al guardar cotización');
       }
 
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      });
+
       // Generar y mostrar PDF en pantalla (mismo folio al editar)
       const fiscalesPdf = await obtenerDatosFiscalesClienteParaPdf(tipoCliente, clienteSeleccionado);
       const bloqueClientePdf = datosClientePdfDesdeFiscalesYContacto(clienteSeleccionado, fiscalesPdf);
@@ -1250,6 +1252,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
         prenda_id: d.prenda_id || null,
         costo_id: d.costo_id || null,
         es_manual: d.es_manual || false,
+        ui_key: d.id || crypto.randomUUID(),
       }));
       setPartidas(partidasFormateadas);
       setTipoCliente(cot.tipo_cliente);
@@ -1352,6 +1355,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       onClick={onClose}
     >
       <div 
+        ref={modalScrollRef}
         className="modal-cotizacion-container"
         style={{
           backgroundColor: 'white',
@@ -1360,6 +1364,9 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
           width: '100%',
           maxHeight: '90vh',
           overflow: 'auto',
+          overflowX: 'hidden',
+          WebkitOverflowScrolling: 'touch',
+          overscrollBehavior: 'contain',
           padding: '2rem',
           boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
         }}
@@ -2551,8 +2558,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
             {partidas.length > 0 && (
               <div style={{ marginBottom: '1.5rem' }}>
                 <h3 style={{ color: '#667eea' }}>📋 Partidas ({partidas.length})</h3>
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <div className="cotizacion-partidas-scroll">
+                  <table className="cotizacion-partidas-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr style={{ background: '#667eea', color: 'white' }}>
                         <th style={{ padding: '0.75rem', textAlign: 'left' }}>#</th>
@@ -2569,9 +2576,9 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                     </thead>
                     <tbody>
                       {partidas.map((partida, index) => (
-                        <tr key={index} style={{ borderBottom: '1px solid #eee' }}>
-                          <td style={{ padding: '0.75rem' }}>{index + 1}</td>
-                          <td style={{ padding: '0.75rem', fontWeight: 'bold' }}>
+                        <tr key={partida.ui_key || `${partida.orden}-${partida.prenda_nombre}-${partida.talla}-${index}`} style={{ borderBottom: '1px solid #eee' }}>
+                          <td data-label="#" style={{ padding: '0.75rem' }}>{index + 1}</td>
+                          <td data-label="Prenda" style={{ padding: '0.75rem', fontWeight: 'bold' }}>
                             {esModoEdicion ? (
                               <input
                                 value={editPartidaIdx === index ? busquedaPrendaEdit : partida.prenda_nombre}
@@ -2656,7 +2663,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                               partida.prenda_nombre
                             )}
                           </td>
-                          <td style={{ padding: '0.75rem' }}>
+                          <td data-label="Talla" style={{ padding: '0.75rem' }}>
                             {esModoEdicion ? (
                               !partida.es_manual && partida.prenda_id ? (
                                 <select
@@ -2729,7 +2736,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                               partida.talla
                             )}
                           </td>
-                          <td style={{ padding: '0.75rem' }}>
+                          <td data-label="Color" style={{ padding: '0.75rem' }}>
                             {esModoEdicion ? (
                               <input
                                 value={partida.color || ''}
@@ -2749,7 +2756,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                               partida.color || '-'
                             )}
                           </td>
-                          <td style={{ padding: '0.75rem', fontSize: '0.9rem', color: '#555' }}>
+                          <td data-label="Especificaciones" style={{ padding: '0.75rem', fontSize: '0.9rem', color: '#555' }}>
                             {esModoEdicion ? (
                               <input
                                 value={partida.especificaciones || ''}
@@ -2766,7 +2773,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                               partida.especificaciones || '-'
                             )}
                           </td>
-                          <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                          <td data-label="Cant." style={{ padding: '0.75rem', textAlign: 'right' }}>
                             {esModoEdicion ? (
                               <input
                                 type="number"
@@ -2791,7 +2798,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                               partida.cantidad
                             )}
                           </td>
-                          <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                          <td data-label="P. Unit." style={{ padding: '0.75rem', textAlign: 'right' }}>
                             {esModoEdicion ? (
                               <input
                                 type="number"
@@ -2820,7 +2827,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                               `$${partida.precio_unitario.toFixed(2)}`
                             )}
                           </td>
-                          <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                          <td data-label="Tipo" style={{ padding: '0.75rem', textAlign: 'center' }}>
                             {esModoEdicion ? (
                               <select
                                 value={partida.tipo_precio_usado}
@@ -2848,6 +2855,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                               </select>
                             ) : !partida.es_manual && partida.prenda_id && partida.costo_id ? (
                               <button
+                                className="btn-tipo-precio-partida"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   e.preventDefault();
@@ -2889,10 +2897,10 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                               <span style={{ fontSize: '0.85rem', color: '#999' }}>-</span>
                             )}
                           </td>
-                          <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 'bold' }}>
+                          <td data-label="Subtotal" style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 'bold' }}>
                             ${partida.subtotal.toFixed(2)}
                           </td>
-                          <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                          <td data-label="Acción" style={{ padding: '0.75rem', textAlign: 'center' }}>
                             <button
                               onClick={() => eliminarPartida(index)}
                               style={{
@@ -3561,11 +3569,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       </div>
 
       {/* PORTALES: Dropdowns renderizados fuera del modal para evitar overflow: auto */}
-      {(() => {
-        const shouldShow = mounted && dropdownClientePos && resultadosBusqueda.length > 0 && !clienteSeleccionado;
-        console.log('🖼️ [PORTAL] Renderizando Portal de clientes:', { mounted, dropdownClientePos: !!dropdownClientePos, resultadosLength: resultadosBusqueda.length, clienteSeleccionado: !!clienteSeleccionado, shouldShow });
-        return shouldShow;
-      })() && createPortal(
+      {mounted && dropdownClientePos && resultadosBusqueda.length > 0 && !clienteSeleccionado && createPortal(
         <div 
           style={{
             position: 'fixed',
