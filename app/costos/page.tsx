@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import { useCostos } from '@/lib/hooks/useCostos';
 import { usePrendas } from '@/lib/hooks/usePrendas';
 import { useTallas } from '@/lib/hooks/useTallas';
+import ModalCostosPrenda, { agruparCostosPorPrenda, resumenRangoPrecios } from '@/components/ModalCostosPrenda';
 import { supabase } from '@/lib/supabase';
 import type { Costo } from '@/lib/types';
 
@@ -14,18 +15,17 @@ export const dynamic = 'force-dynamic';
 export default function CostosPage() {
   const { sesion } = useAuth();
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
-  const { costos, loading: costosLoading, error, createCosto, createMultipleCostos, getCostosByPrenda, updateCosto, deleteCosto } = useCostos(sesion?.sucursal_id);
+  const { costos, loading: costosLoading, error, createCosto, updateCosto, deleteCosto } = useCostos(sesion?.sucursal_id);
   const { prendas } = usePrendas();
   const { tallas } = useTallas();
   
-  // Estado para edición de costo
-  const [costoEditando, setCostoEditando] = useState<Costo | null>(null);
-  const [mostrarModalEdicion, setMostrarModalEdicion] = useState(false);
-  const [formDataEdicion, setFormDataEdicion] = useState({
-    precioMayoreo: '',
-    precioMenudeo: '',
-  });
-  const [botonEstado, setBotonEstado] = useState<'normal' | 'exito' | 'error'>('normal');
+  // Estado para edición agrupada por prenda
+  const [grupoEditando, setGrupoEditando] = useState<{
+    prenda_id: string;
+    prenda: Costo['prenda'];
+    costos: Costo[];
+  } | null>(null);
+  const [guardandoEdicion, setGuardandoEdicion] = useState(false);
   const [mensajeError, setMensajeError] = useState<string>('');
   const [modalErrorAbierto, setModalErrorAbierto] = useState(false);
   const [mensajeExito, setMensajeExito] = useState<string>('');
@@ -97,35 +97,22 @@ export default function CostosPage() {
     })
     .sort((a, b) => a.nombre.localeCompare(b.nombre));
 
-  // Filtrar y ordenar costos
-  const costosFiltrados = costos
-    .filter(costo => {
-      if (!busquedaTabla) return true;
-      const prendaNombre = costo.prenda?.nombre?.toLowerCase() || '';
-      const prendaCodigo = costo.prenda?.codigo?.toLowerCase() || '';
-      const busqueda = busquedaTabla.toLowerCase();
-      return prendaNombre.includes(busqueda) || prendaCodigo.includes(busqueda);
-    })
-    .sort((a, b) => {
-      // Ordenar por nombre de prenda ascendente
-      const nombreA = a.prenda?.nombre || '';
-      const nombreB = b.prenda?.nombre || '';
-      if (nombreA !== nombreB) {
-        return nombreA.localeCompare(nombreB);
-      }
-      // Si es la misma prenda, ordenar por talla
-      const tallaA = a.talla?.nombre || '';
-      const tallaB = b.talla?.nombre || '';
-      const aEsNumero = !isNaN(Number(tallaA));
-      const bEsNumero = !isNaN(Number(tallaB));
-      
-      if (aEsNumero && !bEsNumero) return -1;
-      if (!aEsNumero && bEsNumero) return 1;
-      if (aEsNumero && bEsNumero) {
-        return Number(tallaA) - Number(tallaB);
-      }
-      return tallaA.localeCompare(tallaB);
-    });
+  const costosFiltrados = useMemo(
+    () =>
+      costos.filter((costo) => {
+        if (!busquedaTabla) return true;
+        const prendaNombre = costo.prenda?.nombre?.toLowerCase() || '';
+        const prendaCodigo = costo.prenda?.codigo?.toLowerCase() || '';
+        const busqueda = busquedaTabla.toLowerCase();
+        return prendaNombre.includes(busqueda) || prendaCodigo.includes(busqueda);
+      }),
+    [costos, busquedaTabla]
+  );
+
+  const prendasAgrupadas = useMemo(
+    () => agruparCostosPorPrenda(costosFiltrados),
+    [costosFiltrados]
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -214,41 +201,45 @@ export default function CostosPage() {
     }, 2000);
   };
 
-  const handleEditarCosto = (costo: Costo) => {
-    setCostoEditando(costo);
-    setFormDataEdicion({
-      precioMayoreo: (costo.precio_mayoreo || 0).toString(),
-      precioMenudeo: (costo.precio_menudeo || 0).toString(),
+  const handleEditarPrenda = (grupo: (typeof prendasAgrupadas)[number]) => {
+    setGrupoEditando({
+      prenda_id: grupo.prenda_id,
+      prenda: grupo.prenda,
+      costos: grupo.costos,
     });
-    setBotonEstado('normal');
-    setMensajeError('');
-    setMostrarModalEdicion(true);
   };
 
-  const handleGuardarEdicion = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!costoEditando) return;
-
-    setBotonEstado('normal');
-    
-    const { error } = await updateCosto(costoEditando.id, {
-      precio_venta: parseFloat(formDataEdicion.precioMenudeo) || 0, // Legacy: usar precio menudeo
-      precio_mayoreo: parseFloat(formDataEdicion.precioMayoreo) || 0,
-      precio_menudeo: parseFloat(formDataEdicion.precioMenudeo) || 0,
-    });
-
-    if (error) {
-      setMensajeError(`❌ Error al actualizar costo: ${error}`);
-      setModalErrorAbierto(true);
-      return;
+  const handleGuardarPreciosPrenda = async (
+    cambios: Array<{ id: string; precio_mayoreo: number; precio_menudeo: number; precio_venta: number }>
+  ) => {
+    setGuardandoEdicion(true);
+    try {
+      for (const c of cambios) {
+        const { error } = await updateCosto(c.id, {
+          precio_mayoreo: c.precio_mayoreo,
+          precio_menudeo: c.precio_menudeo,
+          precio_venta: c.precio_venta,
+        });
+        if (error) return { ok: false, error };
+      }
+      return { ok: true };
+    } finally {
+      setGuardandoEdicion(false);
     }
+  };
 
-    setBotonEstado('exito');
-    setTimeout(() => {
-      setMostrarModalEdicion(false);
-      setCostoEditando(null);
-      setBotonEstado('normal');
-    }, 1500);
+  const handleEliminarCostoTalla = async (costoId: string) => {
+    const { error } = await deleteCosto(costoId);
+    if (error) return { ok: false, error };
+    if (grupoEditando) {
+      const restantes = grupoEditando.costos.filter((c) => c.id !== costoId);
+      if (restantes.length === 0) {
+        setGrupoEditando(null);
+      } else {
+        setGrupoEditando({ ...grupoEditando, costos: restantes });
+      }
+    }
+    return { ok: true };
   };
 
   if (costosLoading) {
@@ -297,7 +288,7 @@ export default function CostosPage() {
             onBlur={() => {
               setTimeout(() => setMostrarResultadosTabla(false), 200);
             }}
-            placeholder="🔍 Buscar costo por prenda..."
+            placeholder="🔍 Buscar prenda en catálogo de costos..."
             style={{
               width: '100%',
               fontSize: '1rem',
@@ -355,11 +346,12 @@ export default function CostosPage() {
           
           {busquedaTabla && (
             <div style={{ marginTop: '0.5rem', color: 'white', fontSize: '0.9rem' }}>
-              {costosFiltrados.length === 0 ? (
-                <span style={{ color: '#ff6b6b' }}>❌ No se encontraron costos</span>
+              {prendasAgrupadas.length === 0 ? (
+                <span style={{ color: '#ff6b6b' }}>❌ No se encontraron prendas</span>
               ) : (
                 <span style={{ color: '#51cf66' }}>
-                  ✓ {costosFiltrados.length} costo{costosFiltrados.length !== 1 ? 's' : ''} encontrado{costosFiltrados.length !== 1 ? 's' : ''}
+                  ✓ {prendasAgrupadas.length} prenda{prendasAgrupadas.length !== 1 ? 's' : ''} ·{' '}
+                  {costosFiltrados.length} talla{costosFiltrados.length !== 1 ? 's' : ''}
                 </span>
               )}
             </div>
@@ -688,7 +680,6 @@ export default function CostosPage() {
           <div style={{ marginBottom: '1rem', textAlign: 'right', padding: '0 1rem' }}>
             <button className="btn btn-primary" onClick={() => {
               setMostrarFormulario(!mostrarFormulario);
-              setBotonEstado('normal');
               setMensajeError('');
               if (!mostrarFormulario) {
                 setFormData({ prenda_id: '', tallas_seleccionadas: [], precioMayoreo: '', precioMenudeo: '' });
@@ -703,179 +694,91 @@ export default function CostosPage() {
             <thead>
               <tr>
                 <th>Prenda</th>
-                <th>Talla</th>
+                <th>Tallas</th>
                 <th>📦 Mayoreo</th>
                 <th>🛍️ Menudeo</th>
                 <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
-              {costosFiltrados.length === 0 ? (
+              {prendasAgrupadas.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
-                    {busquedaTabla ? 'No se encontraron costos con ese criterio.' : 'No hay costos registrados. Crea tu primer costo.'}
+                  <td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                    {busquedaTabla ? 'No se encontraron prendas con ese criterio.' : 'No hay costos registrados. Crea tu primer costo.'}
                   </td>
                 </tr>
               ) : (
-                costosFiltrados.map((costo: any) => (
-                  <tr key={costo.id}>
-                    <td data-label="Prenda" style={{ fontWeight: '600' }}>{costo.prenda?.nombre || '-'}</td>
-                    <td data-label="Talla"><span className="badge badge-info">{costo.talla?.nombre || '-'}</span></td>
-                    <td data-label="📦 Mayoreo" style={{ fontWeight: '600', color: '#3b82f6' }}>
-                      ${(costo.precio_mayoreo || 0).toFixed(2)}
-                    </td>
-                    <td data-label="🛍️ Menudeo" style={{ fontWeight: '600', color: '#10b981' }}>
-                      ${(costo.precio_menudeo || 0).toFixed(2)}
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
-                        <button 
-                          className="btn btn-secondary" 
-                          style={{ padding: '0.5rem 1rem' }}
-                          onClick={() => handleEditarCosto(costo)}
-                        >
-                          ✏️ Editar
-                        </button>
+                prendasAgrupadas.map((grupo) => {
+                  const nTallas = grupo.costos.length;
+                  const mayoreoResumen = resumenRangoPrecios(grupo.costos, 'precio_mayoreo');
+                  const menudeoResumen = resumenRangoPrecios(grupo.costos, 'precio_menudeo');
+                  const preciosUniformes =
+                    grupo.costos.every(
+                      (c) =>
+                        (c.precio_mayoreo ?? 0) === (grupo.costos[0].precio_mayoreo ?? 0) &&
+                        (c.precio_menudeo ?? 0) === (grupo.costos[0].precio_menudeo ?? 0)
+                    );
+                  return (
+                    <tr key={grupo.prenda_id}>
+                      <td data-label="Prenda" style={{ fontWeight: '700' }}>
+                        {grupo.prenda?.nombre || '-'}
+                        {grupo.prenda?.codigo ? (
+                          <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                            {grupo.prenda.codigo}
+                          </div>
+                        ) : null}
+                      </td>
+                      <td data-label="Tallas">
+                        <span className="badge badge-info">{nTallas} talla{nTallas !== 1 ? 's' : ''}</span>
+                        {!preciosUniformes ? (
+                          <span
+                            style={{
+                              marginLeft: '0.4rem',
+                              fontSize: '0.72rem',
+                              color: '#b45309',
+                              fontWeight: 600,
+                            }}
+                          >
+                            precios mixtos
+                          </span>
+                        ) : null}
+                      </td>
+                      <td data-label="📦 Mayoreo" style={{ fontWeight: '600', color: '#3b82f6' }}>
+                        {mayoreoResumen}
+                      </td>
+                      <td data-label="🛍️ Menudeo" style={{ fontWeight: '600', color: '#10b981' }}>
+                        {menudeoResumen}
+                      </td>
+                      <td>
                         <button
-                          className="btn btn-danger"
-                          style={{ padding: '0.5rem 1rem' }}
-                          onClick={async () => {
-                            if (confirm('⚠️ ¿Estás seguro de eliminar este costo? Esta acción NO se puede deshacer.')) {
-                              const { error } = await deleteCosto(costo.id);
-                              if (error) {
-                                setMensajeError(`❌ Error al eliminar: ${error}`);
-                                setModalErrorAbierto(true);
-                              }
-                            }
+                          className="btn btn-primary"
+                          style={{
+                            padding: '0.5rem 1rem',
+                            background: 'linear-gradient(135deg, #f97316, #ea580c)',
                           }}
+                          onClick={() => handleEditarPrenda(grupo)}
                         >
-                          🗑️ Eliminar
+                          ✏️ Editar precios
                         </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
 
-        {/* Modal de Edición de Costo */}
-        {mostrarModalEdicion && costoEditando && (
-          <div
-            style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: 'rgba(0, 0, 0, 0.7)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 2000,
-              padding: '1rem',
-              overflowY: 'auto',
-            }}
-            onClick={() => {
-              setMostrarModalEdicion(false);
-              setCostoEditando(null);
-              setBotonEstado('normal');
-            }}
-          >
-            <div
-              className="form-container"
-              style={{
-                maxWidth: '600px',
-                width: '100%',
-                maxHeight: '90vh',
-                overflowY: 'auto',
-                margin: '2rem auto',
-                position: 'relative',
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h2 className="form-title">
-                Editar Costo - {costoEditando.prenda?.nombre} ({costoEditando.talla?.nombre})
-              </h2>
-              
-              <form onSubmit={handleGuardarEdicion}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem' }}>
-                  <div className="form-group">
-                    <label className="form-label">📦 Precio Mayoreo *</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      className="form-input"
-                      value={formDataEdicion.precioMayoreo}
-                      onChange={(e) => setFormDataEdicion({ ...formDataEdicion, precioMayoreo: e.target.value })}
-                      onFocus={(e) => {
-                        if (e.target.value === '0' || e.target.value === '0.00') {
-                          setFormDataEdicion({ ...formDataEdicion, precioMayoreo: '' });
-                        }
-                      }}
-                      placeholder="$0.00"
-                      required
-                      style={{ fontSize: '1.1rem', padding: '0.75rem' }}
-                    />
-                    <small style={{ color: '#888', fontSize: '0.875rem', marginTop: '0.25rem', display: 'block' }}>
-                      Precio de venta al por mayor (pedidos grandes)
-                    </small>
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">🛍️ Precio Menudeo *</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      className="form-input"
-                      value={formDataEdicion.precioMenudeo}
-                      onChange={(e) => setFormDataEdicion({ ...formDataEdicion, precioMenudeo: e.target.value })}
-                      onFocus={(e) => {
-                        if (e.target.value === '0' || e.target.value === '0.00') {
-                          setFormDataEdicion({ ...formDataEdicion, precioMenudeo: '' });
-                        }
-                      }}
-                      placeholder="$0.00"
-                      required
-                      style={{ fontSize: '1.1rem', padding: '0.75rem' }}
-                    />
-                    <small style={{ color: '#888', fontSize: '0.875rem', marginTop: '0.25rem', display: 'block' }}>
-                      Precio de venta al detalle/menudeo
-                    </small>
-                  </div>
-                </div>
-
-                <div className="btn-group">
-                  <button 
-                    type="submit" 
-                    className="btn btn-primary"
-                    style={{
-                      backgroundColor: botonEstado === 'exito' ? '#28a745' : undefined,
-                      color: botonEstado === 'exito' ? 'white' : undefined,
-                      borderColor: botonEstado === 'exito' ? '#28a745' : undefined
-                    }}
-                  >
-                    {botonEstado === 'exito' ? '✓ Guardado' : '💾 Guardar Cambios'}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={() => {
-                      setMostrarModalEdicion(false);
-                      setCostoEditando(null);
-                      setBotonEstado('normal');
-                    }}
-                  >
-                    ❌ Cancelar
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
+        <ModalCostosPrenda
+          abierto={Boolean(grupoEditando)}
+          prendaNombre={grupoEditando?.prenda?.nombre || 'Prenda'}
+          prendaCodigo={grupoEditando?.prenda?.codigo}
+          costos={grupoEditando?.costos || []}
+          guardando={guardandoEdicion}
+          onClose={() => setGrupoEditando(null)}
+          onGuardar={handleGuardarPreciosPrenda}
+          onEliminarTalla={(id) => handleEliminarCostoTalla(id)}
+        />
       </div>
 
       {/* Modal de Error */}
@@ -898,12 +801,9 @@ export default function CostosPage() {
             setModalErrorAbierto(false);
             setMensajeError('');
             setMostrarFormulario(false);
-            setMostrarModalEdicion(false);
-            setCostoEditando(null);
+            setGrupoEditando(null);
             setFormData({ prenda_id: '', tallas_seleccionadas: [], precioMayoreo: '', precioMenudeo: '' });
-            setFormDataEdicion({ precioMayoreo: '', precioMenudeo: '' });
             setBusquedaPrenda('');
-            setBotonEstado('normal');
           }}
         >
           <div
@@ -939,12 +839,9 @@ export default function CostosPage() {
                 setModalErrorAbierto(false);
                 setMensajeError('');
                 setMostrarFormulario(false);
-                setMostrarModalEdicion(false);
-                setCostoEditando(null);
+                setGrupoEditando(null);
                 setFormData({ prenda_id: '', tallas_seleccionadas: [], precioMayoreo: '', precioMenudeo: '' });
-                setFormDataEdicion({ precioMayoreo: '', precioMenudeo: '' });
                 setBusquedaPrenda('');
-                setBotonEstado('normal');
               }}
               style={{
                 width: '100%',
