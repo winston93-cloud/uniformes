@@ -626,8 +626,10 @@ body {
   color: #b91c1c;
   border: 1px solid #fca5a5;
   border-radius: 10px;
-  padding: 0 0.75rem;
+  width: 38px;
+  padding: 0;
   box-shadow: 0 1px 4px rgba(239, 68, 68, 0.12);
+  flex-shrink: 0;
 }
 
 .cotizacion-partida-btn--eliminar:hover {
@@ -644,7 +646,65 @@ body {
 
 .cotizacion-partidas-table th:last-child,
 .cotizacion-partidas-table td[data-label='Acción'] {
-  min-width: 11.5rem;
+  min-width: 9.5rem;
+}
+
+.cotizacion-partidas-table th:nth-child(2),
+.cotizacion-partidas-table td[data-label='Prenda'] {
+  min-width: 16rem;
+  width: 22%;
+}
+
+.cotizacion-partida-prenda-input {
+  width: 100%;
+  min-width: 14rem;
+  box-sizing: border-box;
+}
+
+.cotizacion-autocomplete-dropdown {
+  position: fixed;
+  z-index: 10001;
+  max-height: min(280px, 45vh);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  background: #fff;
+  border: 2px solid #667eea;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.28);
+}
+
+.cotizacion-autocomplete-dropdown-item {
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background 0.15s ease, color 0.15s ease;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.4;
+  font-size: 0.92rem;
+}
+
+.cotizacion-autocomplete-dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.cotizacion-autocomplete-dropdown-item.is-active {
+  background: #667eea;
+  color: #fff;
+  font-weight: 600;
+}
+
+.cotizacion-autocomplete-dropdown-empty {
+  position: fixed;
+  z-index: 10001;
+  background: #fff;
+  border: 2px solid #d1d5db;
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  color: #6b7280;
+  font-size: 0.9rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .modal-cotizacion-container .cotizacion-partidas-table tbody td[data-label='Acción'] {
@@ -1078,33 +1138,36 @@ body {
   }
 
   .cotizacion-partida-acciones {
-    flex-direction: column;
-    align-items: stretch;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
     gap: 0.45rem;
   }
 
   .cotizacion-partida-acciones-orden {
-    width: 100%;
-    display: flex;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .cotizacion-partida-btn--eliminar {
+    width: 44px;
+    flex: 0 0 44px;
   }
 
   .cotizacion-partida-btn {
     min-height: 44px;
   }
 
-  .cotizacion-partida-btn--insert {
-    flex: 1;
-    justify-content: center;
-  }
-
   .cotizacion-partida-btn--mover {
-    flex: 0 0 44px;
     width: 44px;
   }
 
-  .cotizacion-partida-btn--eliminar {
-    width: 100%;
-    justify-content: center;
+  .cotizacion-partida-prenda-input {
+    min-width: 0;
+  }
+
+  .cotizacion-autocomplete-dropdown {
+    max-height: min(240px, 38vh);
   }
 
   .card-icon {

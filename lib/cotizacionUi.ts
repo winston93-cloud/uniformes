@@ -17,3 +17,32 @@ export function focusCotizacionSiEscritorio(el: HTMLElement | null | undefined):
   if (esIOS()) return;
   setTimeout(() => focusSinScroll(el), 80);
 }
+
+export type PosicionDropdown = { top: number; left: number; width: number };
+
+/**
+ * Posición para portales `position: fixed` (sin sumar scroll de la página).
+ * Ajusta ancho mínimo y mantiene el menú dentro del viewport.
+ */
+export function posicionDropdownFijo(
+  anchor: HTMLElement,
+  minWidth = 320,
+  maxHeight = 280
+): PosicionDropdown {
+  const rect = anchor.getBoundingClientRect();
+  const margen = 8;
+  const anchoMax = Math.min(480, window.innerWidth - margen * 2);
+  const width = Math.min(anchoMax, Math.max(rect.width, minWidth, window.innerWidth * 0.55));
+
+  let left = rect.left;
+  if (left + width > window.innerWidth - margen) {
+    left = Math.max(margen, window.innerWidth - width - margen);
+  }
+
+  let top = rect.bottom + 6;
+  if (top + maxHeight > window.innerHeight - margen) {
+    top = Math.max(margen, rect.top - maxHeight - 6);
+  }
+
+  return { top, left, width };
+}

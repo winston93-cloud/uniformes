@@ -102,7 +102,6 @@ export default function PartidaAccionesToolbar({
         aria-label={`Eliminar partida ${index + 1}`}
       >
         <IconEliminar />
-        <span className="cotizacion-partida-btn-text cotizacion-partida-btn-text--eliminar">Quitar</span>
       </button>
     </div>
   );

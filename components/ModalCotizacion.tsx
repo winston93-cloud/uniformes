@@ -32,7 +32,7 @@ import {
   esIOS,
   mostrarPdfJsPDF,
 } from '@/lib/abrirPdfNavegador';
-import { focusCotizacionSiEscritorio, focusSinScroll } from '@/lib/cotizacionUi';
+import { focusCotizacionSiEscritorio, focusSinScroll, posicionDropdownFijo } from '@/lib/cotizacionUi';
 
 /** Moneda en PDF cotización: miles con separador y 2 decimales (es-MX). */
 function formatoMonedaPdfCotizacion(n: number): string {
@@ -210,6 +210,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   const [dropdownPrendaEditPos, setDropdownPrendaEditPos] = useState<{ top: number; left: number; width: number } | null>(null);
   const editColorRefs = useRef<Record<number, HTMLInputElement | null>>({});
   const editTallaRefs = useRef<Record<number, HTMLElement | null>>({});
+  const editPrendaInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
   // Optimización: Memoizar filtrado de prendas para evitar recálculos
   const prendasMostrar = useMemo(() => {
@@ -356,16 +357,11 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   // Calcular posición del dropdown de clientes cuando se muestra
   useEffect(() => {
     if (resultadosBusqueda.length > 0 && !clienteSeleccionado && inputClienteRef.current) {
-      const rect = inputClienteRef.current.getBoundingClientRect();
-      setDropdownClientePos({
-        top: rect.bottom + window.scrollY + 8,
-        left: rect.left + window.scrollX,
-        width: rect.width,
-      });
+      setDropdownClientePos(posicionDropdownFijo(inputClienteRef.current, 280));
     } else {
       setDropdownClientePos(null);
     }
-  }, [resultadosBusqueda, clienteSeleccionado]);
+  }, [resultadosBusqueda, clienteSeleccionado, busquedaCliente]);
 
   // Cerrar dropdown de clientes al hacer scroll dentro del modal o resize
   useEffect(() => {
@@ -389,16 +385,11 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   // Calcular posición del dropdown de prendas cuando se muestra
   useEffect(() => {
     if (dropdownPrendaVisible && inputPrendaRef.current) {
-      const rect = inputPrendaRef.current.getBoundingClientRect();
-      setDropdownPrendaPos({
-        top: rect.bottom + window.scrollY + 8,
-        left: rect.left + window.scrollX,
-        width: rect.width
-      });
+      setDropdownPrendaPos(posicionDropdownFijo(inputPrendaRef.current, 320));
     } else {
       setDropdownPrendaPos(null);
     }
-  }, [dropdownPrendaVisible]);
+  }, [dropdownPrendaVisible, busquedaPrenda]);
 
   useEffect(() => {
     if (dropdownPrendaVisible) {
@@ -417,6 +408,26 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       };
     }
   }, [dropdownPrendaVisible]);
+
+  // Posicionar autocomplete de prenda al editar partidas (sigue al input al hacer scroll en el modal)
+  useEffect(() => {
+    if (!dropdownPrendaEditVisible || editPartidaIdx === null) return;
+
+    const actualizarPosicion = () => {
+      const el = editPrendaInputRefs.current[editPartidaIdx];
+      if (el) setDropdownPrendaEditPos(posicionDropdownFijo(el, 320));
+    };
+
+    actualizarPosicion();
+    const root = modalScrollRef.current;
+    root?.addEventListener('scroll', actualizarPosicion, { passive: true });
+    window.addEventListener('resize', actualizarPosicion, { passive: true });
+
+    return () => {
+      root?.removeEventListener('scroll', actualizarPosicion);
+      window.removeEventListener('resize', actualizarPosicion);
+    };
+  }, [dropdownPrendaEditVisible, editPartidaIdx, busquedaPrendaEdit, prendasEditMostrar.length]);
 
   // Cerrar mini-modal de precio al hacer clic fuera o scroll del modal
   useEffect(() => {
@@ -2711,9 +2722,13 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                           }}
                         >
                           <td data-label="#" style={{ padding: '0.75rem' }}>{index + 1}</td>
-                          <td data-label="Prenda" style={{ padding: '0.75rem', fontWeight: 'bold' }}>
+                          <td data-label="Prenda" style={{ padding: '0.75rem', fontWeight: 'bold', minWidth: '16rem' }}>
                             {esModoEdicion ? (
                               <input
+                                className="cotizacion-partida-prenda-input"
+                                ref={(el) => {
+                                  editPrendaInputRefs.current[index] = el;
+                                }}
                                 value={editPartidaIdx === index ? busquedaPrendaEdit : partida.prenda_nombre}
                                 onChange={(e) => {
                                   const q = e.target.value;
@@ -2721,18 +2736,13 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                                   setBusquedaPrendaEdit(q);
                                   setDropdownPrendaEditVisible(true);
                                   setIndiceSeleccionadoPrendaEdit(-1);
-                                  // Si es manual, permitimos editar el texto directamente
+                                  setDropdownPrendaEditPos(posicionDropdownFijo(e.currentTarget, 320));
                                   if (partida.es_manual) {
                                     actualizarPartida(index, 'prenda_nombre', q);
                                   }
                                 }}
                                 onFocus={(e) => {
-                                  const rect = e.currentTarget.getBoundingClientRect();
-                                  setDropdownPrendaEditPos({
-                                    top: rect.bottom + window.scrollY + 8,
-                                    left: rect.left + window.scrollX,
-                                    width: rect.width,
-                                  });
+                                  setDropdownPrendaEditPos(posicionDropdownFijo(e.currentTarget, 320));
                                   setEditPartidaIdx(index);
                                   setBusquedaPrendaEdit(partida.prenda_nombre);
                                   setDropdownPrendaEditVisible(true);
@@ -2784,7 +2794,6 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                                   }
                                 }}
                                 style={{
-                                  width: '100%',
                                   padding: '0.4rem 0.5rem',
                                   borderRadius: 6,
                                   border: '1px solid #d1d5db',
@@ -2992,12 +3001,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   e.preventDefault();
-                                  const rect = e.currentTarget.getBoundingClientRect();
-                                  setMiniModalPrecioPos({
-                                    top: rect.bottom + window.scrollY + 5,
-                                    left: rect.left + window.scrollX,
-                                    width: 150,
-                                  });
+                                  setMiniModalPrecioPos(posicionDropdownFijo(e.currentTarget, 150));
                                   setMiniModalPrecioAbierto(miniModalPrecioAbierto === index ? null : index);
                                 }}
                                 title="Cambiar tipo de precio"
@@ -3834,22 +3838,20 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       {/* Portal: Autocomplete de prenda en edición de partidas */}
       {mounted && dropdownPrendaEditPos && dropdownPrendaEditVisible && createPortal(
         prendasEditMostrar.length > 0 ? (
-          <div style={{
-            position: 'fixed',
-            top: dropdownPrendaEditPos.top,
-            left: dropdownPrendaEditPos.left,
-            width: dropdownPrendaEditPos.width,
-            maxHeight: '250px',
-            overflowY: 'auto',
-            background: 'white',
-            border: '2px solid #667eea',
-            borderRadius: '8px',
-            boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
-            zIndex: 10000,
-          }}>
+          <div
+            className="cotizacion-autocomplete-dropdown"
+            style={{
+              top: dropdownPrendaEditPos.top,
+              left: dropdownPrendaEditPos.left,
+              width: dropdownPrendaEditPos.width,
+            }}
+          >
             {prendasEditMostrar.map((prenda, idx) => (
               <div
                 key={prenda.id}
+                className={`cotizacion-autocomplete-dropdown-item${
+                  indiceSeleccionadoPrendaEdit === idx ? ' is-active' : ''
+                }`}
                 onMouseDown={(e) => {
                   e.preventDefault();
                   if (editPartidaIdx === null) return;
@@ -3866,42 +3868,26 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                     void seleccionarPrendaSistemaParaPartida(editPartidaIdx, prendaId, prendaNombre);
                   }
 
-                  // Foco a talla para seguir flujo
                   setTimeout(() => {
-                    const node = editTallaRefs.current[editPartidaIdx] as any;
-                    if (node?.focus) node.focus();
+                    const node = editTallaRefs.current[editPartidaIdx] as HTMLElement | null;
+                    if (node && 'focus' in node) node.focus();
                   }, 80);
                 }}
                 onMouseEnter={() => setIndiceSeleccionadoPrendaEdit(idx)}
-                style={{
-                  padding: '0.75rem 1rem',
-                  cursor: 'pointer',
-                  borderBottom: idx < prendasEditMostrar.length - 1 ? '1px solid #f0f0f0' : 'none',
-                  transition: 'all 0.15s',
-                  background: indiceSeleccionadoPrendaEdit === idx ? '#667eea' : 'white',
-                  color: indiceSeleccionadoPrendaEdit === idx ? 'white' : 'black',
-                  fontWeight: indiceSeleccionadoPrendaEdit === idx ? 'bold' : 'normal',
-                }}
               >
                 {prenda.nombre}
               </div>
             ))}
           </div>
         ) : (
-          <div style={{
-            position: 'fixed',
-            top: dropdownPrendaEditPos.top,
-            left: dropdownPrendaEditPos.left,
-            width: dropdownPrendaEditPos.width,
-            background: 'white',
-            border: '2px solid #ddd',
-            borderRadius: '8px',
-            padding: '0.75rem',
-            color: '#999',
-            fontSize: '0.9rem',
-            zIndex: 10000,
-            boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-          }}>
+          <div
+            className="cotizacion-autocomplete-dropdown-empty"
+            style={{
+              top: dropdownPrendaEditPos.top,
+              left: dropdownPrendaEditPos.left,
+              width: dropdownPrendaEditPos.width,
+            }}
+          >
             No se encontraron prendas
           </div>
         ),
