@@ -2,32 +2,20 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type { Costo } from '@/lib/types';
+import { sortCostosPorTalla } from '@/lib/ordenTallas';
 
-export type FilaCostoEditable = {
+function parsePrecio(value: string): number {
+  const n = parseFloat(value);
+  return Number.isFinite(n) && n >= 0 ? n : 0;
+}
+
+interface FilaCostoEditable {
   costoId: string;
   tallaId: string;
   tallaNombre: string;
   mayoreo: string;
   menudeo: string;
   selected: boolean;
-};
-
-function sortCostosPorTalla(costos: Costo[]): Costo[] {
-  return [...costos].sort((a, b) => {
-    const tallaA = a.talla?.nombre || '';
-    const tallaB = b.talla?.nombre || '';
-    const aEsNumero = !Number.isNaN(Number(tallaA));
-    const bEsNumero = !Number.isNaN(Number(tallaB));
-    if (aEsNumero && !bEsNumero) return -1;
-    if (!aEsNumero && bEsNumero) return 1;
-    if (aEsNumero && bEsNumero) return Number(tallaA) - Number(tallaB);
-    return tallaA.localeCompare(tallaB, 'es', { sensitivity: 'base' });
-  });
-}
-
-function parsePrecio(value: string): number {
-  const n = parseFloat(value);
-  return Number.isFinite(n) && n >= 0 ? n : 0;
 }
 
 interface ModalCostosPrendaProps {

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { supabase } from '../supabase';
+import { compararTallas } from '../ordenTallas';
 
 export interface ReporteVentas {
   id: string;
@@ -211,12 +212,7 @@ export function useReportes(sucursal_id?: string) {
         sensitivity: 'base',
       });
       if (porPrenda !== 0) return porPrenda;
-      const ordenA = Number(a.talla?.orden ?? 0);
-      const ordenB = Number(b.talla?.orden ?? 0);
-      if (ordenA !== ordenB) return ordenA - ordenB;
-      return (a.talla?.nombre || '').localeCompare(b.talla?.nombre || '', 'es', {
-        sensitivity: 'base',
-      });
+      return compararTallas(a.talla, b.talla);
     });
     return filas;
   };

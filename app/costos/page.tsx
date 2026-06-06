@@ -7,6 +7,7 @@ import { useCostos } from '@/lib/hooks/useCostos';
 import { usePrendas } from '@/lib/hooks/usePrendas';
 import { useTallas } from '@/lib/hooks/useTallas';
 import ModalCostosPrenda, { agruparCostosPorPrenda, resumenRangoPrecios } from '@/components/ModalCostosPrenda';
+import { compararTallas } from '@/lib/ordenTallas';
 import { supabase } from '@/lib/supabase';
 import type { Costo } from '@/lib/types';
 
@@ -509,17 +510,7 @@ export default function CostosPage() {
                             // Filtrar solo las tallas disponibles para esta prenda
                             const tallasFiltradas = tallas
                               .filter(t => t.activo && tallasDisponibles.includes(t.id))
-                              .sort((a, b) => {
-                                const aEsNumero = !isNaN(Number(a.nombre));
-                                const bEsNumero = !isNaN(Number(b.nombre));
-                                
-                                if (aEsNumero && !bEsNumero) return -1;
-                                if (!aEsNumero && bEsNumero) return 1;
-                                if (aEsNumero && bEsNumero) {
-                                  return Number(a.nombre) - Number(b.nombre);
-                                }
-                                return a.nombre.localeCompare(b.nombre);
-                              });
+                              .sort(compararTallas);
                             
                             // Dividir en filas de 4 columnas
                             const filas = [];
