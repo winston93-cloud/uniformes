@@ -902,24 +902,31 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
         return Number.isFinite(n) ? String(n) : (data.folio || '');
       })();
 
-      // Caja izquierda (cliente)
-      // Coordenadas calibradas al JPG (mm, A4)
-      // Ajuste fino: subir ~3 renglones y mover a la derecha
+      // Caja izquierda (cliente) — ancho limitado para no invadir rótulos de pago (derecha)
       const xL = 37;
+      const anchoTextoCliente = 92;
+      const interlineadoCliente = 4.2;
       const clienteNombre = data.cliente.nombre || '';
       const clienteDomicilio = data.cliente.domicilio || '';
       const clienteRfc = data.cliente.rfc || '';
       const clienteTelefono = data.cliente.telefono || '';
-      // Interlineado izquierdo: domicilio un poco más arriba (menos hueco bajo el nombre)
-      const yNombre = 35;
-      const yDomicilio = 39;
-      const yRfc = 47;
-      // Subir ~1.5 renglones para evitar encimarse con la etiqueta del formato
-      const yTel = 50.5;
-      if (clienteNombre) doc.text(doc.splitTextToSize(clienteNombre, 100), xL, yNombre);
-      if (clienteDomicilio) doc.text(doc.splitTextToSize(clienteDomicilio, 100), xL, yDomicilio);
-      if (clienteRfc) doc.text(doc.splitTextToSize(clienteRfc, 100), xL, yRfc);
-      if (clienteTelefono) doc.text(doc.splitTextToSize(clienteTelefono, 100), xL, yTel);
+      let yCliente = 35;
+      if (clienteNombre) {
+        doc.text(doc.splitTextToSize(clienteNombre, anchoTextoCliente), xL, yCliente);
+        yCliente += interlineadoCliente;
+      }
+      if (clienteDomicilio) {
+        const lineasDomicilio = doc.splitTextToSize(clienteDomicilio, anchoTextoCliente);
+        doc.text(lineasDomicilio, xL, yCliente);
+        yCliente += lineasDomicilio.length * interlineadoCliente;
+      }
+      if (clienteRfc) {
+        doc.text(doc.splitTextToSize(clienteRfc, anchoTextoCliente), xL, yCliente);
+        yCliente += interlineadoCliente;
+      }
+      if (clienteTelefono) {
+        doc.text(doc.splitTextToSize(clienteTelefono, anchoTextoCliente), xL, yCliente);
+      }
 
       // Caja derecha (comprobante / pago)
       // NOTA: el fondo tiene una columna de "rótulos" y otra de "valores".
@@ -983,8 +990,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       styles: { fontSize: 9, cellPadding: 2, textColor: [15, 23, 42] },
       columnStyles: {
         0: { cellWidth: 16, halign: 'right' },
-        1: { cellWidth: 78 },
-        2: { cellWidth: 18 },
+        1: { cellWidth: 76 },
+        2: { cellWidth: 20, fontSize: 7.5, halign: 'center', overflow: 'linebreak' },
         3: { cellWidth: 20 },
         4: { cellWidth: 26, halign: 'right' },
         5: { cellWidth: 28, halign: 'right' },
@@ -1027,28 +1034,39 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       : [];
     const altoCondiciones = 16 + 7 + 13 + 7 + 13 + 7 + (data.observaciones ? 13 + lineasObs.length * 5 : 0);
 
-    const dibujarCondiciones = (yCond: number) => {
-      doc.setFontSize(10);
+    const dibujarCondiciones = (yCond: number, compacto = false) => {
+      const pasoTitulo = compacto ? 4.5 : 7;
+      const pasoBloque = compacto ? 11 : 13;
+      const tamTitulo = compacto ? 9 : 10;
+      const ancho = compacto ? 175 : 180;
+      let y = yCond;
+
+      doc.setFontSize(tamTitulo);
       doc.setFont('helvetica', 'bold');
-      doc.text('Condiciones de Pago:', 14, yCond);
+      doc.text('Condiciones de Pago:', 14, y);
       doc.setFont('helvetica', 'normal');
-      doc.text(doc.splitTextToSize(data.condicionesPago || '—', 180), 14, yCond + 7);
+      const lineasPago = doc.splitTextToSize(data.condicionesPago || '—', ancho);
+      doc.text(lineasPago, 14, y + pasoTitulo);
+      y += pasoTitulo + lineasPago.length * (compacto ? 4 : 5) + (compacto ? 2 : 4);
 
       doc.setFont('helvetica', 'bold');
-      doc.text('Tiempo de Entrega:', 14, yCond + 20);
+      doc.text('Tiempo de Entrega:', 14, y);
       doc.setFont('helvetica', 'normal');
-      doc.text(doc.splitTextToSize(data.tiempoEntrega || '—', 180), 14, yCond + 27);
+      const lineasEntrega = doc.splitTextToSize(data.tiempoEntrega || '—', ancho);
+      doc.text(lineasEntrega, 14, y + pasoTitulo);
+      y += pasoTitulo + lineasEntrega.length * (compacto ? 4 : 5) + (compacto ? 2 : 4);
 
       doc.setFont('helvetica', 'bold');
-      doc.text('Fecha de Entrega:', 14, yCond + 40);
+      doc.text('Fecha de Entrega:', 14, y);
       doc.setFont('helvetica', 'normal');
-      doc.text(data.fechaEntregaTexto || '—', 14, yCond + 47);
+      doc.text(data.fechaEntregaTexto || '—', 14, y + pasoTitulo);
+      y += pasoBloque;
 
       if (data.observaciones) {
         doc.setFont('helvetica', 'bold');
-        doc.text('Observaciones:', 14, yCond + 60);
+        doc.text('Observaciones:', 14, y);
         doc.setFont('helvetica', 'normal');
-        doc.text(lineasObs, 14, yCond + 67);
+        doc.text(lineasObs, 14, y + pasoTitulo);
       }
     };
 
@@ -1138,8 +1156,10 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
         { bold: true, size: 14 }
       );
 
-      const espacioCond = asegurarEspacioVertical(yTot + 14, altoCondiciones, 'partidas');
-      dibujarCondiciones(espacioCond.y);
+      // Condiciones en la misma hoja que totales/partidas (sin hoja extra vacía)
+      const yCond = yTot + 10;
+      const espacioRestante = pageH - margenInferior - yCond;
+      dibujarCondiciones(yCond, espacioRestante < altoCondiciones);
     }
 
     return doc;
