@@ -12,6 +12,7 @@ import { useUbicacionesAlmacenamiento } from '@/lib/hooks/useUbicacionesAlmacena
 import { fetchCostoStockModal } from '@/lib/costoQueries';
 import { supabase } from '@/lib/supabase';
 import type { Prenda } from '@/lib/types';
+import { sortTallas } from '@/lib/ordenTallas';
 import ModalInsumosTalla from '@/components/ModalInsumosTalla';
 import {
   parseEnteroFormateado,
@@ -821,18 +822,7 @@ export default function PrendasPage() {
                           }
                         }
                         
-                        // Ordenar tallas: primero números, luego letras, ascendente
-                        const tallasOrdenadas = tallasFiltradas.sort((a, b) => {
-                          const aEsNumero = !isNaN(Number(a.nombre));
-                          const bEsNumero = !isNaN(Number(b.nombre));
-                          
-                          if (aEsNumero && !bEsNumero) return -1;
-                          if (!aEsNumero && bEsNumero) return 1;
-                          if (aEsNumero && bEsNumero) {
-                            return Number(a.nombre) - Number(b.nombre);
-                          }
-                          return a.nombre.localeCompare(b.nombre);
-                        });
+                        const tallasOrdenadas = sortTallas(tallasFiltradas);
                         
                         // Dividir en filas de 4 columnas
                         const filas = [];
