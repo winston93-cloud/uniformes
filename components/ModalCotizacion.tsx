@@ -41,11 +41,14 @@ import {
 import {
   catalogoSatParaSelect,
   crearOnBlurCerrarDropdown,
+  crearSupresorClickFantasma,
   focusCotizacionSiEscritorio,
   focusSinScroll,
+  handlersTapSeleccionDropdown,
   instalarCierrePointerFuera,
   mergePropsDropdownPortal,
   posicionDropdownFijo,
+  scrollContenedorAlInicio,
   suscribirReposicionDropdownViewport,
   type PosicionDropdown,
 } from '@/lib/cotizacionUi';
@@ -176,6 +179,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   const dropdownClientePortalRef = useRef<HTMLDivElement>(null);
   const dropdownPrendaPortalRef = useRef<HTMLDivElement>(null);
   const dropdownPrendaEditPortalRef = useRef<HTMLDivElement>(null);
+  const supresorClickFantasma = useRef(crearSupresorClickFantasma()).current;
   
   // Estados para posicionamiento de dropdowns en portal
   const [dropdownClientePos, setDropdownClientePos] = useState<PosicionDropdown | null>(null);
@@ -256,7 +260,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   // Optimización: Memoizar filtrado de prendas para evitar recálculos
   const prendasMostrar = useMemo(() => {
     const prendasActivas = prendas
-      .filter(p => p.activo)
+      .filter((p) => p.activo !== false)
       .sort((a, b) => a.nombre.localeCompare(b.nombre));
 
     const q = busquedaPrenda.trim().toLowerCase();
@@ -273,7 +277,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
 
   const prendasEditMostrar = useMemo(() => {
     const prendasActivas = prendas
-      .filter(p => p.activo)
+      .filter((p) => p.activo !== false)
       .sort((a, b) => a.nombre.localeCompare(b.nombre));
 
     const q = busquedaPrendaEdit.trim().toLowerCase();
@@ -287,6 +291,47 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
 
     return prendasFiltradas.slice(0, LIMITE_RESULTADOS_PRENDA);
   }, [prendas, busquedaPrendaEdit]);
+
+  const seleccionarPrendaDesdeBusqueda = (prenda: { id: string; nombre: string }) => {
+    supresorClickFantasma.activar();
+    setPrendaSeleccionada(prenda.id);
+    setBusquedaPrenda(prenda.nombre);
+    setDropdownPrendaVisible(false);
+    setIndiceSeleccionadoPrenda(-1);
+    focusCotizacionSiEscritorio(inputColorRef.current);
+  };
+
+  const handleCambioBusquedaPrenda = (nuevaBusqueda: string) => {
+    const hayDatosAtados =
+      subPartidas.some((sp) => sp.cantidad > 0) || colorGlobal.trim().length > 0;
+
+    if (prendaSeleccionada && hayDatosAtados) {
+      if (
+        confirm(
+          '⚠️ Cambiar de prenda limpiará las tallas y datos ingresados. ¿Continuar?'
+        )
+      ) {
+        setPrendaSeleccionada(null);
+        setColorGlobal('');
+        setEspecificacionesGlobales('');
+        setSubPartidas([
+          { id: crypto.randomUUID(), costo_id: '', talla: '', cantidad: 0, precio_unitario: 0 },
+        ]);
+        setBusquedaPrenda(nuevaBusqueda);
+        setDropdownPrendaVisible(true);
+        setIndiceSeleccionadoPrenda(-1);
+      }
+      return;
+    }
+
+    if (prendaSeleccionada) {
+      setPrendaSeleccionada(null);
+    }
+
+    setBusquedaPrenda(nuevaBusqueda);
+    setDropdownPrendaVisible(true);
+    setIndiceSeleccionadoPrenda(-1);
+  };
 
   // Filtrar cotizaciones por cliente y fecha
   const cotizacionesFiltradas = useMemo(() => {
@@ -317,7 +362,10 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     document.body.style.top = `-${scrollY}px`;
     document.body.style.width = '100%';
 
-    setTimeout(() => focusSinScroll(inputClienteRef.current), 150);
+    requestAnimationFrame(() => {
+      scrollContenedorAlInicio(modalScrollRef.current);
+      focusCotizacionSiEscritorio(inputClienteRef.current);
+    });
 
     return () => {
       setMounted(false);
@@ -336,6 +384,40 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       void obtenerCotizaciones();
     }
   }, [vista, obtenerCotizaciones]);
+
+  useEffect(() => {
+    if (vista === 'nueva') {
+      scrollContenedorAlInicio(modalScrollRef.current);
+    }
+  }, [vista]);
+
+  useEffect(() => {
+    const el = modalScrollRef.current;
+    if (!el) return;
+
+    const bloquearScrollModal =
+      dropdownPrendaVisible ||
+      dropdownPrendaEditVisible ||
+      (resultadosBusqueda.length > 0 && !clienteSeleccionado);
+
+    if (bloquearScrollModal) {
+      el.style.overflow = 'hidden';
+      el.style.overscrollBehavior = 'none';
+    } else {
+      el.style.overflow = 'auto';
+      el.style.overscrollBehavior = 'contain';
+    }
+
+    return () => {
+      el.style.overflow = 'auto';
+      el.style.overscrollBehavior = 'contain';
+    };
+  }, [
+    dropdownPrendaVisible,
+    dropdownPrendaEditVisible,
+    resultadosBusqueda.length,
+    clienteSeleccionado,
+  ]);
 
   useEffect(() => {
     if (!metodoPagoId && metodoDefault?.id) setMetodoPagoId(metodoDefault.id);
@@ -547,12 +629,18 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
         { current: editInput },
       ],
       () => {
-        setDropdownPrendaVisible(false);
-        setDropdownPrendaEditVisible(false);
-        setIndiceSeleccionadoPrenda(-1);
-        setIndiceSeleccionadoPrendaEdit(-1);
-        setResultadosBusqueda([]);
-        setIndiceSeleccionadoCliente(-1);
+        if (hayDropdownPrenda) {
+          setDropdownPrendaVisible(false);
+          setIndiceSeleccionadoPrenda(-1);
+        }
+        if (hayDropdownPrendaEdit) {
+          setDropdownPrendaEditVisible(false);
+          setIndiceSeleccionadoPrendaEdit(-1);
+        }
+        if (hayDropdownCliente) {
+          setResultadosBusqueda([]);
+          setIndiceSeleccionadoCliente(-1);
+        }
       },
       () =>
         interaccionDropdownPrendaRef.current ||
@@ -1611,7 +1699,10 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
         zIndex: 9999,
         padding: '1rem',
       }}
-      onClick={onClose}
+      onClick={(e) => {
+        if (supresorClickFantasma.activo()) return;
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
       <div 
         ref={modalScrollRef}
@@ -2362,22 +2453,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                           ref={inputPrendaRef}
                           type="text"
                           value={busquedaPrenda}
-                          onChange={(e) => {
-                            const nuevaBusqueda = e.target.value;
-                            // Si hay sub-partidas llenas y cambia la prenda, confirmar
-                            if (prendaSeleccionada && (subPartidas.some(sp => sp.cantidad > 0) || colorGlobal.trim())) {
-                              if (confirm('⚠️ Cambiar de prenda limpiará las tallas y datos ingresados. ¿Continuar?')) {
-                                setBusquedaPrenda(nuevaBusqueda);
-                                setPrendaSeleccionada(null);
-                                setColorGlobal('');
-                                setEspecificacionesGlobales('');
-                              }
-                            } else {
-                              setBusquedaPrenda(nuevaBusqueda);
-                            }
-                            setDropdownPrendaVisible(true);
-                            setIndiceSeleccionadoPrenda(-1);
-                          }}
+                          onChange={(e) => handleCambioBusquedaPrenda(e.target.value)}
                           onFocus={() => {
                             setDropdownPrendaVisible(true);
                             setIndiceSeleccionadoPrenda(-1);
@@ -2398,17 +2474,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                             } else if (e.key === 'Enter') {
                               e.preventDefault();
                               if (indiceSeleccionadoPrenda >= 0 && prendasMostrar[indiceSeleccionadoPrenda]) {
-                                const prenda = prendasMostrar[indiceSeleccionadoPrenda];
-                                setPrendaSeleccionada(prenda.id);
-                                setBusquedaPrenda(prenda.nombre);
-                                setDropdownPrendaVisible(false);
-                                setIndiceSeleccionadoPrenda(-1);
-                                // Auto-focus a color
-                                setTimeout(() => {
-                                  if (inputColorRef.current) {
-                                    inputColorRef.current.focus();
-                                  }
-                                }, 100);
+                                seleccionarPrendaDesdeBusqueda(prendasMostrar[indiceSeleccionadoPrenda]);
                               }
                             } else if (e.key === 'Escape') {
                               e.preventDefault();
@@ -2417,7 +2483,10 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                             }
                           }}
                           placeholder="Buscar prenda..."
-                          style={{ 
+                          autoComplete="off"
+                          autoCorrect="off"
+                          spellCheck={false}
+                          style={{
                             width: '100%', 
                             padding: '0.75rem', 
                             borderRadius: '8px', 
@@ -3978,19 +4047,16 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
             return (
               <div
                 key={cliente.id}
-                onClick={() => {
+                {...handlersTapSeleccionDropdown(() => {
+                  supresorClickFantasma.activar();
                   setClienteSeleccionado(cliente);
                   setBusquedaCliente(nombreCliente);
                   setResultadosBusqueda([]);
                   setIndiceSeleccionadoCliente(-1);
-                  setTimeout(() => {
-                    if (cotizacionDirecta && inputPrendaManualRef.current) {
-                      inputPrendaManualRef.current.focus();
-                    } else if (inputPrendaRef.current) {
-                      inputPrendaRef.current.focus();
-                    }
-                  }, 100);
-                }}
+                  focusCotizacionSiEscritorio(
+                    cotizacionDirecta ? inputPrendaManualRef.current : inputPrendaRef.current
+                  );
+                }, interaccionDropdownClienteRef)}
                 onMouseEnter={() => setIndiceSeleccionadoCliente(index)}
                 style={{
                   padding: '0.75rem',
@@ -4040,17 +4106,10 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
             {prendasMostrar.map((prenda, index) => (
               <div
                 key={prenda.id}
-                onClick={() => {
-                  setPrendaSeleccionada(prenda.id);
-                  setBusquedaPrenda(prenda.nombre);
-                  setDropdownPrendaVisible(false);
-                  setIndiceSeleccionadoPrenda(-1);
-                  setTimeout(() => {
-                    if (inputColorRef.current) {
-                      inputColorRef.current.focus();
-                    }
-                  }, 100);
-                }}
+                {...handlersTapSeleccionDropdown(
+                  () => seleccionarPrendaDesdeBusqueda(prenda),
+                  interaccionDropdownPrendaRef
+                )}
                 onMouseEnter={() => setIndiceSeleccionadoPrenda(index)}
                 style={{
                   padding: '0.75rem 1rem',
@@ -4111,8 +4170,9 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                 className={`cotizacion-autocomplete-dropdown-item${
                   indiceSeleccionadoPrendaEdit === idx ? ' is-active' : ''
                 }`}
-                onClick={() => {
+                {...handlersTapSeleccionDropdown(() => {
                   if (editPartidaIdx === null) return;
+                  supresorClickFantasma.activar();
                   const prendaId = String(prenda.id);
                   const prendaNombre = prenda.nombre;
                   setBusquedaPrendaEdit(prendaNombre);
@@ -4126,11 +4186,10 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                     void seleccionarPrendaSistemaParaPartida(editPartidaIdx, prendaId, prendaNombre);
                   }
 
-                  setTimeout(() => {
-                    const node = editTallaRefs.current[editPartidaIdx] as HTMLElement | null;
-                    if (node && 'focus' in node) node.focus();
-                  }, 80);
-                }}
+                  focusCotizacionSiEscritorio(
+                    editTallaRefs.current[editPartidaIdx] as HTMLElement | null
+                  );
+                }, interaccionDropdownPrendaEditRef)}
                 onMouseEnter={() => setIndiceSeleccionadoPrendaEdit(idx)}
               >
                 {prenda.nombre}

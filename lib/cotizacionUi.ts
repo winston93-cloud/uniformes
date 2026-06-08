@@ -25,11 +25,14 @@ export function propsDropdownPortalScroll(
   const liberar = () => {
     window.setTimeout(() => {
       refInteraccion.current = false;
-    }, 350);
+    }, 500);
   };
 
   return {
     onTouchStart: () => {
+      refInteraccion.current = true;
+    },
+    onTouchMove: () => {
       refInteraccion.current = true;
     },
     onPointerDown: (e) => {
@@ -84,6 +87,89 @@ export function instalarCierrePointerFuera(
   };
   document.addEventListener('pointerdown', handler, true);
   return () => document.removeEventListener('pointerdown', handler, true);
+}
+
+/** Evita que el "click fantasma" de iOS cierre el modal tras elegir un ítem del portal. */
+export function crearSupresorClickFantasma() {
+  const ref = { current: false };
+  return {
+    activar(ms = 500) {
+      ref.current = true;
+      window.setTimeout(() => {
+        ref.current = false;
+      }, ms);
+    },
+    activo() {
+      return ref.current;
+    },
+  };
+}
+
+/** Selección en ítem de dropdown: distingue tap de scroll (iOS/Android). */
+export function handlersTapSeleccionDropdown(
+  onSelect: () => void,
+  refInteraccion?: RefInteraccionDropdown
+): Pick<
+  HTMLAttributes<HTMLDivElement>,
+  'onTouchStart' | 'onTouchMove' | 'onTouchEnd' | 'onPointerDown' | 'onClick'
+> {
+  let startX = 0;
+  let startY = 0;
+  let moved = false;
+  const UMBRAL = 10;
+
+  const marcarInteraccion = () => {
+    if (refInteraccion) refInteraccion.current = true;
+  };
+
+  return {
+    onTouchStart: (e) => {
+      marcarInteraccion();
+      const t = e.touches[0];
+      if (!t) return;
+      startX = t.clientX;
+      startY = t.clientY;
+      moved = false;
+    },
+    onTouchMove: (e) => {
+      marcarInteraccion();
+      const t = e.touches[0];
+      if (!t) return;
+      if (
+        Math.abs(t.clientX - startX) > UMBRAL ||
+        Math.abs(t.clientY - startY) > UMBRAL
+      ) {
+        moved = true;
+      }
+    },
+    onTouchEnd: (e) => {
+      marcarInteraccion();
+      if (moved) return;
+      e.preventDefault();
+      onSelect();
+    },
+    onPointerDown: (e) => {
+      if (e.pointerType === 'mouse') {
+        e.preventDefault();
+      }
+    },
+    onClick: (e) => {
+      if (esIOS()) {
+        e.preventDefault();
+        return;
+      }
+      onSelect();
+    },
+  };
+}
+
+/** Lleva el contenedor scrollable al inicio (p. ej. al abrir modal en móvil). */
+export function scrollContenedorAlInicio(el: HTMLElement | null | undefined): void {
+  if (!el) return;
+  el.scrollTop = 0;
+  requestAnimationFrame(() => {
+    el.scrollTop = 0;
+  });
 }
 
 /** Evita saltos de scroll al enfocar inputs dentro del modal (Safari iOS). */
