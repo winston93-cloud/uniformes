@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   etiquetaSatPago,
-  useSatCatalogosPago,
   type SatCatalogoTipo,
 } from '@/lib/hooks/useSatCatalogosPago';
 import type { SatFormaPago, SatMetodoPago } from '@/lib/types';
@@ -11,6 +11,15 @@ import type { SatFormaPago, SatMetodoPago } from '@/lib/types';
 interface ModalCatalogosSatPagoProps {
   abierto: boolean;
   onClose: () => void;
+  metodos: SatMetodoPago[];
+  formas: SatFormaPago[];
+  cargando: boolean;
+  error: string | null;
+  guardar: (
+    tipo: SatCatalogoTipo,
+    payload: Omit<SatMetodoPago, 'id' | 'created_at' | 'updated_at'> & { id?: string }
+  ) => Promise<void>;
+  eliminar: (tipo: SatCatalogoTipo, id: string) => Promise<void>;
 }
 
 type FilaSat = SatMetodoPago | SatFormaPago;
@@ -47,8 +56,17 @@ function IconPlus() {
   );
 }
 
-export default function ModalCatalogosSatPago({ abierto, onClose }: ModalCatalogosSatPagoProps) {
-  const { metodos, formas, cargando, error, recargar, guardar, eliminar } = useSatCatalogosPago();
+export default function ModalCatalogosSatPago({
+  abierto,
+  onClose,
+  metodos,
+  formas,
+  cargando,
+  error,
+  guardar,
+  eliminar,
+}: ModalCatalogosSatPagoProps) {
+  const [mounted, setMounted] = useState(false);
   const [tab, setTab] = useState<SatCatalogoTipo>('metodo');
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(FORM_VACIO);
@@ -59,14 +77,17 @@ export default function ModalCatalogosSatPago({ abierto, onClose }: ModalCatalog
   const catalogoNombre = tab === 'metodo' ? 'c_MetodoPago' : 'c_FormaPago';
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
     if (!abierto) return;
     setEditId(null);
     setForm(FORM_VACIO);
     setMensaje(null);
-    void recargar();
-  }, [abierto, recargar]);
+  }, [abierto]);
 
-  if (!abierto) return null;
+  if (!abierto || !mounted) return null;
 
   const cambiarTab = (nuevo: SatCatalogoTipo) => {
     setTab(nuevo);
@@ -148,7 +169,7 @@ export default function ModalCatalogosSatPago({ abierto, onClose }: ModalCatalog
   const previewPdf =
     form.descripcion.trim() || (editId ? '—' : 'Escribe la descripción que saldrá en el PDF');
 
-  return (
+  const modal = (
     <div className="modal-catalogos-sat-overlay" onClick={onClose} role="presentation">
       <div
         className="modal-catalogos-sat-panel"
@@ -267,53 +288,69 @@ export default function ModalCatalogosSatPago({ abierto, onClose }: ModalCatalog
               <p>La descripción es el texto que aparece en el PDF de la cotización.</p>
             </div>
 
-            <label>
-              Clave SAT
+            <div className="form-group modal-catalogos-sat-field">
+              <label className="form-label" htmlFor="sat-clave">
+                Clave SAT
+              </label>
               <input
+                id="sat-clave"
+                className="form-input"
                 value={form.clave}
                 onChange={(e) => setForm((f) => ({ ...f, clave: e.target.value.toUpperCase() }))}
                 placeholder={tab === 'metodo' ? 'PUE' : '01'}
                 maxLength={10}
                 required
+                autoComplete="off"
               />
-            </label>
+            </div>
 
-            <label>
-              Descripción (PDF)
+            <div className="form-group modal-catalogos-sat-field">
+              <label className="form-label" htmlFor="sat-descripcion">
+                Descripción (PDF)
+              </label>
               <input
+                id="sat-descripcion"
+                className="form-input"
                 value={form.descripcion}
                 onChange={(e) => setForm((f) => ({ ...f, descripcion: e.target.value }))}
                 placeholder={tab === 'metodo' ? 'Pago en una sola exhibición' : 'EFECTIVO'}
                 required
+                autoComplete="off"
               />
-            </label>
+            </div>
 
-            <label>
-              Orden en listas
+            <div className="form-group modal-catalogos-sat-field">
+              <label className="form-label" htmlFor="sat-orden">
+                Orden en listas
+              </label>
               <input
+                id="sat-orden"
+                className="form-input"
                 type="number"
                 value={form.orden}
                 onChange={(e) => setForm((f) => ({ ...f, orden: e.target.value }))}
                 min={0}
               />
-            </label>
+            </div>
 
             <div className="modal-catalogos-sat-switches">
-              <label className="modal-catalogos-sat-switch">
+              <label className="modal-catalogos-sat-toggle">
                 <input
                   type="checkbox"
                   checked={form.activo}
                   onChange={(e) => setForm((f) => ({ ...f, activo: e.target.checked }))}
                 />
-                <span>Activo en cotizaciones</span>
+                <span className="modal-catalogos-sat-toggle-track" aria-hidden />
+                <span className="modal-catalogos-sat-toggle-label">Activo en cotizaciones</span>
               </label>
-              <label className="modal-catalogos-sat-switch">
+              <label className="modal-catalogos-sat-toggle">
                 <input
                   type="checkbox"
                   checked={form.es_default}
                   onChange={(e) => setForm((f) => ({ ...f, es_default: e.target.checked }))}
                 />
-                <span>Valor por defecto</span>
+                <span className="modal-catalogos-sat-toggle-track" aria-hidden />
+                <span className="modal-catalogos-sat-toggle-label">Valor por defecto</span>
               </label>
             </div>
 
@@ -348,4 +385,6 @@ export default function ModalCatalogosSatPago({ abierto, onClose }: ModalCatalog
       </div>
     </div>
   );
+
+  return createPortal(modal, document.body);
 }

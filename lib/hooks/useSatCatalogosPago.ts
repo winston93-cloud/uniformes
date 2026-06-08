@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { supabase, getSupabaseErrorMessage } from '@/lib/supabase';
 import type { SatFormaPago, SatMetodoPago } from '@/lib/types';
 
 export type SatCatalogoTipo = 'metodo' | 'forma';
@@ -44,6 +43,25 @@ export function textoPdfSatPago(item: { descripcion: string } | null | undefined
   return t || fallback;
 }
 
+function mensajeErrorUsuario(raw: string): string {
+  const linea = raw.split('\n')[0].replace(/^TypeError:\s*/i, '').trim();
+  if (/failed to fetch/i.test(linea)) {
+    return 'No se pudo conectar con el servidor. Revisa tu conexión e intenta de nuevo.';
+  }
+  if (/duplicate key|23505|already exists/i.test(linea)) {
+    return 'Esa clave SAT ya existe. Selecciónala en la lista y pulsa Editar.';
+  }
+  return linea || 'Error desconocido';
+}
+
+async function parseJsonResponse(res: Response) {
+  const body = (await res.json().catch(() => ({}))) as { error?: string; metodos?: SatMetodoPago[]; formas?: SatFormaPago[] };
+  if (!res.ok) {
+    throw new Error(mensajeErrorUsuario(body.error || `HTTP ${res.status}`));
+  }
+  return body;
+}
+
 export function useSatCatalogosPago() {
   const [metodos, setMetodos] = useState<SatMetodoPago[]>(FALLBACK_METODOS);
   const [formas, setFormas] = useState<SatFormaPago[]>(FALLBACK_FORMAS);
@@ -54,17 +72,13 @@ export function useSatCatalogosPago() {
     try {
       setCargando(true);
       setError(null);
-      const [mRes, fRes] = await Promise.all([
-        supabase.from('sat_metodos_pago').select('*').order('orden', { ascending: true }),
-        supabase.from('sat_formas_pago').select('*').order('orden', { ascending: true }),
-      ]);
-      if (mRes.error) throw mRes.error;
-      if (fRes.error) throw fRes.error;
-      if ((mRes.data || []).length > 0) setMetodos(ordenarCatalogo(mRes.data as SatMetodoPago[]));
-      if ((fRes.data || []).length > 0) setFormas(ordenarCatalogo(fRes.data as SatFormaPago[]));
+      const res = await fetch('/api/sat-catalogos-pago', { cache: 'no-store' });
+      const data = await parseJsonResponse(res);
+      if ((data.metodos || []).length > 0) setMetodos(ordenarCatalogo(data.metodos!));
+      if ((data.formas || []).length > 0) setFormas(ordenarCatalogo(data.formas!));
     } catch (err) {
       console.error('Error cargando catálogos SAT pago:', err);
-      setError(getSupabaseErrorMessage(err));
+      setError(err instanceof Error ? err.message : mensajeErrorUsuario(String(err)));
     } finally {
       setCargando(false);
     }
@@ -84,34 +98,21 @@ export function useSatCatalogosPago() {
     tipo: SatCatalogoTipo,
     payload: Omit<SatMetodoPago, 'id' | 'created_at' | 'updated_at'> & { id?: string }
   ) => {
-    const tabla = tipo === 'metodo' ? 'sat_metodos_pago' : 'sat_formas_pago';
-    const { id, ...resto } = payload;
-    const row = {
-      ...resto,
-      clave: resto.clave.trim().toUpperCase(),
-      descripcion: resto.descripcion.trim(),
-      updated_at: new Date().toISOString(),
-    };
-
-    if (row.es_default) {
-      await supabase.from(tabla).update({ es_default: false }).eq('es_default', true);
-    }
-
-    if (id && !id.startsWith('fallback-')) {
-      const { error: upErr } = await supabase.from(tabla).update(row).eq('id', id);
-      if (upErr) throw upErr;
-    } else {
-      const { error: insErr } = await supabase.from(tabla).insert([row]);
-      if (insErr) throw insErr;
-    }
+    const res = await fetch('/api/sat-catalogos-pago', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tipo, ...payload }),
+    });
+    await parseJsonResponse(res);
     await cargar();
   };
 
   const eliminar = async (tipo: SatCatalogoTipo, id: string) => {
     if (id.startsWith('fallback-')) return;
-    const tabla = tipo === 'metodo' ? 'sat_metodos_pago' : 'sat_formas_pago';
-    const { error: delErr } = await supabase.from(tabla).delete().eq('id', id);
-    if (delErr) throw delErr;
+    const res = await fetch(`/api/sat-catalogos-pago?tipo=${encodeURIComponent(tipo)}&id=${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+    await parseJsonResponse(res);
     await cargar();
   };
 

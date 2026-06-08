@@ -191,7 +191,11 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     formasActivas,
     metodoDefault,
     formaDefault,
+    cargando: cargandoCatalogosSat,
+    error: errorCatalogosSat,
     recargar: recargarCatalogosSat,
+    guardar: guardarCatalogoSat,
+    eliminar: eliminarCatalogoSat,
   } = useSatCatalogosPago();
   
   const { cicloEscolar, sesion } = useAuth();
@@ -4169,6 +4173,12 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
           setModalCatalogosSatAbierto(false);
           void recargarCatalogosSat();
         }}
+        metodos={metodos}
+        formas={formas}
+        cargando={cargandoCatalogosSat}
+        error={errorCatalogosSat}
+        guardar={guardarCatalogoSat}
+        eliminar={eliminarCatalogoSat}
       />
     </div>
   );
