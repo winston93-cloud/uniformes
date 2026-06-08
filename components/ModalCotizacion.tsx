@@ -1013,8 +1013,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       // Ajuste fino: método de pago ↑2mm, forma de pago ↓2mm (evita empalme en textos largos)
       const yMetodoBase = yFecha + gapRight + shiftInferior;
       const yMetodo = yMetodoBase - 2;
-      const yForma = yMetodoBase + stepRight + 1.5;
-      const ajustarAbajoTipoCambioYMoneda = 0.9;
+      const yForma = yMetodoBase + stepRight + 1;
+      const ajustarAbajoTipoCambioYMoneda = 0.4;
       const yTipoCambio = yForma + stepRight + ajustarAbajoTipoCambioYMoneda;
       const yMoneda = yTipoCambio + stepRight + ajustarAbajoTipoCambioYMoneda;
 
