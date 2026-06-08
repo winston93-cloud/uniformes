@@ -185,7 +185,13 @@ export function usePrendas() {
           fk ??
           (cat?.id && String(cat.id).trim() !== '' ? cat.id : null) ??
           (r.categoria_id != null ? String(r.categoria_id).trim() : null);
-        return { ...r, categoria_id: resolvedCategoriaId, categoria: cat };
+        const activoRaw = raw.activo ?? raw.Activo;
+        return {
+          ...r,
+          activo: activoRaw === undefined || activoRaw === null ? true : Boolean(activoRaw),
+          categoria_id: resolvedCategoriaId,
+          categoria: cat,
+        };
       });
       setPrendas(mapped);
     } catch (err: any) {

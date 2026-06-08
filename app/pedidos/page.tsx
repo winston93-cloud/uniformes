@@ -1,17 +1,20 @@
 'use client';
 
-import { useState, useRef, useEffect, Suspense } from 'react';
+import { useState, useRef, useEffect, useCallback, Suspense } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import ModalDevolucion from '@/components/ModalDevolucion';
 import { supabase } from '@/lib/supabase';
+import { posicionDropdownFijo } from '@/lib/cotizacionUi';
 import { useCostos } from '@/lib/hooks/useCostos';
 import { useAlumnos } from '@/lib/hooks/useAlumnos';
 import { useExternos } from '@/lib/hooks/useExternos';
 import { usePrendas } from '@/lib/hooks/usePrendas';
 import { useTallas } from '@/lib/hooks/useTallas';
 import { usePedidos } from '@/lib/hooks/usePedidos';
+import type { Prenda } from '@/lib/types';
 
 // Interfaces de tipos
 interface Pedido {
@@ -81,7 +84,7 @@ function PedidosPageContent() {
   const { costos, getCostosByPrenda, refetch: refetchCostos } = useCostos(sesion?.sucursal_id);
   const { alumnos, searchAlumnos } = useAlumnos(cicloEscolar);
   const { searchExternos } = useExternos();
-  const { prendas } = usePrendas();
+  const { prendas, loading: prendasLoading, error: prendasError, refetch: refetchPrendas } = usePrendas();
   const { tallas } = useTallas();
   const { pedidos: pedidosDB, loading: loadingPedidos, crearPedido, actualizarEstadoPedido, eliminarPedidoDefinitivo } =
     usePedidos(sesion?.sucursal_id);
@@ -162,11 +165,16 @@ function PedidosPageContent() {
 
   // Estados NUEVOS para búsqueda de prendas (implementación desde cero)
   const [textoPrendaBusqueda, setTextoPrendaBusqueda] = useState('');
-  const [prendasEncontradas, setPrendasEncontradas] = useState<any[]>([]);
+  const [prendasEncontradas, setPrendasEncontradas] = useState<Prenda[]>([]);
   const [mostrarListaPrendas, setMostrarListaPrendas] = useState(false);
+  const [posDropdownPrenda, setPosDropdownPrenda] = useState<{ top: number; left: number; width: number } | null>(
+    null
+  );
+  const [portalMounted, setPortalMounted] = useState(false);
   const [tallasDisponibles, setTallasDisponibles] = useState<any[]>([]);
   const inputPrendaRef = useRef<HTMLInputElement>(null);
   const contenedorPrendaRef = useRef<HTMLDivElement>(null);
+  const dropdownPrendaRef = useRef<HTMLDivElement>(null);
   const selectTallaRef = useRef<HTMLSelectElement>(null);
   const inputEspecificacionesRef = useRef<HTMLInputElement>(null);
   const inputCantidadRef = useRef<HTMLInputElement>(null);
@@ -263,31 +271,61 @@ function PedidosPageContent() {
   };
 
   // NUEVA IMPLEMENTACIÓN: Búsqueda simple y directa de prendas
-  const ejecutarBusquedaPrenda = (texto: string) => {
-    console.log('🆕 Búsqueda nueva - texto:', texto);
-    
-    // Si no hay texto, NO mostrar nada (cerrar dropdown)
-    if (!texto || texto.trim().length === 0) {
-      setPrendasEncontradas([]);
-      setMostrarListaPrendas(false);
-      return;
+  const sincronizarPosDropdownPrenda = useCallback(() => {
+    const anchor = inputPrendaRef.current;
+    if (!anchor) return;
+    setPosDropdownPrenda(posicionDropdownFijo(anchor, 280, 300));
+  }, []);
+
+  const ejecutarBusquedaPrenda = useCallback(
+    (texto: string) => {
+      if (!texto || texto.trim().length === 0) {
+        setPrendasEncontradas([]);
+        setMostrarListaPrendas(false);
+        return;
+      }
+
+      const textoMinuscula = texto.trim().toLowerCase();
+      const resultados = prendas
+        .filter(
+          (prenda) =>
+            prenda.activo !== false &&
+            (prenda.nombre?.toLowerCase().includes(textoMinuscula) ||
+              (prenda.codigo && prenda.codigo.toLowerCase().includes(textoMinuscula)))
+        )
+        .sort((a, b) => a.nombre.localeCompare(b.nombre))
+        .slice(0, 15);
+
+      setPrendasEncontradas(resultados);
+      setMostrarListaPrendas(true);
+      requestAnimationFrame(() => sincronizarPosDropdownPrenda());
+    },
+    [prendas, sincronizarPosDropdownPrenda]
+  );
+
+  useEffect(() => {
+    setPortalMounted(true);
+  }, []);
+
+  // iPad/Safari: si el catálogo tarda en cargar, re-filtrar cuando ya hay prendas en memoria
+  useEffect(() => {
+    if (textoPrendaBusqueda.trim()) {
+      ejecutarBusquedaPrenda(textoPrendaBusqueda);
     }
+    // Solo re-filtrar cuando llega el catálogo; el texto lo maneja onChange
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prendas, ejecutarBusquedaPrenda]);
 
-    // Filtrar prendas según el texto ingresado
-    const textoMinuscula = texto.trim().toLowerCase();
-    const resultados = prendas
-      .filter(prenda => 
-        prenda.activo && 
-        (prenda.nombre.toLowerCase().includes(textoMinuscula) || 
-         (prenda.codigo && prenda.codigo.toLowerCase().includes(textoMinuscula)))
-      )
-      .sort((a, b) => a.nombre.localeCompare(b.nombre))
-      .slice(0, 15);
-
-    console.log('✨ Resultados encontrados:', resultados.length, resultados.map(p => p.nombre));
-    setPrendasEncontradas(resultados);
-    setMostrarListaPrendas(resultados.length > 0);
-  };
+  useEffect(() => {
+    if (!mostrarListaPrendas) return;
+    const actualizar = () => sincronizarPosDropdownPrenda();
+    window.addEventListener('scroll', actualizar, true);
+    window.addEventListener('resize', actualizar);
+    return () => {
+      window.removeEventListener('scroll', actualizar, true);
+      window.removeEventListener('resize', actualizar);
+    };
+  }, [mostrarListaPrendas, sincronizarPosDropdownPrenda]);
 
   // NUEVA: Manejar cambio en el input de búsqueda
   const handleCambioBusquedaPrenda = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -298,7 +336,7 @@ function PedidosPageContent() {
   };
 
   // NUEVA: Seleccionar una prenda del dropdown
-  const seleccionarPrendaDelDropdown = async (prenda: any) => {
+  const seleccionarPrendaDelDropdown = async (prenda: Prenda) => {
     console.log('🎯 Prenda seleccionada:', prenda.nombre);
     
     setTextoPrendaBusqueda(prenda.nombre);
@@ -335,16 +373,21 @@ function PedidosPageContent() {
     }
   };
 
-  // NUEVA: Detectar clics fuera del contenedor para ocultar dropdown
+  // Detectar toques/clics fuera del contenedor para ocultar dropdown (Safari iOS usa touch)
   useEffect(() => {
-    const handleClickFuera = (event: MouseEvent) => {
-      if (contenedorPrendaRef.current && !contenedorPrendaRef.current.contains(event.target as Node)) {
-        setMostrarListaPrendas(false);
-      }
+    const handleClickFuera = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node;
+      if (contenedorPrendaRef.current?.contains(target)) return;
+      if (dropdownPrendaRef.current?.contains(target)) return;
+      setMostrarListaPrendas(false);
     };
 
     document.addEventListener('mousedown', handleClickFuera);
-    return () => document.removeEventListener('mousedown', handleClickFuera);
+    document.addEventListener('touchstart', handleClickFuera, { passive: true });
+    return () => {
+      document.removeEventListener('mousedown', handleClickFuera);
+      document.removeEventListener('touchstart', handleClickFuera);
+    };
   }, []);
 
   // Enfocar automáticamente el input de cliente al abrir el modal
@@ -776,6 +819,7 @@ function PedidosPageContent() {
   };
 
   return (
+    <>
     <LayoutWrapper>
       <style jsx global>{`
         @keyframes pulse {
@@ -1150,6 +1194,11 @@ function PedidosPageContent() {
                               className="form-input"
                               value={textoPrendaBusqueda}
                               onChange={handleCambioBusquedaPrenda}
+                              onFocus={() => {
+                                if (textoPrendaBusqueda.trim()) {
+                                  ejecutarBusquedaPrenda(textoPrendaBusqueda);
+                                }
+                              }}
                               onKeyDown={(e) => {
                                 if (!mostrarListaPrendas || prendasEncontradas.length === 0) {
                                   if (e.key === 'Enter' && !detalleActual.prenda_id && formData.detalles.length > 0) {
@@ -1176,55 +1225,33 @@ function PedidosPageContent() {
                                 }
                               }}
                               placeholder="SELECCIONAR PRENDA..."
-                              style={{ width: '100%', fontSize: '0.85rem', fontWeight: '600', padding: '0.3rem' }}
+                              style={{ width: '100%', fontSize: '16px', fontWeight: '600', padding: '0.3rem' }}
+                              autoComplete="off"
+                              autoCorrect="off"
+                              spellCheck={false}
                             />
-                            
-                            {mostrarListaPrendas && prendasEncontradas.length > 0 && (() => {
-                              const rect = inputPrendaRef.current?.getBoundingClientRect();
-                              return (
-                                <div style={{
-                                  position: 'fixed',
-                                  top: rect ? `${rect.bottom + 4}px` : 'auto',
-                                  left: rect ? `${rect.left}px` : 'auto',
-                                  width: rect ? `${rect.width}px` : 'auto',
-                                  backgroundColor: 'white',
-                                  border: '2px solid #3b82f6',
-                                  borderRadius: '8px',
-                                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                                  zIndex: 9999,
-                                  maxHeight: '300px',
-                                  overflowY: 'auto'
-                                }}>
-                                {prendasEncontradas.map((prenda, idx) => (
-                                  <div
-                                    key={prenda.id}
-                                    onClick={() => seleccionarPrendaDelDropdown(prenda)}
-                                    style={{
-                                      padding: '0.75rem 1rem',
-                                      cursor: 'pointer',
-                                      borderBottom: idx < prendasEncontradas.length - 1 ? '1px solid #e5e7eb' : 'none',
-                                      backgroundColor: 
-                                        indicePrendaSeleccionada === idx ? '#dbeafe' :
-                                        detalleActual.prenda_id === prenda.id ? '#e0f2fe' : 'white',
-                                      borderLeft: indicePrendaSeleccionada === idx ? '4px solid #3b82f6' : 'none'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                      setIndicePrendaSeleccionada(idx);
-                                    }}
-                                  >
-                                    <div style={{ fontWeight: '600', color: '#1f2937' }}>
-                                      {prenda.nombre}
-                                    </div>
-                                    {prenda.codigo && (
-                                      <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '2px' }}>
-                                        Código: {prenda.codigo}
-                                      </div>
-                                    )}
-                                  </div>
-                                ))}
-                                </div>
-                              );
-                            })()}
+                            {prendasLoading && prendas.length === 0 && (
+                              <small style={{ display: 'block', marginTop: '0.25rem', color: '#64748b' }}>
+                                Cargando catálogo de prendas…
+                              </small>
+                            )}
+                            {!prendasLoading && prendasError && (
+                              <button
+                                type="button"
+                                onClick={() => void refetchPrendas()}
+                                style={{
+                                  marginTop: '0.25rem',
+                                  fontSize: '0.75rem',
+                                  color: '#b91c1c',
+                                  background: 'none',
+                                  border: 'none',
+                                  textDecoration: 'underline',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                Error al cargar prendas — reintentar
+                              </button>
+                            )}
                           </div>
                         </td>
                         <td style={{ padding: '0.5rem' }}>
@@ -2563,6 +2590,74 @@ function PedidosPageContent() {
         </div>
       )}
     </LayoutWrapper>
+    {portalMounted &&
+      mostrarFormulario &&
+      mostrarListaPrendas &&
+      posDropdownPrenda &&
+      createPortal(
+        <div
+          ref={dropdownPrendaRef}
+          role="listbox"
+          aria-label="Resultados de búsqueda de prenda"
+          style={{
+            position: 'fixed',
+            top: posDropdownPrenda.top,
+            left: posDropdownPrenda.left,
+            width: posDropdownPrenda.width,
+            backgroundColor: 'white',
+            border: '2px solid #3b82f6',
+            borderRadius: '8px',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
+            zIndex: 10050,
+            maxHeight: '300px',
+            overflowY: 'auto',
+            WebkitOverflowScrolling: 'touch',
+          }}
+        >
+          {prendasEncontradas.length === 0 ? (
+            <div style={{ padding: '0.75rem 1rem', color: '#64748b', fontSize: '0.9rem' }}>
+              {prendasLoading || prendas.length === 0
+                ? 'Cargando catálogo…'
+                : 'Sin coincidencias para esa búsqueda'}
+            </div>
+          ) : (
+            prendasEncontradas.map((prenda, idx) => (
+              <div
+                key={prenda.id}
+                role="option"
+                aria-selected={indicePrendaSeleccionada === idx}
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  void seleccionarPrendaDelDropdown(prenda);
+                }}
+                style={{
+                  padding: '0.75rem 1rem',
+                  cursor: 'pointer',
+                  borderBottom: idx < prendasEncontradas.length - 1 ? '1px solid #e5e7eb' : 'none',
+                  backgroundColor:
+                    indicePrendaSeleccionada === idx
+                      ? '#dbeafe'
+                      : detalleActual.prenda_id === prenda.id
+                        ? '#e0f2fe'
+                        : 'white',
+                  borderLeft: indicePrendaSeleccionada === idx ? '4px solid #3b82f6' : 'none',
+                  touchAction: 'manipulation',
+                }}
+                onMouseEnter={() => setIndicePrendaSeleccionada(idx)}
+              >
+                <div style={{ fontWeight: '600', color: '#1f2937' }}>{prenda.nombre}</div>
+                {prenda.codigo && (
+                  <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '2px' }}>
+                    Código: {prenda.codigo}
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>,
+        document.body
+      )}
+  </>
   );
 }
 
