@@ -50,6 +50,7 @@ import {
   posicionDropdownFijo,
   posicionDropdownPrendaCotizacion,
   scrollContenedorAlInicio,
+  seleccionarTodoTextoInput,
   suscribirReposicionDropdownViewport,
   type PosicionDropdown,
 } from '@/lib/cotizacionUi';
@@ -2471,9 +2472,17 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                           type="text"
                           value={busquedaPrenda}
                           onChange={(e) => handleCambioBusquedaPrenda(e.target.value)}
-                          onFocus={() => {
+                          onFocus={(e) => {
                             setDropdownPrendaVisible(true);
                             setIndiceSeleccionadoPrenda(-1);
+                            if (prendaSeleccionada && busquedaPrenda.trim()) {
+                              seleccionarTodoTextoInput(e.currentTarget);
+                            }
+                          }}
+                          onClick={(e) => {
+                            if (prendaSeleccionada && busquedaPrenda.trim()) {
+                              seleccionarTodoTextoInput(e.currentTarget);
+                            }
                           }}
                           onBlur={crearOnBlurCerrarDropdown(interaccionDropdownPrendaRef, () => {
                             setDropdownPrendaVisible(false);
@@ -3087,6 +3096,14 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                                   setBusquedaPrendaEdit(partida.prenda_nombre);
                                   setDropdownPrendaEditVisible(true);
                                   setIndiceSeleccionadoPrendaEdit(-1);
+                                  if (partida.prenda_nombre.trim()) {
+                                    seleccionarTodoTextoInput(e.currentTarget);
+                                  }
+                                }}
+                                onClick={(e) => {
+                                  if (partida.prenda_nombre.trim()) {
+                                    seleccionarTodoTextoInput(e.currentTarget);
+                                  }
                                 }}
                                 onBlur={crearOnBlurCerrarDropdown(interaccionDropdownPrendaEditRef, () => {
                                   setDropdownPrendaEditVisible(false);

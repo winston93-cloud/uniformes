@@ -190,6 +190,20 @@ export function scrollContenedorAlInicio(el: HTMLElement | null | undefined): vo
   });
 }
 
+/** Al tocar el input con prenda ya elegida, selecciona todo el texto para borrar/reemplazar fácil. */
+export function seleccionarTodoTextoInput(el: HTMLInputElement | null | undefined): void {
+  if (!el || !el.value) return;
+  const seleccionar = () => {
+    try {
+      el.setSelectionRange(0, el.value.length);
+    } catch {
+      el.select();
+    }
+  };
+  seleccionar();
+  requestAnimationFrame(seleccionar);
+}
+
 /** Evita saltos de scroll al enfocar inputs dentro del modal (Safari iOS). */
 export function focusSinScroll(el: HTMLElement | null | undefined): void {
   if (!el) return;
