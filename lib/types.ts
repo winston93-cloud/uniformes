@@ -231,10 +231,36 @@ export interface Cotizacion {
   /** Set en BD al descontar insumos al pasar a trabajando (idempotencia). */
   insumos_trabajando_aplicado?: boolean;
   usuario_id: string | null;
+  metodo_pago_id?: string | null;
+  forma_pago_id?: string | null;
   created_at?: string;
   updated_at?: string;
   alumno?: Alumno;
   externo?: Externo;
+}
+
+/** Catálogo SAT c_MetodoPago */
+export interface SatMetodoPago {
+  id: string;
+  clave: string;
+  descripcion: string;
+  activo: boolean;
+  orden: number;
+  es_default: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+/** Catálogo SAT c_FormaPago */
+export interface SatFormaPago {
+  id: string;
+  clave: string;
+  descripcion: string;
+  activo: boolean;
+  orden: number;
+  es_default: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface DetalleCotizacion {

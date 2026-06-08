@@ -730,6 +730,342 @@ body {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
+/* Cotización — fila de opciones + pago SAT */
+.cotizacion-config-grid {
+  display: grid;
+  grid-template-columns: 1fr 3px 1fr 3px 1fr 3px 1fr;
+  gap: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+  align-items: start;
+}
+
+.cotizacion-config-col {
+  min-width: 0;
+}
+
+.cotizacion-config-sep {
+  width: 3px;
+  align-self: stretch;
+  border-radius: 3px;
+  margin-top: 2rem;
+  background: linear-gradient(to bottom, #667eea, #764ba2);
+}
+
+.cotizacion-config-sep--cyan {
+  background: linear-gradient(to bottom, #06b6d4, #0891b2);
+}
+
+.cotizacion-config-sep--amber {
+  background: linear-gradient(to bottom, #f59e0b, #d97706);
+}
+
+.cotizacion-config-label {
+  font-weight: 700;
+  display: block;
+  margin-bottom: 0.75rem;
+  font-size: 1rem;
+}
+
+.cotizacion-config-label--amber {
+  color: #d97706;
+}
+
+.cotizacion-config-hint {
+  margin: 0.5rem 0 0;
+  padding: 0.45rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  text-align: center;
+  color: #92400e;
+  background: rgba(245, 158, 11, 0.12);
+  line-height: 1.35;
+}
+
+.cotizacion-btn-catalogos-sat {
+  width: 100%;
+  padding: 1rem 0.85rem;
+  border: 2px solid #f59e0b;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.88rem;
+  line-height: 1.35;
+  color: white;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.28);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.cotizacion-btn-catalogos-sat:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(245, 158, 11, 0.35);
+}
+
+.cotizacion-pago-sat-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding: 1rem 1.1rem;
+  border-radius: 10px;
+  border: 2px solid #e2e8f0;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+.cotizacion-pago-sat-field label {
+  display: block;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #475569;
+  margin-bottom: 0.45rem;
+}
+
+.cotizacion-pago-sat-field select {
+  width: 100%;
+  padding: 0.65rem 0.75rem;
+  border-radius: 8px;
+  border: 2px solid #cbd5e1;
+  background: white;
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: #1e293b;
+  cursor: pointer;
+}
+
+/* Modal catálogos SAT */
+.modal-catalogos-sat-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  background: rgba(15, 23, 42, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.modal-catalogos-sat-panel {
+  width: min(960px, 100%);
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+}
+
+.modal-catalogos-sat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #e2e8f0;
+  background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+}
+
+.modal-catalogos-sat-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: #9a3412;
+}
+
+.modal-catalogos-sat-cerrar {
+  border: none;
+  background: transparent;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #64748b;
+  line-height: 1;
+}
+
+.modal-catalogos-sat-tabs {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.modal-catalogos-sat-tabs button {
+  border: none;
+  background: #f1f5f9;
+  color: #475569;
+  padding: 0.55rem 1rem;
+  border-radius: 8px 8px 0 0;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.modal-catalogos-sat-tabs button.is-active {
+  background: #667eea;
+  color: #fff;
+}
+
+.modal-catalogos-sat-alerta {
+  margin: 0.75rem 1rem 0;
+  padding: 0.65rem 0.85rem;
+  border-radius: 8px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  font-size: 0.88rem;
+}
+
+.modal-catalogos-sat-alerta.is-ok {
+  background: #ecfdf5;
+  border-color: #6ee7b7;
+  color: #047857;
+}
+
+.modal-catalogos-sat-body {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 1rem;
+  padding: 1rem;
+  overflow: auto;
+  min-height: 0;
+}
+
+.modal-catalogos-sat-lista-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.modal-catalogos-sat-lista-toolbar .btn-nueva-fila {
+  border: 2px solid #667eea;
+  background: white;
+  color: #667eea;
+  border-radius: 8px;
+  padding: 0.35rem 0.65rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.modal-catalogos-sat-tabla-wrap {
+  overflow: auto;
+  max-height: 52vh;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.modal-catalogos-sat-tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.modal-catalogos-sat-tabla th,
+.modal-catalogos-sat-tabla td {
+  padding: 0.55rem 0.65rem;
+  border-bottom: 1px solid #f1f5f9;
+  text-align: left;
+}
+
+.modal-catalogos-sat-tabla th {
+  background: #667eea;
+  color: white;
+  position: sticky;
+  top: 0;
+}
+
+.modal-catalogos-sat-tabla tr.is-editing {
+  background: #eff6ff;
+}
+
+.modal-catalogos-sat-tabla code {
+  font-weight: 700;
+  color: #4338ca;
+}
+
+.badge-default {
+  margin-left: 0.35rem;
+  font-size: 0.65rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  background: #fef3c7;
+  color: #92400e;
+  font-weight: 700;
+}
+
+.modal-catalogos-sat-form {
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0.85rem;
+  background: #fafafa;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.modal-catalogos-sat-form h3 {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+  color: #334155;
+}
+
+.modal-catalogos-sat-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.modal-catalogos-sat-form input[type='text'],
+.modal-catalogos-sat-form input[type='number'] {
+  padding: 0.5rem 0.6rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 0.92rem;
+}
+
+.modal-catalogos-sat-form .checkbox-row {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+}
+
+.modal-catalogos-sat-preview {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.modal-catalogos-sat-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.modal-catalogos-sat-form-actions .btn-guardar {
+  border: none;
+  background: #667eea;
+  color: white;
+  border-radius: 8px;
+  padding: 0.55rem 1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.modal-catalogos-sat-form-actions .btn-cancelar {
+  border: 1px solid #cbd5e1;
+  background: white;
+  border-radius: 8px;
+  padding: 0.55rem 1rem;
+  cursor: pointer;
+}
+
+.modal-catalogos-sat-vacio {
+  color: #94a3b8;
+  font-size: 0.9rem;
+  padding: 1rem 0;
+}
+
 .modal-cotizacion-container .cotizacion-partidas-table tbody td[data-label='Acción'] {
   justify-content: stretch;
 }
@@ -1187,6 +1523,23 @@ body {
 
   .cotizacion-autocomplete-dropdown {
     max-height: min(240px, 38vh);
+  }
+
+  .cotizacion-config-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .cotizacion-config-sep {
+    display: none;
+  }
+
+  .cotizacion-pago-sat-row {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-catalogos-sat-body {
+    grid-template-columns: 1fr;
   }
 
   .card-icon {

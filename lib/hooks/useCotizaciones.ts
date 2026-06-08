@@ -93,6 +93,8 @@ export interface NuevaCotizacion {
   partidas: PartidaCotizacion[];
   incluir_iva?: boolean;
   incluir_isr?: boolean;
+  metodo_pago_id?: string | null;
+  forma_pago_id?: string | null;
 }
 
 export function useCotizaciones(options?: { autoCargar?: boolean }) {
@@ -217,6 +219,8 @@ export function useCotizaciones(options?: { autoCargar?: boolean }) {
           estado: 'emitido',
           incluir_iva: incluirIva,
           incluir_isr: incluirIsr,
+          metodo_pago_id: nuevaCotizacion.metodo_pago_id || null,
+          forma_pago_id: nuevaCotizacion.forma_pago_id || null,
         }])
         .select()
         .single();
@@ -294,6 +298,8 @@ export function useCotizaciones(options?: { autoCargar?: boolean }) {
           tiempo_entrega: datos.tiempo_entrega || '5-7 días hábiles',
           incluir_iva: incluirIva,
           incluir_isr: incluirIsr,
+          metodo_pago_id: datos.metodo_pago_id || null,
+          forma_pago_id: datos.forma_pago_id || null,
           estado: 'emitido',
         })
         .eq('id', cotizacionId)

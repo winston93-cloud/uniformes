@@ -20,6 +20,12 @@ import type { Cotizacion } from '@/lib/types';
 import { supabase } from '@/lib/supabase';
 import ModalDatosFiscalesCliente from '@/components/ModalDatosFiscalesCliente';
 import PartidaAccionesToolbar from '@/components/cotizacion/PartidaAccionesToolbar';
+import ModalCatalogosSatPago from '@/components/ModalCatalogosSatPago';
+import {
+  etiquetaSatPago,
+  textoPdfSatPago,
+  useSatCatalogosPago,
+} from '@/lib/hooks/useSatCatalogosPago';
 import {
   datosClientePdfDesdeFiscalesYContacto,
   obtenerDatosFiscalesClienteParaPdf,
@@ -173,7 +179,20 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   /** Si no es null, estamos editando una cotización existente (mismo folio al guardar). */
   const [cotizacionEditId, setCotizacionEditId] = useState<string | null>(null);
   const [modalDatosFiscalesAbierto, setModalDatosFiscalesAbierto] = useState(false);
+  const [modalCatalogosSatAbierto, setModalCatalogosSatAbierto] = useState(false);
+  const [metodoPagoId, setMetodoPagoId] = useState<string>('');
+  const [formaPagoId, setFormaPagoId] = useState<string>('');
   const esModoEdicion = cotizacionEditId !== null;
+
+  const {
+    metodos,
+    formas,
+    metodosActivos,
+    formasActivas,
+    metodoDefault,
+    formaDefault,
+    recargar: recargarCatalogosSat,
+  } = useSatCatalogosPago();
   
   const { cicloEscolar, sesion } = useAuth();
   const {
@@ -287,6 +306,33 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       void obtenerCotizaciones();
     }
   }, [vista, obtenerCotizaciones]);
+
+  useEffect(() => {
+    if (!metodoPagoId && metodoDefault?.id) setMetodoPagoId(metodoDefault.id);
+  }, [metodoDefault, metodoPagoId]);
+
+  useEffect(() => {
+    if (!formaPagoId && formaDefault?.id) setFormaPagoId(formaDefault.id);
+  }, [formaDefault, formaPagoId]);
+
+  const metodoSeleccionado = useMemo(
+    () => metodosActivos.find((m) => m.id === metodoPagoId) || metodoDefault,
+    [metodosActivos, metodoPagoId, metodoDefault]
+  );
+  const formaSeleccionada = useMemo(
+    () => formasActivas.find((f) => f.id === formaPagoId) || formaDefault,
+    [formasActivas, formaPagoId, formaDefault]
+  );
+
+  const idSatPersistible = (id: string) => (id && !id.startsWith('fallback-') ? id : null);
+
+  const textoMetodoPdfActual = textoPdfSatPago(metodoSeleccionado, 'EFECTIVO');
+  const textoFormaPdfActual = textoPdfSatPago(formaSeleccionada, 'EFECTIVO');
+
+  const textoMetodoPdfDesdeId = (id?: string | null) =>
+    textoPdfSatPago(metodos.find((m) => m.id === id) || metodoDefault, 'EFECTIVO');
+  const textoFormaPdfDesdeId = (id?: string | null) =>
+    textoPdfSatPago(formas.find((f) => f.id === id) || formaDefault, 'EFECTIVO');
 
   // En modo edición, precargar costos de prendas ya presentes en partidas (para selectors de prenda/talla/tipo).
   useEffect(() => {
@@ -1206,6 +1252,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
         partidas,
         incluir_iva: incluirIva,
         incluir_isr: incluirIsr,
+        metodo_pago_id: idSatPersistible(metodoPagoId),
+        forma_pago_id: idSatPersistible(formaPagoId),
       };
 
       const { data, error } = cotizacionEditId
@@ -1234,8 +1282,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
         },
         comprobante: {
           lugarExpedicion: 'CD. MADERO',
-          metodoPago: 'EFECTIVO',
-          formaPago: 'EFECTIVO',
+          metodoPago: textoMetodoPdfActual,
+          formaPago: textoFormaPdfActual,
           tipoCambio: '$-------------',
           moneda: 'PESOS',
         },
@@ -1314,8 +1362,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
         },
         comprobante: {
           lugarExpedicion: 'CD. MADERO',
-          metodoPago: 'EFECTIVO',
-          formaPago: 'EFECTIVO',
+          metodoPago: textoMetodoPdfDesdeId(cotizacion.metodo_pago_id),
+          formaPago: textoFormaPdfDesdeId(cotizacion.forma_pago_id),
           tipoCambio: '$-------------',
           moneda: 'PESOS',
         },
@@ -1373,6 +1421,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       setFechaVigencia(cot.fecha_vigencia ? String(cot.fecha_vigencia).split('T')[0] : '');
       setIncluirIva(cot.incluir_iva === true);
       setIncluirIsr(cot.incluir_isr === true);
+      setMetodoPagoId(cot.metodo_pago_id || metodoDefault.id);
+      setFormaPagoId(cot.forma_pago_id || formaDefault.id);
       setCotizacionEditId(cot.id);
       setBusquedaCliente(cot.alumno?.nombre || cot.externo?.nombre || '');
       setCotizacionDirecta(partidasFormateadas.some((p) => p.es_manual));
@@ -1440,6 +1490,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     setTallaManual('');
     setPrecioManual('');
     setCantidadManual('1');
+    setMetodoPagoId(metodoDefault.id);
+    setFormaPagoId(formaDefault.id);
   };
 
   return (
@@ -1591,14 +1643,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                 actualizan datos y partidas.
               </div>
             )}
-            {/* Fila superior: Tipo de Precio | Tipo de Cliente | Cotización Directa */}
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: '1fr auto 1fr auto 1fr', 
-              gap: '1.5rem', 
-              marginBottom: '2rem',
-              alignItems: 'start'
-            }}>
+            {/* Fila superior: Tipo de Precio | Tipo de Cliente | Cotización Directa | Catálogos SAT */}
+            <div className="cotizacion-config-grid">
               {/* Tipo de precio */}
               <div>
                 <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.75rem', fontSize: '1rem', color: '#667eea' }}>
@@ -1729,10 +1775,10 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
               </div>
 
               {/* Separador 2 */}
-              <div style={{ width: '3px', background: 'linear-gradient(to bottom, #06b6d4, #0891b2)', alignSelf: 'stretch', borderRadius: '3px', marginTop: '2rem' }}></div>
+              <div className="cotizacion-config-sep cotizacion-config-sep--cyan" />
 
               {/* Cotización Directa */}
-              <div>
+              <div className="cotizacion-config-col">
                 <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.75rem', fontSize: '1rem', color: '#10b981' }}>
                   ⚡ Acción Rápida:
                 </label>
@@ -1812,6 +1858,58 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                 }}>
                   {cotizacionDirecta ? 'Prenda NO en sistema' : 'Prenda en sistema'}
                 </div>
+              </div>
+
+              <div className="cotizacion-config-sep cotizacion-config-sep--amber" />
+
+              <div className="cotizacion-config-col">
+                <label className="cotizacion-config-label cotizacion-config-label--amber">
+                  📚 Catálogos SAT:
+                </label>
+                <button
+                  type="button"
+                  className="cotizacion-btn-catalogos-sat"
+                  onClick={() => {
+                    void recargarCatalogosSat();
+                    setModalCatalogosSatAbierto(true);
+                  }}
+                >
+                  Métodos y formas de pago
+                </button>
+                <p className="cotizacion-config-hint">
+                  Administra c_MetodoPago y c_FormaPago del SAT
+                </p>
+              </div>
+            </div>
+
+            <div className="cotizacion-pago-sat-row">
+              <div className="cotizacion-pago-sat-field">
+                <label htmlFor="cotizacion-metodo-pago">Método de pago (SAT)</label>
+                <select
+                  id="cotizacion-metodo-pago"
+                  value={metodoPagoId}
+                  onChange={(e) => setMetodoPagoId(e.target.value)}
+                >
+                  {metodosActivos.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {etiquetaSatPago(m)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="cotizacion-pago-sat-field">
+                <label htmlFor="cotizacion-forma-pago">Forma de pago (SAT)</label>
+                <select
+                  id="cotizacion-forma-pago"
+                  value={formaPagoId}
+                  onChange={(e) => setFormaPagoId(e.target.value)}
+                >
+                  {formasActivas.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {etiquetaSatPago(f)}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
@@ -4051,6 +4149,14 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
           />,
           document.body
         )}
+
+      <ModalCatalogosSatPago
+        abierto={modalCatalogosSatAbierto}
+        onClose={() => {
+          setModalCatalogosSatAbierto(false);
+          void recargarCatalogosSat();
+        }}
+      />
     </div>
   );
 }
