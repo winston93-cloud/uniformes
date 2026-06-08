@@ -993,23 +993,7 @@ body {
 }
 
 .modal-catalogos-sat-lista-toolbar .btn-nueva-fila {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  border: none;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: #fff;
-  border-radius: 10px;
-  padding: 0.5rem 0.9rem;
-  font-weight: 700;
-  font-size: 0.85rem;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-}
-
-.modal-catalogos-sat-lista-toolbar .btn-nueva-fila svg {
-  width: 16px;
-  height: 16px;
+  display: none;
 }
 
 .modal-catalogos-sat-cards {
@@ -1027,23 +1011,28 @@ body {
 .modal-catalogos-sat-card {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 0.75rem;
+  width: 100%;
+  text-align: left;
   padding: 0.75rem 0.85rem;
   background: #fff;
   border: 1px solid #e2e8f0;
   border-radius: 14px;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
 }
 
-.modal-catalogos-sat-card:hover {
+.modal-catalogos-sat-card:hover:not(:disabled) {
   border-color: #c7d2fe;
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
 }
 
 .modal-catalogos-sat-card.is-editing {
   border-color: #667eea;
+  background: #eef2ff;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.18);
 }
 
@@ -1051,12 +1040,13 @@ body {
   opacity: 0.65;
 }
 
+.modal-catalogos-sat-card:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .modal-catalogos-sat-card-main {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  min-width: 0;
-  flex: 1;
+  display: none;
 }
 
 .modal-catalogos-sat-clave {
@@ -1102,43 +1092,83 @@ body {
 }
 
 .modal-catalogos-sat-card-actions {
-  display: flex;
-  gap: 0.35rem;
-  flex-shrink: 0;
+  display: none;
 }
 
-.modal-catalogos-sat-icon-btn {
-  width: 36px;
-  height: 36px;
-  border: 1px solid #e2e8f0;
+.modal-catalogos-sat-form-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.35rem;
+}
+
+.modal-catalogos-sat-form-head-text h3 {
+  margin: 0 0 0.25rem;
+  font-size: 1.05rem;
+  color: #1e293b;
+}
+
+.modal-catalogos-sat-form-head-text p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.modal-catalogos-sat-form-toolbar {
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  justify-content: flex-end;
+}
+
+.modal-catalogos-sat-toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   border-radius: 10px;
+  padding: 0.5rem 0.85rem;
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+  border: 1px solid #e2e8f0;
   background: #fff;
   color: #475569;
-  cursor: pointer;
-  display: grid;
-  place-items: center;
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
-.modal-catalogos-sat-icon-btn svg {
-  width: 17px;
-  height: 17px;
+.modal-catalogos-sat-toolbar-btn svg {
+  width: 16px;
+  height: 16px;
 }
 
-.modal-catalogos-sat-icon-btn:hover:not(:disabled) {
-  background: #eef2ff;
-  border-color: #c7d2fe;
-  color: #4338ca;
+.modal-catalogos-sat-toolbar-btn--primary {
+  border: none;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.28);
 }
 
-.modal-catalogos-sat-icon-btn--danger:hover:not(:disabled) {
-  background: #fef2f2;
+.modal-catalogos-sat-toolbar-btn--danger {
   border-color: #fecaca;
   color: #b91c1c;
+  background: #fff5f5;
 }
 
-.modal-catalogos-sat-icon-btn:disabled {
-  opacity: 0.35;
+.modal-catalogos-sat-toolbar-btn--danger:hover:not(:disabled) {
+  background: #fef2f2;
+  border-color: #f87171;
+}
+
+.modal-catalogos-sat-toolbar-btn:hover:not(:disabled):not(.modal-catalogos-sat-toolbar-btn--primary) {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.modal-catalogos-sat-toolbar-btn:disabled {
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
@@ -1190,16 +1220,11 @@ body {
 }
 
 .modal-catalogos-sat-form-head h3 {
-  margin: 0 0 0.25rem;
-  font-size: 1.05rem;
-  color: #1e293b;
+  display: none;
 }
 
 .modal-catalogos-sat-form-head p {
-  margin: 0 0 0.35rem;
-  font-size: 0.8rem;
-  color: #64748b;
-  line-height: 1.4;
+  display: none;
 }
 
 .modal-catalogos-sat-switches {
@@ -1841,6 +1866,20 @@ body {
 
   .modal-catalogos-sat-body {
     grid-template-columns: 1fr;
+  }
+
+  .modal-catalogos-sat-form-head {
+    flex-direction: column;
+  }
+
+  .modal-catalogos-sat-form-toolbar {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .modal-catalogos-sat-toolbar-btn {
+    flex: 1;
+    justify-content: center;
   }
 
   .card-icon {

@@ -32,14 +32,6 @@ const FORM_VACIO = {
   es_default: false,
 };
 
-function IconEditar() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-      <path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
 function IconEliminar() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
@@ -166,6 +158,13 @@ export default function ModalCatalogosSatPago({
     }
   };
 
+  const filaSeleccionada = editId ? filas.find((r) => r.id === editId) : null;
+
+  const handleEliminarSeleccionado = async () => {
+    if (!filaSeleccionada) return;
+    await handleEliminar(filaSeleccionada);
+  };
+
   const previewPdf =
     form.descripcion.trim() || (editId ? '—' : 'Escribe la descripción que saldrá en el PDF');
 
@@ -224,10 +223,6 @@ export default function ModalCatalogosSatPago({
                 <span className="modal-catalogos-sat-catalogo-tag">{catalogoNombre}</span>
                 <span className="modal-catalogos-sat-count">{filas.length} registros</span>
               </div>
-              <button type="button" className="btn-nueva-fila" onClick={nuevaFila} disabled={guardando}>
-                <IconPlus />
-                Nuevo
-              </button>
             </div>
 
             {cargando ? (
@@ -236,15 +231,20 @@ export default function ModalCatalogosSatPago({
                 Cargando catálogo…
               </div>
             ) : filas.length === 0 ? (
-              <div className="modal-catalogos-sat-vacio">Sin registros. Crea el primero con «Nuevo».</div>
+              <div className="modal-catalogos-sat-vacio">
+                Sin registros. Usa «Nuevo registro» del panel derecho.
+              </div>
             ) : (
               <ul className="modal-catalogos-sat-cards">
                 {filas.map((row) => (
-                  <li
-                    key={row.id}
-                    className={`modal-catalogos-sat-card${editId === row.id ? ' is-editing' : ''}${!row.activo ? ' is-inactive' : ''}`}
-                  >
-                    <div className="modal-catalogos-sat-card-main">
+                  <li key={row.id}>
+                    <button
+                      type="button"
+                      className={`modal-catalogos-sat-card${editId === row.id ? ' is-editing' : ''}${!row.activo ? ' is-inactive' : ''}`}
+                      onClick={() => editarFila(row)}
+                      disabled={guardando}
+                      aria-current={editId === row.id ? 'true' : undefined}
+                    >
                       <span className="modal-catalogos-sat-clave">{row.clave}</span>
                       <div className="modal-catalogos-sat-card-text">
                         <strong>{row.descripcion}</strong>
@@ -253,29 +253,7 @@ export default function ModalCatalogosSatPago({
                         </span>
                       </div>
                       {row.es_default && <span className="badge-default">Por defecto</span>}
-                    </div>
-                    <div className="modal-catalogos-sat-card-actions">
-                      <button
-                        type="button"
-                        className="modal-catalogos-sat-icon-btn"
-                        onClick={() => editarFila(row)}
-                        disabled={guardando}
-                        title="Editar"
-                        aria-label={`Editar ${row.clave}`}
-                      >
-                        <IconEditar />
-                      </button>
-                      <button
-                        type="button"
-                        className="modal-catalogos-sat-icon-btn modal-catalogos-sat-icon-btn--danger"
-                        onClick={() => void handleEliminar(row)}
-                        disabled={guardando || row.id.startsWith('fallback-')}
-                        title="Eliminar"
-                        aria-label={`Eliminar ${row.clave}`}
-                      >
-                        <IconEliminar />
-                      </button>
-                    </div>
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -284,8 +262,36 @@ export default function ModalCatalogosSatPago({
 
           <form className="modal-catalogos-sat-form" onSubmit={(e) => void handleSubmit(e)}>
             <div className="modal-catalogos-sat-form-head">
-              <h3>{editId ? 'Editar registro' : 'Nuevo registro'}</h3>
-              <p>La descripción es el texto que aparece en el PDF de la cotización.</p>
+              <div className="modal-catalogos-sat-form-head-text">
+                <h3>{editId ? 'Editar registro' : 'Nuevo registro'}</h3>
+                <p>
+                  {editId
+                    ? 'Modifica los datos y guarda. La descripción es la que sale en el PDF.'
+                    : 'Captura un registro nuevo o selecciona uno de la lista.'}
+                </p>
+              </div>
+              <div className="modal-catalogos-sat-form-toolbar">
+                <button
+                  type="button"
+                  className="modal-catalogos-sat-toolbar-btn modal-catalogos-sat-toolbar-btn--primary"
+                  onClick={nuevaFila}
+                  disabled={guardando}
+                >
+                  <IconPlus />
+                  Nuevo
+                </button>
+                {editId && (
+                  <button
+                    type="button"
+                    className="modal-catalogos-sat-toolbar-btn modal-catalogos-sat-toolbar-btn--danger"
+                    onClick={() => void handleEliminarSeleccionado()}
+                    disabled={guardando || filaSeleccionada?.id.startsWith('fallback-')}
+                  >
+                    <IconEliminar />
+                    Eliminar
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="form-group modal-catalogos-sat-field">
@@ -364,9 +370,9 @@ export default function ModalCatalogosSatPago({
 
             <div className="modal-catalogos-sat-form-actions">
               <button type="submit" className="btn-guardar" disabled={guardando}>
-                {guardando ? 'Guardando…' : 'Guardar'}
+                {guardando ? 'Guardando…' : editId ? 'Guardar cambios' : 'Guardar'}
               </button>
-              {editId && (
+              {(editId || form.clave || form.descripcion) && (
                 <button
                   type="button"
                   className="btn-cancelar"
