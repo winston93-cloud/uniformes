@@ -18,6 +18,17 @@ export function focusCotizacionSiEscritorio(el: HTMLElement | null | undefined):
   setTimeout(() => focusSinScroll(el), 80);
 }
 
+/** Incluye el ítem guardado aunque esté inactivo (edición de cotizaciones). */
+export function catalogoSatParaSelect<T extends { id: string }>(
+  activos: T[],
+  todos: T[],
+  seleccionId: string
+): T[] {
+  if (!seleccionId || activos.some((x) => x.id === seleccionId)) return activos;
+  const extra = todos.find((x) => x.id === seleccionId);
+  return extra ? [extra, ...activos] : activos;
+}
+
 export type PosicionDropdown = { top: number; left: number; width: number };
 
 /**

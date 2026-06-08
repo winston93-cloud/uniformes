@@ -233,6 +233,9 @@ export interface Cotizacion {
   usuario_id: string | null;
   metodo_pago_id?: string | null;
   forma_pago_id?: string | null;
+  /** Texto impreso en PDF al guardar (crear o editar). */
+  metodo_pago_pdf?: string | null;
+  forma_pago_pdf?: string | null;
   created_at?: string;
   updated_at?: string;
   alumno?: Alumno;

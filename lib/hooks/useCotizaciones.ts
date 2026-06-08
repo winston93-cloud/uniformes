@@ -95,6 +95,8 @@ export interface NuevaCotizacion {
   incluir_isr?: boolean;
   metodo_pago_id?: string | null;
   forma_pago_id?: string | null;
+  metodo_pago_pdf?: string | null;
+  forma_pago_pdf?: string | null;
 }
 
 export function useCotizaciones(options?: { autoCargar?: boolean }) {
@@ -221,6 +223,8 @@ export function useCotizaciones(options?: { autoCargar?: boolean }) {
           incluir_isr: incluirIsr,
           metodo_pago_id: nuevaCotizacion.metodo_pago_id || null,
           forma_pago_id: nuevaCotizacion.forma_pago_id || null,
+          metodo_pago_pdf: nuevaCotizacion.metodo_pago_pdf?.trim() || null,
+          forma_pago_pdf: nuevaCotizacion.forma_pago_pdf?.trim() || null,
         }])
         .select()
         .single();
@@ -300,6 +304,8 @@ export function useCotizaciones(options?: { autoCargar?: boolean }) {
           incluir_isr: incluirIsr,
           metodo_pago_id: datos.metodo_pago_id || null,
           forma_pago_id: datos.forma_pago_id || null,
+          metodo_pago_pdf: datos.metodo_pago_pdf?.trim() || null,
+          forma_pago_pdf: datos.forma_pago_pdf?.trim() || null,
           estado: 'emitido',
         })
         .eq('id', cotizacionId)

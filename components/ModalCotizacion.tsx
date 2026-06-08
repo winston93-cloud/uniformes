@@ -38,7 +38,7 @@ import {
   esIOS,
   mostrarPdfJsPDF,
 } from '@/lib/abrirPdfNavegador';
-import { focusCotizacionSiEscritorio, focusSinScroll, posicionDropdownFijo } from '@/lib/cotizacionUi';
+import { catalogoSatParaSelect, focusCotizacionSiEscritorio, focusSinScroll, posicionDropdownFijo } from '@/lib/cotizacionUi';
 
 /** Moneda en PDF cotización: miles con separador y 2 decimales (es-MX). */
 function formatoMonedaPdfCotizacion(n: number): string {
@@ -341,10 +341,24 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
 
   const textosPagoPdfActuales = textosPagoPdfDesdeSeleccion();
 
+  const metodosParaSelect = useMemo(
+    () => catalogoSatParaSelect(metodosActivos, metodos, metodoPagoId),
+    [metodosActivos, metodos, metodoPagoId]
+  );
+  const formasParaSelect = useMemo(
+    () => catalogoSatParaSelect(formasActivas, formas, formaPagoId),
+    [formasActivas, formas, formaPagoId]
+  );
+
   const textoMetodoPdfDesdeId = (id?: string | null) =>
     textoPdfSatPago(metodos.find((m) => m.id === id) || metodoDefault, 'EFECTIVO');
   const textoFormaPdfDesdeId = (id?: string | null) =>
     textoPdfSatPago(formas.find((f) => f.id === id) || formaDefault, 'EFECTIVO');
+
+  const textoMetodoPdfDesdeCotizacion = (cot: Cotizacion) =>
+    cot.metodo_pago_pdf?.trim() || textoMetodoPdfDesdeId(cot.metodo_pago_id);
+  const textoFormaPdfDesdeCotizacion = (cot: Cotizacion) =>
+    cot.forma_pago_pdf?.trim() || textoFormaPdfDesdeId(cot.forma_pago_id);
 
   // En modo edición, precargar costos de prendas ya presentes en partidas (para selectors de prenda/talla/tipo).
   useEffect(() => {
@@ -1249,6 +1263,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     try {
       setGenerando(true);
 
+      const textosPagoPdf = textosPagoPdfDesdeSeleccion();
+
       const nuevaCotizacion = {
         alumno_id: tipoCliente === 'alumno' ? clienteSeleccionado.id : undefined,
         alumno_referencia:
@@ -1266,6 +1282,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
         incluir_isr: incluirIsr,
         metodo_pago_id: idSatPersistible(metodoPagoId),
         forma_pago_id: idSatPersistible(formaPagoId),
+        metodo_pago_pdf: textosPagoPdf.metodoPago,
+        forma_pago_pdf: textosPagoPdf.formaPago,
       };
 
       const { data, error } = cotizacionEditId
@@ -1283,7 +1301,6 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       // Generar y mostrar PDF en pantalla (mismo folio al editar)
       const fiscalesPdf = await obtenerDatosFiscalesClienteParaPdf(tipoCliente, clienteSeleccionado);
       const bloqueClientePdf = datosClientePdfDesdeFiscalesYContacto(clienteSeleccionado, fiscalesPdf);
-      const textosPagoPdf = textosPagoPdfDesdeSeleccion();
       const pdf = await generarPdfCotizacion({
         folio: data.folio,
         fechaComprobante: new Date().toLocaleDateString('es-MX'),
@@ -1331,10 +1348,10 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   };
 
   // Ver PDF de cotización
-  const verPDF = async (cotizacion: any) => {
+  const verPDF = async (cotizacion: Cotizacion) => {
     const ventanaPdf = abrirVentanaPdfPlaceholder();
     try {
-      const { detalle } = await obtenerCotizacion(cotizacion.id);
+      const { cotizacion: cotFull, detalle } = await obtenerCotizacion(cotizacion.id);
       
       const partidasFormateadas: PartidaCotizacion[] = detalle.map((d: any) => ({
         prenda_nombre: d.prenda_nombre,
@@ -1351,21 +1368,23 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
         es_manual: d.es_manual || false,
       }));
 
-      const fechaCotizacion = new Date(cotizacion.fecha_cotizacion).toLocaleDateString('es-MX');
       const subPdf = partidasFormateadas.reduce((s, p) => s + p.subtotal, 0);
-      const conIva = cotizacion.incluir_iva === true;
-      const conIsr = cotizacion.incluir_isr === true;
+      const conIva = cotFull.incluir_iva === true;
+      const conIsr = cotFull.incluir_isr === true;
       const tPdf = calcularMontosImpuestosCotizacion(subPdf, conIva, conIsr);
 
-      const nombreCliente = cotizacion.alumno?.nombre || cotizacion.externo?.nombre || 'Cliente General';
+      const nombreCliente = cotFull.alumno?.nombre || cotFull.externo?.nombre || 'Cliente General';
       const clienteParaFiscal =
-        cotizacion.tipo_cliente === 'alumno'
-          ? { ...(cotizacion.alumno || {}), id: cotizacion.alumno_id }
-          : { ...(cotizacion.externo || {}), id: cotizacion.externo_id };
-      const fiscalesHistorial = await obtenerDatosFiscalesClienteParaPdf(cotizacion.tipo_cliente, clienteParaFiscal);
+        cotFull.tipo_cliente === 'alumno'
+          ? { ...(cotFull.alumno || {}), id: cotFull.alumno_id }
+          : { ...(cotFull.externo || {}), id: cotFull.externo_id };
+      const fiscalesHistorial = await obtenerDatosFiscalesClienteParaPdf(cotFull.tipo_cliente, clienteParaFiscal);
       const bloqueHistorial = datosClientePdfDesdeFiscalesYContacto(clienteParaFiscal, fiscalesHistorial);
+      const fechaCotizacion = cotFull.fecha_cotizacion
+        ? new Date(String(cotFull.fecha_cotizacion).split('T')[0] + 'T12:00:00').toLocaleDateString('es-MX')
+        : new Date().toLocaleDateString('es-MX');
       const doc = await generarPdfCotizacion({
-        folio: cotizacion.folio,
+        folio: cotFull.folio,
         fechaComprobante: fechaCotizacion,
         cliente: {
           nombre: nombreCliente,
@@ -1375,8 +1394,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
         },
         comprobante: {
           lugarExpedicion: 'CD. MADERO',
-          metodoPago: textoMetodoPdfDesdeId(cotizacion.metodo_pago_id),
-          formaPago: textoFormaPdfDesdeId(cotizacion.forma_pago_id),
+          metodoPago: textoMetodoPdfDesdeCotizacion(cotFull),
+          formaPago: textoFormaPdfDesdeCotizacion(cotFull),
           tipoCambio: '$-------------',
           moneda: 'PESOS',
         },
@@ -1384,15 +1403,15 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
         totales: tPdf,
         incluirIva: conIva,
         incluirIsr: conIsr,
-        condicionesPago: cotizacion.condiciones_pago || '—',
-        tiempoEntrega: cotizacion.tiempo_entrega || '—',
-        fechaEntregaTexto: cotizacion.fecha_entrega
-          ? new Date(String(cotizacion.fecha_entrega).split('T')[0] + 'T12:00:00').toLocaleDateString('es-MX')
+        condicionesPago: cotFull.condiciones_pago || '—',
+        tiempoEntrega: cotFull.tiempo_entrega || '—',
+        fechaEntregaTexto: cotFull.fecha_entrega
+          ? new Date(String(cotFull.fecha_entrega).split('T')[0] + 'T12:00:00').toLocaleDateString('es-MX')
           : '—',
-        observaciones: cotizacion.observaciones || undefined,
+        observaciones: cotFull.observaciones || undefined,
       });
 
-      mostrarPdfJsPDF(doc, `Cotizacion-${cotizacion.folio}`, ventanaPdf);
+      mostrarPdfJsPDF(doc, `Cotizacion-${cotFull.folio}`, ventanaPdf);
     } catch (err) {
       cerrarVentanaPdf(ventanaPdf);
       console.error('Error al generar PDF:', err);
@@ -1403,7 +1422,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   const iniciarEdicionDesdeHistorial = async (cot: Cotizacion) => {
     if (cot.estado !== 'emitido') return;
     try {
-      const { detalle } = await obtenerCotizacion(cot.id);
+      const { cotizacion: cotFull, detalle } = await obtenerCotizacion(cot.id);
       const partidasFormateadas: PartidaCotizacion[] = detalle.map((d: any) => ({
         prenda_nombre: d.prenda_nombre,
         talla: d.talla,
@@ -1420,24 +1439,24 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
         ui_key: d.id || crypto.randomUUID(),
       }));
       setPartidas(partidasFormateadas);
-      setTipoCliente(cot.tipo_cliente);
-      if (cot.tipo_cliente === 'alumno' && cot.alumno && cot.alumno_id) {
-        setClienteSeleccionado({ ...cot.alumno, id: cot.alumno_id });
-      } else if (cot.tipo_cliente === 'externo' && cot.externo && cot.externo_id) {
-        setClienteSeleccionado({ ...cot.externo, id: cot.externo_id });
+      setTipoCliente(cotFull.tipo_cliente);
+      if (cotFull.tipo_cliente === 'alumno' && cotFull.alumno && cotFull.alumno_id) {
+        setClienteSeleccionado({ ...cotFull.alumno, id: cotFull.alumno_id });
+      } else if (cotFull.tipo_cliente === 'externo' && cotFull.externo && cotFull.externo_id) {
+        setClienteSeleccionado({ ...cotFull.externo, id: cotFull.externo_id });
       }
       setTipoPrecio(partidasFormateadas[0]?.tipo_precio_usado || 'menudeo');
-      setObservaciones(cot.observaciones || '');
-      setCondicionesPago(cot.condiciones_pago || '50% anticipo, 50% contra entrega');
-      setTiempoEntrega(cot.tiempo_entrega || '5-7 días hábiles');
-      setFechaEntrega(cot.fecha_entrega ? String(cot.fecha_entrega).split('T')[0] : '');
-      setFechaVigencia(cot.fecha_vigencia ? String(cot.fecha_vigencia).split('T')[0] : '');
-      setIncluirIva(cot.incluir_iva === true);
-      setIncluirIsr(cot.incluir_isr === true);
-      setMetodoPagoId(cot.metodo_pago_id || metodoDefault.id);
-      setFormaPagoId(cot.forma_pago_id || formaDefault.id);
-      setCotizacionEditId(cot.id);
-      setBusquedaCliente(cot.alumno?.nombre || cot.externo?.nombre || '');
+      setObservaciones(cotFull.observaciones || '');
+      setCondicionesPago(cotFull.condiciones_pago || '50% anticipo, 50% contra entrega');
+      setTiempoEntrega(cotFull.tiempo_entrega || '5-7 días hábiles');
+      setFechaEntrega(cotFull.fecha_entrega ? String(cotFull.fecha_entrega).split('T')[0] : '');
+      setFechaVigencia(cotFull.fecha_vigencia ? String(cotFull.fecha_vigencia).split('T')[0] : '');
+      setIncluirIva(cotFull.incluir_iva === true);
+      setIncluirIsr(cotFull.incluir_isr === true);
+      setMetodoPagoId(cotFull.metodo_pago_id || metodoDefault.id);
+      setFormaPagoId(cotFull.forma_pago_id || formaDefault.id);
+      setCotizacionEditId(cotFull.id);
+      setBusquedaCliente(cotFull.alumno?.nombre || cotFull.externo?.nombre || '');
       setCotizacionDirecta(partidasFormateadas.some((p) => p.es_manual));
       setVista('nueva');
     } catch (e) {
@@ -1903,7 +1922,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                   value={metodoPagoId}
                   onChange={(e) => setMetodoPagoId(e.target.value)}
                 >
-                  {metodosActivos.map((m) => (
+                  {metodosParaSelect.map((m) => (
                     <option key={m.id} value={m.id}>
                       {etiquetaSatPago(m)}
                     </option>
@@ -1917,7 +1936,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                   value={formaPagoId}
                   onChange={(e) => setFormaPagoId(e.target.value)}
                 >
-                  {formasActivas.map((f) => (
+                  {formasParaSelect.map((f) => (
                     <option key={f.id} value={f.id}>
                       {etiquetaSatPago(f)}
                     </option>
