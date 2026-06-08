@@ -5,6 +5,13 @@ export { esIOS };
 
 export type RefInteraccionDropdown = { current: boolean };
 
+export type InteraccionDropdownGate = RefInteraccionDropdown | (() => boolean);
+
+function interaccionDropdownActiva(gate?: InteraccionDropdownGate): boolean {
+  if (!gate) return false;
+  return typeof gate === 'function' ? gate() : gate.current;
+}
+
 const estilosDropdownPortalScroll: CSSProperties = {
   touchAction: 'pan-y',
   overscrollBehavior: 'contain',
@@ -67,10 +74,10 @@ export function crearOnBlurCerrarDropdown(
 export function instalarCierrePointerFuera(
   refs: Array<{ current: HTMLElement | null }>,
   onClose: () => void,
-  refInteraccion?: RefInteraccionDropdown
+  refInteraccion?: InteraccionDropdownGate
 ): () => void {
   const handler = (event: PointerEvent) => {
-    if (refInteraccion?.current) return;
+    if (interaccionDropdownActiva(refInteraccion)) return;
     const target = event.target as Node;
     if (refs.some((r) => r.current?.contains(target))) return;
     onClose();

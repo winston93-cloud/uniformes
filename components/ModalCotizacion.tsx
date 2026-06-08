@@ -43,6 +43,7 @@ import {
   crearOnBlurCerrarDropdown,
   focusCotizacionSiEscritorio,
   focusSinScroll,
+  instalarCierrePointerFuera,
   mergePropsDropdownPortal,
   posicionDropdownFijo,
   suscribirReposicionDropdownViewport,
@@ -171,6 +172,10 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   const modalScrollRef = useRef<HTMLDivElement>(null);
   const interaccionDropdownPrendaRef = useRef(false);
   const interaccionDropdownPrendaEditRef = useRef(false);
+  const interaccionDropdownClienteRef = useRef(false);
+  const dropdownClientePortalRef = useRef<HTMLDivElement>(null);
+  const dropdownPrendaPortalRef = useRef<HTMLDivElement>(null);
+  const dropdownPrendaEditPortalRef = useRef<HTMLDivElement>(null);
   
   // Estados para posicionamiento de dropdowns en portal
   const [dropdownClientePos, setDropdownClientePos] = useState<PosicionDropdown | null>(null);
@@ -246,19 +251,24 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   const editTallaRefs = useRef<Record<number, HTMLElement | null>>({});
   const editPrendaInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
+  const LIMITE_RESULTADOS_PRENDA = 25;
+
   // Optimización: Memoizar filtrado de prendas para evitar recálculos
   const prendasMostrar = useMemo(() => {
     const prendasActivas = prendas
       .filter(p => p.activo)
       .sort((a, b) => a.nombre.localeCompare(b.nombre));
-    
-    const prendasFiltradas = busquedaPrenda.trim()
-      ? prendasActivas.filter(p => 
-          p.nombre.toLowerCase().includes(busquedaPrenda.toLowerCase())
+
+    const q = busquedaPrenda.trim().toLowerCase();
+    const prendasFiltradas = q
+      ? prendasActivas.filter(
+          (p) =>
+            p.nombre.toLowerCase().includes(q) ||
+            (p.codigo && p.codigo.toLowerCase().includes(q))
         )
       : prendasActivas;
-    
-    return prendasFiltradas.slice(0, 10);
+
+    return prendasFiltradas.slice(0, LIMITE_RESULTADOS_PRENDA);
   }, [prendas, busquedaPrenda]);
 
   const prendasEditMostrar = useMemo(() => {
@@ -266,11 +276,16 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       .filter(p => p.activo)
       .sort((a, b) => a.nombre.localeCompare(b.nombre));
 
-    const prendasFiltradas = busquedaPrendaEdit.trim()
-      ? prendasActivas.filter(p => p.nombre.toLowerCase().includes(busquedaPrendaEdit.toLowerCase()))
+    const q = busquedaPrendaEdit.trim().toLowerCase();
+    const prendasFiltradas = q
+      ? prendasActivas.filter(
+          (p) =>
+            p.nombre.toLowerCase().includes(q) ||
+            (p.codigo && p.codigo.toLowerCase().includes(q))
+        )
       : prendasActivas;
 
-    return prendasFiltradas.slice(0, 10);
+    return prendasFiltradas.slice(0, LIMITE_RESULTADOS_PRENDA);
   }, [prendas, busquedaPrendaEdit]);
 
   // Filtrar cotizaciones por cliente y fecha
@@ -458,6 +473,13 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
 
     const root = modalScrollRef.current;
     const cerrarPorScrollModal = () => {
+      if (
+        interaccionDropdownClienteRef.current ||
+        interaccionDropdownPrendaRef.current ||
+        interaccionDropdownPrendaEditRef.current
+      ) {
+        return;
+      }
       setResultadosBusqueda([]);
       setIndiceSeleccionadoCliente(-1);
     };
@@ -503,6 +525,50 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     root?.addEventListener('scroll', actualizarPosicion, { passive: true });
     return suscribirReposicionDropdownViewport(actualizarPosicion);
   }, [dropdownPrendaEditVisible, editPartidaIdx, busquedaPrendaEdit, prendasEditMostrar.length]);
+
+  // Cerrar dropdowns de cotización al tocar fuera (sin cerrar al hacer scroll en el portal)
+  useEffect(() => {
+    const hayDropdownPrenda = dropdownPrendaVisible && !!dropdownPrendaPos;
+    const hayDropdownPrendaEdit = dropdownPrendaEditVisible && !!dropdownPrendaEditPos;
+    const hayDropdownCliente =
+      resultadosBusqueda.length > 0 && !clienteSeleccionado && !!dropdownClientePos;
+    if (!hayDropdownPrenda && !hayDropdownPrendaEdit && !hayDropdownCliente) return;
+
+    const editInput =
+      editPartidaIdx !== null ? editPrendaInputRefs.current[editPartidaIdx] : null;
+
+    return instalarCierrePointerFuera(
+      [
+        inputClienteRef,
+        dropdownClientePortalRef,
+        inputPrendaRef,
+        dropdownPrendaPortalRef,
+        dropdownPrendaEditPortalRef,
+        { current: editInput },
+      ],
+      () => {
+        setDropdownPrendaVisible(false);
+        setDropdownPrendaEditVisible(false);
+        setIndiceSeleccionadoPrenda(-1);
+        setIndiceSeleccionadoPrendaEdit(-1);
+        setResultadosBusqueda([]);
+        setIndiceSeleccionadoCliente(-1);
+      },
+      () =>
+        interaccionDropdownPrendaRef.current ||
+        interaccionDropdownPrendaEditRef.current ||
+        interaccionDropdownClienteRef.current
+    );
+  }, [
+    dropdownPrendaVisible,
+    dropdownPrendaPos,
+    dropdownPrendaEditVisible,
+    dropdownPrendaEditPos,
+    resultadosBusqueda.length,
+    clienteSeleccionado,
+    dropdownClientePos,
+    editPartidaIdx,
+  ]);
 
   // Cerrar mini-modal de precio al hacer clic fuera o scroll del modal
   useEffect(() => {
@@ -3889,8 +3955,9 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
 
       {/* PORTALES: Dropdowns renderizados fuera del modal para evitar overflow: auto */}
       {mounted && dropdownClientePos && resultadosBusqueda.length > 0 && !clienteSeleccionado && createPortal(
-        <div 
-          style={{
+        <div
+          ref={dropdownClientePortalRef}
+          {...mergePropsDropdownPortal(interaccionDropdownClienteRef, {
             position: 'fixed',
             top: dropdownClientePos!.top,
             left: dropdownClientePos!.left,
@@ -3898,12 +3965,11 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
             maxHeight: dropdownClientePos!.maxHeight,
             overflow: 'auto',
             zIndex: 10000,
-            WebkitOverflowScrolling: 'touch',
             background: 'white',
             border: '2px solid #667eea',
             borderRadius: '8px',
             boxShadow: '0 8px 16px rgba(102, 126, 234, 0.3)',
-          }}
+          })}
         >
           {resultadosBusqueda.map((cliente, index) => {
             const nombreCliente = cliente.nombre || cliente.alumno_nombre || 'Sin nombre';
@@ -3912,13 +3978,11 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
             return (
               <div
                 key={cliente.id}
-                onMouseDown={(e) => {
-                  e.preventDefault();
+                onClick={() => {
                   setClienteSeleccionado(cliente);
                   setBusquedaCliente(nombreCliente);
                   setResultadosBusqueda([]);
                   setIndiceSeleccionadoCliente(-1);
-                  // Auto-focus al siguiente input (prenda)
                   setTimeout(() => {
                     if (cotizacionDirecta && inputPrendaManualRef.current) {
                       inputPrendaManualRef.current.focus();
@@ -3958,6 +4022,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       {mounted && dropdownPrendaPos && dropdownPrendaVisible && createPortal(
         prendasMostrar.length > 0 ? (
           <div
+            ref={dropdownPrendaPortalRef}
             {...mergePropsDropdownPortal(interaccionDropdownPrendaRef, {
               position: 'fixed',
               top: dropdownPrendaPos.top,
@@ -3998,6 +4063,11 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                 }}
               >
                 {prenda.nombre}
+                {prenda.codigo && (
+                  <div style={{ fontSize: '0.75rem', opacity: 0.85, marginTop: '2px' }}>
+                    Código: {prenda.codigo}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -4026,6 +4096,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       {mounted && dropdownPrendaEditPos && dropdownPrendaEditVisible && createPortal(
         prendasEditMostrar.length > 0 ? (
           <div
+            ref={dropdownPrendaEditPortalRef}
             className="cotizacion-autocomplete-dropdown"
             {...mergePropsDropdownPortal(interaccionDropdownPrendaEditRef, {
               top: dropdownPrendaEditPos.top,
@@ -4063,6 +4134,11 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                 onMouseEnter={() => setIndiceSeleccionadoPrendaEdit(idx)}
               >
                 {prenda.nombre}
+                {prenda.codigo && (
+                  <div style={{ fontSize: '0.75rem', opacity: 0.85, marginTop: '2px' }}>
+                    Código: {prenda.codigo}
+                  </div>
+                )}
               </div>
             ))}
           </div>
