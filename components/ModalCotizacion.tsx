@@ -48,6 +48,7 @@ import {
   instalarCierrePointerFuera,
   mergePropsDropdownPortal,
   posicionDropdownFijo,
+  posicionDropdownPrendaCotizacion,
   scrollContenedorAlInicio,
   suscribirReposicionDropdownViewport,
   type PosicionDropdown,
@@ -589,7 +590,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   // Reposicionar dropdown de prendas al escribir (teclado móvil)
   useEffect(() => {
     if (dropdownPrendaVisible && inputPrendaRef.current) {
-      setDropdownPrendaPos(posicionDropdownFijo(inputPrendaRef.current, 320));
+      setDropdownPrendaPos(posicionDropdownPrendaCotizacion(inputPrendaRef.current));
     } else {
       setDropdownPrendaPos(null);
     }
@@ -600,7 +601,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
 
     const reposicionar = () => {
       if (inputPrendaRef.current) {
-        setDropdownPrendaPos(posicionDropdownFijo(inputPrendaRef.current, 320));
+        setDropdownPrendaPos(posicionDropdownPrendaCotizacion(inputPrendaRef.current));
       }
     };
 
@@ -615,7 +616,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
 
     const actualizarPosicion = () => {
       const el = editPrendaInputRefs.current[editPartidaIdx];
-      if (el) setDropdownPrendaEditPos(posicionDropdownFijo(el, 320));
+      if (el) setDropdownPrendaEditPos(posicionDropdownPrendaCotizacion(el));
     };
 
     actualizarPosicion();
@@ -3075,13 +3076,13 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                                   setBusquedaPrendaEdit(q);
                                   setDropdownPrendaEditVisible(true);
                                   setIndiceSeleccionadoPrendaEdit(-1);
-                                  setDropdownPrendaEditPos(posicionDropdownFijo(e.currentTarget, 320));
+                                  setDropdownPrendaEditPos(posicionDropdownPrendaCotizacion(e.currentTarget));
                                   if (partida.es_manual) {
                                     actualizarPartida(index, 'prenda_nombre', q);
                                   }
                                 }}
                                 onFocus={(e) => {
-                                  setDropdownPrendaEditPos(posicionDropdownFijo(e.currentTarget, 320));
+                                  setDropdownPrendaEditPos(posicionDropdownPrendaCotizacion(e.currentTarget));
                                   setEditPartidaIdx(index);
                                   setBusquedaPrendaEdit(partida.prenda_nombre);
                                   setDropdownPrendaEditVisible(true);
@@ -4132,11 +4133,6 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                 }}
               >
                 {prenda.nombre}
-                {prenda.codigo && (
-                  <div style={{ fontSize: '0.75rem', opacity: 0.85, marginTop: '2px' }}>
-                    Código: {prenda.codigo}
-                  </div>
-                )}
               </div>
             ))}
           </div>
@@ -4203,11 +4199,6 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                 onMouseEnter={() => setIndiceSeleccionadoPrendaEdit(idx)}
               >
                 {prenda.nombre}
-                {prenda.codigo && (
-                  <div style={{ fontSize: '0.75rem', opacity: 0.85, marginTop: '2px' }}>
-                    Código: {prenda.codigo}
-                  </div>
-                )}
               </div>
             ))}
           </div>

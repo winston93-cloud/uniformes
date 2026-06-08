@@ -255,7 +255,8 @@ function metricasViewportVisible() {
 export function posicionDropdownFijo(
   anchor: HTMLElement,
   minWidth = 320,
-  maxHeightPref = 280
+  maxHeightPref = 280,
+  opciones?: { forzarArribaEnTactil?: boolean }
 ): PosicionDropdown {
   const rect = anchor.getBoundingClientRect();
   const margen = 8;
@@ -277,7 +278,10 @@ export function posicionDropdownFijo(
 
   const spaceBelow = vp.bottom - rect.bottom - margen;
   const spaceAbove = rect.top - vp.top - margen;
-  const preferBelow = spaceBelow >= minUsable || spaceBelow >= spaceAbove;
+  const forzarArriba = Boolean(opciones?.forzarArribaEnTactil && esDispositivoTactil());
+  const preferBelow = forzarArriba
+    ? false
+    : spaceBelow >= minUsable || spaceBelow >= spaceAbove;
 
   let top: number;
   let maxHeight: number;
@@ -294,6 +298,11 @@ export function posicionDropdownFijo(
   }
 
   return { top, left, width, maxHeight, arriba };
+}
+
+/** Dropdown de prenda en cotización: en móvil abre arriba del input (teclado + input + lista visibles). */
+export function posicionDropdownPrendaCotizacion(anchor: HTMLElement): PosicionDropdown {
+  return posicionDropdownFijo(anchor, 320, 200, { forzarArribaEnTactil: true });
 }
 
 /** Reposiciona dropdowns cuando el teclado móvil cambia el viewport visible. */
