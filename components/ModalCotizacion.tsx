@@ -38,7 +38,7 @@ import {
   esIOS,
   mostrarPdfJsPDF,
 } from '@/lib/abrirPdfNavegador';
-import { catalogoSatParaSelect, focusCotizacionSiEscritorio, focusSinScroll, posicionDropdownFijo } from '@/lib/cotizacionUi';
+import { catalogoSatParaSelect, focusCotizacionSiEscritorio, focusSinScroll, posicionDropdownFijo, suscribirReposicionDropdownViewport, type PosicionDropdown } from '@/lib/cotizacionUi';
 
 /** Moneda en PDF cotización: miles con separador y 2 decimales (es-MX). */
 function formatoMonedaPdfCotizacion(n: number): string {
@@ -142,7 +142,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   
   // Estado para mini-modal de cambio de precio
   const [miniModalPrecioAbierto, setMiniModalPrecioAbierto] = useState<number | null>(null);
-  const [miniModalPrecioPos, setMiniModalPrecioPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [miniModalPrecioPos, setMiniModalPrecioPos] = useState<PosicionDropdown | null>(null);
   
   // Estados para filtros de historial
   const [filtroCliente, setFiltroCliente] = useState('');
@@ -162,8 +162,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   const modalScrollRef = useRef<HTMLDivElement>(null);
   
   // Estados para posicionamiento de dropdowns en portal
-  const [dropdownClientePos, setDropdownClientePos] = useState<{ top: number; left: number; width: number } | null>(null);
-  const [dropdownPrendaPos, setDropdownPrendaPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [dropdownClientePos, setDropdownClientePos] = useState<PosicionDropdown | null>(null);
+  const [dropdownPrendaPos, setDropdownPrendaPos] = useState<PosicionDropdown | null>(null);
   const [mounted, setMounted] = useState(false);
 
   // Información adicional
@@ -230,7 +230,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   const [busquedaPrendaEdit, setBusquedaPrendaEdit] = useState('');
   const [dropdownPrendaEditVisible, setDropdownPrendaEditVisible] = useState(false);
   const [indiceSeleccionadoPrendaEdit, setIndiceSeleccionadoPrendaEdit] = useState(-1);
-  const [dropdownPrendaEditPos, setDropdownPrendaEditPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [dropdownPrendaEditPos, setDropdownPrendaEditPos] = useState<PosicionDropdown | null>(null);
   const editColorRefs = useRef<Record<number, HTMLInputElement | null>>({});
   const editTallaRefs = useRef<Record<number, HTMLElement | null>>({});
   const editPrendaInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
@@ -435,26 +435,27 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     }
   }, [resultadosBusqueda, clienteSeleccionado, busquedaCliente]);
 
-  // Cerrar dropdown de clientes al hacer scroll dentro del modal o resize
+  // Reposicionar dropdown de clientes (teclado móvil) sin cerrarlo
   useEffect(() => {
-    if (resultadosBusqueda.length > 0 && !clienteSeleccionado) {
-      const root = modalScrollRef.current;
-      const handleScrollOrResize = () => {
-        setResultadosBusqueda([]);
-        setIndiceSeleccionadoCliente(-1);
-      };
+    if (!(resultadosBusqueda.length > 0 && !clienteSeleccionado)) return;
 
-      root?.addEventListener('scroll', handleScrollOrResize, { passive: true });
-      window.addEventListener('resize', handleScrollOrResize, { passive: true });
+    const reposicionar = () => {
+      if (inputClienteRef.current) {
+        setDropdownClientePos(posicionDropdownFijo(inputClienteRef.current, 280));
+      }
+    };
 
-      return () => {
-        root?.removeEventListener('scroll', handleScrollOrResize);
-        window.removeEventListener('resize', handleScrollOrResize);
-      };
-    }
+    const root = modalScrollRef.current;
+    const cerrarPorScrollModal = () => {
+      setResultadosBusqueda([]);
+      setIndiceSeleccionadoCliente(-1);
+    };
+
+    root?.addEventListener('scroll', cerrarPorScrollModal, { passive: true });
+    return suscribirReposicionDropdownViewport(reposicionar);
   }, [resultadosBusqueda, clienteSeleccionado]);
 
-  // Calcular posición del dropdown de prendas cuando se muestra
+  // Reposicionar dropdown de prendas al escribir (teclado móvil)
   useEffect(() => {
     if (dropdownPrendaVisible && inputPrendaRef.current) {
       setDropdownPrendaPos(posicionDropdownFijo(inputPrendaRef.current, 320));
@@ -464,24 +465,20 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   }, [dropdownPrendaVisible, busquedaPrenda]);
 
   useEffect(() => {
-    if (dropdownPrendaVisible) {
-      const root = modalScrollRef.current;
-      const handleScrollOrResize = () => {
-        setDropdownPrendaVisible(false);
-        setIndiceSeleccionadoPrenda(-1);
-      };
+    if (!dropdownPrendaVisible) return;
 
-      root?.addEventListener('scroll', handleScrollOrResize, { passive: true });
-      window.addEventListener('resize', handleScrollOrResize, { passive: true });
+    const reposicionar = () => {
+      if (inputPrendaRef.current) {
+        setDropdownPrendaPos(posicionDropdownFijo(inputPrendaRef.current, 320));
+      }
+    };
 
-      return () => {
-        root?.removeEventListener('scroll', handleScrollOrResize);
-        window.removeEventListener('resize', handleScrollOrResize);
-      };
-    }
-  }, [dropdownPrendaVisible]);
+    const root = modalScrollRef.current;
+    root?.addEventListener('scroll', reposicionar, { passive: true });
+    return suscribirReposicionDropdownViewport(reposicionar);
+  }, [dropdownPrendaVisible, busquedaPrenda]);
 
-  // Posicionar autocomplete de prenda al editar partidas (sigue al input al hacer scroll en el modal)
+  // Posicionar autocomplete de prenda al editar partidas
   useEffect(() => {
     if (!dropdownPrendaEditVisible || editPartidaIdx === null) return;
 
@@ -493,12 +490,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     actualizarPosicion();
     const root = modalScrollRef.current;
     root?.addEventListener('scroll', actualizarPosicion, { passive: true });
-    window.addEventListener('resize', actualizarPosicion, { passive: true });
-
-    return () => {
-      root?.removeEventListener('scroll', actualizarPosicion);
-      window.removeEventListener('resize', actualizarPosicion);
-    };
+    return suscribirReposicionDropdownViewport(actualizarPosicion);
   }, [dropdownPrendaEditVisible, editPartidaIdx, busquedaPrendaEdit, prendasEditMostrar.length]);
 
   // Cerrar mini-modal de precio al hacer clic fuera o scroll del modal
@@ -3895,9 +3887,10 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
             top: dropdownClientePos!.top,
             left: dropdownClientePos!.left,
             width: dropdownClientePos!.width,
-            maxHeight: '250px',
+            maxHeight: dropdownClientePos!.maxHeight,
             overflow: 'auto',
             zIndex: 10000,
+            WebkitOverflowScrolling: 'touch',
             background: 'white',
             border: '2px solid #667eea',
             borderRadius: '8px',
@@ -3961,8 +3954,9 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
             top: dropdownPrendaPos.top,
             left: dropdownPrendaPos.left,
             width: dropdownPrendaPos.width,
-            maxHeight: '250px',
+            maxHeight: dropdownPrendaPos.maxHeight,
             overflowY: 'auto',
+            WebkitOverflowScrolling: 'touch',
             background: 'white',
             border: '2px solid #667eea',
             borderRadius: '8px',
@@ -4030,6 +4024,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
               top: dropdownPrendaEditPos.top,
               left: dropdownPrendaEditPos.left,
               width: dropdownPrendaEditPos.width,
+              maxHeight: dropdownPrendaEditPos.maxHeight,
             }}
           >
             {prendasEditMostrar.map((prenda, idx) => (
@@ -4072,6 +4067,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
               top: dropdownPrendaEditPos.top,
               left: dropdownPrendaEditPos.left,
               width: dropdownPrendaEditPos.width,
+              maxHeight: dropdownPrendaEditPos.maxHeight,
             }}
           >
             No se encontraron prendas

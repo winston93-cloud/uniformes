@@ -7,7 +7,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import ModalDevolucion from '@/components/ModalDevolucion';
 import { supabase } from '@/lib/supabase';
-import { posicionDropdownFijo } from '@/lib/cotizacionUi';
+import { posicionDropdownFijo, suscribirReposicionDropdownViewport } from '@/lib/cotizacionUi';
+import type { PosicionDropdown } from '@/lib/cotizacionUi';
 import { useCostos } from '@/lib/hooks/useCostos';
 import { useAlumnos } from '@/lib/hooks/useAlumnos';
 import { useExternos } from '@/lib/hooks/useExternos';
@@ -167,14 +168,15 @@ function PedidosPageContent() {
   const [textoPrendaBusqueda, setTextoPrendaBusqueda] = useState('');
   const [prendasEncontradas, setPrendasEncontradas] = useState<Prenda[]>([]);
   const [mostrarListaPrendas, setMostrarListaPrendas] = useState(false);
-  const [posDropdownPrenda, setPosDropdownPrenda] = useState<{ top: number; left: number; width: number } | null>(
-    null
-  );
+  const [posDropdownPrenda, setPosDropdownPrenda] = useState<PosicionDropdown | null>(null);
+  const [posDropdownCliente, setPosDropdownCliente] = useState<PosicionDropdown | null>(null);
   const [portalMounted, setPortalMounted] = useState(false);
+  const contenedorClienteRef = useRef<HTMLDivElement>(null);
   const [tallasDisponibles, setTallasDisponibles] = useState<any[]>([]);
   const inputPrendaRef = useRef<HTMLInputElement>(null);
   const contenedorPrendaRef = useRef<HTMLDivElement>(null);
   const dropdownPrendaRef = useRef<HTMLDivElement>(null);
+  const dropdownClienteRef = useRef<HTMLDivElement>(null);
   const selectTallaRef = useRef<HTMLSelectElement>(null);
   const inputEspecificacionesRef = useRef<HTMLInputElement>(null);
   const inputCantidadRef = useRef<HTMLInputElement>(null);
@@ -277,6 +279,12 @@ function PedidosPageContent() {
     setPosDropdownPrenda(posicionDropdownFijo(anchor, 280, 300));
   }, []);
 
+  const sincronizarPosDropdownCliente = useCallback(() => {
+    const anchor = inputClienteRef.current;
+    if (!anchor) return;
+    setPosDropdownCliente(posicionDropdownFijo(anchor, 280, 280));
+  }, []);
+
   const ejecutarBusquedaPrenda = useCallback(
     (texto: string) => {
       if (!texto || texto.trim().length === 0) {
@@ -317,14 +325,21 @@ function PedidosPageContent() {
   }, [prendas, ejecutarBusquedaPrenda]);
 
   useEffect(() => {
+    if (mostrarResultados && resultadosBusqueda.length > 0) {
+      requestAnimationFrame(() => sincronizarPosDropdownCliente());
+    } else {
+      setPosDropdownCliente(null);
+    }
+  }, [mostrarResultados, resultadosBusqueda, sincronizarPosDropdownCliente]);
+
+  useEffect(() => {
+    if (!mostrarResultados) return;
+    return suscribirReposicionDropdownViewport(sincronizarPosDropdownCliente);
+  }, [mostrarResultados, sincronizarPosDropdownCliente]);
+
+  useEffect(() => {
     if (!mostrarListaPrendas) return;
-    const actualizar = () => sincronizarPosDropdownPrenda();
-    window.addEventListener('scroll', actualizar, true);
-    window.addEventListener('resize', actualizar);
-    return () => {
-      window.removeEventListener('scroll', actualizar, true);
-      window.removeEventListener('resize', actualizar);
-    };
+    return suscribirReposicionDropdownViewport(sincronizarPosDropdownPrenda);
   }, [mostrarListaPrendas, sincronizarPosDropdownPrenda]);
 
   // NUEVA: Manejar cambio en el input de búsqueda
@@ -379,7 +394,10 @@ function PedidosPageContent() {
       const target = event.target as Node;
       if (contenedorPrendaRef.current?.contains(target)) return;
       if (dropdownPrendaRef.current?.contains(target)) return;
+      if (contenedorClienteRef.current?.contains(target)) return;
+      if (dropdownClienteRef.current?.contains(target)) return;
       setMostrarListaPrendas(false);
+      setMostrarResultados(false);
     };
 
     document.addEventListener('mousedown', handleClickFuera);
@@ -956,7 +974,7 @@ function PedidosPageContent() {
             <form onSubmit={handleSubmit}>
               <div className="form-group" style={{ marginBottom: '0.75rem' }}>
                 <label className="form-label" style={{ marginBottom: '0.4rem', fontSize: '0.9rem' }}>Alumno/Externo *</label>
-                <div style={{ position: 'relative' }}>
+                <div ref={contenedorClienteRef} style={{ position: 'relative' }}>
                   <input
                     ref={inputClienteRef}
                     type="text"
@@ -971,16 +989,14 @@ function PedidosPageContent() {
                       }
                     }}
                     onFocus={() => {
-                      setBusquedaCliente(''); // Limpiar al hacer clic
+                      setBusquedaCliente('');
                       setFormData({ ...formData, cliente_id: '', cliente_tipo: '', cliente_nombre: '' });
                       setClienteSeleccionado(null);
                       setIndiceClienteSeleccionado(-1);
                       if (resultadosBusqueda.length > 0) {
                         setMostrarResultados(true);
+                        requestAnimationFrame(() => sincronizarPosDropdownCliente());
                       }
-                    }}
-                    onBlur={() => {
-                      setTimeout(() => setMostrarResultados(false), 200);
                     }}
                     onKeyDown={(e) => {
                       if (!mostrarResultados || resultadosBusqueda.length === 0) return;
@@ -1002,61 +1018,11 @@ function PedidosPageContent() {
                       }
                     }}
                     placeholder="🔍 Buscar alumno o externo..."
-                    style={{ width: '100%', padding: '0.5rem', fontSize: '0.9rem' }}
+                    style={{ width: '100%', padding: '0.5rem', fontSize: '16px' }}
+                    autoComplete="off"
+                    autoCorrect="off"
+                    spellCheck={false}
                   />
-
-                  {/* Dropdown de resultados */}
-                  {mostrarResultados && resultadosBusqueda.length > 0 && (
-                    <div style={{
-                      position: 'absolute',
-                      top: '100%',
-                      left: 0,
-                      right: 0,
-                      backgroundColor: 'white',
-                      border: '1px solid #ddd',
-                      borderRadius: '8px',
-                      boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-                      zIndex: 1000,
-                      maxHeight: '300px',
-                      overflowY: 'auto',
-                      marginTop: '4px'
-                    }}>
-                      {resultadosBusqueda.map((cliente, index) => (
-                        <div
-                          key={`${cliente.tipo}-${cliente.id}`}
-                          onClick={() => seleccionarCliente(cliente)}
-                          style={{
-                            padding: '0.75rem 1rem',
-                            cursor: 'pointer',
-                            borderBottom: index < resultadosBusqueda.length - 1 ? '1px solid #f0f0f0' : 'none',
-                            transition: 'background-color 0.2s',
-                            backgroundColor: 
-                              indiceClienteSeleccionado === index ? '#dbeafe' :
-                              formData.cliente_id === cliente.id ? '#e7f3ff' : 'white',
-                            borderLeft: indiceClienteSeleccionado === index ? '4px solid #3b82f6' : 'none'
-                          }}
-                          onMouseEnter={(e) => {
-                            setIndiceClienteSeleccionado(index);
-                          }}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <span>{cliente.tipo === 'alumno' ? '🎓' : '👤'}</span>
-                            <span style={{ fontWeight: '600' }}>{cliente.nombre}</span>
-                            <span style={{ 
-                              fontSize: '0.75rem', 
-                              color: '#666',
-                              marginLeft: 'auto',
-                              padding: '0.25rem 0.5rem',
-                              backgroundColor: cliente.tipo === 'alumno' ? '#dbeafe' : '#fef3c7',
-                              borderRadius: '4px'
-                            }}>
-                              {cliente.tipo === 'alumno' ? 'Alumno' : 'Externo'}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
 
                 {/* Mostrar datos del cliente seleccionado */}
@@ -2592,6 +2558,76 @@ function PedidosPageContent() {
     </LayoutWrapper>
     {portalMounted &&
       mostrarFormulario &&
+      mostrarResultados &&
+      posDropdownCliente &&
+      resultadosBusqueda.length > 0 &&
+      createPortal(
+        <div
+          ref={dropdownClienteRef}
+          role="listbox"
+          aria-label="Resultados de búsqueda de cliente"
+          style={{
+            position: 'fixed',
+            top: posDropdownCliente.top,
+            left: posDropdownCliente.left,
+            width: posDropdownCliente.width,
+            maxHeight: posDropdownCliente.maxHeight,
+            backgroundColor: 'white',
+            border: '1px solid #ddd',
+            borderRadius: '8px',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
+            zIndex: 10050,
+            overflowY: 'auto',
+            WebkitOverflowScrolling: 'touch',
+          }}
+        >
+          {resultadosBusqueda.map((cliente, index) => (
+            <div
+              key={`${cliente.tipo}-${cliente.id}`}
+              role="option"
+              aria-selected={indiceClienteSeleccionado === index}
+              onPointerDown={(e) => {
+                e.preventDefault();
+                seleccionarCliente(cliente);
+              }}
+              style={{
+                padding: '0.75rem 1rem',
+                cursor: 'pointer',
+                borderBottom: index < resultadosBusqueda.length - 1 ? '1px solid #f0f0f0' : 'none',
+                backgroundColor:
+                  indiceClienteSeleccionado === index
+                    ? '#dbeafe'
+                    : formData.cliente_id === cliente.id
+                      ? '#e7f3ff'
+                      : 'white',
+                borderLeft: indiceClienteSeleccionado === index ? '4px solid #3b82f6' : 'none',
+                touchAction: 'manipulation',
+              }}
+              onMouseEnter={() => setIndiceClienteSeleccionado(index)}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span>{cliente.tipo === 'alumno' ? '🎓' : '👤'}</span>
+                <span style={{ fontWeight: '600' }}>{cliente.nombre}</span>
+                <span
+                  style={{
+                    fontSize: '0.75rem',
+                    color: '#666',
+                    marginLeft: 'auto',
+                    padding: '0.25rem 0.5rem',
+                    backgroundColor: cliente.tipo === 'alumno' ? '#dbeafe' : '#fef3c7',
+                    borderRadius: '4px',
+                  }}
+                >
+                  {cliente.tipo === 'alumno' ? 'Alumno' : 'Externo'}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>,
+        document.body
+      )}
+    {portalMounted &&
+      mostrarFormulario &&
       mostrarListaPrendas &&
       posDropdownPrenda &&
       createPortal(
@@ -2609,7 +2645,7 @@ function PedidosPageContent() {
             borderRadius: '8px',
             boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
             zIndex: 10050,
-            maxHeight: '300px',
+            maxHeight: posDropdownPrenda.maxHeight,
             overflowY: 'auto',
             WebkitOverflowScrolling: 'touch',
           }}
