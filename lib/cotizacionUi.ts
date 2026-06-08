@@ -93,7 +93,7 @@ export function instalarCierrePointerFuera(
 export function crearSupresorClickFantasma() {
   const ref = { current: false };
   return {
-    activar(ms = 500) {
+    activar(ms = 600) {
       ref.current = true;
       window.setTimeout(() => {
         ref.current = false;

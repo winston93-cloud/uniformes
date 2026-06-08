@@ -301,6 +301,22 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     focusCotizacionSiEscritorio(inputColorRef.current);
   };
 
+  const seleccionarClienteDesdeBusqueda = (cliente: {
+    id?: string;
+    nombre?: string;
+    alumno_nombre?: string;
+  }) => {
+    supresorClickFantasma.activar();
+    const nombreCliente = cliente.nombre || cliente.alumno_nombre || '';
+    setClienteSeleccionado(cliente);
+    setBusquedaCliente(nombreCliente);
+    setResultadosBusqueda([]);
+    setIndiceSeleccionadoCliente(-1);
+    focusCotizacionSiEscritorio(
+      cotizacionDirecta ? inputPrendaManualRef.current : inputPrendaRef.current
+    );
+  };
+
   const handleCambioBusquedaPrenda = (nuevaBusqueda: string) => {
     const hayDatosAtados =
       subPartidas.some((sp) => sp.cantidad > 0) || colorGlobal.trim().length > 0;
@@ -1703,6 +1719,11 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
         if (supresorClickFantasma.activo()) return;
         if (e.target === e.currentTarget) onClose();
       }}
+      onTouchEnd={(e) => {
+        if (!supresorClickFantasma.activo()) return;
+        e.preventDefault();
+        e.stopPropagation();
+      }}
     >
       <div 
         ref={modalScrollRef}
@@ -2152,19 +2173,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                   } else if (e.key === 'Enter') {
                     e.preventDefault();
                     if (indiceSeleccionadoCliente >= 0 && resultadosBusqueda[indiceSeleccionadoCliente]) {
-                      const cliente = resultadosBusqueda[indiceSeleccionadoCliente];
-                      setClienteSeleccionado(cliente);
-                      setBusquedaCliente(cliente.nombre || cliente.alumno_nombre || '');
-                      setResultadosBusqueda([]);
-                      setIndiceSeleccionadoCliente(-1);
-                      // Auto-focus al siguiente input (prenda)
-                      setTimeout(() => {
-                        if (cotizacionDirecta && inputPrendaManualRef.current) {
-                          inputPrendaManualRef.current.focus();
-                        } else if (inputPrendaRef.current) {
-                          inputPrendaRef.current.focus();
-                        }
-                      }, 100);
+                      seleccionarClienteDesdeBusqueda(resultadosBusqueda[indiceSeleccionadoCliente]);
                     }
                   } else if (e.key === 'Escape') {
                     e.preventDefault();
@@ -4047,16 +4056,10 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
             return (
               <div
                 key={cliente.id}
-                {...handlersTapSeleccionDropdown(() => {
-                  supresorClickFantasma.activar();
-                  setClienteSeleccionado(cliente);
-                  setBusquedaCliente(nombreCliente);
-                  setResultadosBusqueda([]);
-                  setIndiceSeleccionadoCliente(-1);
-                  focusCotizacionSiEscritorio(
-                    cotizacionDirecta ? inputPrendaManualRef.current : inputPrendaRef.current
-                  );
-                }, interaccionDropdownClienteRef)}
+                {...handlersTapSeleccionDropdown(
+                  () => seleccionarClienteDesdeBusqueda(cliente),
+                  interaccionDropdownClienteRef
+                )}
                 onMouseEnter={() => setIndiceSeleccionadoCliente(index)}
                 style={{
                   padding: '0.75rem',
