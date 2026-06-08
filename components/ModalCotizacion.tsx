@@ -38,7 +38,16 @@ import {
   esIOS,
   mostrarPdfJsPDF,
 } from '@/lib/abrirPdfNavegador';
-import { catalogoSatParaSelect, focusCotizacionSiEscritorio, focusSinScroll, posicionDropdownFijo, suscribirReposicionDropdownViewport, type PosicionDropdown } from '@/lib/cotizacionUi';
+import {
+  catalogoSatParaSelect,
+  crearOnBlurCerrarDropdown,
+  focusCotizacionSiEscritorio,
+  focusSinScroll,
+  mergePropsDropdownPortal,
+  posicionDropdownFijo,
+  suscribirReposicionDropdownViewport,
+  type PosicionDropdown,
+} from '@/lib/cotizacionUi';
 
 /** Moneda en PDF cotización: miles con separador y 2 decimales (es-MX). */
 function formatoMonedaPdfCotizacion(n: number): string {
@@ -160,6 +169,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   const fondoCotizacionDataUrlRef = useRef<string | null>(null);
   const fondoHojaCotizacionDataUrlRef = useRef<string | null>(null);
   const modalScrollRef = useRef<HTMLDivElement>(null);
+  const interaccionDropdownPrendaRef = useRef(false);
+  const interaccionDropdownPrendaEditRef = useRef(false);
   
   // Estados para posicionamiento de dropdowns en portal
   const [dropdownClientePos, setDropdownClientePos] = useState<PosicionDropdown | null>(null);
@@ -2305,12 +2316,10 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                             setDropdownPrendaVisible(true);
                             setIndiceSeleccionadoPrenda(-1);
                           }}
-                          onBlur={() => {
-                            setTimeout(() => {
-                              setDropdownPrendaVisible(false);
-                              setIndiceSeleccionadoPrenda(-1);
-                            }, 200);
-                          }}
+                          onBlur={crearOnBlurCerrarDropdown(interaccionDropdownPrendaRef, () => {
+                            setDropdownPrendaVisible(false);
+                            setIndiceSeleccionadoPrenda(-1);
+                          })}
                           onKeyDown={(e) => {
                             if (e.key === 'ArrowDown') {
                               e.preventDefault();
@@ -2927,12 +2936,10 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                                   setDropdownPrendaEditVisible(true);
                                   setIndiceSeleccionadoPrendaEdit(-1);
                                 }}
-                                onBlur={() => {
-                                  setTimeout(() => {
-                                    setDropdownPrendaEditVisible(false);
-                                    setIndiceSeleccionadoPrendaEdit(-1);
-                                  }, 200);
-                                }}
+                                onBlur={crearOnBlurCerrarDropdown(interaccionDropdownPrendaEditRef, () => {
+                                  setDropdownPrendaEditVisible(false);
+                                  setIndiceSeleccionadoPrendaEdit(-1);
+                                })}
                                 onKeyDown={(e) => {
                                   if (!dropdownPrendaEditVisible) return;
                                   if (e.key === 'ArrowDown') {
@@ -3950,30 +3957,29 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
 
       {mounted && dropdownPrendaPos && dropdownPrendaVisible && createPortal(
         prendasMostrar.length > 0 ? (
-          <div style={{
-            position: 'fixed',
-            top: dropdownPrendaPos.top,
-            left: dropdownPrendaPos.left,
-            width: dropdownPrendaPos.width,
-            maxHeight: dropdownPrendaPos.maxHeight,
-            overflowY: 'auto',
-            WebkitOverflowScrolling: 'touch',
-            background: 'white',
-            border: '2px solid #667eea',
-            borderRadius: '8px',
-            boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
-            zIndex: 10000,
-          }}>
+          <div
+            {...mergePropsDropdownPortal(interaccionDropdownPrendaRef, {
+              position: 'fixed',
+              top: dropdownPrendaPos.top,
+              left: dropdownPrendaPos.left,
+              width: dropdownPrendaPos.width,
+              maxHeight: dropdownPrendaPos.maxHeight,
+              overflowY: 'auto',
+              background: 'white',
+              border: '2px solid #667eea',
+              borderRadius: '8px',
+              boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
+              zIndex: 10000,
+            })}
+          >
             {prendasMostrar.map((prenda, index) => (
               <div
                 key={prenda.id}
-                onMouseDown={(e) => {
-                  e.preventDefault();
+                onClick={() => {
                   setPrendaSeleccionada(prenda.id);
                   setBusquedaPrenda(prenda.nombre);
                   setDropdownPrendaVisible(false);
                   setIndiceSeleccionadoPrenda(-1);
-                  // Auto-focus a color
                   setTimeout(() => {
                     if (inputColorRef.current) {
                       inputColorRef.current.focus();
@@ -4021,12 +4027,12 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
         prendasEditMostrar.length > 0 ? (
           <div
             className="cotizacion-autocomplete-dropdown"
-            style={{
+            {...mergePropsDropdownPortal(interaccionDropdownPrendaEditRef, {
               top: dropdownPrendaEditPos.top,
               left: dropdownPrendaEditPos.left,
               width: dropdownPrendaEditPos.width,
               maxHeight: dropdownPrendaEditPos.maxHeight,
-            }}
+            })}
           >
             {prendasEditMostrar.map((prenda, idx) => (
               <div
@@ -4034,8 +4040,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                 className={`cotizacion-autocomplete-dropdown-item${
                   indiceSeleccionadoPrendaEdit === idx ? ' is-active' : ''
                 }`}
-                onMouseDown={(e) => {
-                  e.preventDefault();
+                onClick={() => {
                   if (editPartidaIdx === null) return;
                   const prendaId = String(prenda.id);
                   const prendaNombre = prenda.nombre;

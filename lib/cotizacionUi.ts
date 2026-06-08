@@ -1,6 +1,83 @@
+import type { CSSProperties, FocusEventHandler, HTMLAttributes } from 'react';
 import { esIOS } from '@/lib/abrirPdfNavegador';
 
 export { esIOS };
+
+export type RefInteraccionDropdown = { current: boolean };
+
+const estilosDropdownPortalScroll: CSSProperties = {
+  touchAction: 'pan-y',
+  overscrollBehavior: 'contain',
+  WebkitOverflowScrolling: 'touch',
+};
+
+/** Marca interacción táctil con el portal para no cerrar el dropdown en el blur del input. */
+export function propsDropdownPortalScroll(
+  refInteraccion: RefInteraccionDropdown
+): HTMLAttributes<HTMLDivElement> {
+  const liberar = () => {
+    window.setTimeout(() => {
+      refInteraccion.current = false;
+    }, 350);
+  };
+
+  return {
+    onTouchStart: () => {
+      refInteraccion.current = true;
+    },
+    onPointerDown: (e) => {
+      refInteraccion.current = true;
+      if (e.pointerType === 'mouse') {
+        e.preventDefault();
+      }
+    },
+    onTouchEnd: liberar,
+    onTouchCancel: liberar,
+    style: estilosDropdownPortalScroll,
+  };
+}
+
+/** Combina handlers de scroll móvil con estilos inline del portal. */
+export function mergePropsDropdownPortal(
+  refInteraccion: RefInteraccionDropdown,
+  style: CSSProperties
+): HTMLAttributes<HTMLDivElement> {
+  const portal = propsDropdownPortalScroll(refInteraccion);
+  return {
+    ...portal,
+    style: { ...portal.style, ...style },
+  };
+}
+
+/** Cierra el dropdown al perder foco el input, salvo si el usuario está tocando el listado. */
+export function crearOnBlurCerrarDropdown(
+  refInteraccion: RefInteraccionDropdown,
+  onClose: () => void,
+  delayMs = 220
+): FocusEventHandler<HTMLElement> {
+  return () => {
+    window.setTimeout(() => {
+      if (refInteraccion.current) return;
+      onClose();
+    }, delayMs);
+  };
+}
+
+/** Cierra al tocar fuera de los contenedores (input + portal). Mejor que touchstart suelto en móvil. */
+export function instalarCierrePointerFuera(
+  refs: Array<{ current: HTMLElement | null }>,
+  onClose: () => void,
+  refInteraccion?: RefInteraccionDropdown
+): () => void {
+  const handler = (event: PointerEvent) => {
+    if (refInteraccion?.current) return;
+    const target = event.target as Node;
+    if (refs.some((r) => r.current?.contains(target))) return;
+    onClose();
+  };
+  document.addEventListener('pointerdown', handler, true);
+  return () => document.removeEventListener('pointerdown', handler, true);
+}
 
 /** Evita saltos de scroll al enfocar inputs dentro del modal (Safari iOS). */
 export function focusSinScroll(el: HTMLElement | null | undefined): void {

@@ -7,8 +7,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import ModalDevolucion from '@/components/ModalDevolucion';
 import { supabase } from '@/lib/supabase';
-import { posicionDropdownFijo, suscribirReposicionDropdownViewport } from '@/lib/cotizacionUi';
-import type { PosicionDropdown } from '@/lib/cotizacionUi';
+import {
+  instalarCierrePointerFuera,
+  mergePropsDropdownPortal,
+  posicionDropdownFijo,
+  suscribirReposicionDropdownViewport,
+  type PosicionDropdown,
+} from '@/lib/cotizacionUi';
 import { useCostos } from '@/lib/hooks/useCostos';
 import { useAlumnos } from '@/lib/hooks/useAlumnos';
 import { useExternos } from '@/lib/hooks/useExternos';
@@ -177,6 +182,7 @@ function PedidosPageContent() {
   const contenedorPrendaRef = useRef<HTMLDivElement>(null);
   const dropdownPrendaRef = useRef<HTMLDivElement>(null);
   const dropdownClienteRef = useRef<HTMLDivElement>(null);
+  const interaccionDropdownPortalRef = useRef(false);
   const selectTallaRef = useRef<HTMLSelectElement>(null);
   const inputEspecificacionesRef = useRef<HTMLInputElement>(null);
   const inputCantidadRef = useRef<HTMLInputElement>(null);
@@ -388,24 +394,16 @@ function PedidosPageContent() {
     }
   };
 
-  // Detectar toques/clics fuera del contenedor para ocultar dropdown (Safari iOS usa touch)
+  // Cerrar dropdowns al tocar fuera (sin cerrar al hacer scroll dentro del portal)
   useEffect(() => {
-    const handleClickFuera = (event: MouseEvent | TouchEvent) => {
-      const target = event.target as Node;
-      if (contenedorPrendaRef.current?.contains(target)) return;
-      if (dropdownPrendaRef.current?.contains(target)) return;
-      if (contenedorClienteRef.current?.contains(target)) return;
-      if (dropdownClienteRef.current?.contains(target)) return;
-      setMostrarListaPrendas(false);
-      setMostrarResultados(false);
-    };
-
-    document.addEventListener('mousedown', handleClickFuera);
-    document.addEventListener('touchstart', handleClickFuera, { passive: true });
-    return () => {
-      document.removeEventListener('mousedown', handleClickFuera);
-      document.removeEventListener('touchstart', handleClickFuera);
-    };
+    return instalarCierrePointerFuera(
+      [contenedorPrendaRef, dropdownPrendaRef, contenedorClienteRef, dropdownClienteRef],
+      () => {
+        setMostrarListaPrendas(false);
+        setMostrarResultados(false);
+      },
+      interaccionDropdownPortalRef
+    );
   }, []);
 
   // Enfocar automáticamente el input de cliente al abrir el modal
@@ -2566,7 +2564,7 @@ function PedidosPageContent() {
           ref={dropdownClienteRef}
           role="listbox"
           aria-label="Resultados de búsqueda de cliente"
-          style={{
+          {...mergePropsDropdownPortal(interaccionDropdownPortalRef, {
             position: 'fixed',
             top: posDropdownCliente.top,
             left: posDropdownCliente.left,
@@ -2578,18 +2576,14 @@ function PedidosPageContent() {
             boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
             zIndex: 10050,
             overflowY: 'auto',
-            WebkitOverflowScrolling: 'touch',
-          }}
+          })}
         >
           {resultadosBusqueda.map((cliente, index) => (
             <div
               key={`${cliente.tipo}-${cliente.id}`}
               role="option"
               aria-selected={indiceClienteSeleccionado === index}
-              onPointerDown={(e) => {
-                e.preventDefault();
-                seleccionarCliente(cliente);
-              }}
+              onClick={() => seleccionarCliente(cliente)}
               style={{
                 padding: '0.75rem 1rem',
                 cursor: 'pointer',
@@ -2635,7 +2629,7 @@ function PedidosPageContent() {
           ref={dropdownPrendaRef}
           role="listbox"
           aria-label="Resultados de búsqueda de prenda"
-          style={{
+          {...mergePropsDropdownPortal(interaccionDropdownPortalRef, {
             position: 'fixed',
             top: posDropdownPrenda.top,
             left: posDropdownPrenda.left,
@@ -2647,8 +2641,7 @@ function PedidosPageContent() {
             zIndex: 10050,
             maxHeight: posDropdownPrenda.maxHeight,
             overflowY: 'auto',
-            WebkitOverflowScrolling: 'touch',
-          }}
+          })}
         >
           {prendasEncontradas.length === 0 ? (
             <div style={{ padding: '0.75rem 1rem', color: '#64748b', fontSize: '0.9rem' }}>
@@ -2662,8 +2655,7 @@ function PedidosPageContent() {
                 key={prenda.id}
                 role="option"
                 aria-selected={indicePrendaSeleccionada === idx}
-                onPointerDown={(e) => {
-                  e.preventDefault();
+                onClick={() => {
                   void seleccionarPrendaDelDropdown(prenda);
                 }}
                 style={{
@@ -2677,7 +2669,6 @@ function PedidosPageContent() {
                         ? '#e0f2fe'
                         : 'white',
                   borderLeft: indicePrendaSeleccionada === idx ? '4px solid #3b82f6' : 'none',
-                  touchAction: 'manipulation',
                 }}
                 onMouseEnter={() => setIndicePrendaSeleccionada(idx)}
               >
