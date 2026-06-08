@@ -1724,6 +1724,13 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
         e.preventDefault();
         e.stopPropagation();
       }}
+      onPointerUp={(e) => {
+        if (!supresorClickFantasma.activo()) return;
+        if (e.target === e.currentTarget) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }}
     >
       <div 
         ref={modalScrollRef}

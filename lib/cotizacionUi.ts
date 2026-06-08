@@ -3,6 +3,17 @@ import { esIOS } from '@/lib/abrirPdfNavegador';
 
 export { esIOS };
 
+/** iPhone, iPad, Android y tablets: pantalla táctil (no solo iOS). */
+export function esDispositivoTactil(): boolean {
+  if (typeof window === 'undefined') return false;
+  return (
+    'ontouchstart' in window ||
+    (navigator.maxTouchPoints ?? 0) > 0 ||
+    (typeof window.matchMedia === 'function' &&
+      window.matchMedia('(pointer: coarse)').matches)
+  );
+}
+
 export type RefInteraccionDropdown = { current: boolean };
 
 export type InteraccionDropdownGate = RefInteraccionDropdown | (() => boolean);
@@ -89,7 +100,7 @@ export function instalarCierrePointerFuera(
   return () => document.removeEventListener('pointerdown', handler, true);
 }
 
-/** Evita que el "click fantasma" de iOS cierre el modal tras elegir un ítem del portal. */
+/** Evita que el click fantasma móvil cierre el modal tras elegir un ítem del portal. */
 export function crearSupresorClickFantasma() {
   const ref = { current: false };
   return {
@@ -105,7 +116,7 @@ export function crearSupresorClickFantasma() {
   };
 }
 
-/** Selección en ítem de dropdown: distingue tap de scroll (iOS/Android). */
+/** Selección en ítem de dropdown: distingue tap de scroll (iOS/Android/tablet). */
 export function handlersTapSeleccionDropdown(
   onSelect: () => void,
   refInteraccion?: RefInteraccionDropdown
@@ -116,6 +127,7 @@ export function handlersTapSeleccionDropdown(
   let startX = 0;
   let startY = 0;
   let moved = false;
+  let seleccionadoPorTouch = false;
   const UMBRAL = 10;
 
   const marcarInteraccion = () => {
@@ -125,6 +137,7 @@ export function handlersTapSeleccionDropdown(
   return {
     onTouchStart: (e) => {
       marcarInteraccion();
+      seleccionadoPorTouch = false;
       const t = e.touches[0];
       if (!t) return;
       startX = t.clientX;
@@ -146,7 +159,11 @@ export function handlersTapSeleccionDropdown(
       marcarInteraccion();
       if (moved) return;
       e.preventDefault();
+      seleccionadoPorTouch = true;
       onSelect();
+      window.setTimeout(() => {
+        seleccionadoPorTouch = false;
+      }, 400);
     },
     onPointerDown: (e) => {
       if (e.pointerType === 'mouse') {
@@ -154,8 +171,9 @@ export function handlersTapSeleccionDropdown(
       }
     },
     onClick: (e) => {
-      if (esIOS()) {
+      if (seleccionadoPorTouch || esDispositivoTactil()) {
         e.preventDefault();
+        e.stopPropagation();
         return;
       }
       onSelect();
@@ -182,9 +200,9 @@ export function focusSinScroll(el: HTMLElement | null | undefined): void {
   }
 }
 
-/** Auto-focus solo en escritorio; en iPhone el teclado + scroll del modal suele trabar la UI. */
+/** Auto-focus solo en escritorio; en móvil el teclado suele desplazar el modal. */
 export function focusCotizacionSiEscritorio(el: HTMLElement | null | undefined): void {
-  if (esIOS()) return;
+  if (esDispositivoTactil()) return;
   setTimeout(() => focusSinScroll(el), 80);
 }
 

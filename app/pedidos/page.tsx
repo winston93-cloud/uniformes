@@ -8,6 +8,7 @@ import LayoutWrapper from '@/components/LayoutWrapper';
 import ModalDevolucion from '@/components/ModalDevolucion';
 import { supabase } from '@/lib/supabase';
 import {
+  handlersTapSeleccionDropdown,
   instalarCierrePointerFuera,
   mergePropsDropdownPortal,
   posicionDropdownFijo,
@@ -2583,7 +2584,10 @@ function PedidosPageContent() {
               key={`${cliente.tipo}-${cliente.id}`}
               role="option"
               aria-selected={indiceClienteSeleccionado === index}
-              onClick={() => seleccionarCliente(cliente)}
+              {...handlersTapSeleccionDropdown(
+                () => seleccionarCliente(cliente),
+                interaccionDropdownPortalRef
+              )}
               style={{
                 padding: '0.75rem 1rem',
                 cursor: 'pointer',
@@ -2595,7 +2599,6 @@ function PedidosPageContent() {
                       ? '#e7f3ff'
                       : 'white',
                 borderLeft: indiceClienteSeleccionado === index ? '4px solid #3b82f6' : 'none',
-                touchAction: 'manipulation',
               }}
               onMouseEnter={() => setIndiceClienteSeleccionado(index)}
             >
@@ -2655,9 +2658,12 @@ function PedidosPageContent() {
                 key={prenda.id}
                 role="option"
                 aria-selected={indicePrendaSeleccionada === idx}
-                onClick={() => {
-                  void seleccionarPrendaDelDropdown(prenda);
-                }}
+                {...handlersTapSeleccionDropdown(
+                  () => {
+                    void seleccionarPrendaDelDropdown(prenda);
+                  },
+                  interaccionDropdownPortalRef
+                )}
                 style={{
                   padding: '0.75rem 1rem',
                   cursor: 'pointer',
