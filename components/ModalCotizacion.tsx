@@ -326,8 +326,16 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
 
   const idSatPersistible = (id: string) => (id && !id.startsWith('fallback-') ? id : null);
 
-  const textoMetodoPdfActual = textoPdfSatPago(metodoSeleccionado, 'EFECTIVO');
-  const textoFormaPdfActual = textoPdfSatPago(formaSeleccionada, 'EFECTIVO');
+  const textosPagoPdfDesdeSeleccion = () => {
+    const metodo = metodos.find((m) => m.id === metodoPagoId) || metodoDefault;
+    const forma = formas.find((f) => f.id === formaPagoId) || formaDefault;
+    return {
+      metodoPago: textoPdfSatPago(metodo, 'EFECTIVO'),
+      formaPago: textoPdfSatPago(forma, 'EFECTIVO'),
+    };
+  };
+
+  const textosPagoPdfActuales = textosPagoPdfDesdeSeleccion();
 
   const textoMetodoPdfDesdeId = (id?: string | null) =>
     textoPdfSatPago(metodos.find((m) => m.id === id) || metodoDefault, 'EFECTIVO');
@@ -1271,6 +1279,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       // Generar y mostrar PDF en pantalla (mismo folio al editar)
       const fiscalesPdf = await obtenerDatosFiscalesClienteParaPdf(tipoCliente, clienteSeleccionado);
       const bloqueClientePdf = datosClientePdfDesdeFiscalesYContacto(clienteSeleccionado, fiscalesPdf);
+      const textosPagoPdf = textosPagoPdfDesdeSeleccion();
       const pdf = await generarPdfCotizacion({
         folio: data.folio,
         fechaComprobante: new Date().toLocaleDateString('es-MX'),
@@ -1282,8 +1291,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
         },
         comprobante: {
           lugarExpedicion: 'CD. MADERO',
-          metodoPago: textoMetodoPdfActual,
-          formaPago: textoFormaPdfActual,
+          metodoPago: textosPagoPdf.metodoPago,
+          formaPago: textosPagoPdf.formaPago,
           tipoCambio: '$-------------',
           moneda: 'PESOS',
         },
@@ -1911,6 +1920,10 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                   ))}
                 </select>
               </div>
+              <p className="cotizacion-pago-sat-preview">
+                En el PDF: método <strong>{textosPagoPdfActuales.metodoPago}</strong> · forma{' '}
+                <strong>{textosPagoPdfActuales.formaPago}</strong>
+              </p>
             </div>
 
             {/* Búsqueda de cliente - RESALTADO */}

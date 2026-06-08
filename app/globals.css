@@ -832,12 +832,14 @@ body {
   cursor: pointer;
 }
 
-/* Modal catálogos SAT */
+/* Modal catálogos SAT — estilo alineado al módulo de cotizaciones */
 .modal-catalogos-sat-overlay {
   position: fixed;
   inset: 0;
   z-index: 12000;
-  background: rgba(15, 23, 42, 0.65);
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -845,66 +847,104 @@ body {
 }
 
 .modal-catalogos-sat-panel {
-  width: min(960px, 100%);
-  max-height: 90vh;
+  width: min(980px, 100%);
+  max-height: min(90vh, 820px);
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  background: #fff;
-  border-radius: 14px;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+  background: #f8fafc;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow:
+    0 25px 50px -12px rgba(15, 23, 42, 0.35),
+    0 0 0 1px rgba(102, 126, 234, 0.08);
 }
 
 .modal-catalogos-sat-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  padding: 1rem 1.25rem;
-  border-bottom: 1px solid #e2e8f0;
-  background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+  gap: 1rem;
+  padding: 1.35rem 1.5rem 1.1rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
 }
 
-.modal-catalogos-sat-header h2 {
+.modal-catalogos-sat-header-text h2 {
+  margin: 0.15rem 0 0.35rem;
+  font-size: 1.45rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.modal-catalogos-sat-header-text p {
   margin: 0;
-  font-size: 1.25rem;
-  color: #9a3412;
+  font-size: 0.88rem;
+  opacity: 0.9;
+}
+
+.modal-catalogos-sat-kicker {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.85;
 }
 
 .modal-catalogos-sat-cerrar {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
   border: none;
-  background: transparent;
-  font-size: 1.5rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
   cursor: pointer;
-  color: #64748b;
-  line-height: 1;
+  display: grid;
+  place-items: center;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.modal-catalogos-sat-cerrar:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.modal-catalogos-sat-cerrar svg {
+  width: 20px;
+  height: 20px;
 }
 
 .modal-catalogos-sat-tabs {
   display: flex;
   gap: 0.5rem;
-  padding: 0.75rem 1rem 0;
+  padding: 0.85rem 1.25rem 0;
+  background: #fff;
   border-bottom: 1px solid #e2e8f0;
 }
 
 .modal-catalogos-sat-tabs button {
   border: none;
-  background: #f1f5f9;
-  color: #475569;
-  padding: 0.55rem 1rem;
-  border-radius: 8px 8px 0 0;
+  background: transparent;
+  color: #64748b;
+  padding: 0.6rem 1.1rem;
+  border-radius: 999px;
   font-weight: 600;
+  font-size: 0.9rem;
   cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .modal-catalogos-sat-tabs button.is-active {
-  background: #667eea;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: #fff;
+  box-shadow: 0 4px 14px rgba(102, 126, 234, 0.35);
 }
 
 .modal-catalogos-sat-alerta {
-  margin: 0.75rem 1rem 0;
-  padding: 0.65rem 0.85rem;
-  border-radius: 8px;
+  margin: 0.75rem 1.25rem 0;
+  padding: 0.7rem 1rem;
+  border-radius: 12px;
   background: #fef2f2;
   border: 1px solid #fecaca;
   color: #b91c1c;
@@ -919,9 +959,9 @@ body {
 
 .modal-catalogos-sat-body {
   display: grid;
-  grid-template-columns: 1.2fr 1fr;
+  grid-template-columns: 1.15fr 1fr;
   gap: 1rem;
-  padding: 1rem;
+  padding: 1rem 1.25rem 1.25rem;
   overflow: auto;
   min-height: 0;
 }
@@ -930,108 +970,279 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 0.5rem;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.modal-catalogos-sat-catalogo-tag {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #667eea;
+  background: #eef2ff;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  margin-right: 0.5rem;
+}
+
+.modal-catalogos-sat-count {
+  font-size: 0.8rem;
+  color: #94a3b8;
 }
 
 .modal-catalogos-sat-lista-toolbar .btn-nueva-fila {
-  border: 2px solid #667eea;
-  background: white;
-  color: #667eea;
-  border-radius: 8px;
-  padding: 0.35rem 0.65rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: none;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  border-radius: 10px;
+  padding: 0.5rem 0.9rem;
   font-weight: 700;
+  font-size: 0.85rem;
   cursor: pointer;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
 }
 
-.modal-catalogos-sat-tabla-wrap {
-  overflow: auto;
-  max-height: 52vh;
+.modal-catalogos-sat-lista-toolbar .btn-nueva-fila svg {
+  width: 16px;
+  height: 16px;
+}
+
+.modal-catalogos-sat-cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  max-height: min(52vh, 420px);
+  overflow-y: auto;
+  padding-right: 0.15rem;
+}
+
+.modal-catalogos-sat-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 0.85rem;
+  background: #fff;
   border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  border-radius: 14px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.modal-catalogos-sat-tabla {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.88rem;
+.modal-catalogos-sat-card:hover {
+  border-color: #c7d2fe;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
 }
 
-.modal-catalogos-sat-tabla th,
-.modal-catalogos-sat-tabla td {
-  padding: 0.55rem 0.65rem;
-  border-bottom: 1px solid #f1f5f9;
-  text-align: left;
+.modal-catalogos-sat-card.is-editing {
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.18);
 }
 
-.modal-catalogos-sat-tabla th {
-  background: #667eea;
-  color: white;
-  position: sticky;
-  top: 0;
+.modal-catalogos-sat-card.is-inactive {
+  opacity: 0.65;
 }
 
-.modal-catalogos-sat-tabla tr.is-editing {
-  background: #eff6ff;
+.modal-catalogos-sat-card-main {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+  flex: 1;
 }
 
-.modal-catalogos-sat-tabla code {
-  font-weight: 700;
+.modal-catalogos-sat-clave {
+  flex-shrink: 0;
+  min-width: 2.75rem;
+  text-align: center;
+  font-weight: 800;
+  font-size: 0.82rem;
   color: #4338ca;
+  background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+  border-radius: 10px;
+  padding: 0.45rem 0.5rem;
+}
+
+.modal-catalogos-sat-card-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.modal-catalogos-sat-card-text strong {
+  font-size: 0.92rem;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.modal-catalogos-sat-card-text span {
+  font-size: 0.75rem;
+  color: #94a3b8;
 }
 
 .badge-default {
-  margin-left: 0.35rem;
+  flex-shrink: 0;
   font-size: 0.65rem;
-  padding: 0.1rem 0.35rem;
-  border-radius: 4px;
-  background: #fef3c7;
+  padding: 0.2rem 0.45rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
   color: #92400e;
   font-weight: 700;
 }
 
-.modal-catalogos-sat-form {
-  border: 2px solid #e2e8f0;
-  border-radius: 10px;
-  padding: 0.85rem;
-  background: #fafafa;
+.modal-catalogos-sat-card-actions {
   display: flex;
-  flex-direction: column;
-  gap: 0.65rem;
+  gap: 0.35rem;
+  flex-shrink: 0;
 }
 
-.modal-catalogos-sat-form h3 {
+.modal-catalogos-sat-icon-btn {
+  width: 36px;
+  height: 36px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  color: #475569;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.modal-catalogos-sat-icon-btn svg {
+  width: 17px;
+  height: 17px;
+}
+
+.modal-catalogos-sat-icon-btn:hover:not(:disabled) {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+  color: #4338ca;
+}
+
+.modal-catalogos-sat-icon-btn--danger:hover:not(:disabled) {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+
+.modal-catalogos-sat-icon-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.modal-catalogos-sat-form {
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 1rem;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
+  position: sticky;
+  top: 0;
+}
+
+.modal-catalogos-sat-form-head h3 {
   margin: 0 0 0.25rem;
-  font-size: 1rem;
-  color: #334155;
+  font-size: 1.05rem;
+  color: #1e293b;
+}
+
+.modal-catalogos-sat-form-head p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #64748b;
+  line-height: 1.4;
 }
 
 .modal-catalogos-sat-form label {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
-  font-size: 0.82rem;
+  gap: 0.35rem;
+  font-size: 0.78rem;
   font-weight: 600;
   color: #475569;
 }
 
 .modal-catalogos-sat-form input[type='text'],
 .modal-catalogos-sat-form input[type='number'] {
-  padding: 0.5rem 0.6rem;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
+  padding: 0.65rem 0.75rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
   font-size: 0.92rem;
+  background: #f8fafc;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.modal-catalogos-sat-form .checkbox-row {
+.modal-catalogos-sat-form input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+  background: #fff;
+}
+
+.modal-catalogos-sat-switches {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.modal-catalogos-sat-switch {
+  display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.55rem;
+  font-size: 0.85rem;
   font-weight: 500;
+  color: #334155;
+  cursor: pointer;
 }
 
-.modal-catalogos-sat-preview {
-  margin: 0;
-  font-size: 0.8rem;
+.modal-catalogos-sat-switch input {
+  width: 18px;
+  height: 18px;
+  accent-color: #667eea;
+}
+
+.modal-catalogos-sat-preview-box {
+  padding: 0.75rem 0.85rem;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f0f9ff 0%, #eef2ff 100%);
+  border: 1px solid #c7d2fe;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.modal-catalogos-sat-preview-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6366f1;
+}
+
+.modal-catalogos-sat-preview-box strong {
+  font-size: 1rem;
+  color: #1e293b;
+  word-break: break-word;
+}
+
+.modal-catalogos-sat-preview-box small {
+  font-size: 0.75rem;
   color: #64748b;
 }
 
@@ -1039,31 +1250,76 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  margin-top: 0.25rem;
+  margin-top: 0.15rem;
 }
 
 .modal-catalogos-sat-form-actions .btn-guardar {
+  flex: 1;
   border: none;
-  background: #667eea;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  border-radius: 8px;
-  padding: 0.55rem 1rem;
+  border-radius: 10px;
+  padding: 0.7rem 1rem;
   font-weight: 700;
   cursor: pointer;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.modal-catalogos-sat-form-actions .btn-guardar:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .modal-catalogos-sat-form-actions .btn-cancelar {
   border: 1px solid #cbd5e1;
   background: white;
-  border-radius: 8px;
-  padding: 0.55rem 1rem;
+  border-radius: 10px;
+  padding: 0.7rem 1rem;
   cursor: pointer;
+  font-weight: 600;
+  color: #64748b;
 }
 
 .modal-catalogos-sat-vacio {
   color: #94a3b8;
   font-size: 0.9rem;
-  padding: 1rem 0;
+  padding: 2rem 1rem;
+  text-align: center;
+  background: #fff;
+  border-radius: 14px;
+  border: 1px dashed #cbd5e1;
+}
+
+.modal-catalogos-sat-spinner {
+  width: 28px;
+  height: 28px;
+  margin: 0 auto 0.75rem;
+  border: 3px solid #e2e8f0;
+  border-top-color: #667eea;
+  border-radius: 50%;
+  animation: sat-catalogos-spin 0.7s linear infinite;
+}
+
+@keyframes sat-catalogos-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.cotizacion-pago-sat-preview {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  font-size: 0.82rem;
+  color: #4338ca;
+  line-height: 1.45;
+}
+
+.cotizacion-pago-sat-preview strong {
+  color: #312e81;
 }
 
 .modal-cotizacion-container .cotizacion-partidas-table tbody td[data-label='Acción'] {
