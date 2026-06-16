@@ -290,9 +290,9 @@
         id: 'b0',
         num: '0',
         title: 'Gastos fijos + Producción semanal',
-        subtitle: 'Isla ya en InsForge — cerrar híbrido con cotizaciones',
+        subtitle: 'Completado en InsForge (validación cotizaciones en SB hasta Bloque 5)',
         isolation: 'Operación diaria de pedidos/cotizaciones NO depende de este bloque. Si falla InsForge aquí, solo afecta pantallas de gastos y plan semanal.',
-        isolationWarn: 'Híbrido activo: produccion-semanal/plan lee detalle_cotizacion en Supabase. Se cierra al completar Bloque 5.',
+        isolationWarn: 'Nota técnica (no bloquea Completado): produccion-semanal/plan aún lee detalle_cotizacion en Supabase solo para validar piezas. Se cierra con Bloque 5.',
         tech: {
           tablas: ['semanas', 'gastos_fijos_catalogo', 'gastos_fijos_semanales', 'gastos_fijos_semanales_detalle', 'produccion_plan_semanal', 'produccion_plan_semanal_items'],
           fks: ['gastos_fijos_semanales → semanas', 'gastos_fijos_semanales_detalle → gastos_fijos_semanales + gastos_fijos_catalogo', 'produccion_plan_semanal → semanas', 'produccion_plan_semanal_items → produccion_plan_semanal'],
@@ -319,13 +319,13 @@
           { id: 'b0-e2', label: 'INSFORGE_ADMIN_TOKEN / anon key presentes en Vercel Production.' },
           { id: 'b0-e3', label: '/api/migracion/insforge-admin-check responde OK en prod.' }
         ],
-        defaultStatus: 'dual'
+        defaultStatus: 'completado'
       },
       {
         id: 'b1',
         num: '1',
         title: 'Gobernanza y ciclos escolares',
-        subtitle: 'Isla de bajo acoplamiento — primer corte seguro',
+        subtitle: 'Completado — runtime en InsForge (usuarios + ciclos)',
         isolation: 'usuarios_uniformes y ciclos_escolares no participan en crear_pedido_atomico ni en stock. Romper este bloque en InsForge no afecta ventas ni inventario.',
         tech: {
           tablas: ['usuario_perfil', 'roles_uniformes', 'usuarios_uniformes', 'ciclos_escolares'],
@@ -354,7 +354,8 @@
         env: [
           { id: 'b1-e1', label: 'Supabase URL/keys intactas — prod sigue en SB para este bloque.' },
           { id: 'b1-e2', label: 'InsForge admin token válido para DDL/DML del bloque.' }
-        ]
+        ],
+        defaultStatus: 'completado'
       },
       {
         id: 'b2',
