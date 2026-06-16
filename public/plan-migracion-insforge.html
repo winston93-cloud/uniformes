@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Plan migración Supabase → InsForge — Bloques de proceso | Uniformes</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --card: #1a2332;
+      --card-hover: #1f2a3d;
+      --border: #2d3a4f;
+      --text: #e8edf4;
+      --muted: #8b9cb3;
+      --accent: #3b82f6;
+      --accent-dim: #2563eb33;
+      --ok: #22c55e;
+      --warn: #f59e0b;
+      --danger: #ef4444;
+      --purple: #a78bfa;
+      --radius: 12px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+      padding: 20px;
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; }
+    header {
+      background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 100%);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px 32px;
+      margin-bottom: 24px;
+    }
+    header h1 { font-size: 1.65rem; margin-bottom: 8px; }
+    header p { color: var(--muted); font-size: 0.95rem; max-width: 72ch; }
+    .pill-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+    .pill {
+      font-size: 0.75rem;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: #ffffff08;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .stat {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      text-align: center;
+    }
+    .stat strong { display: block; font-size: 1.75rem; color: var(--accent); }
+    .stat span { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+    .toolbar {
+      display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+      margin-bottom: 20px;
+    }
+    .toolbar button, .toolbar label.btn {
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+    .toolbar button:hover, .toolbar label.btn:hover { background: var(--card-hover); }
+    .toolbar .primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .filter-btn.active { background: var(--accent-dim); border-color: var(--accent); color: #93c5fd; }
+    input[type="search"] {
+      flex: 1; min-width: 200px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+    }
+    .principle {
+      background: var(--card);
+      border-left: 4px solid var(--warn);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      margin-bottom: 24px;
+      font-size: 0.92rem;
+    }
+    .principle strong { color: var(--warn); }
+    .block {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+    .block-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 18px 20px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .block-header:hover { background: var(--card-hover); }
+    .block-num {
+      font-size: 0.7rem;
+      font-weight: 700;
+      width: 36px; height: 36px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 8px;
+      background: var(--accent-dim);
+      color: #93c5fd;
+      flex-shrink: 0;
+    }
+    .block-title { flex: 1; min-width: 200px; }
+    .block-title h2 { font-size: 1.1rem; margin-bottom: 4px; }
+    .block-title .sub { font-size: 0.85rem; color: var(--muted); }
+    .status-select {
+      padding: 6px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #0d1117;
+      color: var(--text);
+      font-size: 0.8rem;
+      min-width: 160px;
+    }
+    .status-pendiente { border-left: 4px solid var(--muted); }
+    .status-migrando { border-left: 4px solid var(--accent); }
+    .status-pruebas { border-left: 4px solid var(--warn); }
+    .status-dual { border-left: 4px solid var(--purple); }
+    .status-completado { border-left: 4px solid var(--ok); }
+    .block-body { display: none; padding: 0 20px 20px; border-top: 1px solid var(--border); }
+    .block.open .block-body { display: block; }
+    .block.open .chev { transform: rotate(90deg); }
+    .chev { transition: transform 0.2s; color: var(--muted); }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+    @media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } }
+    .panel {
+      background: #0d1117;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+    .panel h3 {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+    .panel ul { list-style: none; font-size: 0.88rem; }
+    .panel li { padding: 3px 0; color: #c5d0de; }
+    .panel li code {
+      font-size: 0.8rem;
+      background: #ffffff0d;
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+    .check-section { margin-top: 16px; }
+    .check-section h3 {
+      font-size: 0.85rem;
+      margin-bottom: 8px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .badge-builder { background: #1d4ed833; color: #93c5fd; font-size: 0.7rem; padding: 2px 8px; border-radius: 4px; }
+    .badge-owner { background: #16653433; color: #86efac; font-size: 0.7rem; padding: 2px 8px; border-radius: 4px; }
+    .badge-env { background: #854d0e33; color: #fcd34d; font-size: 0.7rem; padding: 2px 8px; border-radius: 4px; }
+    .check-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      margin-bottom: 4px;
+      font-size: 0.88rem;
+    }
+    .check-item:hover { background: #ffffff06; }
+    .check-item input { margin-top: 4px; accent-color: var(--accent); width: 16px; height: 16px; flex-shrink: 0; }
+    .check-item label { cursor: pointer; flex: 1; }
+    .check-item .hint { display: block; font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+    .check-item.done label { text-decoration: line-through; color: var(--muted); }
+    .isolation {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: #14532d22;
+      border: 1px solid #22c55e44;
+      font-size: 0.85rem;
+    }
+    .isolation.warn-box {
+      background: #7c2d1222;
+      border-color: #ef444444;
+    }
+    .notes-area {
+      width: 100%;
+      min-height: 56px;
+      margin-top: 12px;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #0d1117;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.85rem;
+      resize: vertical;
+    }
+    .dual-banner {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: #4c1d9533;
+      border: 1px solid #a78bfa55;
+      font-size: 0.85rem;
+    }
+    footer { text-align: center; color: var(--muted); font-size: 0.8rem; margin: 32px 0 16px; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Migración Supabase → InsForge (Uniformes)</h1>
+      <p>
+        Plan por <strong>bloques de proceso</strong>, no por tablas sueltas. Cada bloque se migra con esquema completo
+        (tablas, FKs, triggers, RPCs, datos) en InsForge mientras <strong>Supabase sigue siendo la verdad operativa</strong>
+        hasta que apruebes las pruebas. Si un bloque falla en InsForge, el resto del sistema en producción no debe romperse.
+      </p>
+      <div class="pill-row">
+        <span class="pill">Proyecto InsForge: q488j9fg</span>
+        <span class="pill">Prod: uniformes-mu.vercel.app</span>
+        <span class="pill">Dualidad: espejo SB ↔ IF</span>
+        <span class="pill">Actualizado: jun 2026</span>
+      </div>
+    </header>
+
+    <div class="stats" id="stats"></div>
+
+    <div class="principle">
+      <strong>Principio de aislamiento:</strong> la app en producción sigue leyendo/escribiendo Supabase para todo bloque
+      que aún no esté en estado <em>Dual verificado</em> o <em>Completado</em>. La migración en InsForge es
+      <strong>réplica + verificación</strong>; el corte de runtime (si aplica) es un paso explícito y reversible.
+      Un bloque roto en InsForge = rollback sin tocar operación diaria en Supabase.
+    </div>
+
+    <div class="toolbar">
+      <input type="search" id="search" placeholder="Buscar bloque, tabla, RPC…" />
+      <button type="button" class="filter-btn active" data-filter="all">Todos</button>
+      <button type="button" class="filter-btn" data-filter="pendiente">Pendiente</button>
+      <button type="button" class="filter-btn" data-filter="migrando">Migrando</button>
+      <button type="button" class="filter-btn" data-filter="pruebas">En pruebas</button>
+      <button type="button" class="filter-btn" data-filter="dual">Dual</button>
+      <button type="button" class="filter-btn" data-filter="completado">Completado</button>
+      <button type="button" class="primary" id="expandAll">Expandir todo</button>
+      <button type="button" id="collapseAll">Colapsar</button>
+      <button type="button" id="exportJson">Exportar JSON</button>
+      <label class="btn"><input type="file" id="importJson" accept=".json" hidden />Importar</label>
+      <button type="button" id="resetChecks" title="Solo desmarca checklists, conserva notas y estatus">Reset checks</button>
+    </div>
+
+    <div id="blocks"></div>
+
+    <footer>
+      Persistencia local (localStorage). Clave: <code>uniformes_plan_migracion_insforge_v1</code>.
+      Sonny actualiza esquema en InsForge; Alexx marca pruebas y estatus.
+    </footer>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'uniformes_plan_migracion_insforge_v1';
+
+    const STATUS_LABELS = {
+      pendiente: '⬜ Pendiente',
+      migrando: '🔧 Migrando (Sonny)',
+      pruebas: '🧪 En pruebas (Alexx)',
+      dual: '🔀 Dual SB↔IF verificado',
+      completado: '✅ Completado'
+    };
+
+    const BLOCKS = [
+      {
+        id: 'b0',
+        num: '0',
+        title: 'Gastos fijos + Producción semanal',
+        subtitle: 'Isla ya en InsForge — cerrar híbrido con cotizaciones',
+        isolation: 'Operación diaria de pedidos/cotizaciones NO depende de este bloque. Si falla InsForge aquí, solo afecta pantallas de gastos y plan semanal.',
+        isolationWarn: 'Híbrido activo: produccion-semanal/plan lee detalle_cotizacion en Supabase. Se cierra al completar Bloque 5.',
+        tech: {
+          tablas: ['semanas', 'gastos_fijos_catalogo', 'gastos_fijos_semanales', 'gastos_fijos_semanales_detalle', 'produccion_plan_semanal', 'produccion_plan_semanal_items'],
+          fks: ['gastos_fijos_semanales → semanas', 'gastos_fijos_semanales_detalle → gastos_fijos_semanales + gastos_fijos_catalogo', 'produccion_plan_semanal → semanas', 'produccion_plan_semanal_items → produccion_plan_semanal'],
+          triggers: ['updated_at en tablas de gastos (según DDL aplicado)'],
+          rpcs: [],
+          apis: ['/api/gastos-fijos-semanales/*', '/api/produccion-semanal/plan', '/api/produccion-semanal/context'],
+          hooks: ['Páginas gastos fijos', 'Producción semanal'],
+          storage: [],
+          integraciones: ['Lectura cruzada: detalle_cotizacion (Supabase) en validación del plan']
+        },
+        builder: [
+          { id: 'b0-m1', label: 'Verificar 6 tablas existentes en InsForge Uniformes con conteos vs Supabase/winston-ssiw origen.' },
+          { id: 'b0-m2', label: 'Confirmar APIs gastos/producción usan getInsforge() en runtime (Vercel env OK).' },
+          { id: 'b0-m3', label: 'Documentar pendiente: quitar lectura Supabase de detalle_cotizacion al cerrar Bloque 5.' },
+          { id: 'b0-m4', label: 'Sync baseline de tablas del bloque si hubo cambios en Supabase.' }
+        ],
+        owner: [
+          { id: 'b0-t1', label: 'Gastos fijos: cargar semana, guardar, eliminar — sin error No token.' },
+          { id: 'b0-t2', label: 'Producción semanal: crear plan, agregar partidas, guardar.' },
+          { id: 'b0-t3', label: 'Pedidos y cotizaciones siguen normales (regresión general).' }
+        ],
+        env: [
+          { id: 'b0-e1', label: 'NEXT_PUBLIC_INSFORGE_URL = https://q488j9fg.us-east.insforge.app' },
+          { id: 'b0-e2', label: 'INSFORGE_ADMIN_TOKEN / anon key presentes en Vercel Production.' },
+          { id: 'b0-e3', label: '/api/migracion/insforge-admin-check responde OK en prod.' }
+        ],
+        defaultStatus: 'dual'
+      },
+      {
+        id: 'b1',
+        num: '1',
+        title: 'Gobernanza y ciclos escolares',
+        subtitle: 'Isla de bajo acoplamiento — primer corte seguro',
+        isolation: 'usuarios_uniformes y ciclos_escolares no participan en crear_pedido_atomico ni en stock. Romper este bloque en InsForge no afecta ventas ni inventario.',
+        tech: {
+          tablas: ['usuario_perfil', 'roles_uniformes', 'usuarios_uniformes', 'ciclos_escolares'],
+          fks: ['usuarios_uniformes.rol_id → roles_uniformes'],
+          triggers: ['update_usuarios_uniformes_updated_at', 'update_roles_uniformes_updated_at', 'trigger_update_ciclo_escolar_timestamp', 'trigger_un_ciclo_actual'],
+          rpcs: [],
+          apis: [],
+          hooks: ['useUsuariosUniformes', 'useCiclosEscolares'],
+          storage: [],
+          integraciones: ['Login formal aún no gobierna middleware — bajo riesgo']
+        },
+        builder: [
+          { id: 'b1-m1', label: 'DDL en InsForge: 4 tablas + índices + FKs inline.' },
+          { id: 'b1-m2', label: 'Copiar datos Supabase → InsForge (verify count =).' },
+          { id: 'b1-m3', label: 'Recrear triggers updated_at y trigger_un_ciclo_actual en InsForge.' },
+          { id: 'b1-m4', label: 'RLS/políticas equivalentes (lectura pública ciclos activos si aplica).' },
+          { id: 'b1-m5', label: 'sync-baseline + sync-apply probado para el bloque.' },
+          { id: 'b1-m6', label: 'NO cambiar runtime de la app hasta pruebas Alexx (dualidad: SB sigue prod).' }
+        ],
+        owner: [
+          { id: 'b1-t1', label: 'Pantalla /usuarios: listar, alta, edición, baja de usuarios_uniformes.' },
+          { id: 'b1-t2', label: 'Ciclos escolares: CRUD y regla de un solo ciclo actual.' },
+          { id: 'b1-t3', label: 'Smoke test global: pedidos, prendas, cotizaciones sin cambios.' },
+          { id: 'b1-t4', label: 'Comparar conteos SB vs IF en /migracion o verify-table.' }
+        ],
+        env: [
+          { id: 'b1-e1', label: 'Supabase URL/keys intactas — prod sigue en SB para este bloque.' },
+          { id: 'b1-e2', label: 'InsForge admin token válido para DDL/DML del bloque.' }
+        ]
+      },
+      {
+        id: 'b2',
+        num: '2',
+        title: 'Catálogos SAT (método y forma de pago)',
+        subtitle: 'Solo lectura operativa — cortar junto con cotizaciones (Bloque 5)',
+        isolation: 'Catálogos pequeños. Si fallan en InsForge, cotizaciones en Supabase siguen. No migrar runtime hasta Bloque 5.',
+        tech: {
+          tablas: ['sat_metodos_pago', 'sat_formas_pago'],
+          fks: ['cotizaciones.metodo_pago_id → sat_metodos_pago', 'cotizaciones.forma_pago_id → sat_formas_pago'],
+          triggers: [],
+          rpcs: [],
+          apis: ['/api/sat-catalogos-pago'],
+          hooks: ['useSatCatalogosPago'],
+          storage: [],
+          integraciones: ['Columnas metodo_pago_pdf / forma_pago_pdf en cotizaciones (PDF)']
+        },
+        builder: [
+          { id: 'b2-m1', label: 'DDL sat_* en InsForge + seed/catálogo SAT.' },
+          { id: 'b2-m2', label: 'Copiar filas y verify count.' },
+          { id: 'b2-m3', label: 'Añadir tablas a TABLAS_MIGRACION_ORDER / insforge-tables en repo.' },
+          { id: 'b2-m4', label: 'Mantener dualidad: API sigue en Supabase hasta corte Bloque 5.' }
+        ],
+        owner: [
+          { id: 'b2-t1', label: 'Cotización: dropdowns método/forma de pago cargan (en SB hasta corte).' },
+          { id: 'b2-t2', label: 'Tras réplica IF: verify conteos idénticos.' }
+        ],
+        env: [{ id: 'b2-e1', label: 'Sin variables nuevas — usa Supabase actual.' }]
+      },
+      {
+        id: 'b3',
+        num: '3',
+        title: 'Inventario maestro (ubicaciones + prendas + insumos)',
+        subtitle: 'Bloque unificado: tallas NO es tabla suelta — es todo el proceso prenda–talla–stock–receta',
+        isolation: 'Réplica en InsForge no mueve stock en prod. La app sigue en Supabase; un error en IF no descuenta inventario real.',
+        isolationWarn: 'NO cortar runtime parcial (ej. solo tallas). Todo el bloque 3 sube o nada.',
+        tech: {
+          tablas: [
+            'presentaciones', 'ubicaciones_almacenamiento', 'sucursales',
+            'categorias_prendas', 'tallas', 'prendas', 'costos', 'costo_ubicaciones',
+            'insumos', 'insumo_ubicaciones', 'prenda_talla_insumos', 'compras_insumos'
+          ],
+          fks: [
+            'prendas → categorias_prendas', 'costos → tallas + prendas (UNIQUE par)',
+            'costo_ubicaciones → costos + ubicaciones', 'insumos → presentaciones + ubicaciones',
+            'prenda_talla_insumos → prendas + tallas + insumos', 'compras_insumos → insumos'
+          ],
+          triggers: [
+            'updated_at en costos, prendas, tallas, ubicaciones, insumo_ubicaciones, costo_ubicaciones',
+            'trg_validar_costo_ubicaciones_cuadran (si aplica en prod)'
+          ],
+          rpcs: [
+            'obtener_tallas_ordenadas',
+            'configurar_stock_costo_atomico',
+            'validar_costo_ubicaciones_cuadran',
+            'reconciliar_costo_ubicaciones_desde',
+            'descontar_costo_ubicaciones_desde_menor',
+            'sumar_costo_ubicaciones_desde_menor'
+          ],
+          apis: ['/api/costos/configurar-stock', '/api/costos/reconciliar-ubicaciones'],
+          hooks: [
+            'useTallas', 'useCategorias', 'usePrendas', 'useCostos',
+            'useInsumos', 'usePrendaTallaInsumos', 'useComprasInsumos',
+            'useUbicacionesAlmacenamiento', 'usePresentaciones', 'useSucursales',
+            'useAlertasStockPrendas', 'useAlertasStock'
+          ],
+          storage: [],
+          integraciones: ['trg_cotizacion_insumos_al_trabajar vive en cotizaciones pero descuenta insumos — réplica RPC al migrar Bloque 5']
+        },
+        builder: [
+          { id: 'b3-m1', label: 'DDL completo en orden FK (12 tablas) en InsForge.' },
+          { id: 'b3-m2', label: 'Copia masiva de datos + verify por tabla.' },
+          { id: 'b3-m3', label: 'Portar RPCs de ubicaciones/stock y probar en SQL InsForge.' },
+          { id: 'b3-m4', label: 'Portar triggers updated_at y validación ubicaciones.' },
+          { id: 'b3-m5', label: 'sync-baseline del bloque; documentar IDs UUID idénticos SB↔IF.' },
+          { id: 'b3-m6', label: 'Dualidad: prod sigue SB; IF es espejo verificado.' }
+        ],
+        owner: [
+          { id: 'b3-t1', label: 'Prendas: alta, edición, tallas/stock — en prod (SB) sin regresión.' },
+          { id: 'b3-t2', label: 'Insumos + compras + recetas prenda-talla.' },
+          { id: 'b3-t3', label: 'Configurar stock por ubicación (API costos).' },
+          { id: 'b3-t4', label: 'Alertas de stock prendas e insumos.' },
+          { id: 'b3-t5', label: 'Verify: conteos IF = SB para las 12 tablas.' },
+          { id: 'b3-t6', label: 'Pedidos y cotizaciones siguen funcionando (no cortados aún).' }
+        ],
+        env: [
+          { id: 'b3-e1', label: 'SUPABASE_SERVICE_ROLE_KEY para migración servidor.' },
+          { id: 'b3-e2', label: 'INSFORGE_ADMIN_TOKEN para DDL/raw SQL si Tables API limita.' }
+        ]
+      },
+      {
+        id: 'b4',
+        num: '4',
+        title: 'Clientes y datos fiscales',
+        subtitle: 'Alumnos (MySQL sync), externos, constancia SAT PDF',
+        isolation: 'Réplica en IF no cambia sync MySQL (sigue a SB). Cotizaciones/pedidos en SB no se rompen si IF falla.',
+        tech: {
+          tablas: ['alumno', 'externos', 'datos_fiscales_cliente'],
+          fks: ['datos_fiscales → alumno o externo (según diseño)', 'cotizaciones/pedidos referencian alumno/externo'],
+          triggers: ['updated_at en externos'],
+          rpcs: [],
+          apis: ['/api/alumno/sync-mysql'],
+          hooks: ['useAlumnos', 'useExternos', 'ModalDatosFiscalesCliente', 'lib/datosFiscalesPdf'],
+          storage: ['Bucket constancia fiscal PDF (Supabase Storage)'],
+          integraciones: ['Sync MySQL hosting → alumno (hoy Supabase)']
+        },
+        builder: [
+          { id: 'b4-m1', label: 'DDL 3 tablas + índices en InsForge.' },
+          { id: 'b4-m2', label: 'Copiar datos alumno/externos/fiscales; verify count.' },
+          { id: 'b4-m3', label: 'Bucket Storage en InsForge + copiar PDFs existentes.' },
+          { id: 'b4-m4', label: 'Preparar switch sync-mysql destino (NO activar hasta corte aprobado).' },
+          { id: 'b4-m5', label: 'Dualidad: sync y UI siguen en SB hasta prueba OK.' }
+        ],
+        owner: [
+          { id: 'b4-t1', label: 'Buscar alumno en cotización/pedido.' },
+          { id: 'b4-t2', label: 'CRUD externos.' },
+          { id: 'b4-t3', label: 'Subir/ver PDF constancia fiscal.' },
+          { id: 'b4-t4', label: 'Sync MySQL manual o cron — alumnos actualizados en SB.' },
+          { id: 'b4-t5', label: 'Regresión: resto del sistema OK.' }
+        ],
+        env: [
+          { id: 'b4-e1', label: 'Credenciales MySQL sync en Vercel.' },
+          { id: 'b4-e2', label: 'Storage Supabase accesible; InsForge bucket creado para réplica.' }
+        ]
+      },
+      {
+        id: 'b5',
+        num: '5',
+        title: 'Cotizaciones + Pedidos (núcleo transaccional)',
+        subtitle: 'Un solo movimiento — trigger pedido_desde_cotizacion_terminada une ambos',
+        isolation: 'Hasta el corte, prod 100% Supabase. Réplica en IF es ensayo; rollback = no tocar env de prod.',
+        isolationWarn: 'Bloque más crítico. Incluye SAT (Bloque 2). Requiere Bloques 3 y 4 en dual verificado.',
+        tech: {
+          tablas: [
+            'cotizaciones', 'detalle_cotizacion', 'sat_metodos_pago', 'sat_formas_pago',
+            'pedidos', 'detalle_pedidos', 'movimientos', 'snapshot_insumos_pedido'
+          ],
+          fks: [
+            'detalle_cotizacion → cotizaciones + costos',
+            'detalle_pedidos → pedidos + costos',
+            'movimientos → costos', 'snapshot → detalle_pedidos'
+          ],
+          triggers: [
+            'pedido_desde_cotizacion_terminada ON cotizaciones',
+            'cotizacion_insumos_al_trabajar ON cotizaciones',
+            'trigger_validar_total_pedido',
+            'trigger_audit_costos (auditoría)'
+          ],
+          rpcs: [
+            'generar_folio_cotizacion', 'refoliar_cotizaciones_existentes',
+            'crear_pedido_atomico', 'completar_pedido_atomico', 'cancelar_pedido_atomico',
+            'generar_folio_pedido'
+          ],
+          apis: ['/api/produccion-semanal/plan (cerrar híbrido)'],
+          hooks: ['useCotizaciones', 'usePedidos', 'useReportes', 'useInsumosFaltantes'],
+          storage: [],
+          integraciones: ['PDF cotización', 'Producción semanal deja de leer SB']
+        },
+        builder: [
+          { id: 'b5-m1', label: 'DDL cotizaciones + pedidos + snapshot en InsForge.' },
+          { id: 'b5-m2', label: 'Incluir sat_* y FKs en cotizaciones.' },
+          { id: 'b5-m3', label: 'Portar TODAS las RPCs atómicas; probar crear/completar/cancelar pedido en IF.' },
+          { id: 'b5-m4', label: 'Portar triggers cotización→pedido e insumos al trabajar.' },
+          { id: 'b5-m5', label: 'Copia datos históricos + verify (tablas grandes: pedidos, movimientos).' },
+          { id: 'b5-m6', label: 'sync-apply ventana de mantenimiento antes de cualquier corte.' },
+          { id: 'b5-m7', label: 'Corte runtime SOLO tras OK Alexx: hooks → InsForge o feature flag.' },
+          { id: 'b5-m8', label: 'Actualizar produccion-semanal/plan: detalle_cotizacion desde InsForge.' }
+        ],
+        owner: [
+          { id: 'b5-t1', label: 'Cotización: crear, editar partidas, folio, PDF, método/forma pago.' },
+          { id: 'b5-t2', label: 'Cotización terminada → pedido auto (trigger).' },
+          { id: 'b5-t3', label: 'Pedido manual: crear, completar, cancelar; stock y pendientes.' },
+          { id: 'b5-t4', label: 'Movimientos de inventario coherentes.' },
+          { id: 'b5-t5', label: 'Producción semanal valida cantidades sin Supabase.' },
+          { id: 'b5-t6', label: 'Reportes principales de ventas.' },
+          { id: 'b5-t7', label: 'Regresión 48h post-corte o rollback documentado.' }
+        ],
+        env: [
+          { id: 'b5-e1', label: 'Plan de rollback: revert deploy + env a Supabase-only.' },
+          { id: 'b5-e2', label: 'Ventana de bajo tráfico acordada.' },
+          { id: 'b5-e3', label: 'Preview Vercel con todo el bloque en IF probado antes de prod.' }
+        ]
+      },
+      {
+        id: 'b6',
+        num: '6',
+        title: 'Transferencias entre sucursales',
+        subtitle: 'Post-venta — requiere pedidos/costos en el mismo backend',
+        isolation: 'Si IF falla, transferencias en SB siguen. Solo cortar después de Bloque 5.',
+        tech: {
+          tablas: ['transferencias', 'detalle_transferencias'],
+          fks: ['transferencias → sucursales origen/destino', 'detalle → transferencias + costo_id'],
+          triggers: ['trigger_generate_folio_transferencia'],
+          rpcs: [],
+          apis: [],
+          hooks: ['useTransferencias', 'crearTransferencia', 'procesarTransferencia'],
+          storage: [],
+          integraciones: ['Lógica stock en procesarTransferencia aún parcial en cliente']
+        },
+        builder: [
+          { id: 'b6-m1', label: 'DDL + FKs en InsForge.' },
+          { id: 'b6-m2', label: 'Copiar datos + trigger folio.' },
+          { id: 'b6-m3', label: 'Dualidad hasta corte aprobado.' }
+        ],
+        owner: [
+          { id: 'b6-t1', label: 'Crear transferencia entre sucursales.' },
+          { id: 'b6-t2', label: 'Recibir/procesar transferencia.' },
+          { id: 'b6-t3', label: 'Regresión pedidos/stock.' }
+        ],
+        env: [{ id: 'b6-e1', label: 'sucursales en mismo backend que transferencias.' }]
+      },
+      {
+        id: 'b7',
+        num: '7',
+        title: 'Devoluciones',
+        subtitle: 'RPC procesar_devolucion_atomica',
+        isolation: 'Depende de pedidos. Réplica IF no afecta devoluciones en SB hasta corte.',
+        tech: {
+          tablas: ['devoluciones', 'detalle_devoluciones'],
+          fks: ['devoluciones → pedidos', 'detalle → devoluciones + detalle_pedidos'],
+          triggers: ['trigger_update_devoluciones_updated_at'],
+          rpcs: ['procesar_devolucion_atomica', 'sumar_costo_ubicaciones_desde_menor'],
+          apis: [],
+          hooks: ['useDevoluciones'],
+          storage: [],
+          integraciones: ['usuario legacy (numérico) en joins']
+        },
+        builder: [
+          { id: 'b7-m1', label: 'DDL + RPC procesar_devolucion_atomica en InsForge.' },
+          { id: 'b7-m2', label: 'Copiar histórico + verify.' },
+          { id: 'b7-m3', label: 'Probar devolución completa en Preview IF.' }
+        ],
+        owner: [
+          { id: 'b7-t1', label: 'Registrar y procesar devolución.' },
+          { id: 'b7-t2', label: 'Stock y ubicaciones se restauran correctamente.' }
+        ],
+        env: []
+      },
+      {
+        id: 'b8',
+        num: '8',
+        title: 'Cortes de caja',
+        subtitle: 'Arqueo sobre pedidos liquidados',
+        isolation: 'Solo lectura/agregación de pedidos ya en el backend activo.',
+        tech: {
+          tablas: ['cortes', 'detalle_cortes'],
+          fks: ['detalle_cortes → cortes + pedidos'],
+          triggers: ['updated_at cortes'],
+          rpcs: [],
+          apis: [],
+          hooks: ['useCortes'],
+          storage: [],
+          integraciones: []
+        },
+        builder: [
+          { id: 'b8-m1', label: 'DDL + datos en InsForge.' },
+          { id: 'b8-m2', label: 'Verify conteos.' }
+        ],
+        owner: [
+          { id: 'b8-t1', label: 'Crear corte por rango de fechas.' },
+          { id: 'b8-t2', label: 'Totales coinciden con pedidos liquidados.' }
+        ],
+        env: []
+      },
+      {
+        id: 'b9',
+        num: '9',
+        title: 'Identidad operativa (usuario / usuarios)',
+        subtitle: 'Legacy dual — pedidos usan UUID; devoluciones/transferencias usuario numérico',
+        isolation: 'Empaquetar con Bloque 5 si hay riesgo de IDs cruzados.',
+        tech: {
+          tablas: ['usuario', 'usuarios'],
+          fks: ['pedidos.usuario_id → usuarios', 'devoluciones/transferencias → usuario'],
+          triggers: ['updated_at usuarios'],
+          rpcs: [],
+          apis: [],
+          hooks: ['useDevoluciones (join usuario)'],
+          storage: [],
+          integraciones: ['Login desactivado en middleware — baja urgencia']
+        },
+        builder: [
+          { id: 'b9-m1', label: 'DDL ambas tablas en InsForge.' },
+          { id: 'b9-m2', label: 'Copiar datos; mapear IDs consistentes con pedidos.' },
+          { id: 'b9-m3', label: 'Preferir corte junto con Bloque 5.' }
+        ],
+        owner: [
+          { id: 'b9-t1', label: 'Pedidos muestran usuario correcto.' },
+          { id: 'b9-t2', label: 'Devoluciones/transferencias muestran usuario.' }
+        ],
+        env: []
+      },
+      {
+        id: 'b10',
+        num: '10',
+        title: 'Auditoría y trazabilidad',
+        subtitle: 'Último bloque — triggers en muchas tablas',
+        isolation: 'Auditoría en IF es réplica histórica; operación no depende de leer auditoría en tiempo real.',
+        tech: {
+          tablas: ['auditoria'],
+          fks: [],
+          triggers: ['trg_auditoria_generic en tablas críticas (portar al final)'],
+          rpcs: ['trg_auditoria_generic'],
+          apis: ['/api/auditoria'],
+          hooks: [],
+          storage: [],
+          integraciones: ['sync-apply usa auditoría como referencia']
+        },
+        builder: [
+          { id: 'b10-m1', label: 'Tabla auditoria en InsForge.' },
+          { id: 'b10-m2', label: 'Copiar histórico (puede ser volumen alto).' },
+          { id: 'b10-m3', label: 'Portar triggers auditoría tras estabilizar bloques 1-9.' }
+        ],
+        owner: [
+          { id: 'b10-t1', label: 'API /auditoria lista eventos recientes.' },
+          { id: 'b10-t2', label: 'Cambios en pedidos/costos generan filas auditoría.' }
+        ],
+        env: []
+      }
+    ];
+
+    let state = loadState();
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) return JSON.parse(raw);
+      } catch (e) {}
+      const s = { checks: {}, statuses: {}, notes: {}, open: {} };
+      BLOCKS.forEach(b => {
+        s.statuses[b.id] = b.defaultStatus || 'pendiente';
+        s.open[b.id] = b.id === 'b0';
+      });
+      return s;
+    }
+
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      renderStats();
+    }
+
+    function allCheckIds() {
+      const ids = [];
+      BLOCKS.forEach(b => {
+        [...b.builder, ...b.owner, ...b.env].forEach(c => ids.push(c.id));
+      });
+      return ids;
+    }
+
+    function blockProgress(b) {
+      const items = [...b.builder, ...b.owner, ...b.env];
+      const done = items.filter(c => state.checks[c.id]).length;
+      return { done, total: items.length };
+    }
+
+    function renderStats() {
+      const el = document.getElementById('stats');
+      const checks = allCheckIds();
+      const doneChecks = checks.filter(id => state.checks[id]).length;
+      const statuses = Object.values(state.statuses);
+      const completado = statuses.filter(s => s === 'completado').length;
+      const dual = statuses.filter(s => s === 'dual').length;
+      el.innerHTML = `
+        <div class="stat"><strong>${completado}/${BLOCKS.length}</strong><span>Bloques completados</span></div>
+        <div class="stat"><strong>${dual}</strong><span>En dual SB↔IF</span></div>
+        <div class="stat"><strong>${doneChecks}/${checks.length}</strong><span>Checks totales</span></div>
+        <div class="stat"><strong>${Math.round((doneChecks / checks.length) * 100) || 0}%</strong><span>Progreso checks</span></div>
+      `;
+    }
+
+    function renderChecks(items, blockId) {
+      return items.map(c => {
+        const checked = state.checks[c.id] ? 'checked' : '';
+        const doneClass = state.checks[c.id] ? 'done' : '';
+        const hint = c.hint ? `<span class="hint">${c.hint}</span>` : '';
+        return `<div class="check-item ${doneClass}">
+          <input type="checkbox" id="${c.id}" data-id="${c.id}" ${checked} />
+          <label for="${c.id}">${c.label}${hint}</label>
+        </div>`;
+      }).join('');
+    }
+
+    function renderTech(tech) {
+      const section = (title, arr) => {
+        if (!arr || !arr.length) return '';
+        return `<div class="panel"><h3>${title}</h3><ul>${arr.map(x => `<li>${x.includes('`') ? x : (x.includes('→') || x.includes('_') ? `<code>${x}</code>` : x)}</li>`).join('')}</ul></div>`;
+      };
+      return `<div class="grid-2">
+        ${section('Tablas', tech.tablas)}
+        ${section('FKs / relaciones', tech.fks)}
+        ${section('Triggers', tech.triggers)}
+        ${section('RPCs / funciones', tech.rpcs)}
+        ${section('APIs Next', tech.apis)}
+        ${section('Hooks / UI', tech.hooks)}
+        ${section('Storage', tech.storage)}
+        ${section('Integraciones', tech.integraciones)}
+      </div>`;
+    }
+
+    function renderBlocks(filter = 'all', query = '') {
+      const container = document.getElementById('blocks');
+      const q = query.toLowerCase();
+      container.innerHTML = BLOCKS.filter(b => {
+        if (filter !== 'all' && state.statuses[b.id] !== filter) return false;
+        if (!q) return true;
+        const blob = JSON.stringify(b).toLowerCase();
+        return blob.includes(q) || b.title.toLowerCase().includes(q);
+      }).map(b => {
+        const st = state.statuses[b.id] || 'pendiente';
+        const prog = blockProgress(b);
+        const open = state.open[b.id] ? 'open' : '';
+        const warn = b.isolationWarn ? `<div class="isolation warn-box">⚠ ${b.isolationWarn}</div>` : '';
+        const opts = Object.entries(STATUS_LABELS).map(([k, v]) =>
+          `<option value="${k}" ${st === k ? 'selected' : ''}>${v}</option>`
+        ).join('');
+        return `<article class="block status-${st} ${open}" data-id="${b.id}">
+          <div class="block-header" data-toggle="${b.id}">
+            <span class="chev">▶</span>
+            <span class="block-num">${b.num}</span>
+            <div class="block-title">
+              <h2>${b.title}</h2>
+              <div class="sub">${b.subtitle} · ${prog.done}/${prog.total} checks</div>
+            </div>
+            <select class="status-select" data-status="${b.id}" onclick="event.stopPropagation()">${opts}</select>
+          </div>
+          <div class="block-body">
+            <div class="isolation">🛡 <strong>Aislamiento:</strong> ${b.isolation}</div>
+            ${warn}
+            <div class="dual-banner">🔀 <strong>Dualidad:</strong> Supabase sigue sirviendo producción hasta que este bloque pase a
+              <em>Dual verificado</em> o <em>Completado</em>. InsForge lleva réplica idéntica (esquema + datos + funciones del bloque).</div>
+            ${renderTech(b.tech)}
+            <div class="check-section">
+              <h3><span class="badge-builder">Sonny</span> Migración técnica (esquema, datos, RPCs)</h3>
+              ${renderChecks(b.builder, b.id)}
+            </div>
+            <div class="check-section">
+              <h3><span class="badge-owner">Alexx</span> Pruebas funcionales + regresión general</h3>
+              ${renderChecks(b.owner, b.id)}
+            </div>
+            <div class="check-section">
+              <h3><span class="badge-env">Ambos</span> Verificación de environment</h3>
+              ${renderChecks(b.env, b.id)}
+            </div>
+            <textarea class="notes-area" data-notes="${b.id}" placeholder="Notas del bloque (fecha, incidencias, decisión de corte…)">${state.notes[b.id] || ''}</textarea>
+          </div>
+        </article>`;
+      }).join('');
+
+      bindEvents();
+      renderStats();
+    }
+
+    function bindEvents() {
+      document.querySelectorAll('.block-header').forEach(h => {
+        h.onclick = (e) => {
+          if (e.target.tagName === 'SELECT') return;
+          const id = h.dataset.toggle;
+          state.open[id] = !state.open[id];
+          saveState();
+          renderBlocks(document.querySelector('.filter-btn.active')?.dataset.filter || 'all', document.getElementById('search').value);
+        };
+      });
+
+      document.querySelectorAll('.status-select').forEach(sel => {
+        sel.onchange = () => {
+          state.statuses[sel.dataset.status] = sel.value;
+          saveState();
+          renderBlocks(document.querySelector('.filter-btn.active')?.dataset.filter || 'all', document.getElementById('search').value);
+        };
+      });
+
+      document.querySelectorAll('.check-item input').forEach(cb => {
+        cb.onchange = () => {
+          state.checks[cb.dataset.id] = cb.checked;
+          saveState();
+          const block = cb.closest('.block');
+          if (block) {
+            const id = block.dataset.id;
+            const b = BLOCKS.find(x => x.id === id);
+            const prog = blockProgress(b);
+            block.querySelector('.sub').textContent = `${b.subtitle} · ${prog.done}/${prog.total} checks`;
+          }
+        };
+      });
+
+      document.querySelectorAll('.notes-area').forEach(ta => {
+        ta.oninput = () => {
+          state.notes[ta.dataset.notes] = ta.value;
+          saveState();
+        };
+      });
+    }
+
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.onclick = () => {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        renderBlocks(btn.dataset.filter, document.getElementById('search').value);
+      };
+    });
+
+    document.getElementById('search').oninput = (e) => {
+      renderBlocks(document.querySelector('.filter-btn.active')?.dataset.filter || 'all', e.target.value);
+    };
+
+    document.getElementById('expandAll').onclick = () => {
+      BLOCKS.forEach(b => state.open[b.id] = true);
+      saveState();
+      renderBlocks(document.querySelector('.filter-btn.active')?.dataset.filter || 'all', document.getElementById('search').value);
+    };
+
+    document.getElementById('collapseAll').onclick = () => {
+      BLOCKS.forEach(b => state.open[b.id] = false);
+      saveState();
+      renderBlocks(document.querySelector('.filter-btn.active')?.dataset.filter || 'all', document.getElementById('search').value);
+    };
+
+    document.getElementById('exportJson').onclick = () => {
+      const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `uniformes-migracion-insforge-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+    };
+
+    document.getElementById('importJson').onchange = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          state = { ...state, ...JSON.parse(reader.result) };
+          saveState();
+          renderBlocks();
+          alert('Estado importado.');
+        } catch (err) {
+          alert('JSON inválido.');
+        }
+      };
+      reader.readAsText(file);
+      e.target.value = '';
+    };
+
+    document.getElementById('resetChecks').onclick = () => {
+      if (!confirm('¿Desmarcar todos los checklists? Se conservan estatus y notas.')) return;
+      state.checks = {};
+      saveState();
+      renderBlocks();
+    };
+
+    renderBlocks();
+  </script>
+</body>
+</html>
