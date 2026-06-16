@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '../supabase';
+import { insforgeDb } from '@/lib/insforgeBrowser';
 
 export interface CicloEscolar {
   id: number;
@@ -23,7 +23,7 @@ export function useCiclosEscolares() {
   const fetchCiclos = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      const { data, error } = await insforgeDb()
         .from('ciclos_escolares')
         .select('*')
         .order('valor', { ascending: false });
@@ -44,7 +44,7 @@ export function useCiclosEscolares() {
 
   const crearCiclo = async (ciclo: Omit<CicloEscolar, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await insforgeDb()
         .from('ciclos_escolares')
         .insert(ciclo)
         .select()
@@ -61,7 +61,7 @@ export function useCiclosEscolares() {
 
   const actualizarCiclo = async (id: number, cambios: Partial<CicloEscolar>) => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await insforgeDb()
         .from('ciclos_escolares')
         .update(cambios)
         .eq('id', id)
@@ -79,7 +79,7 @@ export function useCiclosEscolares() {
 
   const eliminarCiclo = async (id: number) => {
     try {
-      const { error } = await supabase
+      const { error } = await insforgeDb()
         .from('ciclos_escolares')
         .delete()
         .eq('id', id);
@@ -96,7 +96,7 @@ export function useCiclosEscolares() {
   const marcarComoActual = async (id: number) => {
     try {
       // El trigger se encarga de desactivar los demás
-      const { data, error } = await supabase
+      const { data, error } = await insforgeDb()
         .from('ciclos_escolares')
         .update({ es_actual: true })
         .eq('id', id)

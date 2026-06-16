@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { supabase, getSupabaseErrorMessage } from '@/lib/supabase';
+import { getSupabaseErrorMessage } from '@/lib/supabase';
+import { insforgeDb } from '@/lib/insforgeBrowser';
 import type { RolUniforme, UsuarioUniforme, EstadoUsuarioUniforme } from '@/lib/types';
 
 export function useUsuariosUniformes() {
@@ -11,7 +12,7 @@ export function useUsuariosUniformes() {
   const [error, setError] = useState<string | null>(null);
 
   const cargarRoles = useCallback(async () => {
-    const { data, error: err } = await supabase
+    const { data, error: err } = await insforgeDb()
       .from('roles_uniformes')
       .select('*')
       .eq('activo', true)
@@ -22,7 +23,7 @@ export function useUsuariosUniformes() {
   }, []);
 
   const cargarUsuarios = useCallback(async () => {
-    const { data, error: err } = await supabase
+    const { data, error: err } = await insforgeDb()
       .from('usuarios_uniformes')
       .select(`
         *,
@@ -63,7 +64,7 @@ export function useUsuariosUniformes() {
   }): Promise<{ ok: boolean; message?: string }> {
     try {
       setError(null);
-      const { error: err } = await supabase.from('usuarios_uniformes').insert({
+      const { error: err } = await insforgeDb().from('usuarios_uniformes').insert({
         nombre: payload.nombre.trim(),
         correo: payload.correo.trim().toLowerCase(),
         rol_id: payload.rol_id,
@@ -96,7 +97,7 @@ export function useUsuariosUniformes() {
       if (payload.rol_id !== undefined) update.rol_id = payload.rol_id;
       if (payload.estado !== undefined) update.estado = payload.estado;
 
-      const { error: err } = await supabase.from('usuarios_uniformes').update(update).eq('id', id);
+      const { error: err } = await insforgeDb().from('usuarios_uniformes').update(update).eq('id', id);
       if (err) throw err;
       await cargarUsuarios();
       return { ok: true };
@@ -110,7 +111,7 @@ export function useUsuariosUniformes() {
   async function eliminarUsuario(id: string): Promise<{ ok: boolean; message?: string }> {
     try {
       setError(null);
-      const { error: err } = await supabase.from('usuarios_uniformes').delete().eq('id', id);
+      const { error: err } = await insforgeDb().from('usuarios_uniformes').delete().eq('id', id);
       if (err) throw err;
       await cargarUsuarios();
       return { ok: true };
