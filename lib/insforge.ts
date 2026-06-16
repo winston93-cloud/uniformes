@@ -8,25 +8,27 @@ import { createClient } from '@insforge/sdk';
 // Soportamos nombres alternativos por si Vercel/entornos los configuran distinto.
 const insforgeUrl = process.env.NEXT_PUBLIC_INSFORGE_URL ?? process.env.INSFORGE_URL;
 const insforgeAnonKey = process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY ?? process.env.INSFORGE_ANON_KEY;
+const insforgeAdminKey =
+  process.env.INSFORGE_ADMIN_TOKEN ??
+  process.env.INSFORGE_API_KEY ??
+  process.env.NEXT_PUBLIC_INSFORGE_ADMIN_TOKEN;
+
+/** Token para API routes: admin (ik_) o anon JWT. InsForge exige Authorization en todas las peticiones. */
+function resolveInsforgeAuthToken(): string | undefined {
+  return insforgeAdminKey || insforgeAnonKey || undefined;
+}
 
 export function assertInsforgeConfigured() {
-  if (!insforgeUrl || !insforgeAnonKey) {
+  if (!insforgeUrl || !resolveInsforgeAuthToken()) {
     throw new Error(
-      'Faltan variables de entorno de InsForge. Configura NEXT_PUBLIC_INSFORGE_URL y NEXT_PUBLIC_INSFORGE_ANON_KEY (o INSFORGE_URL/INSFORGE_ANON_KEY).'
+      'Faltan variables de entorno de InsForge. Configura NEXT_PUBLIC_INSFORGE_URL y NEXT_PUBLIC_INSFORGE_ANON_KEY (o INSFORGE_ADMIN_TOKEN / INSFORGE_API_KEY).'
     );
   }
 }
 
-function looksLikeJwt(token: string) {
-  // JWT suele venir como: header.payload.signature (3 partes separadas por '.')
-  return token.split('.').length === 3;
-}
-
 export const insforge = createClient({
   baseUrl: insforgeUrl || 'https://placeholder.supabase.co',
-  // Si el token NO parece JWT (por ejemplo empieza con `ik_`), el SDK podría
-  // intentar decodificarlo como JWT y fallar. Como en nuestro caso las policies
-  // son `public`, intentamos operar sin Authorization.
-  anonKey: insforgeAnonKey && looksLikeJwt(insforgeAnonKey) ? insforgeAnonKey : undefined,
+  // ik_ (API key) o JWT anon: el SDK lo envía como Bearer en cada request.
+  anonKey: resolveInsforgeAuthToken(),
 });
 

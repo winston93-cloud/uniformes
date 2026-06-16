@@ -10,7 +10,13 @@ No hace falta `NEXT_PUBLIC_DATABASE_PROVIDER` ni `NEXT_PUBLIC_INSFORGE_*` para q
 
 Esas rutas **no** usan `lib/supabase.ts` para guardar el plan: importan **`insforge`** desde **`lib/insforge.ts`** y escriben en InsForge (`produccion_plan_semanal`, `produccion_plan_semanal_items`, `semanas`, tablas de gastos fijos, etc.). El rollback del cliente “general” a Supabase **no cambió** ese diseño.
 
-En Vercel, para que producción semanal siga funcionando hace falta **`NEXT_PUBLIC_INSFORGE_URL`** y **`NEXT_PUBLIC_INSFORGE_ANON_KEY`** (las mismas que usa `lib/insforge.ts`). Opcionalmente `assertInsforgeConfigured()` en servidor.
+En Vercel, para que producción semanal siga funcionando hace falta apuntar al proyecto **Uniformes** en InsForge:
+
+- `NEXT_PUBLIC_INSFORGE_URL` → `https://q488j9fg.us-east.insforge.app`
+- `NEXT_PUBLIC_INSFORGE_ANON_KEY` → API key del proyecto (`ik_...`, en Install del dashboard)
+- `INSFORGE_ADMIN_TOKEN` → la misma API key (server-side; opcional si ya está la anon)
+
+Las tablas de producción semanal y gastos fijos viven en ese proyecto InsForge (migradas desde winston-ssiw).
 
 La ruta **`POST /api/produccion-semanal/plan`** además lee **`detalle_cotizacion`** con **`supabase`** (`lib/supabase.ts`) solo para **validar cantidades** contra cotizaciones que siguen en Supabase; el guardado del plan sigue siendo por **`insforge.database`**.
 
