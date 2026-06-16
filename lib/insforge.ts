@@ -1,34 +1,48 @@
-import { createClient } from '@insforge/sdk';
+import { createClient, type InsForgeClient } from '@insforge/sdk';
 
 // Cliente InsForge para uso SOLO en backend (API routes).
 // Las variables deben existir en runtime (local y/o Vercel):
 // - NEXT_PUBLIC_INSFORGE_URL
-// - NEXT_PUBLIC_INSFORGE_ANON_KEY
+// - NEXT_PUBLIC_INSFORGE_ANON_KEY o INSFORGE_ADMIN_TOKEN
 
-// Soportamos nombres alternativos por si Vercel/entornos los configuran distinto.
-const insforgeUrl = process.env.NEXT_PUBLIC_INSFORGE_URL ?? process.env.INSFORGE_URL;
-const insforgeAnonKey = process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY ?? process.env.INSFORGE_ANON_KEY;
-const insforgeAdminKey =
-  process.env.INSFORGE_ADMIN_TOKEN ??
-  process.env.INSFORGE_API_KEY ??
-  process.env.NEXT_PUBLIC_INSFORGE_ADMIN_TOKEN;
+function resolveInsforgeBaseUrl(): string | undefined {
+  return process.env.NEXT_PUBLIC_INSFORGE_URL ?? process.env.INSFORGE_URL;
+}
 
-/** Token para API routes: admin (ik_) o anon JWT. InsForge exige Authorization en todas las peticiones. */
+/** Token en runtime: admin (ik_) o anon. No leer env al importar el módulo (build de Vercel). */
 function resolveInsforgeAuthToken(): string | undefined {
-  return insforgeAdminKey || insforgeAnonKey || undefined;
+  return (
+    process.env.INSFORGE_ADMIN_TOKEN ??
+    process.env.INSFORGE_API_KEY ??
+    process.env.NEXT_PUBLIC_INSFORGE_ADMIN_TOKEN ??
+    process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY ??
+    process.env.INSFORGE_ANON_KEY
+  );
 }
 
 export function assertInsforgeConfigured() {
-  if (!insforgeUrl || !resolveInsforgeAuthToken()) {
+  if (!resolveInsforgeBaseUrl() || !resolveInsforgeAuthToken()) {
     throw new Error(
       'Faltan variables de entorno de InsForge. Configura NEXT_PUBLIC_INSFORGE_URL y NEXT_PUBLIC_INSFORGE_ANON_KEY (o INSFORGE_ADMIN_TOKEN / INSFORGE_API_KEY).'
     );
   }
 }
 
-export const insforge = createClient({
-  baseUrl: insforgeUrl || 'https://placeholder.supabase.co',
-  // ik_ (API key) o JWT anon: el SDK lo envía como Bearer en cada request.
-  anonKey: resolveInsforgeAuthToken(),
-});
+/** Cliente fresco por invocación serverless (lee env en runtime, no en build). */
+export function getInsforge(): InsForgeClient {
+  const baseUrl = resolveInsforgeBaseUrl();
+  const anonKey = resolveInsforgeAuthToken();
+  return createClient({
+    baseUrl: baseUrl || 'https://placeholder.supabase.co',
+    anonKey,
+  });
+}
 
+/** Compatibilidad con imports existentes: delega a getInsforge() en cada acceso. */
+export const insforge: InsForgeClient = new Proxy({} as InsForgeClient, {
+  get(_target, prop) {
+    const client = getInsforge();
+    const value = (client as unknown as Record<string | symbol, unknown>)[prop];
+    return typeof value === 'function' ? (value as (...args: unknown[]) => unknown).bind(client) : value;
+  },
+});
