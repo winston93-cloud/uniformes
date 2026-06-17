@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { assertInsforgeConfigured } from '@/lib/insforge';
 import { runInsforgeRawSql } from '@/lib/insforgeAdminRawSql';
-import { TABLAS_UNIFORMES } from '@/lib/migracion/uniformesTablas';
 
 function isSafeTableName(name: string) {
   return /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name);
@@ -51,30 +50,12 @@ export async function POST(req: Request) {
     }
 
     const supabaseAdmin = getSupabaseAdmin();
-    const uniformesOnly = table === 'auditoria';
+    const { count: supaCount, error: supaErr } = await supabaseAdmin
+      .from(table)
+      .select('*', { count: 'exact', head: true });
+    if (supaErr) throw supaErr;
 
-    let supaCount: number | null = null;
-    if (uniformesOnly) {
-      const { count, error: supaErr } = await supabaseAdmin
-        .from('auditoria')
-        .select('*', { count: 'estimated', head: true })
-        .in('tabla', [...TABLAS_UNIFORMES]);
-      if (supaErr) throw supaErr;
-      supaCount = typeof count === 'number' ? count : null;
-    } else {
-      const { count, error: supaErr } = await supabaseAdmin
-        .from(table)
-        .select('*', { count: 'exact', head: true });
-      if (supaErr) throw supaErr;
-      supaCount = typeof count === 'number' ? count : null;
-    }
-
-    const countRes = uniformesOnly
-      ? await runInsforgeRawSql(
-          `SELECT COUNT(*)::bigint AS n FROM public.auditoria WHERE tabla = ANY($1::text[])`,
-          [[...TABLAS_UNIFORMES]]
-        )
-      : await runInsforgeRawSql(`SELECT COUNT(*)::bigint AS n FROM public.${table}`);
+    const countRes = await runInsforgeRawSql(`SELECT COUNT(*)::bigint AS n FROM public.${table}`);
     const insforgeCount = parseCountFromInsforgeRawSql(countRes);
 
     if (insforgeCount === null) {
@@ -86,11 +67,10 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       table,
-      supabaseCount: supaCount,
+      supabaseCount: typeof supaCount === 'number' ? supaCount : null,
       insforgeCount,
       match: typeof supaCount === 'number' ? supaCount === insforgeCount : null,
-      insforgeCountSource: uniformesOnly ? 'rawsql_count_uniformes' : 'rawsql_count',
-      scope: uniformesOnly ? 'uniformes_tablas' : 'full_table',
+      insforgeCountSource: 'rawsql_count',
     });
   } catch (e: unknown) {
     return NextResponse.json({ success: false, error: formatErr(e) }, { status: 500 });

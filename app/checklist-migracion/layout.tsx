@@ -11,7 +11,7 @@ const plusJakarta = Plus_Jakarta_Sans({
 export const metadata: Metadata = {
   title: 'Checklist migración Plan B | Uniformes',
   description:
-    'Lista de verificación: cuentas Supabase/Vercel/InsForge, dos sistemas, alumnos en Supabase, bitácora y conmutador.',
+    'Lista de verificación: cuentas Supabase/Vercel/InsForge, dos sistemas, alumnos en Supabase y conmutador.',
 };
 
 export default function ChecklistMigracionLayout({ children }: { children: React.ReactNode }) {

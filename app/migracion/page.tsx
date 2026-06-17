@@ -5,7 +5,8 @@ import { TABLAS_MIGRACION_ORDER } from '@/lib/migracion/tablasOrder';
 
 const STORAGE_KEY_ESTADO = 'uniformes_migracion_estado_v1';
 
-const TABLAS_34 = TABLAS_MIGRACION_ORDER;
+const TABLAS_PLAN = TABLAS_MIGRACION_ORDER;
+const N_TABLAS = TABLAS_PLAN.length;
 
 type EstadoTabla =
   | { status: 'PENDIENTE' }
@@ -15,7 +16,7 @@ type EstadoTabla =
 
 export default function MigracionPage() {
   const [seleccion, setSeleccion] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(TABLAS_34.map((t) => [t, false]))
+    Object.fromEntries(TABLAS_PLAN.map((t) => [t, false]))
   );
   const [estado, setEstado] = useState<Record<string, EstadoTabla>>(() => {
     // Estado persistido para que al recargar no se “pierdan” tablas ya migradas.
@@ -26,9 +27,9 @@ export default function MigracionPage() {
           const parsed = JSON.parse(raw);
           if (parsed && typeof parsed === 'object') {
             const next: Record<string, EstadoTabla> = Object.fromEntries(
-              TABLAS_34.map((t) => [t, { status: 'PENDIENTE' } as EstadoTabla])
+              TABLAS_PLAN.map((t) => [t, { status: 'PENDIENTE' } as EstadoTabla])
             );
-            for (const t of TABLAS_34) {
+            for (const t of TABLAS_PLAN) {
               const v = (parsed as any)[t];
               if (v && typeof v === 'object' && typeof v.status === 'string') {
                 next[t] = v as EstadoTabla;
@@ -41,7 +42,7 @@ export default function MigracionPage() {
         // ignore
       }
     }
-    return Object.fromEntries(TABLAS_34.map((t) => [t, { status: 'PENDIENTE' }]));
+    return Object.fromEntries(TABLAS_PLAN.map((t) => [t, { status: 'PENDIENTE' }]));
   });
   const [logs, setLogs] = useState<string[]>([]);
   const [ping, setPing] = useState<{ supabaseHost: string | null; insforgeHost: string | null } | null>(null);
@@ -54,14 +55,11 @@ export default function MigracionPage() {
   const [ddlMissing, setDdlMissing] = useState<string[]>([]);
   /** DDL presente pero el pipeline Tables API (saneado + parse) falla antes de InsForge. */
   const [pipelineFailures, setPipelineFailures] = useState<Array<{ table: string; error: string }>>([]);
-  const [syncPending, setSyncPending] = useState<number | null>(null);
-  const [syncBaselineTs, setSyncBaselineTs] = useState<string | null>(null);
-  const [syncLastAppliedTs, setSyncLastAppliedTs] = useState<string | null>(null);
 
-  const seleccionadas = useMemo(() => TABLAS_34.filter((t) => seleccion[t]), [seleccion]);
-  const todasSeleccionadas = seleccionadas.length === TABLAS_34.length;
+  const seleccionadas = useMemo(() => TABLAS_PLAN.filter((t) => seleccion[t]), [seleccion]);
+  const todasSeleccionadas = seleccionadas.length === TABLAS_PLAN.length;
   const masterCheckboxRef = useRef<HTMLInputElement>(null);
-  const todasOk = useMemo(() => TABLAS_34.every((t) => estado[t]?.status === 'OK'), [estado]);
+  const todasOk = useMemo(() => TABLAS_PLAN.every((t) => estado[t]?.status === 'OK'), [estado]);
 
   const addLog = (line: string) => setLogs((prev) => [`${new Date().toLocaleString('es-MX')} — ${line}`, ...prev]);
 
@@ -69,7 +67,7 @@ export default function MigracionPage() {
   const aplicarInsforgeFound = useCallback((found: Set<string>) => {
     setEstado((prev) => {
       const next = { ...prev };
-      for (const t of TABLAS_34) {
+      for (const t of TABLAS_PLAN) {
         const st = prev[t];
         if (st?.status === 'MIGRANDO') continue;
         if (!found.has(t)) {
@@ -111,7 +109,7 @@ export default function MigracionPage() {
   useEffect(() => {
     const el = masterCheckboxRef.current;
     if (!el) return;
-    el.indeterminate = seleccionadas.length > 0 && seleccionadas.length < TABLAS_34.length;
+    el.indeterminate = seleccionadas.length > 0 && seleccionadas.length < TABLAS_PLAN.length;
   }, [seleccionadas.length]);
 
   useEffect(() => {
@@ -158,101 +156,15 @@ export default function MigracionPage() {
     })();
   }, []);
 
-  const refreshSyncStatus = async () => {
-    try {
-      const res = await fetch('/api/migracion/sync-status', { cache: 'no-store' });
-      const json = await res.json().catch(() => null);
-      if (!res.ok || !json?.success) throw new Error(json?.error || 'No se pudo leer sync-status');
-      setSyncBaselineTs(json.baselineTs ?? null);
-      setSyncLastAppliedTs(json.lastAppliedTs ?? null);
-      setSyncPending(typeof json.pendingCount === 'number' ? json.pendingCount : null);
-    } catch (e: any) {
-      addLog(`ERROR sync-status: ${e?.message || String(e)}`);
-    }
-  };
-
-  useEffect(() => {
-    refreshSyncStatus();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const iniciarBaseline = async () => {
-    setBusy(true);
-    try {
-      addLog('Inicializando baseline (volcando auditoría Supabase → InsForge + ventana de sync)…');
-      const res = await fetch('/api/migracion/sync-baseline', { method: 'POST', cache: 'no-store' });
-      const json = await res.json().catch(() => null);
-      if (!res.ok || !json?.success) throw new Error(json?.error || 'No se pudo iniciar baseline');
-      setSyncBaselineTs(json.baselineTs ?? null);
-      setSyncLastAppliedTs(json.lastAppliedTs ?? null);
-      setSyncPending(0);
-      const aud = json?.auditoriaFromSupabase;
-      addLog(
-        `Baseline OK: ${json.baselineTs}` +
-          (aud && typeof aud.totalInserted === 'number'
-            ? ` · auditoría InsForge: ${aud.totalInserted} filas desde Supabase`
-            : '')
-      );
-      alert(
-        `✅ Baseline actualizado.\n\n` +
-          `La tabla auditoría en InsForge se ha rellenado desde Supabase` +
-          (aud && typeof aud.totalInserted === 'number' ? ` (${aud.totalInserted} filas).` : '.') +
-          `\nA partir del baseline se detectan cambios nuevos para conciliación.`
-      );
-    } catch (e: any) {
-      addLog(`ERROR baseline: ${e?.message || String(e)}`);
-      alert(`❌ No se pudo iniciar baseline: ${e?.message || String(e)}`);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const aplicarConciliacion = async () => {
-    setBusy(true);
-    try {
-      addLog('Aplicando conciliación (auditoria → InsForge)…');
-      let loops = 0;
-      for (;;) {
-        loops += 1;
-        if (loops > 20) break;
-        // eslint-disable-next-line no-await-in-loop
-        const res = await fetch('/api/migracion/sync-apply', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          cache: 'no-store',
-          body: JSON.stringify({ limit: 500 }),
-        });
-        // eslint-disable-next-line no-await-in-loop
-        const json = await res.json().catch(() => null);
-        if (!res.ok || !json?.success) throw new Error(json?.error || 'No se pudo aplicar sync');
-        addLog(
-          `Sync: fetched=${json.fetched} applied=${json.applied} skipped=${json.skipped} last=${json.lastAppliedTsAfter}`
-        );
-        if (Array.isArray(json.errors) && json.errors.length) {
-          addLog(`⚠️ Sync errores (muestra): ${json.errors.slice(0, 3).map((x: any) => `${x.tabla}:${x.operacion}`).join(', ')}`);
-        }
-        // eslint-disable-next-line no-await-in-loop
-        await refreshSyncStatus();
-        if (!json.hasMore) break;
-      }
-      alert('✅ Conciliación aplicada.');
-    } catch (e: any) {
-      addLog(`ERROR sync-apply: ${e?.message || String(e)}`);
-      alert(`❌ Error conciliando: ${e?.message || String(e)}`);
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const toggleAll = (v: boolean) => {
-    setSeleccion(Object.fromEntries(TABLAS_34.map((t) => [t, v])));
+    setSeleccion(Object.fromEntries(TABLAS_PLAN.map((t) => [t, v])));
   };
 
-  /** Borra en InsForge las 34 tablas del plan + estado baseline; deja BD lista para migrar de cero. */
+  /** Borra en InsForge las tablas del plan + estado baseline; deja BD lista para migrar de cero. */
   const borrarPlanInsForge = async () => {
     const ok = window.confirm(
-      '¿Borrar en InsForge las 34 tablas del plan uniformes + el estado de baseline (uniformes_migracion_state)?\n\n' +
-        'Irreversible: tendrás que crear esquema / migrar de nuevo y volver a iniciar baseline.'
+      `¿Borrar en InsForge las ${N_TABLAS} tablas del plan uniformes + el estado de baseline (uniformes_migracion_state)?\n\n` +
+        'Irreversible: tendrás que crear esquema / migrar de nuevo.'
     );
     if (!ok) return;
     setBusy(true);
@@ -262,10 +174,7 @@ export default function MigracionPage() {
       const json = await res.json().catch(() => null);
       if (!res.ok || !json) throw new Error(json?.error || 'wipe-insforge falló');
 
-      setEstado(Object.fromEntries(TABLAS_34.map((t) => [t, { status: 'PENDIENTE' as const }])));
-      setSyncBaselineTs(null);
-      setSyncLastAppliedTs(null);
-      setSyncPending(null);
+      setEstado(Object.fromEntries(TABLAS_PLAN.map((t) => [t, { status: 'PENDIENTE' as const }])));
       setSchemaStatus('PENDIENTE');
 
       const failed = Array.isArray(json.failed) ? json.failed : [];
@@ -332,11 +241,7 @@ export default function MigracionPage() {
 
   const migrarTabla = async (table: string, opts?: { silentVerify?: boolean }) => {
     setEstado((s) => ({ ...s, [table]: { status: 'MIGRANDO', progreso: 'Iniciando…' } }));
-    addLog(
-      table === 'auditoria'
-        ? `Migrando ${table} (solo DDL; datos de auditoría → al iniciar baseline)…`
-        : `Migrando ${table} (DDL + datos)…`
-    );
+    addLog(`Migrando ${table} (DDL + datos)…`);
     try {
       const res = await fetch('/api/migracion/migrate-one', {
         method: 'POST',
@@ -350,17 +255,10 @@ export default function MigracionPage() {
         ...s,
         [table]: {
           status: 'OK',
-          detalle:
-            table === 'auditoria'
-              ? `Estructura OK (vacía); volcar filas al iniciar baseline`
-              : `Insertados: ${json.totalInserted ?? 0} · DDL: ${String(json.ddlFile || '—')}`,
+          detalle: `Insertados: ${json.totalInserted ?? 0} · DDL: ${String(json.ddlFile || '—')}`,
         },
       }));
-      addLog(
-        table === 'auditoria'
-          ? `OK ${table}: DDL aplicado, tabla vacía — usa «Iniciar baseline» para copiar auditoría desde Supabase`
-          : `OK ${table}: insertados ${json.totalInserted ?? 0} (DDL: ${String(json.ddlFile || '—')})`
-      );
+      addLog(`OK ${table}: insertados ${json.totalInserted ?? 0} (DDL: ${String(json.ddlFile || '—')})`);
       if (Array.isArray(json?.prerequisiteTables) && json.prerequisiteTables.length) {
         addLog(
           `⚠️ ${table} referencia a: ${json.prerequisiteTables.join(
@@ -421,7 +319,7 @@ export default function MigracionPage() {
 
   /** Todas las que no están en OK (pendientes + errores), en orden de lista — sin un solo request largo (Vercel). */
   const migrarColaFaltantes = async () => {
-    const cola = TABLAS_34.filter((t) => estado[t]?.status !== 'OK');
+    const cola = TABLAS_PLAN.filter((t) => estado[t]?.status !== 'OK');
     if (!cola.length) {
       addLog('No hay tablas por migrar: todas están en OK.');
       return;
@@ -665,34 +563,9 @@ export default function MigracionPage() {
           disabled={busy}
           onClick={borrarPlanInsForge}
           style={{ background: '#b91c1c', color: 'white', border: 'none' }}
-          title="Elimina las 34 tablas del plan + estado de baseline en InsForge"
+          title={`Elimina las ${N_TABLAS} tablas del plan + estado de baseline en InsForge`}
         >
-          Borrar plan en InsForge (34 tablas)
-        </button>
-        <button
-          className="btn"
-          type="button"
-          disabled={busy}
-          onClick={syncBaselineTs ? aplicarConciliacion : iniciarBaseline}
-          style={{
-            background:
-              typeof syncPending === 'number' && syncPending > 0
-                ? '#16a34a'
-                : syncBaselineTs
-                  ? '#64748b'
-                  : '#dc2626',
-            color: 'white',
-            border: 'none',
-          }}
-          title={
-            syncBaselineTs
-              ? `Pendientes: ${syncPending ?? '¿?'} · Último aplicado: ${syncLastAppliedTs ?? '—'}`
-              : 'Primero define baseline (inicio de ventana de migración)'
-          }
-        >
-          {syncBaselineTs
-            ? `Update/Conciliar (${syncPending ?? '¿?'})`
-            : '⛔ Iniciar ventana (baseline)'}
+          Borrar plan en InsForge ({N_TABLAS} tablas)
         </button>
         <button className="btn btn-primary" type="button" disabled={busy} onClick={migrarSeleccionadas}>
           Migrar seleccionadas
@@ -700,7 +573,7 @@ export default function MigracionPage() {
         <button
           className="btn btn-primary"
           type="button"
-          disabled={busy || TABLAS_34.every((t) => estado[t]?.status === 'OK')}
+          disabled={busy || TABLAS_PLAN.every((t) => estado[t]?.status === 'OK')}
           title="Recorre el orden fijo de tablas y migra todas las que no están en OK (sin alerts por tabla)"
           onClick={migrarColaFaltantes}
           style={{ background: '#7c3aed', border: 'none', color: 'white' }}
@@ -746,7 +619,7 @@ export default function MigracionPage() {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          {TABLAS_34.map((t) => {
+          {TABLAS_PLAN.map((t) => {
             const st = estado[t];
             const selected = !!seleccion[t];
             const badge =

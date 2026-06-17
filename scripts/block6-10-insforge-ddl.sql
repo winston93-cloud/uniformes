@@ -110,17 +110,3 @@ CREATE TABLE IF NOT EXISTS public.detalle_devoluciones (
   observaciones_detalle TEXT,
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
-
--- ========== Bloque 10: auditoría ==========
-CREATE TABLE IF NOT EXISTS public.auditoria (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  tabla VARCHAR(100) NOT NULL,
-  operacion VARCHAR(20) NOT NULL,
-  registro_id UUID,
-  registro_pk TEXT,
-  registro_pk_col TEXT,
-  datos_anteriores JSONB,
-  datos_nuevos JSONB,
-  usuario_id SMALLINT REFERENCES public.usuario(usuario_id),
-  timestamp TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);

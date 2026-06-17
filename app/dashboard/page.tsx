@@ -8,7 +8,6 @@ import TarjetaInsumosFaltantes from '@/components/TarjetaInsumosFaltantes';
 import TarjetaAlertasStock from '@/components/TarjetaAlertasStock';
 import TarjetaAlertasStockPrendas from '@/components/TarjetaAlertasStockPrendas';
 import UserCard from '@/components/UserCard';
-import ModalBitacora from '@/components/ModalBitacora';
 import ModalActualizarBaseDatos from '@/components/ModalActualizarBaseDatos';
 
 function AlumnoSyncModal() {
@@ -124,7 +123,6 @@ function AlumnoSyncModal() {
 export default function Dashboard() {
   const { sesion, loading, sesionError, recargarSesion } = useAuth();
   const [tarjetaExpandida, setTarjetaExpandida] = useState<'insumos' | 'alertas' | 'prendas' | null>(null);
-  const [bitacoraAbierta, setBitacoraAbierta] = useState(false);
   const [actualizarBDAbierto, setActualizarBDAbierto] = useState(false);
   // Respaldo MySQL → Supabase desactivado temporalmente (cambio de servidor).
   // const [syncDisparado, setSyncDisparado] = useState(false);
@@ -222,18 +220,6 @@ export default function Dashboard() {
           Sistema de Uniformes Winston Churchill
           <span className="title-icon">✨</span>
         </h1>
-
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '-0.5rem', marginBottom: '1rem' }}>
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={() => setBitacoraAbierta(true)}
-            style={{ whiteSpace: 'nowrap' }}
-            title="Ver bitácora de movimientos (insert/update/delete)"
-          >
-            📒 Bitácora
-          </button>
-        </div>
 
         {/* ⭐ MÓDULOS PRINCIPALES VIP - Layout Dinámico con 3 Tarjetas ⭐ */}
         <div 
@@ -923,7 +909,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <ModalBitacora abierto={bitacoraAbierta} onClose={() => setBitacoraAbierta(false)} />
       <ModalActualizarBaseDatos abierto={actualizarBDAbierto} onClose={() => setActualizarBDAbierto(false)} />
     </LayoutWrapper>
   );

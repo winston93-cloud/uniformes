@@ -55,27 +55,17 @@ export async function POST(req: Request) {
         );
     }
 
-    // 2) Copiar datos (auditoría: vacía en InsForge; el volcado desde Supabase va en POST /sync-baseline)
+    // 2) Copiar datos
     const tablesApiRename =
       ddlRun && ddlRun.mode === 'tables' && ddlRun.tablesApiRename && typeof ddlRun.tablesApiRename === 'object'
         ? ddlRun.tablesApiRename
         : undefined;
 
-    const copy =
-      table === 'auditoria'
-        ? {
-            table: 'auditoria' as const,
-            startOffset: 0,
-            endOffsetExclusive: 0,
-            totalRead: 0,
-            totalInserted: 0,
-            auditoriaEmptyByDesign: true as const,
-          }
-        : await copyTableDataFromSupabaseToInsforge({
-            table,
-            truncateDestination: true,
-            ...(tablesApiRename ? { tablesApiRename } : {}),
-          });
+    const copy = await copyTableDataFromSupabaseToInsforge({
+      table,
+      truncateDestination: true,
+      ...(tablesApiRename ? { tablesApiRename } : {}),
+    });
 
     return NextResponse.json({
       success: true,

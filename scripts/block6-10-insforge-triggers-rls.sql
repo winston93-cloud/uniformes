@@ -16,10 +16,6 @@ CREATE INDEX IF NOT EXISTS idx_devoluciones_usuario_id ON public.devoluciones(us
 CREATE INDEX IF NOT EXISTS idx_devoluciones_created_at ON public.devoluciones(created_at);
 CREATE INDEX IF NOT EXISTS idx_detalle_devoluciones_devolucion_id ON public.detalle_devoluciones(devolucion_id);
 
-CREATE INDEX IF NOT EXISTS idx_auditoria_tabla ON public.auditoria(tabla);
-CREATE INDEX IF NOT EXISTS idx_auditoria_timestamp ON public.auditoria(timestamp DESC);
-CREATE INDEX IF NOT EXISTS idx_auditoria_usuario ON public.auditoria(usuario_id);
-
 DROP TRIGGER IF EXISTS update_usuarios_updated_at ON public.usuarios;
 CREATE TRIGGER update_usuarios_updated_at
   BEFORE UPDATE ON public.usuarios
@@ -82,7 +78,6 @@ ALTER TABLE public.transferencias ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.detalle_transferencias ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.devoluciones ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.detalle_devoluciones ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.auditoria ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Permitir acceso total usuario" ON public.usuario;
 CREATE POLICY "Permitir acceso total usuario" ON public.usuario
@@ -114,8 +109,4 @@ CREATE POLICY "Permitir acceso total devoluciones" ON public.devoluciones
 
 DROP POLICY IF EXISTS "Permitir acceso total detalle_devoluciones" ON public.detalle_devoluciones;
 CREATE POLICY "Permitir acceso total detalle_devoluciones" ON public.detalle_devoluciones
-  FOR ALL USING (true) WITH CHECK (true);
-
-DROP POLICY IF EXISTS "Permitir acceso total auditoria" ON public.auditoria;
-CREATE POLICY "Permitir acceso total auditoria" ON public.auditoria
   FOR ALL USING (true) WITH CHECK (true);

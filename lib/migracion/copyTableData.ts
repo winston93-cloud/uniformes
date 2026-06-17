@@ -1,7 +1,6 @@
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { insforge } from '@/lib/insforge';
 import { runInsforgeRawSql } from '@/lib/insforgeAdminRawSql';
-import { TABLAS_UNIFORMES } from '@/lib/migracion/uniformesTablas';
 
 function clampInt(v: unknown, min: number, max: number) {
   const n = Number(v);
@@ -52,8 +51,6 @@ export async function copyTableDataFromSupabaseToInsforge(opts: {
   chunkSize?: number;
   startOffset?: number;
   truncateDestination?: boolean;
-  /** Solo filas de tablas Uniformes al copiar auditoría (evita ruido de otros sistemas en la BD compartida). */
-  auditoriaUniformesOnly?: boolean;
   /** Límite de páginas PostgREST por invocación (evita timeout en tablas grandes). */
   maxPages?: number;
   /** Renombres aplicados solo en el fallback Tables API (columnas reservadas en InsForge). */
@@ -68,7 +65,6 @@ export async function copyTableDataFromSupabaseToInsforge(opts: {
   const chunkSize = clampInt(opts.chunkSize ?? 250, 25, 1000);
   const startOffset = clampInt(opts.startOffset ?? 0, 0, 10_000_000);
   const truncateDestination = opts.truncateDestination !== false;
-  const auditoriaUniformesOnly = opts.auditoriaUniformesOnly === true && table === 'auditoria';
   const maxPages = clampInt(opts.maxPages ?? 0, 0, 500);
 
   const supabaseAdmin = getSupabaseAdmin();
@@ -89,26 +85,12 @@ export async function copyTableDataFromSupabaseToInsforge(opts: {
   if (truncateDestination) {
     const fq = `public.${quoteIdent(table)}`;
     try {
-      if (auditoriaUniformesOnly) {
-        await runInsforgeRawSql(
-          `DELETE FROM ${fq} WHERE tabla = ANY($1::text[])`,
-          [[...TABLAS_UNIFORMES]]
-        );
-      } else {
-        await runInsforgeRawSql(`TRUNCATE TABLE ${fq} RESTART IDENTITY`);
-      }
+      await runInsforgeRawSql(`TRUNCATE TABLE ${fq} RESTART IDENTITY`);
     } catch (truncateErr: unknown) {
       const truncateMsg =
         truncateErr instanceof Error ? truncateErr.message : String(truncateErr);
       try {
-        if (auditoriaUniformesOnly) {
-          await runInsforgeRawSql(
-            `DELETE FROM ${fq} WHERE tabla = ANY($1::text[])`,
-            [[...TABLAS_UNIFORMES]]
-          );
-        } else {
-          await runInsforgeRawSql(`DELETE FROM ${fq}`);
-        }
+        await runInsforgeRawSql(`DELETE FROM ${fq}`);
       } catch (delErr: unknown) {
         const delMsg = delErr instanceof Error ? delErr.message : String(delErr);
         throw new Error(
@@ -303,9 +285,6 @@ FROM json_to_recordset($1::json) AS x(${recordsetCols});
   for (;;) {
     // eslint-disable-next-line no-await-in-loop
     let query = supabaseAdmin.from(table).select('*');
-    if (auditoriaUniformesOnly) {
-      query = query.in('tabla', [...TABLAS_UNIFORMES]);
-    }
     const { data, error } = await query.range(offset, offset + pageSize - 1);
 
     if (error) throw error;
@@ -321,16 +300,6 @@ FROM json_to_recordset($1::json) AS x(${recordsetCols});
         validateRequiredAfterNormalize(out);
         return out;
       });
-      if (table === 'auditoria' && destCols.has('id')) {
-        const seen = new Set<string>();
-        normalized = normalized.filter((row) => {
-          const id = row?.id != null ? String(row.id) : '';
-          if (!id) return true;
-          if (seen.has(id)) return false;
-          seen.add(id);
-          return true;
-        });
-      }
       if (normalized.length === 0) continue;
 
       try {

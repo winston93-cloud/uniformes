@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import { runInsforgeRawSql } from '@/lib/insforgeAdminRawSql';
 
-import { TABLAS_UNIFORMES_CON_AUDITORIA } from '@/lib/migracion/uniformesTablas';
+import { TABLAS_UNIFORMES } from '@/lib/migracion/uniformesTablas';
 
-const TABLAS_UNIFORMES = TABLAS_UNIFORMES_CON_AUDITORIA;
+const TABLAS_UNIFORMES_LIST = TABLAS_UNIFORMES;
 
 export async function GET() {
   try {
@@ -18,9 +18,9 @@ export async function GET() {
     const r = await runInsforgeRawSql<{ rows?: Array<{ table_name: string }> }>(q);
     const tables = (r?.rows || []).map((x) => x.table_name).filter(Boolean);
 
-    const allow = new Set<string>(TABLAS_UNIFORMES);
+    const allow = new Set<string>(TABLAS_UNIFORMES_LIST);
     const found = tables.filter((t) => allow.has(t));
-    const missing = TABLAS_UNIFORMES.filter((t) => !tables.includes(t));
+    const missing = TABLAS_UNIFORMES_LIST.filter((t) => !tables.includes(t));
     const extras = tables.filter((t) => !allow.has(t));
 
     return NextResponse.json({

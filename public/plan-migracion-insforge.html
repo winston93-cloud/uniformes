@@ -276,7 +276,7 @@
 
   <script>
     const STORAGE_KEY = 'uniformes_plan_migracion_insforge_v1';
-    const PLAN_REVISION = 10; // rev 10: migración completa + auditoría/triggers + verify-all
+    const PLAN_REVISION = 11; // rev 11: bitácora/auditoría retirada del sistema
 
     const STATUS_LABELS = {
       pendiente: '⬜ Pendiente',
@@ -654,34 +654,6 @@
         ],
         env: [],
         defaultStatus: 'completado'
-      },
-      {
-        id: 'b10',
-        num: '10',
-        title: 'Auditoría y trazabilidad',
-        subtitle: 'Último bloque — triggers en muchas tablas',
-        isolation: 'Auditoría en IF es réplica histórica; operación no depende de leer auditoría en tiempo real.',
-        tech: {
-          tablas: ['auditoria'],
-          fks: [],
-          triggers: ['trg_auditoria_generic en tablas críticas (portar al final)'],
-          rpcs: ['trg_auditoria_generic'],
-          apis: ['/api/auditoria'],
-          hooks: [],
-          storage: [],
-          integraciones: ['sync-apply usa auditoría como referencia']
-        },
-        builder: [
-          { id: 'b10-m1', label: 'Tabla auditoria en InsForge.' },
-          { id: 'b10-m2', label: 'Copiar histórico (puede ser volumen alto).' },
-          { id: 'b10-m3', label: 'Portar triggers auditoría tras estabilizar bloques 1-9.' }
-        ],
-        owner: [
-          { id: 'b10-t1', label: 'API /auditoria lista eventos recientes.' },
-          { id: 'b10-t2', label: 'Cambios en pedidos/costos generan filas auditoría.' }
-        ],
-        env: [],
-        defaultStatus: 'completado'
       }
     ];
 
@@ -707,10 +679,12 @@
               s.statuses.b7 = 'completado';
               s.statuses.b8 = 'completado';
               s.statuses.b9 = 'completado';
-              s.statuses.b10 = 'completado';
             }
             if (PLAN_REVISION >= 10) {
               s.statuses.b0 = 'completado';
+            }
+            if (PLAN_REVISION >= 11 && s.statuses.b10) {
+              delete s.statuses.b10;
             }
             s._revision = PLAN_REVISION;
             localStorage.setItem(STORAGE_KEY, JSON.stringify(s));

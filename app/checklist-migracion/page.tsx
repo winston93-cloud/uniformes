@@ -81,21 +81,6 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    id: 'bitacora',
-    title: '6. Bitácora + job (cron) hacia Supabase',
-    description:
-      'Log de INSERT/UPDATE/DELETE con marca de aplicado; replay manual o automático para mantener Supabase al día como respaldo.',
-    items: [
-      { id: 'b1', label: 'Diseño de tabla bitácora (tabla, PK, tipo_op, payload o referencia, created_at, estado).' },
-      { id: 'b2', label: 'Escritura en bitácora en la misma operación de negocio (o trigger) en el primario.' },
-      { id: 'b3', label: 'Orden total garantizado (secuencia por agregado o global) para replay seguro.' },
-      { id: 'b4', label: 'Worker o cron en Vercel / externo: lee pendientes, aplica en Supabase, marca aplicado/error.' },
-      { id: 'b5', label: 'Reintentos idempotentes (mismo evento dos veces no duplica datos).' },
-      { id: 'b6', label: 'Panel o script manual “reprocesar fallidos” documentado.' },
-      { id: 'b7', label: 'Alerta si la cola de pendientes supera umbral (email/Slack).' },
-    ],
-  },
-  {
     id: 'switch',
     title: '7. Conmutador (switch) de URL y comunicación',
     description:
@@ -116,7 +101,7 @@ const SECTIONS: Section[] = [
       { id: 'q3', label: 'Revisión de CORS y orígenes permitidos en ambas APIs.' },
       { id: 'q4', label: 'Logs de errores centralizados (Vercel / Supabase / InsForge) enlazados en runbook.' },
       { id: 'q5', label: 'Fecha de go-live acordada y ventana de rollback definida.' },
-      { id: 'q6', label: 'Post go-live: 48 h de vigilancia activa (métricas + cola bitácora).' },
+      { id: 'q6', label: 'Post go-live: 48 h de vigilancia activa (métricas y errores en Vercel).' },
     ],
   },
 ];
@@ -292,7 +277,7 @@ export default function ChecklistMigracionPage() {
       </header>
 
       <p className={styles.intro}>
-        Cuentas nuevas (Supabase, Vercel, InsForge), dos despliegues, alumnos en Supabase y negocio en InsForge, bitácora
+        Cuentas nuevas (Supabase, Vercel, InsForge), dos despliegues, alumnos en Supabase y negocio en InsForge, conmutador
         + cron y conmutador de URL. Usa <strong>Exportar</strong> para respaldar el progreso en otro archivo o
         dispositivo.
       </p>

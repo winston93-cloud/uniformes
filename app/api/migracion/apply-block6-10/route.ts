@@ -8,7 +8,6 @@ const BLOCK6_10_FILES = [
   'block6-10-insforge-ddl.sql',
   'block6-10-insforge-triggers-rls.sql',
   'block6-10-insforge-rpcs.sql',
-  'block6-10-insforge-auditoria-triggers.sql',
 ] as const;
 
 export async function POST() {
