@@ -1,13 +1,8 @@
 import { filtrarFilasPorSucursalSiHayColumna } from '@/lib/sucursalCliente';
+import type { Block3Database } from '@/lib/insforgeBrowser';
 
-/** Cliente PostgREST (Supabase o InsForge `database`). */
-export type CostoDbClient = {
-  from: (table: string) => {
-    select: (columns?: string) => {
-      eq: (col: string, val: string) => PromiseLike<{ data: unknown[] | null; error: { message?: string } | null }>;
-    };
-  };
-};
+/** Cliente PostgREST InsForge (`database`) o compatible Supabase. */
+export type CostoDbClient = Block3Database;
 
 /** PostgREST devuelve columnas snake_case; APIs a veces solo camelCase en JSON */
 export function normalizarCamposCostoApi(row: Record<string, unknown>): Record<string, unknown> {
