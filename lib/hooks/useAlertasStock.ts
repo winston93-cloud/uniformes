@@ -75,28 +75,24 @@ export function useAlertasStock() {
         );
       }
 
-      // 2. Obtener todas las compras de insumos
-      const { data: comprasData, error: comprasError } = await insforgeDb()
-        .from('compras_insumos')
-        .select('insumo_id, cantidad_comprada');
+      // 2. Stock por ubicación (misma fuente que /insumos); compras_insumos puede estar vacío post-migración
+      const { data: ubicRows, error: ubicError } = await insforgeDb()
+        .from('insumo_ubicaciones')
+        .select('insumo_id, cantidad');
 
-      if (comprasError) throw comprasError;
+      if (ubicError) throw ubicError;
 
-      // 3. Calcular stock actual por insumo
       const stockPorInsumo = new Map<string, number>();
-      
-      if (comprasData) {
-        for (const compra of comprasData) {
-          const r = compra as Record<string, unknown>;
-          const insumoId = String(r.insumo_id ?? r.insumoId ?? '');
-          const cant = Number(r.cantidad_comprada ?? r.cantidadComprada ?? 0) || 0;
-          if (!insumoId) continue;
-          const stockActual = stockPorInsumo.get(insumoId) || 0;
-          stockPorInsumo.set(insumoId, stockActual + cant);
-        }
+
+      for (const row of ubicRows || []) {
+        const r = row as Record<string, unknown>;
+        const insumoId = String(r.insumo_id ?? r.insumoId ?? '');
+        const cant = Number(r.cantidad ?? 0) || 0;
+        if (!insumoId) continue;
+        stockPorInsumo.set(insumoId, (stockPorInsumo.get(insumoId) || 0) + cant);
       }
 
-      // 4. Crear alertas para insumos con stock bajo o crítico
+      // 3. Crear alertas para insumos con stock bajo o crítico
       const alertasCalculadas: AlertaStock[] = [];
 
       for (const insumo of insumosData) {
@@ -111,7 +107,11 @@ export function useAlertasStock() {
         const pid = (rawIn.presentacion_id ?? rawIn.presentacionId) as string | null | undefined;
         const presentacion = pid ? presById.get(String(pid)) : undefined;
 
-        const stockActual = stockPorInsumo.get(row.id) || 0;
+        const stockDesdeUbic = stockPorInsumo.get(row.id);
+        const stockActual =
+          stockDesdeUbic !== undefined
+            ? stockDesdeUbic
+            : Number(rawIn.stock ?? rawIn.stock_inicial ?? 0) || 0;
         const stockMinimo = Number(rawIn.stock_minimo ?? rawIn.stockMinimo ?? 0) || 0;
         const diferencia = stockActual - stockMinimo;
         const porcentajeStock = stockMinimo > 0 

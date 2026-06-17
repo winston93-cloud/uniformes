@@ -70,6 +70,7 @@ CREATE TABLE IF NOT EXISTS public.insumos (
   costo_compra DECIMAL(10, 2) NOT NULL DEFAULT 0,
   stock_inicial DECIMAL(10, 2) DEFAULT 0,
   stock DECIMAL(10, 2) DEFAULT 0,
+  stock_minimo DECIMAL(10, 2) DEFAULT 0 CHECK (stock_minimo >= 0),
   ubicacion_almacenamiento_id UUID REFERENCES public.ubicaciones_almacenamiento(id) ON DELETE SET NULL,
   activo BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
