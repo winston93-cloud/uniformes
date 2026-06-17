@@ -2,7 +2,7 @@
  * Espejo opcional MySQL → InsForge (Bloque 4, sin activar en prod).
  * Activar con INSFORGE_MIRROR_ALUMNO_SYNC=1 en Vercel cuando se apruebe el corte.
  */
-import { insforge } from '@/lib/insforge';
+import { getInsforge } from '@/lib/insforge';
 
 export async function mirrorAlumnoChunkToInsforge(
   rows: Record<string, unknown>[]
@@ -13,7 +13,7 @@ export async function mirrorAlumnoChunkToInsforge(
   if (!rows.length) return { mirrored: 0, error: null };
 
   try {
-    const { error } = await insforge().database.from('alumno').upsert(rows, { onConflict: 'alumno_ref' });
+    const { error } = await getInsforge().database.from('alumno').upsert(rows, { onConflict: 'alumno_ref' });
     if (error) throw error;
     return { mirrored: rows.length, error: null };
   } catch (e: unknown) {
