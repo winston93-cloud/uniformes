@@ -276,7 +276,7 @@
 
   <script>
     const STORAGE_KEY = 'uniformes_plan_migracion_insforge_v1';
-    const PLAN_REVISION = 3; // rev 3: Bloque 4 espejo clientes (DDL + datos + bucket)
+    const PLAN_REVISION = 4; // rev 4: Bloque 4 cortado — clientes/fiscales en InsForge
 
     const STATUS_LABELS = {
       pendiente: '⬜ Pendiente',
@@ -452,8 +452,8 @@
         id: 'b4',
         num: '4',
         title: 'Clientes y datos fiscales',
-        subtitle: 'Fase espejo — DDL + datos en InsForge; UI y sync MySQL siguen en Supabase',
-        isolation: 'Réplica verificada en IF (jun 2026). Sync MySQL y pantallas siguen en SB hasta pruebas Alexx y corte.',
+        subtitle: 'Completado — runtime en InsForge (alumnos, externos, fiscales, sync MySQL)',
+        isolation: 'Corte jun 2026. Clientes y datos fiscales en InsForge. Cotizaciones/pedidos siguen en Supabase (Bloque 5).',
         tech: {
           tablas: ['alumno', 'externos', 'datos_fiscales_cliente'],
           fks: ['datos_fiscales.alumno_id TEXT (UUID legado o id numérico)', 'datos_fiscales.externo_id → externos'],
@@ -469,7 +469,7 @@
           { id: 'b4-m2', label: 'Copiar datos: alumno 2346, externos 21, fiscales 1 — verify OK.' },
           { id: 'b4-m3', label: 'Bucket Storage IF datos-fiscales-clientes ✓; pendiente copiar PDFs.' },
           { id: 'b4-m4', label: 'Preparar switch sync-mysql destino (NO activar hasta corte aprobado).' },
-          { id: 'b4-m5', label: 'Dualidad: sync y UI siguen en SB hasta prueba OK.' }
+          { id: 'b4-m5', label: 'Corte runtime: hooks clientes/fiscales + sync MySQL → InsForge.' }
         ],
         owner: [
           { id: 'b4-t1', label: 'Buscar alumno en cotización/pedido.' },
@@ -482,7 +482,7 @@
           { id: 'b4-e1', label: 'Credenciales MySQL sync en Vercel.' },
           { id: 'b4-e2', label: 'Bucket InsForge datos-fiscales-clientes creado; PDFs origen en Supabase Storage.' }
         ],
-        defaultStatus: 'pruebas'
+        defaultStatus: 'completado'
       },
       {
         id: 'b5',
@@ -690,6 +690,7 @@
             s.statuses = s.statuses || {};
             if (PLAN_REVISION >= 2) s.statuses.b3 = 'completado';
             if (PLAN_REVISION >= 3) s.statuses.b4 = 'pruebas';
+            if (PLAN_REVISION >= 4) s.statuses.b4 = 'completado';
             s._revision = PLAN_REVISION;
             localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
           }

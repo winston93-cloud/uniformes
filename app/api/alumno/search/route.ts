@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { buscarAlumnosSupabase } from '@/lib/alumnoSearch';
-import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
+import { buscarAlumnosEnDb } from '@/lib/alumnoSearch';
+import { getInsforge } from '@/lib/insforge';
 
 export async function GET(req: Request) {
   try {
@@ -15,8 +15,7 @@ export async function GET(req: Request) {
         ? Number(cicloRaw)
         : undefined;
 
-    const supabaseAdmin = getSupabaseAdmin();
-    const data = await buscarAlumnosSupabase(supabaseAdmin, q, cicloEscolar);
+    const data = await buscarAlumnosEnDb(getInsforge().database, q, cicloEscolar);
     return NextResponse.json({ success: true, data });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e);

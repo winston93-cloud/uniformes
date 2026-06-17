@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { mapAlumnoRow } from '@/lib/hooks/useAlumnos';
 import { supabase } from '@/lib/supabase';
+import { insforgeDb } from '@/lib/insforgeBrowser';
 import { useAuth } from '@/contexts/AuthContext';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import html2canvas from 'html2canvas';
@@ -128,7 +129,7 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
       // Si hay alumno_id, obtener sus datos
       let alumnoData = null;
       if (pedidoData.alumno_id) {
-        const { data: row } = await supabase
+        const { data: row } = await insforgeDb()
           .from('alumno')
           .select('*')
           .eq('alumno_id', pedidoData.alumno_id)

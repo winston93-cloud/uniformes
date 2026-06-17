@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { insforgeDb } from '@/lib/insforgeBrowser';
 
 export function isUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
@@ -11,10 +11,7 @@ function soloDigitos(value: string): boolean {
 }
 
 /**
- * Resuelve el id a guardar en `cotizaciones.alumno_id`.
- * - UUID: se devuelve tal cual (si tu FK sigue siendo UUID).
- * - Numérico (id legado): se devuelve como string.
- * - Otro: busca o crea fila en `alumno` por `alumno_ref`.
+ * Resuelve el id a guardar en `cotizaciones.alumno_id` / `datos_fiscales_cliente.alumno_id`.
  */
 export async function resolverAlumnoUuidParaCotizacion(
   legacyId: string,
@@ -34,7 +31,7 @@ export async function resolverAlumnoUuidParaCotizacion(
     );
   }
 
-  const { data: row, error } = await supabase
+  const { data: row, error } = await insforgeDb()
     .from('alumno')
     .upsert(
       {

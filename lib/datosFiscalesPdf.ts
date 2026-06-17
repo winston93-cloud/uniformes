@@ -1,10 +1,9 @@
-import { supabase } from '@/lib/supabase';
+import { insforgeDb } from '@/lib/insforgeBrowser';
 import type { DatosFiscalesCliente } from '@/lib/types';
 import { isUuid, resolverAlumnoUuidParaCotizacion } from '@/lib/resolverAlumnoCotizacion';
 
 /**
  * Registro fiscal del receptor (tabla `datos_fiscales_cliente`) para armar el PDF de cotización.
- * RFC y código postal vienen de ahí cuando existen; teléfono no está en esa tabla (sigue en alumno/externo).
  */
 export async function obtenerDatosFiscalesClienteParaPdf(
   tipoCliente: 'alumno' | 'externo',
@@ -28,7 +27,7 @@ export async function obtenerDatosFiscalesClienteParaPdf(
     }
     const col = alumnoUuid ? 'alumno_id' : 'externo_id';
     const fk = alumnoUuid || externoUuid;
-    const { data, error } = await supabase
+    const { data, error } = await insforgeDb()
       .from('datos_fiscales_cliente')
       .select('*')
       .eq(col, fk!)

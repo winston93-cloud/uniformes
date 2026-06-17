@@ -24,5 +24,5 @@ export function insforgeDb() {
   return insforgeBrowser.database;
 }
 
-/** Cliente con `.from` / `.rpc` para Bloque 3 (inventario maestro). */
+/** Cliente con `.from` / `.rpc` / `.storage` — Bloques 1, 3 y 4 cortados a InsForge. */
 export type Block3Database = ReturnType<typeof insforgeDb>;

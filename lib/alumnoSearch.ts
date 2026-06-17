@@ -1,6 +1,8 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
+import { insforgeDb } from '@/lib/insforgeBrowser';
 import { ciclosAlumnoParaBusqueda, textoBusquedaAlumno } from './alumnoDisplay';
 import { mapAlumnoRow, type Alumno } from './alumnoMappers';
+
+type AlumnoDb = ReturnType<typeof insforgeDb>;
 
 function escaparWildcards(valor: string) {
   return valor.replace(/[%_\\]/g, '\\$&');
@@ -15,9 +17,9 @@ function aplicarFiltroCiclos<T extends { eq: Function; in: Function }>(
   return q;
 }
 
-/** Búsqueda en `public.alumno` (sin ilike sobre alumno_ref integer — rompe PostgREST). */
-export async function buscarAlumnosSupabase(
-  supabase: SupabaseClient,
+/** Búsqueda en `public.alumno` (InsForge). */
+export async function buscarAlumnosEnDb(
+  db: AlumnoDb,
   query: string,
   cicloEscolar?: number
 ): Promise<Alumno[]> {
@@ -36,8 +38,7 @@ export async function buscarAlumnosSupabase(
     }
   };
 
-  // Por nombre / apellidos (solo columnas texto)
-  let qNombre = supabase
+  let qNombre = db
     .from('alumno')
     .select('*')
     .or(
@@ -49,9 +50,8 @@ export async function buscarAlumnosSupabase(
   if (errNombre) throw errNombre;
   agregar(porNombre as Record<string, unknown>[]);
 
-  // Por referencia numérica (alumno_ref es integer)
   if (/^\d+$/.test(trimmed)) {
-    let qRef = supabase.from('alumno').select('*').eq('alumno_ref', Number(trimmed)).limit(50);
+    let qRef = db.from('alumno').select('*').eq('alumno_ref', trimmed).limit(50);
     qRef = aplicarFiltroCiclos(qRef, ciclos);
     const { data: porRef, error: errRef } = await qRef;
     if (errRef) throw errRef;
@@ -76,3 +76,6 @@ export async function buscarAlumnosSupabase(
 
   return rawRows.slice(0, 100).map((r) => mapAlumnoRow(r));
 }
+
+/** @deprecated Usar buscarAlumnosEnDb */
+export const buscarAlumnosSupabase = buscarAlumnosEnDb;

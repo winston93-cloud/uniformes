@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
 import mysql from 'mysql2/promise';
 import { z } from 'zod';
-import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
+import { getInsforge, assertInsforgeConfigured } from '@/lib/insforge';
 import { sendEmailReport } from '@/lib/emailReport';
-import { mirrorAlumnoChunkToInsforge } from '@/lib/migracion/mirrorAlumnoChunkToInsforge';
 
 export const runtime = 'nodejs';
 
@@ -17,9 +16,9 @@ const BodySchema = z
   .object({
     /** Límite por corrida (protección). */
     limit: z.number().int().positive().max(20000).default(5000),
-    /** Forzar desde una fecha ISO (opcional). Si no, usa MAX(alumno_actualizacion) en Supabase. */
+    /** Forzar desde una fecha ISO (opcional). Si no, usa MAX(alumno_actualizacion) en InsForge. */
     since: z.string().min(10).optional(),
-    /** true = ignorar última fecha en Supabase y traer todos los del filtro de ciclo (recuperación). */
+    /** true = ignorar última fecha en InsForge y traer todos los del filtro de ciclo (recuperación). */
     full: z.boolean().optional(),
   })
   .default({ limit: 5000 });
@@ -103,18 +102,18 @@ export async function POST(req: Request) {
     }
 
     const { limit, since, full } = parsed.data;
-    const supabaseAdmin = getSupabaseAdmin();
+    assertInsforgeConfigured();
+    const db = getInsforge().database;
 
     let sinceTs: string | null = full ? null : since ? toIsoOrNull(since) : null;
     if (!sinceTs && !full) {
-      // Nota: `alumno_actualizacion` existe y trae timestamptz en Supabase.
-      const { data, error } = await supabaseAdmin
+      const { data, error } = await db
         .from('alumno')
         .select('alumno_actualizacion')
         .order('alumno_actualizacion', { ascending: false })
         .limit(1);
       if (error) throw error;
-      const last = (data?.[0] as any)?.alumno_actualizacion;
+      const last = (data?.[0] as { alumno_actualizacion?: string })?.alumno_actualizacion;
       sinceTs = last ? toIsoOrNull(last) : null;
     }
 
@@ -204,21 +203,13 @@ export async function POST(req: Request) {
       const totalFetched = raw.length;
       const totalMapped = mapped.length;
 
-      // Upsert por alumno_ref (unique en Supabase)
+      // Upsert por alumno_ref (unique en InsForge)
       const chunkSize = 1000;
       let upserted = 0;
       for (let i = 0; i < mapped.length; i += chunkSize) {
         const chunk = mapped.slice(i, i + chunkSize);
-        const { error } = await supabaseAdmin.from('alumno').upsert(chunk, { onConflict: 'alumno_ref' });
+        const { error } = await db.from('alumno').upsert(chunk, { onConflict: 'alumno_ref' });
         if (error) throw error;
-        // Espejo InsForge (desactivado por defecto; ver INSFORGE_MIRROR_ALUMNO_SYNC)
-        const withIds = await supabaseAdmin.from('alumno').select('*').in(
-          'alumno_ref',
-          chunk.map((r) => r.alumno_ref as string)
-        );
-        if (withIds.data?.length) {
-          await mirrorAlumnoChunkToInsforge(withIds.data as Record<string, unknown>[]);
-        }
         upserted += chunk.length;
       }
 
@@ -243,7 +234,7 @@ export async function POST(req: Request) {
         const host = process.env.MYSQL_HOST ?? '';
         const subject = `Uniformes: sync alumnos OK (upsert=${upserted}, fetched=${totalFetched})`;
         const text = [
-          'Sincronización de alumnos (MySQL → Supabase) completada.',
+          'Sincronización de alumnos (MySQL → InsForge) completada.',
           '',
           `MYSQL_HOST: ${host}`,
           `Desde (sinceTs): ${sinceTs ?? '—'}`,
@@ -271,7 +262,7 @@ export async function POST(req: Request) {
       const host = process.env.MYSQL_HOST ?? '';
       const subject = 'Uniformes: sync alumnos ERROR';
       const text = [
-        'Sincronización de alumnos (MySQL → Supabase) falló.',
+        'Sincronización de alumnos (MySQL → InsForge) falló.',
         '',
         `MYSQL_HOST: ${host}`,
         `Duración: ${ms} ms`,

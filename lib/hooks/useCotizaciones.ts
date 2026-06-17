@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase, getSupabaseErrorMessage } from '@/lib/supabase';
+import { insforgeDb } from '@/lib/insforgeBrowser';
 import type { Alumno, Cotizacion, DetalleCotizacion, Externo } from '@/lib/types';
 import { compareCotizacionesPorFechaCotizacionDesc } from '@/lib/cotizacionesSort';
 import { calcularMontosImpuestosCotizacion } from '@/lib/cotizacionesImpuestos';
@@ -40,7 +41,7 @@ async function relacionarClienteParaCotizaciones(
 
   const alumnoPorId = new Map<string, Alumno>();
   if (alumnoIds.length > 0) {
-    const batch = await supabase.from('alumno').select('*').in('alumno_id', alumnoIds);
+    const batch = await insforgeDb().from('alumno').select('*').in('alumno_id', alumnoIds);
     if (!batch.error && batch.data) {
       for (const row of batch.data) {
         const m = mapAlumnoRow(row as Record<string, unknown>);
@@ -49,7 +50,7 @@ async function relacionarClienteParaCotizaciones(
     }
     for (const id of alumnoIds) {
       if (alumnoPorId.has(id)) continue;
-      const one = await supabase.from('alumno').select('*').eq('alumno_id', id).maybeSingle();
+      const one = await insforgeDb().from('alumno').select('*').eq('alumno_id', id).maybeSingle();
       if (!one.error && one.data) {
         alumnoPorId.set(id, mapAlumnoRow(one.data as Record<string, unknown>));
       }
@@ -58,7 +59,7 @@ async function relacionarClienteParaCotizaciones(
 
   const externoPorId = new Map<string, Externo>();
   if (externoIds.length > 0) {
-    const ex = await supabase.from('externos').select('*').in('id', externoIds);
+    const ex = await insforgeDb().from('externos').select('*').in('id', externoIds);
     if (!ex.error && ex.data) {
       for (const row of ex.data) {
         externoPorId.set(String((row as Externo).id), row as Externo);

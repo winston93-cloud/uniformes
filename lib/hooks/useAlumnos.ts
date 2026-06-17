@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ciclosAlumnoParaBusqueda } from '../alumnoDisplay';
 import { mapAlumnoRow, type Alumno, type AlumnoFromDB } from '../alumnoMappers';
-import { getSupabaseErrorMessage, supabase } from '../supabase';
+import { getSupabaseErrorMessage } from '../supabase';
+import { insforgeDb } from '@/lib/insforgeBrowser';
 
 export type { Alumno, AlumnoFromDB } from '../alumnoMappers';
 export { mapAlumnoFromDB, mapAlumnoPublic, mapAlumnoRow } from '../alumnoMappers';
@@ -16,7 +17,7 @@ export function useAlumnos(cicloEscolar?: number) {
   const fetchAlumnos = async () => {
     try {
       setLoading(true);
-      const { data, error: err } = await supabase
+      const { data, error: err } = await insforgeDb()
         .from('alumno')
         .select('*')
         .eq('alumno_status', 1)

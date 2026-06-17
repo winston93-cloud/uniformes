@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo, type MouseEvent } from 'react';
-import { supabase } from '@/lib/supabase';
+import { insforgeDb } from '@/lib/insforgeBrowser';
 import type { DatosFiscalesCliente } from '@/lib/types';
 import { isUuid, resolverAlumnoUuidParaCotizacion } from '@/lib/resolverAlumnoCotizacion';
 import {
@@ -127,7 +127,7 @@ export default function ModalDatosFiscalesCliente({ open, onClose, tipoCliente, 
       const { alumnoUuid, externoUuid } = await resolverClienteUuid();
       const col = alumnoUuid ? 'alumno_id' : 'externo_id';
       const fk = alumnoUuid || externoUuid;
-      const { data, error: qErr } = await supabase
+      const { data, error: qErr } = await insforgeDb()
         .from('datos_fiscales_cliente')
         .select('*')
         .eq(col, fk)
@@ -207,7 +207,7 @@ export default function ModalDatosFiscalesCliente({ open, onClose, tipoCliente, 
       let idFinal = registroId;
 
       if (registroId) {
-        const { error: uErr } = await supabase
+        const { error: uErr } = await insforgeDb()
           .from('datos_fiscales_cliente')
           .update(payload)
           .eq('id', registroId);
@@ -218,7 +218,7 @@ export default function ModalDatosFiscalesCliente({ open, onClose, tipoCliente, 
           alumno_id: alumnoUuid,
           externo_id: externoUuid,
         };
-        const { data: ins, error: iErr } = await supabase
+        const { data: ins, error: iErr } = await insforgeDb()
           .from('datos_fiscales_cliente')
           .insert([insertRow])
           .select('id')
@@ -232,7 +232,7 @@ export default function ModalDatosFiscalesCliente({ open, onClose, tipoCliente, 
         const { error: upErr } = await subirConstanciaPdf(idFinal, archivoConstanciaPendiente);
         if (upErr) throw new Error(upErr);
         const path = rutaConstanciaPdfEnBucket(idFinal);
-        const { error: pathErr } = await supabase
+        const { error: pathErr } = await insforgeDb()
           .from('datos_fiscales_cliente')
           .update({ constancia_pdf_path: path, updated_at: new Date().toISOString() })
           .eq('id', idFinal);
@@ -259,7 +259,7 @@ export default function ModalDatosFiscalesCliente({ open, onClose, tipoCliente, 
         const { error: stErr } = await eliminarConstanciaPdfEnStorage(constanciaPdfPath);
         if (stErr) console.warn('Storage:', stErr);
       }
-      const { error: dErr } = await supabase.from('datos_fiscales_cliente').delete().eq('id', registroId);
+      const { error: dErr } = await insforgeDb().from('datos_fiscales_cliente').delete().eq('id', registroId);
       if (dErr) throw dErr;
       onClose();
     } catch (e: unknown) {
@@ -307,7 +307,7 @@ export default function ModalDatosFiscalesCliente({ open, onClose, tipoCliente, 
     try {
       const { error: stErr } = await eliminarConstanciaPdfEnStorage(constanciaPdfPath);
       if (stErr) throw new Error(stErr);
-      const { error: uErr } = await supabase
+      const { error: uErr } = await insforgeDb()
         .from('datos_fiscales_cliente')
         .update({ constancia_pdf_path: null, updated_at: new Date().toISOString() })
         .eq('id', registroId);

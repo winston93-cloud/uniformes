@@ -358,7 +358,7 @@ export function useReportes(sucursal_id?: string) {
       ] = await Promise.all([
         supabase.from('pedidos').select('*', { count: 'exact', head: true }),
         supabase.from('pedidos').select('total').in('estado', ['COMPLETADO']),
-        supabase.from('alumno').select('*', { count: 'exact', head: true }),
+        insforgeDb().from('alumno').select('*', { count: 'exact', head: true }),
         insforgeDb().from('costos').select('stock').eq('activo', true),
       ]);
 

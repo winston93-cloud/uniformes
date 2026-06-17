@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '../supabase';
+import { insforgeDb } from '@/lib/insforgeBrowser';
 import type { Externo } from '../types';
 
 export function useExternos() {
@@ -16,7 +16,7 @@ export function useExternos() {
   const fetchExternos = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      const { data, error } = await insforgeDb()
         .from('externos')
         .select('*')
         .order('nombre', { ascending: true });
@@ -37,7 +37,7 @@ export function useExternos() {
 
   const createExterno = async (externo: Omit<Externo, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await insforgeDb()
         .from('externos')
         .insert([externo])
         .select()
@@ -53,7 +53,7 @@ export function useExternos() {
 
   const updateExterno = async (id: string, updates: Partial<Externo>) => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await insforgeDb()
         .from('externos')
         .update(updates)
         .eq('id', id)
@@ -70,10 +70,7 @@ export function useExternos() {
 
   const deleteExterno = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('externos')
-        .delete()
-        .eq('id', id);
+      const { error } = await insforgeDb().from('externos').delete().eq('id', id);
 
       if (error) throw error;
       await fetchExternos();
@@ -88,7 +85,7 @@ export function useExternos() {
       const consulta = escaparWildcards(query.trim());
       if (!consulta) return [];
 
-      const { data, error } = await supabase
+      const { data, error } = await insforgeDb()
         .from('externos')
         .select('*')
         .or(`nombre.ilike.%${consulta}%,email.ilike.%${consulta}%,telefono.ilike.%${consulta}%`)
@@ -99,7 +96,7 @@ export function useExternos() {
         console.error('Error en searchExternos:', error);
         throw error;
       }
-      
+
       return data || [];
     } catch (err: any) {
       console.error('Error searching externos:', err.message || err);
@@ -118,4 +115,3 @@ export function useExternos() {
     searchExternos,
   };
 }
-
