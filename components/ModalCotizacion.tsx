@@ -3667,18 +3667,12 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
             {cargando ? (
               <div style={{ textAlign: 'center', padding: '3rem' }}>
                 <div style={{ fontSize: '3rem' }}>⏳</div>
-                <div>Cargando...</div>
+                <div>Cargando cotizaciones desde InsForge…</div>
               </div>
             ) : cotizaciones.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '3rem', color: '#999' }}>
                 <div style={{ fontSize: '4rem' }}>📄</div>
                 <div>No hay cotizaciones generadas aún</div>
-                <p style={{ marginTop: '1rem', fontSize: '0.88rem', color: '#64748b', maxWidth: '36rem', marginLeft: 'auto', marginRight: 'auto', lineHeight: 1.5 }}>
-                  Si en el panel de Supabase ves filas en <code style={{ fontSize: '0.85em' }}>cotizaciones</code> pero aquí sigue en cero, suele ser{' '}
-                  <strong>Row Level Security</strong>: la app usa la clave <em>anon</em> sin sesión Supabase Auth. Aplica la migración{' '}
-                  <code style={{ fontSize: '0.85em' }}>20260428_rls_cotizaciones_externos_detalle_anon.sql</code> en el proyecto SQL o equivalente para permitir SELECT (y el resto que uses) con anon en{' '}
-                  <code style={{ fontSize: '0.85em' }}>cotizaciones</code>, <code style={{ fontSize: '0.85em' }}>detalle_cotizacion</code> y <code style={{ fontSize: '0.85em' }}>externos</code>.
-                </p>
               </div>
             ) : cotizacionesFiltradas.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '3rem', color: '#999' }}>
