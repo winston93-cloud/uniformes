@@ -4,9 +4,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { insforgeDb } from '@/lib/insforgeBrowser';
 import { Transferencia } from '../types';
 
-type SucursalMini = { id: string; codigo: string; nombre: string; es_matriz: boolean };
-type UsuarioMini = { usuario_id: number; usuario_username: string; usuario_nombre: string };
-
 async function enriquecerTransferencias(rows: Record<string, unknown>[]): Promise<Transferencia[]> {
   if (!rows.length) return [];
 
@@ -24,11 +21,11 @@ async function enriquecerTransferencias(rows: Record<string, unknown>[]): Promis
     }
   }
 
-  const sucPorId = new Map<string, SucursalMini>();
+  const sucPorId = new Map<string, NonNullable<Transferencia['sucursal_origen']>>();
   if (sucIds.size > 0) {
     const sr = await insforgeDb()
       .from('sucursales')
-      .select('id, codigo, nombre, es_matriz')
+      .select('id, codigo, nombre, direccion, telefono, es_matriz, activo')
       .in('id', [...sucIds]);
     if (!sr.error && sr.data) {
       for (const s of sr.data) {
@@ -37,13 +34,16 @@ async function enriquecerTransferencias(rows: Record<string, unknown>[]): Promis
           id: String(row.id),
           codigo: String(row.codigo ?? ''),
           nombre: String(row.nombre ?? ''),
+          direccion: row.direccion != null ? String(row.direccion) : null,
+          telefono: row.telefono != null ? String(row.telefono) : null,
           es_matriz: Boolean(row.es_matriz ?? row.esMatriz),
+          activo: Boolean(row.activo ?? true),
         });
       }
     }
   }
 
-  const usuarioPorId = new Map<number, UsuarioMini>();
+  const usuarioPorId = new Map<number, NonNullable<Transferencia['usuario']>>();
   if (usuarioIds.size > 0) {
     const ur = await insforgeDb()
       .from('usuario')
@@ -57,7 +57,7 @@ async function enriquecerTransferencias(rows: Record<string, unknown>[]): Promis
           usuario_id: id,
           usuario_username: String(row.usuario_username ?? row.usuarioUsername ?? ''),
           usuario_nombre: String(row.usuario_nombre ?? row.usuarioNombre ?? ''),
-        });
+        } as NonNullable<Transferencia['usuario']>);
       }
     }
   }
