@@ -276,7 +276,7 @@
 
   <script>
     const STORAGE_KEY = 'uniformes_plan_migracion_insforge_v1';
-    const PLAN_REVISION = 4; // rev 4: Bloque 4 cortado — clientes/fiscales en InsForge
+    const PLAN_REVISION = 5; // rev 5: Bloque 5 espejo — DDL + RPCs + datos en InsForge
 
     const STATUS_LABELS = {
       pendiente: '⬜ Pendiente',
@@ -488,8 +488,9 @@
         id: 'b5',
         num: '5',
         title: 'Cotizaciones + Pedidos (núcleo transaccional)',
-        subtitle: 'Un solo movimiento — trigger pedido_desde_cotizacion_terminada une ambos',
-        isolation: 'Hasta el corte, prod 100% Supabase. Réplica en IF es ensayo; rollback = no tocar env de prod.',
+        subtitle: 'Fase espejo — DDL + RPCs + réplica datos en InsForge; prod sigue en Supabase',
+        isolation: 'Hasta el corte, prod 100% Supabase. Réplica en IF lista para pruebas; rollback = no tocar hooks.',
+        defaultStatus: 'pruebas'
         isolationWarn: 'Bloque más crítico. Incluye SAT (Bloque 2). Requiere Bloques 3 y 4 en dual verificado.',
         tech: {
           tablas: [
@@ -518,11 +519,11 @@
           integraciones: ['PDF cotización', 'Producción semanal deja de leer SB']
         },
         builder: [
-          { id: 'b5-m1', label: 'DDL cotizaciones + pedidos + snapshot en InsForge.' },
-          { id: 'b5-m2', label: 'Incluir sat_* y FKs en cotizaciones.' },
-          { id: 'b5-m3', label: 'Portar TODAS las RPCs atómicas; probar crear/completar/cancelar pedido en IF.' },
-          { id: 'b5-m4', label: 'Portar triggers cotización→pedido e insumos al trabajar.' },
-          { id: 'b5-m5', label: 'Copia datos históricos + verify (tablas grandes: pedidos, movimientos).' },
+          { id: 'b5-m1', label: 'DDL cotizaciones + pedidos + snapshot en InsForge. ✓ scripts/block5-insforge-ddl.sql' },
+          { id: 'b5-m2', label: 'Incluir sat_* y FKs en cotizaciones. ✓ en DDL' },
+          { id: 'b5-m3', label: 'Portar TODAS las RPCs atómicas. ✓ scripts/block5-insforge-rpcs.sql' },
+          { id: 'b5-m4', label: 'Portar triggers cotización→pedido e insumos al trabajar. ✓ (fix tabla alumno)' },
+          { id: 'b5-m5', label: 'Copia datos históricos + verify. API /api/migracion/migrate-block5' },
           { id: 'b5-m6', label: 'sync-apply ventana de mantenimiento antes de cualquier corte.' },
           { id: 'b5-m7', label: 'Corte runtime SOLO tras OK Alexx: hooks → InsForge o feature flag.' },
           { id: 'b5-m8', label: 'Actualizar produccion-semanal/plan: detalle_cotizacion desde InsForge.' }
@@ -691,6 +692,7 @@
             if (PLAN_REVISION >= 2) s.statuses.b3 = 'completado';
             if (PLAN_REVISION >= 3) s.statuses.b4 = 'pruebas';
             if (PLAN_REVISION >= 4) s.statuses.b4 = 'completado';
+            if (PLAN_REVISION >= 5) s.statuses.b5 = 'pruebas';
             s._revision = PLAN_REVISION;
             localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
           }

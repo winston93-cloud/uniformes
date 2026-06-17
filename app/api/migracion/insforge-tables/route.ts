@@ -23,6 +23,8 @@ const TABLAS_UNIFORMES = [
   'costo_ubicaciones',
   'insumo_ubicaciones',
   'datos_fiscales_cliente',
+  'sat_metodos_pago',
+  'sat_formas_pago',
   'cotizaciones',
   'detalle_cotizacion',
   'pedidos',
