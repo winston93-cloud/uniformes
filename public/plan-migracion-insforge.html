@@ -276,6 +276,7 @@
 
   <script>
     const STORAGE_KEY = 'uniformes_plan_migracion_insforge_v1';
+    const PLAN_REVISION = 2; // rev 2: Bloque 3 completado (corte inventario InsForge)
 
     const STATUS_LABELS = {
       pendiente: '⬜ Pendiente',
@@ -389,9 +390,9 @@
         id: 'b3',
         num: '3',
         title: 'Inventario maestro (ubicaciones + prendas + insumos)',
-        subtitle: 'Bloque unificado: tallas NO es tabla suelta — es todo el proceso prenda–talla–stock–receta',
-        isolation: 'Réplica en InsForge no mueve stock en prod. La app sigue en Supabase; un error en IF no descuenta inventario real.',
-        isolationWarn: 'NO cortar runtime parcial (ej. solo tallas). Todo el bloque 3 sube o nada.',
+        subtitle: 'Completado — runtime en InsForge (prendas, costos, insumos, stock, ubicaciones)',
+        isolation: 'Corte hecho (jun 2026). Inventario maestro vive en InsForge. Pedidos/cotizaciones siguen en Supabase hasta Bloque 5.',
+        isolationWarn: 'Post-corte: fix stock_minimo insumos + sync desde SB (API sync-stock-minimo-insumos).',
         tech: {
           tablas: [
             'presentaciones', 'ubicaciones_almacenamiento', 'sucursales',
@@ -415,7 +416,7 @@
             'descontar_costo_ubicaciones_desde_menor',
             'sumar_costo_ubicaciones_desde_menor'
           ],
-          apis: ['/api/costos/configurar-stock', '/api/costos/reconciliar-ubicaciones'],
+          apis: ['/api/costos/configurar-stock', '/api/costos/reconciliar-ubicaciones', '/api/migracion/sync-stock-minimo-insumos'],
           hooks: [
             'useTallas', 'useCategorias', 'usePrendas', 'useCostos',
             'useInsumos', 'usePrendaTallaInsumos', 'useComprasInsumos',
@@ -431,20 +432,21 @@
           { id: 'b3-m3', label: 'Portar RPCs de ubicaciones/stock y probar en SQL InsForge.' },
           { id: 'b3-m4', label: 'Portar triggers updated_at y validación ubicaciones.' },
           { id: 'b3-m5', label: 'sync-baseline del bloque; documentar IDs UUID idénticos SB↔IF.' },
-          { id: 'b3-m6', label: 'Dualidad: prod sigue SB; IF es espejo verificado.' }
+          { id: 'b3-m6', label: 'Corte runtime: hooks y páginas de inventario en InsForge (commit e649d05).' }
         ],
         owner: [
-          { id: 'b3-t1', label: 'Prendas: alta, edición, tallas/stock — en prod (SB) sin regresión.' },
-          { id: 'b3-t2', label: 'Insumos + compras + recetas prenda-talla.' },
-          { id: 'b3-t3', label: 'Configurar stock por ubicación (API costos).' },
-          { id: 'b3-t4', label: 'Alertas de stock prendas e insumos.' },
+          { id: 'b3-t1', label: 'Prendas: alta, edición, tallas, recetas — probado en InsForge.' },
+          { id: 'b3-t2', label: 'Insumos + ubicaciones + recetas overoles — probado.' },
+          { id: 'b3-t3', label: 'Costos / precios mayoreo–menudeo — probado.' },
+          { id: 'b3-t4', label: 'Alertas stock prendas e insumos — probado (fix stock_minimo jun 2026).' },
           { id: 'b3-t5', label: 'Verify: conteos IF = SB para las 12 tablas.' },
-          { id: 'b3-t6', label: 'Pedidos y cotizaciones siguen funcionando (no cortados aún).' }
+          { id: 'b3-t6', label: 'Pedidos y cotizaciones híbridos OK (leen costos desde IF).' }
         ],
         env: [
           { id: 'b3-e1', label: 'SUPABASE_SERVICE_ROLE_KEY para migración servidor.' },
           { id: 'b3-e2', label: 'INSFORGE_ADMIN_TOKEN para DDL/raw SQL si Tables API limita.' }
-        ]
+        ],
+        defaultStatus: 'completado'
       },
       {
         id: 'b4',
@@ -681,7 +683,16 @@
     function loadState() {
       try {
         const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) return JSON.parse(raw);
+        if (raw) {
+          const s = JSON.parse(raw);
+          if (!s._revision || s._revision < PLAN_REVISION) {
+            s.statuses = s.statuses || {};
+            s.statuses.b3 = 'completado';
+            s._revision = PLAN_REVISION;
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
+          }
+          return s;
+        }
       } catch (e) {}
       const s = { checks: {}, statuses: {}, notes: {}, open: {} };
       BLOCKS.forEach(b => {
