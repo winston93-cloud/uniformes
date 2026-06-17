@@ -276,7 +276,7 @@
 
   <script>
     const STORAGE_KEY = 'uniformes_plan_migracion_insforge_v1';
-    const PLAN_REVISION = 6; // rev 6: Bloque 5 + Bloque 2 (SAT) cortados a InsForge
+    const PLAN_REVISION = 7; // rev 7: fix JS plan (b2/b5 defaultStatus) + b2/b5 completados
 
     const STATUS_LABELS = {
       pendiente: '⬜ Pendiente',
@@ -364,7 +364,7 @@
         title: 'Catálogos SAT (método y forma de pago)',
         subtitle: 'Completado — runtime en InsForge (corte con Bloque 5)',
         isolation: 'Catálogos SAT en InsForge; API /api/sat-catalogos-pago lee/escribe IF.',
-        defaultStatus: 'completado'
+        defaultStatus: 'completado',
         tech: {
           tablas: ['sat_metodos_pago', 'sat_formas_pago'],
           fks: ['cotizaciones.metodo_pago_id → sat_metodos_pago', 'cotizaciones.forma_pago_id → sat_formas_pago'],
@@ -491,7 +491,7 @@
         title: 'Cotizaciones + Pedidos (núcleo transaccional)',
         subtitle: 'Completado — cotizaciones, pedidos y movimientos en InsForge',
         isolation: 'Corte jun 2026. Núcleo transaccional en InsForge. Supabase queda histórico (cortes, devoluciones, transferencias).',
-        defaultStatus: 'completado'
+        defaultStatus: 'completado',
         isolationWarn: 'Bloque más crítico. Incluye SAT (Bloque 2). Requiere Bloques 3 y 4 en dual verificado.',
         tech: {
           tablas: [
