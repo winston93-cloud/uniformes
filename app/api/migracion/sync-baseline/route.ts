@@ -83,6 +83,7 @@ export async function POST() {
     const auditoriaCopy = await copyTableDataFromSupabaseToInsforge({
       table: 'auditoria',
       truncateDestination: true,
+      auditoriaUniformesOnly: true,
     });
 
     await upsertSyncState({ baseline_ts: nowIso, last_applied_ts: nowIso });

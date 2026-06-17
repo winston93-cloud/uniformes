@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { insforge } from '@/lib/insforge';
 import { getSupabaseErrorMessage } from '@/lib/supabase';
+import { TABLAS_UNIFORMES } from '@/lib/migracion/uniformesTablas';
 
 function clampInt(v: number, min: number, max: number) {
   if (!Number.isFinite(v)) return min;
@@ -15,43 +16,6 @@ function insforgeHostFromUrl(url: string | undefined | null) {
     return null;
   }
 }
-
-const TABLAS_UNIFORMES = [
-  'usuario_perfil',
-  'roles_uniformes',
-  'tallas',
-  'categorias_prendas',
-  'presentaciones',
-  'ubicaciones_almacenamiento',
-  'sucursales',
-  'ciclos_escolares',
-  'usuario',
-  'usuarios',
-  'usuarios_uniformes',
-  'alumno',
-  'externos',
-  'prendas',
-  'insumos',
-  'costos',
-  'prenda_talla_insumos',
-  'compras_insumos',
-  'costo_ubicaciones',
-  'insumo_ubicaciones',
-  'datos_fiscales_cliente',
-  'cotizaciones',
-  'detalle_cotizacion',
-  'pedidos',
-  'detalle_pedidos',
-  'movimientos',
-  'cortes',
-  'detalle_cortes',
-  'transferencias',
-  'detalle_transferencias',
-  'devoluciones',
-  'detalle_devoluciones',
-  'auditoria',
-  'snapshot_insumos_pedido',
-] as const;
 
 export async function GET(req: Request) {
   try {

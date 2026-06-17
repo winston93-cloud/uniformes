@@ -7,9 +7,12 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       message:
-        'InsForge configurado para herramientas de migración (/migracion).\n\nLa app en producción usa Supabase vía lib/supabase.ts (NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY).\nPara copiar datos desde Supabase hacia InsForge mantén también SUPABASE_SERVICE_ROLE_KEY donde aplique.',
+        'Migración InsForge completada (bloques 0–10). Runtime de la app en InsForge.\n\n' +
+        'Herramientas /migracion: verify-all, migrate-block6-10 (auditoría), sync-baseline.\n' +
+        'Supabase queda como respaldo histórico; copias con SUPABASE_SERVICE_ROLE_KEY.',
     });
-  } catch (e: any) {
-    return NextResponse.json({ success: false, error: e?.message || String(e) }, { status: 500 });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }

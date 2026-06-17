@@ -2,44 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { insforge, assertInsforgeConfigured } from '@/lib/insforge';
 import { getSyncState, upsertSyncState } from '@/lib/migracion/syncState';
-
-const TABLAS_UNIFORMES = [
-  'usuario_perfil',
-  'roles_uniformes',
-  'tallas',
-  'categorias_prendas',
-  'presentaciones',
-  'ubicaciones_almacenamiento',
-  'sucursales',
-  'ciclos_escolares',
-  'usuario',
-  'usuarios',
-  'usuarios_uniformes',
-  'alumno',
-  'externos',
-  'prendas',
-  'insumos',
-  'costos',
-  'prenda_talla_insumos',
-  'compras_insumos',
-  'costo_ubicaciones',
-  'insumo_ubicaciones',
-  'datos_fiscales_cliente',
-  'sat_metodos_pago',
-  'sat_formas_pago',
-  'cotizaciones',
-  'detalle_cotizacion',
-  'pedidos',
-  'detalle_pedidos',
-  'movimientos',
-  'cortes',
-  'detalle_cortes',
-  'transferencias',
-  'detalle_transferencias',
-  'devoluciones',
-  'detalle_devoluciones',
-  'snapshot_insumos_pedido',
-] as const;
+import { TABLAS_UNIFORMES } from '@/lib/migracion/uniformesTablas';
 
 const TABLA_ORDER = new Map<string, number>(TABLAS_UNIFORMES.map((t, i) => [t, i]));
 

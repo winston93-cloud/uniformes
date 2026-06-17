@@ -28,7 +28,7 @@ export async function POST(req: Request) {
       if (!BLOCK6_10_TABLES.includes(table as (typeof BLOCK6_10_TABLES)[number])) {
         return NextResponse.json({ success: false, error: `Tabla no permitida: ${table}` }, { status: 400 });
       }
-      const batchSize = table === 'auditoria' ? 2000 : 1000;
+      const batchSize = 1000;
       const chunkSize = table === 'auditoria' ? 100 : 250;
       const r = await copyTableDataFromSupabaseToInsforge({
         table,
@@ -36,6 +36,7 @@ export async function POST(req: Request) {
         chunkSize,
         startOffset: 0,
         truncateDestination: true,
+        auditoriaUniformesOnly: table === 'auditoria',
       });
       results[table] = r;
     }

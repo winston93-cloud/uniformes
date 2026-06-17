@@ -1,6 +1,7 @@
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { insforge } from '@/lib/insforge';
 import { runInsforgeRawSql } from '@/lib/insforgeAdminRawSql';
+import { TABLAS_UNIFORMES } from '@/lib/migracion/uniformesTablas';
 
 function clampInt(v: unknown, min: number, max: number) {
   const n = Number(v);
@@ -51,6 +52,8 @@ export async function copyTableDataFromSupabaseToInsforge(opts: {
   chunkSize?: number;
   startOffset?: number;
   truncateDestination?: boolean;
+  /** Solo filas de tablas Uniformes al copiar auditoría (evita ruido de otros sistemas en la BD compartida). */
+  auditoriaUniformesOnly?: boolean;
   /** Renombres aplicados solo en el fallback Tables API (columnas reservadas en InsForge). */
   tablesApiRename?: Record<string, string>;
 }) {
@@ -63,6 +66,7 @@ export async function copyTableDataFromSupabaseToInsforge(opts: {
   const chunkSize = clampInt(opts.chunkSize ?? 250, 25, 1000);
   const startOffset = clampInt(opts.startOffset ?? 0, 0, 10_000_000);
   const truncateDestination = opts.truncateDestination !== false;
+  const auditoriaUniformesOnly = opts.auditoriaUniformesOnly === true && table === 'auditoria';
 
   const supabaseAdmin = getSupabaseAdmin();
 
@@ -82,13 +86,30 @@ export async function copyTableDataFromSupabaseToInsforge(opts: {
   if (truncateDestination) {
     const fq = `public.${quoteIdent(table)}`;
     try {
-      await runInsforgeRawSql(`TRUNCATE TABLE ${fq} RESTART IDENTITY`);
-    } catch (truncateErr: any) {
+      if (auditoriaUniformesOnly) {
+        await runInsforgeRawSql(
+          `DELETE FROM ${fq} WHERE tabla = ANY($1::text[])`,
+          [[...TABLAS_UNIFORMES]]
+        );
+      } else {
+        await runInsforgeRawSql(`TRUNCATE TABLE ${fq} RESTART IDENTITY`);
+      }
+    } catch (truncateErr: unknown) {
+      const truncateMsg =
+        truncateErr instanceof Error ? truncateErr.message : String(truncateErr);
       try {
-        await runInsforgeRawSql(`DELETE FROM ${fq}`);
-      } catch (delErr: any) {
+        if (auditoriaUniformesOnly) {
+          await runInsforgeRawSql(
+            `DELETE FROM ${fq} WHERE tabla = ANY($1::text[])`,
+            [[...TABLAS_UNIFORMES]]
+          );
+        } else {
+          await runInsforgeRawSql(`DELETE FROM ${fq}`);
+        }
+      } catch (delErr: unknown) {
+        const delMsg = delErr instanceof Error ? delErr.message : String(delErr);
         throw new Error(
-          `No se pudo vaciar destino public.${table}: TRUNCATE ${truncateErr?.message || String(truncateErr)} · DELETE ${delErr?.message || String(delErr)}`
+          `No se pudo vaciar destino public.${table}: TRUNCATE ${truncateMsg} · DELETE ${delMsg}`
         );
       }
     }
@@ -271,13 +292,16 @@ FROM json_to_recordset($1::json) AS x(${recordsetCols});
   let offset = startOffset;
   let totalRead = 0;
   let totalInserted = 0;
+  /** PostgREST (Supabase) suele limitar a 1000 filas por página aunque pidas más. */
+  const pageSize = Math.min(batchSize, 1000);
 
   for (;;) {
     // eslint-disable-next-line no-await-in-loop
-    const { data, error } = await supabaseAdmin
-      .from(table)
-      .select('*')
-      .range(offset, offset + batchSize - 1);
+    let query = supabaseAdmin.from(table).select('*');
+    if (auditoriaUniformesOnly) {
+      query = query.in('tabla', [...TABLAS_UNIFORMES]);
+    }
+    const { data, error } = await query.range(offset, offset + pageSize - 1);
 
     if (error) throw error;
     const rows = data || [];
@@ -328,14 +352,14 @@ FROM json_to_recordset($1::json) AS x(${recordsetCols});
       totalInserted += normalized.length;
     }
 
-    if (rows.length < batchSize) break;
-    offset += batchSize;
+    if (rows.length < pageSize) break;
+    offset += rows.length;
   }
 
   return {
     table,
     startOffset,
-    endOffsetExclusive: offset + batchSize,
+    endOffsetExclusive: offset,
     totalRead,
     totalInserted,
   };

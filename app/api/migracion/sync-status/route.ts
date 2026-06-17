@@ -1,44 +1,21 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { getSyncState } from '@/lib/migracion/syncState';
+import { TABLAS_UNIFORMES } from '@/lib/migracion/uniformesTablas';
 
-const TABLAS_UNIFORMES = [
-  'usuario_perfil',
-  'roles_uniformes',
-  'tallas',
-  'categorias_prendas',
-  'presentaciones',
-  'ubicaciones_almacenamiento',
-  'sucursales',
-  'ciclos_escolares',
-  'usuario',
-  'usuarios',
-  'usuarios_uniformes',
-  'alumno',
-  'externos',
-  'prendas',
-  'insumos',
-  'costos',
-  'prenda_talla_insumos',
-  'compras_insumos',
-  'costo_ubicaciones',
-  'insumo_ubicaciones',
-  'datos_fiscales_cliente',
-  'sat_metodos_pago',
-  'sat_formas_pago',
-  'cotizaciones',
-  'detalle_cotizacion',
-  'pedidos',
-  'detalle_pedidos',
-  'movimientos',
-  'cortes',
-  'detalle_cortes',
-  'transferencias',
-  'detalle_transferencias',
-  'devoluciones',
-  'detalle_devoluciones',
-  'snapshot_insumos_pedido',
-] as const;
+function formatErr(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  if (typeof e === 'object' && e !== null) {
+    const o = e as Record<string, unknown>;
+    if (typeof o.message === 'string') return o.message;
+    try {
+      return JSON.stringify(e);
+    } catch {
+      return String(e);
+    }
+  }
+  return String(e);
+}
 
 export async function GET() {
   try {
@@ -63,9 +40,10 @@ export async function GET() {
       baselineTs,
       lastAppliedTs: lastApplied,
       pendingCount: typeof count === 'number' ? count : null,
+      source: 'supabase_auditoria_uniformes',
+      note: 'Post-corte InsForge: pendientes SB→IF. Tras migración completa debería ser 0; nuevos cambios van a auditoría en InsForge.',
     });
-  } catch (e: any) {
-    return NextResponse.json({ success: false, error: e?.message || String(e) }, { status: 500 });
+  } catch (e: unknown) {
+    return NextResponse.json({ success: false, error: formatErr(e) }, { status: 500 });
   }
 }
-

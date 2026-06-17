@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { fetchCostosRowsByPrenda, normalizarCamposCostoApi } from '@/lib/costoQueries';
 import { normalizarCamposPrendaApi } from '@/lib/insforgeNormalize';
-import { supabase } from '../supabase';
 import { insforgeDb } from '@/lib/insforgeBrowser';
 import type { CategoriaPrenda, Prenda } from '../types';
 

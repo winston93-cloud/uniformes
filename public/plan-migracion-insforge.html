@@ -276,7 +276,7 @@
 
   <script>
     const STORAGE_KEY = 'uniformes_plan_migracion_insforge_v1';
-    const PLAN_REVISION = 9; // rev 9: bloques 6–10 completados (satélites + auditoría)
+    const PLAN_REVISION = 10; // rev 10: migración completa + auditoría/triggers + verify-all
 
     const STATUS_LABELS = {
       pendiente: '⬜ Pendiente',
@@ -291,9 +291,8 @@
         id: 'b0',
         num: '0',
         title: 'Gastos fijos + Producción semanal',
-        subtitle: 'Completado en InsForge (validación cotizaciones en SB hasta Bloque 5)',
+        subtitle: 'Completado en InsForge (validación cotizaciones en InsForge)',
         isolation: 'Operación diaria de pedidos/cotizaciones NO depende de este bloque. Si falla InsForge aquí, solo afecta pantallas de gastos y plan semanal.',
-        isolationWarn: 'Nota técnica (no bloquea Completado): produccion-semanal/plan aún lee detalle_cotizacion en Supabase solo para validar piezas. Se cierra con Bloque 5.',
         tech: {
           tablas: ['semanas', 'gastos_fijos_catalogo', 'gastos_fijos_semanales', 'gastos_fijos_semanales_detalle', 'produccion_plan_semanal', 'produccion_plan_semanal_items'],
           fks: ['gastos_fijos_semanales → semanas', 'gastos_fijos_semanales_detalle → gastos_fijos_semanales + gastos_fijos_catalogo', 'produccion_plan_semanal → semanas', 'produccion_plan_semanal_items → produccion_plan_semanal'],
@@ -709,6 +708,9 @@
               s.statuses.b8 = 'completado';
               s.statuses.b9 = 'completado';
               s.statuses.b10 = 'completado';
+            }
+            if (PLAN_REVISION >= 10) {
+              s.statuses.b0 = 'completado';
             }
             s._revision = PLAN_REVISION;
             localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
