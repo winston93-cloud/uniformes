@@ -238,7 +238,7 @@
         <span class="pill">Proyecto InsForge: q488j9fg</span>
         <span class="pill">Prod: uniformes-mu.vercel.app</span>
         <span class="pill">Dualidad: espejo SB ↔ IF</span>
-        <span class="pill">Actualizado: jun 2026</span>
+        <span class="pill">Actualizado: jun 2026 · rev 8</span>
       </div>
     </header>
 
@@ -276,7 +276,7 @@
 
   <script>
     const STORAGE_KEY = 'uniformes_plan_migracion_insforge_v1';
-    const PLAN_REVISION = 7; // rev 7: fix JS plan (b2/b5 defaultStatus) + b2/b5 completados
+    const PLAN_REVISION = 8; // rev 8: manejo de errores visible si falla el JS del plan
 
     const STATUS_LABELS = {
       pendiente: '⬜ Pendiente',
@@ -926,7 +926,20 @@
       renderBlocks();
     };
 
-    renderBlocks();
+    try {
+      renderBlocks();
+    } catch (err) {
+      console.error(err);
+      const container = document.getElementById('blocks');
+      if (container) {
+        container.innerHTML = `<div class="warn-box" style="margin:1rem 0">
+          <strong>No se pudo cargar el plan de migración.</strong><br>
+          ${String(err && err.message ? err.message : err)}<br><br>
+          Prueba <strong>Ctrl+Shift+R</strong> (recarga forzada) o abre en ventana privada.
+          Si persiste, en consola del navegador: <code>localStorage.removeItem('${STORAGE_KEY}')</code> y recarga.
+        </div>`;
+      }
+    }
   </script>
 </body>
 </html>
