@@ -54,6 +54,8 @@ export async function copyTableDataFromSupabaseToInsforge(opts: {
   truncateDestination?: boolean;
   /** Solo filas de tablas Uniformes al copiar auditoría (evita ruido de otros sistemas en la BD compartida). */
   auditoriaUniformesOnly?: boolean;
+  /** Límite de páginas PostgREST por invocación (evita timeout en tablas grandes). */
+  maxPages?: number;
   /** Renombres aplicados solo en el fallback Tables API (columnas reservadas en InsForge). */
   tablesApiRename?: Record<string, string>;
 }) {
@@ -67,6 +69,7 @@ export async function copyTableDataFromSupabaseToInsforge(opts: {
   const startOffset = clampInt(opts.startOffset ?? 0, 0, 10_000_000);
   const truncateDestination = opts.truncateDestination !== false;
   const auditoriaUniformesOnly = opts.auditoriaUniformesOnly === true && table === 'auditoria';
+  const maxPages = clampInt(opts.maxPages ?? 0, 0, 500);
 
   const supabaseAdmin = getSupabaseAdmin();
 
@@ -294,6 +297,8 @@ FROM json_to_recordset($1::json) AS x(${recordsetCols});
   let totalInserted = 0;
   /** PostgREST (Supabase) suele limitar a 1000 filas por página aunque pidas más. */
   const pageSize = Math.min(batchSize, 1000);
+  let pagesDone = 0;
+  let lastPageSize = 0;
 
   for (;;) {
     // eslint-disable-next-line no-await-in-loop
@@ -306,6 +311,7 @@ FROM json_to_recordset($1::json) AS x(${recordsetCols});
     if (error) throw error;
     const rows = data || [];
     totalRead += rows.length;
+    lastPageSize = rows.length;
     if (rows.length === 0) break;
 
     for (let i = 0; i < rows.length; i += chunkSize) {
@@ -354,12 +360,19 @@ FROM json_to_recordset($1::json) AS x(${recordsetCols});
 
     if (rows.length < pageSize) break;
     offset += rows.length;
+    pagesDone += 1;
+    if (maxPages > 0 && pagesDone >= maxPages) break;
   }
+
+  const hasMore = lastPageSize === pageSize;
 
   return {
     table,
     startOffset,
     endOffsetExclusive: offset,
+    nextOffset: hasMore ? offset : null,
+    hasMore,
+    pagesDone,
     totalRead,
     totalInserted,
   };

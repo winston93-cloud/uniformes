@@ -72,29 +72,40 @@ function baselineErrorHint(original: string): string {
  * Baseline: además de guardar ventana de sync, vuelca `auditoria` Supabase → InsForge
  * (la migración por tabla deja `auditoria` vacía a propósito).
  */
-export async function POST() {
+export async function POST(req: Request) {
   try {
     assertInsforgeConfigured();
-    const nowIso = new Date().toISOString();
+    const body = await req.json().catch(() => ({}));
 
     await ensureAuditoriaTableInInsforge();
-    await vaciarAuditoriaInsforgeAntesDelVolcado();
+    if (body?.truncateFirst !== false && (Number(body?.startOffset ?? 0) || 0) === 0) {
+      await vaciarAuditoriaInsforgeAntesDelVolcado();
+    }
 
+    const startOffset = Number(body?.startOffset ?? 0) || 0;
     const auditoriaCopy = await copyTableDataFromSupabaseToInsforge({
       table: 'auditoria',
-      truncateDestination: true,
+      truncateDestination: startOffset === 0 && body?.truncateFirst !== false,
       auditoriaUniformesOnly: true,
+      startOffset,
+      maxPages: 5,
+      chunkSize: 50,
     });
 
-    await upsertSyncState({ baseline_ts: nowIso, last_applied_ts: nowIso });
+    const nowIso = new Date().toISOString();
+    if (!auditoriaCopy.hasMore) {
+      await upsertSyncState({ baseline_ts: nowIso, last_applied_ts: nowIso });
+    }
 
     return NextResponse.json({
       success: true,
-      baselineTs: nowIso,
-      lastAppliedTs: nowIso,
+      baselineTs: auditoriaCopy.hasMore ? null : nowIso,
+      lastAppliedTs: auditoriaCopy.hasMore ? null : nowIso,
       auditoriaFromSupabase: {
         totalRead: auditoriaCopy.totalRead,
         totalInserted: auditoriaCopy.totalInserted,
+        hasMore: auditoriaCopy.hasMore,
+        nextOffset: auditoriaCopy.nextOffset,
       },
     });
   } catch (e: any) {
