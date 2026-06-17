@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { getSupabaseErrorMessage, supabase, usuarioIdParaRpc } from '@/lib/supabase';
+import { getSupabaseErrorMessage, usuarioIdParaRpc } from '@/lib/supabase';
 import { insforgeDb } from '@/lib/insforgeBrowser';
 import { REFETCH_PEDIDOS_EVENT } from '@/lib/refetchPedidosEvent';
 
@@ -64,8 +64,8 @@ export function usePedidos(sucursal_id?: string) {
 
       if (sucursal_id) {
         const [q1, q2] = await Promise.all([
-          supabase.from('pedidos').select('*').eq('sucursal_id', sucursal_id),
-          supabase.from('pedidos').select('*').is('sucursal_id', null),
+          insforgeDb().from('pedidos').select('*').eq('sucursal_id', sucursal_id),
+          insforgeDb().from('pedidos').select('*').is('sucursal_id', null),
         ]);
         if (q1.error && q2.error) {
           error = q1.error;
@@ -84,11 +84,11 @@ export function usePedidos(sucursal_id?: string) {
           data.sort((a, b) => ts(b) - ts(a));
         }
       } else {
-        const r = await supabase.from('pedidos').select('*').order('created_at', { ascending: false });
+        const r = await insforgeDb().from('pedidos').select('*').order('created_at', { ascending: false });
         data = r.data ?? null;
         error = r.error;
         if (error) {
-          const plain = await supabase.from('pedidos').select('*');
+          const plain = await insforgeDb().from('pedidos').select('*');
           if (!plain.error && plain.data) {
             data = plain.data;
             error = null;
@@ -106,7 +106,7 @@ export function usePedidos(sucursal_id?: string) {
 
       // Sesión (env) puede apuntar a otro UUID que los pedidos migrados en InsForge
       if (sucursal_id && (!data || data.length === 0)) {
-        const fb = await supabase.from('pedidos').select('*');
+        const fb = await insforgeDb().from('pedidos').select('*');
         if (!fb.error && fb.data && fb.data.length > 0) {
           console.warn(
             '[pedidos] Sin resultados para la sucursal de la sesión; mostrando todos los pedidos. Revisa NEXT_PUBLIC_DEFAULT_SUCURSAL_ID vs pedidos.sucursal_id en InsForge.'
@@ -159,7 +159,7 @@ export function usePedidos(sucursal_id?: string) {
       const usuario_uuid = null;
 
       // LLAMAR A LA FUNCIÓN ATÓMICA que hace TODO en una transacción
-      const { data, error } = await supabase.rpc('crear_pedido_atomico', {
+      const { data, error } = await insforgeDb().rpc('crear_pedido_atomico', {
         p_tipo_cliente: pedido.cliente_tipo,
         p_cliente_nombre: pedido.cliente_nombre,
         p_sucursal_id: pedido_sucursal_id || sucursal_id,
@@ -234,7 +234,7 @@ export function usePedidos(sucursal_id?: string) {
     try {
       // COMPLETADO: debe descontar pendientes en BD de forma atómica
       if (nuevoEstado === 'COMPLETADO') {
-        const { data, error } = await supabase.rpc('completar_pedido_atomico', {
+        const { data, error } = await insforgeDb().rpc('completar_pedido_atomico', {
           p_pedido_id: id,
           p_usuario_id: usuarioIdParaRpc(usuario_id),
         });
@@ -250,7 +250,7 @@ export function usePedidos(sucursal_id?: string) {
           return { success: true, warnings };
         }
       } else {
-        const { error } = await supabase
+        const { error } = await insforgeDb()
           .from('pedidos')
           .update({ estado: nuevoEstado })
           .eq('id', id);
@@ -270,7 +270,7 @@ export function usePedidos(sucursal_id?: string) {
   const eliminarPedidoDefinitivo = async (pedidoId: string, motivo?: string) => {
     try {
       // 1) Cancelar todo (reponer stock de entregado y borrar detalle_pedidos) de forma atómica.
-      const { data, error } = await supabase.rpc('cancelar_pedido_atomico', {
+      const { data, error } = await insforgeDb().rpc('cancelar_pedido_atomico', {
         p_pedido_id: pedidoId,
         p_usuario_id: null,
         p_items: null,
@@ -282,7 +282,7 @@ export function usePedidos(sucursal_id?: string) {
       }
 
       // 2) Borrar el pedido (definitivo). Si quedara algún detalle, FK debe cascade.
-      const { error: delErr } = await supabase.from('pedidos').delete().eq('id', pedidoId);
+      const { error: delErr } = await insforgeDb().from('pedidos').delete().eq('id', pedidoId);
       if (delErr) throw delErr;
 
       await fetchPedidos();

@@ -6,7 +6,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import ModalDevolucion from '@/components/ModalDevolucion';
-import { supabase } from '@/lib/supabase';
 import { insforgeDb } from '@/lib/insforgeBrowser';
 import {
   handlersTapSeleccionDropdown,
@@ -791,7 +790,7 @@ function PedidosPageContent() {
       console.log('🔍 Buscando detalles del pedido:', pedido.id);
       
       // Obtener los detalles del pedido
-      const { data: detalles, error } = await supabase
+      const { data: detalles, error } = await insforgeDb()
         .from('detalle_pedidos')
         .select('*')
         .eq('pedido_id', pedido.id);
@@ -1912,7 +1911,7 @@ function PedidosPageContent() {
                           }
                           if (v === 'DEVOLUCION') {
                             // Cargar detalles del pedido con JOIN de prendas y tallas (incluye pendiente)
-                            const { data: detalles, error } = await supabase
+                            const { data: detalles, error } = await insforgeDb()
                               .from('detalle_pedidos')
                               .select(
                                 `

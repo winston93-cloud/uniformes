@@ -243,7 +243,7 @@ export function usePrendas() {
   const deletePrenda = async (id: string) => {
     try {
       // 1. Eliminar detalle_pedidos por prenda_id (relación directa)
-      const { error: detallePrendaError } = await supabase
+      const { error: detallePrendaError } = await insforgeDb()
         .from('detalle_pedidos')
         .delete()
         .eq('prenda_id', id);
@@ -263,7 +263,7 @@ export function usePrendas() {
       if (costosIds.length > 0) {
         
         // Eliminar detalle_pedidos asociados por costo_id
-        const { error: detalleCostoError } = await supabase
+        const { error: detalleCostoError } = await insforgeDb()
           .from('detalle_pedidos')
           .delete()
           .in('costo_id', costosIds);
@@ -271,7 +271,7 @@ export function usePrendas() {
         if (detalleCostoError) throw detalleCostoError;
 
         // Eliminar movimientos asociados
-        const { error: movimientosError } = await supabase
+        const { error: movimientosError } = await insforgeDb()
           .from('movimientos')
           .delete()
           .in('costo_id', costosIds);

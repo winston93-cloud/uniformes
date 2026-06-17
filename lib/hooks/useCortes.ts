@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
+import { insforgeDb } from '@/lib/insforgeBrowser';
 import type { Corte } from '../types';
 
 export function useCortes() {
@@ -37,13 +38,12 @@ export function useCortes() {
       const fechaInicioObj = new Date(fechaInicio + 'T00:00:00');
       const fechaFinObj = new Date(fechaFin + 'T23:59:59');
 
-      const { data: pedidos, error: pedidosError } = await supabase
+      const { data: pedidos, error: pedidosError } = await insforgeDb()
         .from('pedidos')
         .select('id, total, estado')
-        .eq('estado', 'LIQUIDADO')
-        .not('fecha_liquidacion', 'is', null)
-        .gte('fecha_liquidacion', fechaInicioObj.toISOString())
-        .lte('fecha_liquidacion', fechaFinObj.toISOString());
+        .eq('estado', 'COMPLETADO')
+        .gte('created_at', fechaInicioObj.toISOString())
+        .lte('created_at', fechaFinObj.toISOString());
 
       if (pedidosError) throw pedidosError;
 

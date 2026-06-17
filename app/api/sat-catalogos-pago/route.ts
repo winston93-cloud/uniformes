@@ -1,22 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
+import { assertInsforgeConfigured, getInsforge } from '@/lib/insforge';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 type SatTipo = 'metodo' | 'forma';
-
-function getSupabaseServer() {
-  try {
-    return getSupabaseAdmin();
-  } catch {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    if (!url || !key) throw new Error('Supabase no configurado en el servidor');
-    return createClient(url, key, { auth: { persistSession: false } });
-  }
-}
 
 function tablaDe(tipo: SatTipo) {
   return tipo === 'metodo' ? 'sat_metodos_pago' : 'sat_formas_pago';
@@ -44,10 +32,11 @@ function mensajeError(err: unknown): string {
 
 export async function GET() {
   try {
-    const supabase = getSupabaseServer();
+    assertInsforgeConfigured();
+    const db = getInsforge().database;
     const [mRes, fRes] = await Promise.all([
-      supabase.from('sat_metodos_pago').select('*').order('orden', { ascending: true }),
-      supabase.from('sat_formas_pago').select('*').order('orden', { ascending: true }),
+      db.from('sat_metodos_pago').select('*').order('orden', { ascending: true }),
+      db.from('sat_formas_pago').select('*').order('orden', { ascending: true }),
     ]);
     if (mRes.error) throw mRes.error;
     if (fRes.error) throw fRes.error;
@@ -60,6 +49,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    assertInsforgeConfigured();
     const body = await request.json();
     const tipo = body.tipo as SatTipo;
     if (tipo !== 'metodo' && tipo !== 'forma') {
@@ -72,7 +62,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Clave y descripción son obligatorias' }, { status: 400 });
     }
 
-    const supabase = getSupabaseServer();
+    const db = getInsforge().database;
     const tabla = tablaDe(tipo);
     const row = {
       clave,
@@ -84,16 +74,16 @@ export async function POST(request: NextRequest) {
     };
 
     if (row.es_default) {
-      const { error: defErr } = await supabase.from(tabla).update({ es_default: false }).eq('es_default', true);
+      const { error: defErr } = await db.from(tabla).update({ es_default: false }).eq('es_default', true);
       if (defErr) throw defErr;
     }
 
     const id = body.id as string | undefined;
     if (id && !id.startsWith('fallback-')) {
-      const { error: upErr } = await supabase.from(tabla).update(row).eq('id', id);
+      const { error: upErr } = await db.from(tabla).update(row).eq('id', id);
       if (upErr) throw upErr;
     } else {
-      const { error: insErr } = await supabase.from(tabla).insert([row]);
+      const { error: insErr } = await db.from(tabla).insert([row]);
       if (insErr) throw insErr;
     }
 
@@ -106,6 +96,7 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    assertInsforgeConfigured();
     const { searchParams } = new URL(request.url);
     const tipo = searchParams.get('tipo') as SatTipo | null;
     const id = searchParams.get('id');
@@ -113,8 +104,8 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Parámetros inválidos' }, { status: 400 });
     }
 
-    const supabase = getSupabaseServer();
-    const { error: delErr } = await supabase.from(tablaDe(tipo)).delete().eq('id', id);
+    const db = getInsforge().database;
+    const { error: delErr } = await db.from(tablaDe(tipo)).delete().eq('id', id);
     if (delErr) throw delErr;
 
     return NextResponse.json({ ok: true });

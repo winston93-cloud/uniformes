@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
 import { insforgeDb } from '@/lib/insforgeBrowser';
 
 export interface InsumoFaltante {
@@ -31,10 +30,10 @@ export function useInsumosFaltantes() {
       setError(null);
 
       // 1. Obtener todos los pedidos en estado "PEDIDO" (no entregados)
-      const { data: pedidosPendientes, error: errorPedidos } = await supabase
+      const { data: pedidosPendientes, error: errorPedidos } = await insforgeDb()
         .from('pedidos')
         .select('id')
-        .eq('estado', 'PEDIDO');
+        .eq('estado', 'PENDIENTE');
 
       if (errorPedidos) throw errorPedidos;
       if (!pedidosPendientes || pedidosPendientes.length === 0) {
@@ -46,7 +45,7 @@ export function useInsumosFaltantes() {
       const pedidosIds = pedidosPendientes.map((p) => p.id);
 
       // 2. Obtener todos los detalles de esos pedidos (qué prendas-tallas se vendieron)
-      const { data: detallesPedidos, error: errorDetalles } = await supabase
+      const { data: detallesPedidos, error: errorDetalles } = await insforgeDb()
         .from('detalle_pedidos')
         .select(`
           cantidad,

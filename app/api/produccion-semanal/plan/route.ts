@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { insforge, assertInsforgeConfigured } from '@/lib/insforge';
 import { getWeekForDate, toISODate } from '@/lib/produccion-semanal-week';
-import { supabase, getSupabaseErrorMessage } from '@/lib/supabase';
+import { getSupabaseErrorMessage } from '@/lib/supabase';
 
 export const runtime = 'nodejs';
 
@@ -143,7 +143,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (detalleIds.length > 0) {
-      const { data: detRows, error: detErr } = await supabase
+      const { data: detRows, error: detErr } = await insforge.database
         .from('detalle_cotizacion')
         .select('id, cantidad')
         .in('id', detalleIds);

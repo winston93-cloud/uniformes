@@ -4,7 +4,6 @@ import { useEffect, useState, use } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { mapAlumnoRow } from '@/lib/hooks/useAlumnos';
-import { supabase } from '@/lib/supabase';
 import { insforgeDb } from '@/lib/insforgeBrowser';
 import { useAuth } from '@/contexts/AuthContext';
 import LayoutWrapper from '@/components/LayoutWrapper';
@@ -112,7 +111,7 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
       setLoading(true);
       
       // Obtener pedido con sucursal
-      const { data: pedidoData, error: pedidoError } = await supabase
+      const { data: pedidoData, error: pedidoError } = await insforgeDb()
         .from('pedidos')
         .select(`
           *,
@@ -141,7 +140,7 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
       }
 
       // Obtener detalles con nombres de prendas y tallas
-      const { data: detallesData, error: detallesError } = await supabase
+      const { data: detallesData, error: detallesError } = await insforgeDb()
         .from('detalle_pedidos')
         .select(`
           *,
@@ -154,7 +153,7 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
       if (detallesError) throw detallesError;
 
       // Obtener movimientos de inventario relacionados con este pedido
-      const { data: movimientosData } = await supabase
+      const { data: movimientosData } = await insforgeDb()
         .from('movimientos')
         .select(`
           *,

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { supabase } from '../supabase';
 import { insforgeDb } from '@/lib/insforgeBrowser';
 import { compararTallas } from '../ordenTallas';
 
@@ -62,7 +61,7 @@ export function useReportes(sucursal_id?: string) {
 
       // En este proyecto los estados son PENDIENTE/COMPLETADO/CANCELADO...
       // Para ventas por periodo incluimos ingresos de pedidos PENDIENTE + COMPLETADO (excluye cancelados).
-      let query = supabase
+      let query = insforgeDb()
         .from('pedidos')
         .select('id, created_at, updated_at, fecha, total, tipo_cliente, cliente_nombre, estado, sucursal_id')
         .in('estado', ['PENDIENTE', 'COMPLETADO'])
@@ -113,7 +112,7 @@ export function useReportes(sucursal_id?: string) {
   const prendasMasVendidas = async (fechaInicio?: string, fechaFin?: string): Promise<PrendaVendida[]> => {
     try {
       setLoading(true);
-      let query = supabase
+      let query = insforgeDb()
         .from('detalle_pedidos')
         .select(`
           cantidad,
@@ -126,7 +125,7 @@ export function useReportes(sucursal_id?: string) {
 
       if (fechaInicio && fechaFin) {
         const { startIso, endIso } = rangoLocalAIso(fechaInicio, fechaFin);
-        const { data: pedidos } = await supabase
+        const { data: pedidos } = await insforgeDb()
           .from('pedidos')
           .select('id')
           .in('estado', ['COMPLETADO'])
@@ -286,10 +285,10 @@ export function useReportes(sucursal_id?: string) {
   const pedidosPendientes = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      const { data, error } = await insforgeDb()
         .from('pedidos')
         .select('*')
-        .in('estado', ['PEDIDO', 'ENTREGADO'])
+        .in('estado', ['PENDIENTE'])
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -307,7 +306,7 @@ export function useReportes(sucursal_id?: string) {
       setLoading(true);
       
       // Obtener pedidos liquidados con nombre del cliente
-      const { data: pedidos, error } = await supabase
+      const { data: pedidos, error } = await insforgeDb()
         .from('pedidos')
         .select('cliente_nombre, tipo_cliente, total')
         .in('estado', ['COMPLETADO']);
@@ -356,8 +355,8 @@ export function useReportes(sucursal_id?: string) {
         { count: totalAlumnos },
         { data: costos },
       ] = await Promise.all([
-        supabase.from('pedidos').select('*', { count: 'exact', head: true }),
-        supabase.from('pedidos').select('total').in('estado', ['COMPLETADO']),
+        insforgeDb().from('pedidos').select('*', { count: 'exact', head: true }),
+        insforgeDb().from('pedidos').select('total').in('estado', ['COMPLETADO']),
         insforgeDb().from('alumno').select('*', { count: 'exact', head: true }),
         insforgeDb().from('costos').select('stock').eq('activo', true),
       ]);
@@ -391,7 +390,7 @@ export function useReportes(sucursal_id?: string) {
       const { startLocal, endLocal } = rangoLocalAIso(fechaInicio, fechaFin);
 
       // Obtener pedidos liquidados en el periodo
-      const { data: pedidos, error: pedidosError } = await supabase
+      const { data: pedidos, error: pedidosError } = await insforgeDb()
         .from('pedidos')
         .select('id, created_at')
         .in('estado', ['COMPLETADO']);
@@ -418,7 +417,7 @@ export function useReportes(sucursal_id?: string) {
       const pedidoIds = pedidosEnPeriodo.map((p: any) => p.id);
 
       // Obtener detalles de pedidos
-      const { data: detalles, error: detallesError } = await supabase
+      const { data: detalles, error: detallesError } = await insforgeDb()
         .from('detalle_pedidos')
         .select(`
           cantidad,

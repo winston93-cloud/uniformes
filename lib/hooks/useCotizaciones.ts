@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { supabase, getSupabaseErrorMessage } from '@/lib/supabase';
+import { getSupabaseErrorMessage } from '@/lib/supabase';
 import { insforgeDb } from '@/lib/insforgeBrowser';
 import type { Alumno, Cotizacion, DetalleCotizacion, Externo } from '@/lib/types';
 import { compareCotizacionesPorFechaCotizacionDesc } from '@/lib/cotizacionesSort';
@@ -112,12 +112,12 @@ export function useCotizaciones(options?: { autoCargar?: boolean }) {
       setCargando(true);
       setError(null);
 
-      let q = await supabase
+      let q = await insforgeDb()
         .from('cotizaciones')
         .select('*')
         .order('fecha_cotizacion', { ascending: false });
       if (q.error) {
-        q = await supabase.from('cotizaciones').select('*').order('created_at', { ascending: false });
+        q = await insforgeDb().from('cotizaciones').select('*').order('created_at', { ascending: false });
       }
       if (q.error) throw q.error;
 
@@ -134,7 +134,7 @@ export function useCotizaciones(options?: { autoCargar?: boolean }) {
   // Obtener una cotización con su detalle
   const obtenerCotizacion = useCallback(async (id: string) => {
     try {
-      const { data: cotRaw, error: cotError } = await supabase.from('cotizaciones').select('*').eq('id', id).single();
+      const { data: cotRaw, error: cotError } = await insforgeDb().from('cotizaciones').select('*').eq('id', id).single();
 
       if (cotError) throw cotError;
 
@@ -143,7 +143,7 @@ export function useCotizaciones(options?: { autoCargar?: boolean }) {
       ]);
       const cotizacion = cotizacionEnriquecida;
 
-      const { data: detalle, error: detError } = await supabase
+      const { data: detalle, error: detError } = await insforgeDb()
         .from('detalle_cotizacion')
         .select('*')
         .eq('cotizacion_id', id)
@@ -161,7 +161,7 @@ export function useCotizaciones(options?: { autoCargar?: boolean }) {
   // Generar folio automático
   const generarFolio = async (): Promise<string> => {
     try {
-      const { data, error } = await supabase.rpc('generar_folio_cotizacion');
+      const { data, error } = await insforgeDb().rpc('generar_folio_cotizacion');
       if (error) throw error;
       return data as string;
     } catch (err) {
@@ -204,7 +204,7 @@ export function useCotizaciones(options?: { autoCargar?: boolean }) {
       }
 
       // 3. Crear cotización
-      const { data: cotizacion, error: cotError } = await supabase
+      const { data: cotizacion, error: cotError } = await insforgeDb()
         .from('cotizaciones')
         .insert([{
           folio,
@@ -242,7 +242,7 @@ export function useCotizaciones(options?: { autoCargar?: boolean }) {
         };
       });
 
-      const { error: detError } = await supabase
+      const { error: detError } = await insforgeDb()
         .from('detalle_cotizacion')
         .insert(partidas);
 
@@ -288,7 +288,7 @@ export function useCotizaciones(options?: { autoCargar?: boolean }) {
         };
       }
 
-      const { data: cotizacion, error: cotError } = await supabase
+      const { data: cotizacion, error: cotError } = await insforgeDb()
         .from('cotizaciones')
         .update({
           alumno_id: datos.tipo_cliente === 'alumno' ? alumnoId : null,
@@ -315,7 +315,7 @@ export function useCotizaciones(options?: { autoCargar?: boolean }) {
 
       if (cotError) throw cotError;
 
-      const { error: delErr } = await supabase
+      const { error: delErr } = await insforgeDb()
         .from('detalle_cotizacion')
         .delete()
         .eq('cotizacion_id', cotizacionId);
@@ -331,7 +331,7 @@ export function useCotizaciones(options?: { autoCargar?: boolean }) {
         };
       });
 
-      const { error: insErr } = await supabase.from('detalle_cotizacion').insert(partidas);
+      const { error: insErr } = await insforgeDb().from('detalle_cotizacion').insert(partidas);
       if (insErr) throw insErr;
 
       await obtenerCotizaciones();
@@ -345,7 +345,7 @@ export function useCotizaciones(options?: { autoCargar?: boolean }) {
   // Actualizar estado de cotización (solo avance: no se puede retroceder en el flujo)
   const actualizarEstado = async (id: string, estado: 'emitido' | 'aprobado' | 'trabajando' | 'terminado') => {
     try {
-      const { data: row, error: fetchErr } = await supabase
+      const { data: row, error: fetchErr } = await insforgeDb()
         .from('cotizaciones')
         .select('estado')
         .eq('id', id)
@@ -361,7 +361,7 @@ export function useCotizaciones(options?: { autoCargar?: boolean }) {
         };
       }
 
-      const { error } = await supabase
+      const { error } = await insforgeDb()
         .from('cotizaciones')
         .update({ estado })
         .eq('id', id);
@@ -381,7 +381,7 @@ export function useCotizaciones(options?: { autoCargar?: boolean }) {
   // Actualizar PDF URL
   const actualizarPdfUrl = async (id: string, pdfUrl: string) => {
     try {
-      const { error } = await supabase
+      const { error } = await insforgeDb()
         .from('cotizaciones')
         .update({ pdf_url: pdfUrl })
         .eq('id', id);
@@ -398,13 +398,13 @@ export function useCotizaciones(options?: { autoCargar?: boolean }) {
   const eliminarCotizacion = async (id: string) => {
     try {
       // Intentar borrar detalle primero (además de depender de ON DELETE CASCADE)
-      const { error: detError } = await supabase
+      const { error: detError } = await insforgeDb()
         .from('detalle_cotizacion')
         .delete()
         .eq('cotizacion_id', id);
       if (detError) throw detError;
 
-      const { error } = await supabase
+      const { error } = await insforgeDb()
         .from('cotizaciones')
         .delete()
         .eq('id', id);

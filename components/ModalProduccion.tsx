@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight, X, Check, FileText, Pencil, FileDown } from 'lucide-react';
 import { useCotizaciones } from '@/lib/hooks/useCotizaciones';
-import { supabase } from '@/lib/supabase';
 import { insforgeDb } from '@/lib/insforgeBrowser';
 import type { Cotizacion, DetalleCotizacion, Costo } from '@/lib/types';
 import {
@@ -426,7 +425,7 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
     if (ids.length === 0) return;
     let cancelled = false;
     (async () => {
-      const { data, error } = await supabase.from('detalle_cotizacion').select('id, costo_id').in('id', ids);
+      const { data, error } = await insforgeDb().from('detalle_cotizacion').select('id, costo_id').in('id', ids);
       if (cancelled || error || !data?.length) return;
       const ext: Record<string, string> = {};
       const costoIds: string[] = [];

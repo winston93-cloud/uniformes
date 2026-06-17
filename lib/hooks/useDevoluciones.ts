@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { filtrarFilasPorSucursalSiHayColumna } from '@/lib/sucursalCliente';
 import { getSupabaseErrorMessage, supabase } from '@/lib/supabase';
+import { insforgeDb } from '@/lib/insforgeBrowser';
 
 function readFk(row: Record<string, unknown>, snake: string, camel: string): string | null {
   const v = row[snake] ?? row[camel];
@@ -108,7 +109,7 @@ export function useDevoluciones(sucursal_id?: string) {
 
       let pedidoPorId = new Map<string, { cliente_nombre: string; total: number }>();
       if (pedidoIds.length > 0) {
-        const pr = await supabase.from('pedidos').select('id, cliente_nombre, total').in('id', pedidoIds);
+        const pr = await insforgeDb().from('pedidos').select('id, cliente_nombre, total').in('id', pedidoIds);
         if (!pr.error && pr.data) {
           pedidoPorId = new Map(
             pr.data.map((p) => {

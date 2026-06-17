@@ -276,7 +276,7 @@
 
   <script>
     const STORAGE_KEY = 'uniformes_plan_migracion_insforge_v1';
-    const PLAN_REVISION = 5; // rev 5: Bloque 5 espejo — DDL + RPCs + datos en InsForge
+    const PLAN_REVISION = 6; // rev 6: Bloque 5 + Bloque 2 (SAT) cortados a InsForge
 
     const STATUS_LABELS = {
       pendiente: '⬜ Pendiente',
@@ -362,8 +362,9 @@
         id: 'b2',
         num: '2',
         title: 'Catálogos SAT (método y forma de pago)',
-        subtitle: 'Solo lectura operativa — cortar junto con cotizaciones (Bloque 5)',
-        isolation: 'Catálogos pequeños. Si fallan en InsForge, cotizaciones en Supabase siguen. No migrar runtime hasta Bloque 5.',
+        subtitle: 'Completado — runtime en InsForge (corte con Bloque 5)',
+        isolation: 'Catálogos SAT en InsForge; API /api/sat-catalogos-pago lee/escribe IF.',
+        defaultStatus: 'completado'
         tech: {
           tablas: ['sat_metodos_pago', 'sat_formas_pago'],
           fks: ['cotizaciones.metodo_pago_id → sat_metodos_pago', 'cotizaciones.forma_pago_id → sat_formas_pago'],
@@ -378,7 +379,7 @@
           { id: 'b2-m1', label: 'DDL sat_* en InsForge + seed/catálogo SAT.' },
           { id: 'b2-m2', label: 'Copiar filas y verify count.' },
           { id: 'b2-m3', label: 'Añadir tablas a TABLAS_MIGRACION_ORDER / insforge-tables en repo.' },
-          { id: 'b2-m4', label: 'Mantener dualidad: API sigue en Supabase hasta corte Bloque 5.' }
+          { id: 'b2-m4', label: 'Corte runtime: API sat-catalogos-pago → InsForge. ✓' }
         ],
         owner: [
           { id: 'b2-t1', label: 'Cotización: dropdowns método/forma de pago cargan (en SB hasta corte).' },
@@ -391,7 +392,7 @@
         num: '3',
         title: 'Inventario maestro (ubicaciones + prendas + insumos)',
         subtitle: 'Completado — runtime en InsForge (prendas, costos, insumos, stock, ubicaciones)',
-        isolation: 'Corte hecho (jun 2026). Inventario maestro vive en InsForge. Pedidos/cotizaciones siguen en Supabase hasta Bloque 5.',
+        isolation: 'Corte hecho (jun 2026). Inventario maestro vive en InsForge. Pedidos/cotizaciones también en InsForge (B5).',
         isolationWarn: 'Post-corte: fix stock_minimo insumos + sync desde SB (API sync-stock-minimo-insumos).',
         tech: {
           tablas: [
@@ -453,7 +454,7 @@
         num: '4',
         title: 'Clientes y datos fiscales',
         subtitle: 'Completado — runtime en InsForge (alumnos, externos, fiscales, sync MySQL)',
-        isolation: 'Corte jun 2026. Clientes y datos fiscales en InsForge. Cotizaciones/pedidos siguen en Supabase (Bloque 5).',
+        isolation: 'Corte jun 2026. Clientes en InsForge. Transaccional (B5) también en IF.',
         tech: {
           tablas: ['alumno', 'externos', 'datos_fiscales_cliente'],
           fks: ['datos_fiscales.alumno_id TEXT (UUID legado o id numérico)', 'datos_fiscales.externo_id → externos'],
@@ -488,9 +489,9 @@
         id: 'b5',
         num: '5',
         title: 'Cotizaciones + Pedidos (núcleo transaccional)',
-        subtitle: 'Fase espejo — DDL + RPCs + réplica datos en InsForge; prod sigue en Supabase',
-        isolation: 'Hasta el corte, prod 100% Supabase. Réplica en IF lista para pruebas; rollback = no tocar hooks.',
-        defaultStatus: 'pruebas'
+        subtitle: 'Completado — cotizaciones, pedidos y movimientos en InsForge',
+        isolation: 'Corte jun 2026. Núcleo transaccional en InsForge. Supabase queda histórico (cortes, devoluciones, transferencias).',
+        defaultStatus: 'completado'
         isolationWarn: 'Bloque más crítico. Incluye SAT (Bloque 2). Requiere Bloques 3 y 4 en dual verificado.',
         tech: {
           tablas: [
@@ -525,8 +526,8 @@
           { id: 'b5-m4', label: 'Portar triggers cotización→pedido e insumos al trabajar. ✓ (fix tabla alumno)' },
           { id: 'b5-m5', label: 'Copia datos históricos + verify. API /api/migracion/migrate-block5' },
           { id: 'b5-m6', label: 'sync-apply ventana de mantenimiento antes de cualquier corte.' },
-          { id: 'b5-m7', label: 'Corte runtime SOLO tras OK Alexx: hooks → InsForge o feature flag.' },
-          { id: 'b5-m8', label: 'Actualizar produccion-semanal/plan: detalle_cotizacion desde InsForge.' }
+          { id: 'b5-m7', label: 'Corte runtime: hooks → InsForge. ✓ jun 2026' },
+          { id: 'b5-m8', label: 'produccion-semanal/plan: detalle_cotizacion desde InsForge. ✓' }
         ],
         owner: [
           { id: 'b5-t1', label: 'Cotización: crear, editar partidas, folio, PDF, método/forma pago.' },
@@ -693,6 +694,10 @@
             if (PLAN_REVISION >= 3) s.statuses.b4 = 'pruebas';
             if (PLAN_REVISION >= 4) s.statuses.b4 = 'completado';
             if (PLAN_REVISION >= 5) s.statuses.b5 = 'pruebas';
+            if (PLAN_REVISION >= 6) {
+              s.statuses.b2 = 'completado';
+              s.statuses.b5 = 'completado';
+            }
             s._revision = PLAN_REVISION;
             localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
           }
