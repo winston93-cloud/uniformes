@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { supabase } from '../supabase';
+import { insforgeDb } from '@/lib/insforgeBrowser';
 import { compararTallas } from '../ordenTallas';
 
 export interface ReporteVentas {
@@ -179,7 +180,7 @@ export function useReportes(sucursal_id?: string) {
   const stockBajo = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      const { data, error } = await insforgeDb()
         .from('costos')
         .select(`
           *,
@@ -229,7 +230,7 @@ export function useReportes(sucursal_id?: string) {
       const prendaIds = new Set<string>();
 
       if (categoriaIds.length > 0) {
-        const { data: prendasCat, error: errPrendas } = await supabase
+        const { data: prendasCat, error: errPrendas } = await insforgeDb()
           .from('prendas')
           .select('id')
           .in('categoria_id', categoriaIds);
@@ -238,7 +239,7 @@ export function useReportes(sucursal_id?: string) {
       }
 
       if (incluirSinCategoria) {
-        const { data: prendasSin, error: errSin } = await supabase
+        const { data: prendasSin, error: errSin } = await insforgeDb()
           .from('prendas')
           .select('id')
           .is('categoria_id', null);
@@ -249,7 +250,7 @@ export function useReportes(sucursal_id?: string) {
       if (prendaIds.size === 0) return [];
 
       const ids = Array.from(prendaIds);
-      const { data, error } = await supabase
+      const { data, error } = await insforgeDb()
         .from('costos')
         .select(`
           id,
@@ -358,7 +359,7 @@ export function useReportes(sucursal_id?: string) {
         supabase.from('pedidos').select('*', { count: 'exact', head: true }),
         supabase.from('pedidos').select('total').in('estado', ['COMPLETADO']),
         supabase.from('alumno').select('*', { count: 'exact', head: true }),
-        supabase.from('costos').select('stock').eq('activo', true),
+        insforgeDb().from('costos').select('stock').eq('activo', true),
       ]);
 
       const ventasTotales = pedidosLiquidados?.reduce((sum, p) => sum + parseFloat(p.total.toString()), 0) || 0;
@@ -433,7 +434,7 @@ export function useReportes(sucursal_id?: string) {
       if (detallesError) throw detallesError;
 
       // Obtener precios de compra de costos
-      const { data: costos, error: costosError } = await supabase
+      const { data: costos, error: costosError } = await insforgeDb()
         .from('costos')
         .select('prenda_id, talla_id, precio_compra, precio_venta');
 

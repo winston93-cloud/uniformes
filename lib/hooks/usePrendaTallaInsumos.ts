@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { insforgeDb } from '@/lib/insforgeBrowser';
 
 export interface PrendaTallaInsumo {
   id: string;
@@ -42,7 +42,7 @@ async function enrichPrendaTallaInsumosRows(
   let presMap = new Map<string, { nombre: string; descripcion: string }>();
 
   if (insumoIds.length > 0) {
-    const { data: insRows, error: insErr } = await supabase
+    const { data: insRows, error: insErr } = await insforgeDb()
       .from('insumos')
       .select('id, nombre, presentacion_id')
       .in('id', insumoIds);
@@ -61,7 +61,7 @@ async function enrichPrendaTallaInsumosRows(
       ),
     ];
     if (presIds.length > 0) {
-      const { data: prs, error: prErr } = await supabase
+      const { data: prs, error: prErr } = await insforgeDb()
         .from('presentaciones')
         .select('id, nombre, descripcion')
         .in('id', presIds);
@@ -115,7 +115,7 @@ export function usePrendaTallaInsumos(prendaId?: string, tallaId?: string) {
     setError(null);
 
     try {
-      let q = supabase
+      let q = insforgeDb()
         .from('prenda_talla_insumos')
         .select('*')
         .eq('prenda_id', prendaId)
@@ -124,7 +124,7 @@ export function usePrendaTallaInsumos(prendaId?: string, tallaId?: string) {
 
       let { data, error: fetchError } = await q;
       if (fetchError) {
-        const fb = await supabase
+        const fb = await insforgeDb()
           .from('prenda_talla_insumos')
           .select('*')
           .eq('prenda_id', prendaId)
@@ -158,7 +158,7 @@ export function usePrendaTallaInsumos(prendaId?: string, tallaId?: string) {
       throw new Error('Prenda ID y Talla ID son requeridos');
     }
 
-    const { data, error: createError } = await supabase
+    const { data, error: createError } = await insforgeDb()
       .from('prenda_talla_insumos')
       .insert({
         prenda_id: prendaId,
@@ -177,7 +177,7 @@ export function usePrendaTallaInsumos(prendaId?: string, tallaId?: string) {
   };
 
   const updateInsumo = async (id: string, cantidad: number) => {
-    const { error: updateError } = await supabase
+    const { error: updateError } = await insforgeDb()
       .from('prenda_talla_insumos')
       .update({ cantidad })
       .eq('id', id);
@@ -188,7 +188,7 @@ export function usePrendaTallaInsumos(prendaId?: string, tallaId?: string) {
   };
 
   const deleteInsumo = async (id: string) => {
-    const { error: deleteError } = await supabase.from('prenda_talla_insumos').delete().eq('id', id);
+    const { error: deleteError } = await insforgeDb().from('prenda_talla_insumos').delete().eq('id', id);
 
     if (deleteError) throw deleteError;
 
@@ -197,7 +197,7 @@ export function usePrendaTallaInsumos(prendaId?: string, tallaId?: string) {
 
   const getInsumosByPrendaTalla = async (prendaIdParam: string, tallaIdParam: string) => {
     try {
-      const { data, error: fetchError } = await supabase
+      const { data, error: fetchError } = await insforgeDb()
         .from('prenda_talla_insumos')
         .select('*')
         .eq('prenda_id', prendaIdParam)

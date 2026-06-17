@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '../supabase';
+import { insforgeDb } from '@/lib/insforgeBrowser';
 import type { Talla } from '../types';
 
 export function useTallas() {
@@ -12,15 +12,15 @@ export function useTallas() {
   const fetchTallas = async () => {
     try {
       setLoading(true);
-      const rpc = await supabase.rpc('obtener_tallas_ordenadas');
+      const rpc = await insforgeDb().rpc('obtener_tallas_ordenadas');
       if (!rpc.error && rpc.data != null && (rpc.data as unknown[]).length > 0) {
         setTallas((rpc.data || []) as Talla[]);
         setError(null);
         return;
       }
-      let fb = await supabase.from('tallas').select('*').order('orden', { ascending: true });
+      let fb = await insforgeDb().from('tallas').select('*').order('orden', { ascending: true });
       if (fb.error) {
-        fb = await supabase.from('tallas').select('*');
+        fb = await insforgeDb().from('tallas').select('*');
       }
       if (fb.error) throw fb.error;
       const rows = [...(fb.data || [])];
@@ -46,7 +46,7 @@ export function useTallas() {
 
   const createTalla = async (talla: Omit<Talla, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await insforgeDb()
         .from('tallas')
         .insert([talla])
         .select()
@@ -62,7 +62,7 @@ export function useTallas() {
 
   const updateTalla = async (id: string, updates: Partial<Talla>) => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await insforgeDb()
         .from('tallas')
         .update(updates)
         .eq('id', id)
@@ -79,7 +79,7 @@ export function useTallas() {
 
   const deleteTalla = async (id: string) => {
     try {
-      const { error } = await supabase
+      const { error } = await insforgeDb()
         .from('tallas')
         .delete()
         .eq('id', id);

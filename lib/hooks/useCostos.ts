@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getSupabaseErrorMessage, supabase } from '../supabase';
+import { getSupabaseErrorMessage } from '../supabase';
+import { insforgeDb } from '@/lib/insforgeBrowser';
 import { fetchCostosRowsByPrenda, normalizarCamposCostoApi } from '@/lib/costoQueries';
 import { filtrarFilasPorSucursalSiHayColumna } from '@/lib/sucursalCliente';
 import type { Costo } from '../types';
@@ -37,8 +38,8 @@ async function enrichCostosFromPlainRows(rows: Record<string, unknown>[]): Promi
     ...new Set(rows.map((r) => readCol(r, 'prenda_id', 'prendaId')).filter(Boolean)),
   ] as string[];
   const [tRes, pRes] = await Promise.all([
-    tallaIds.length > 0 ? supabase.from('tallas').select('*').in('id', tallaIds) : Promise.resolve({ data: [] as unknown[] }),
-    prendaIds.length > 0 ? supabase.from('prendas').select('*').in('id', prendaIds) : Promise.resolve({ data: [] as unknown[] }),
+    tallaIds.length > 0 ? insforgeDb().from('tallas').select('*').in('id', tallaIds) : Promise.resolve({ data: [] as unknown[] }),
+    prendaIds.length > 0 ? insforgeDb().from('prendas').select('*').in('id', prendaIds) : Promise.resolve({ data: [] as unknown[] }),
   ]);
   const tallaMap = new Map(
     (tRes.data || []).map((t) => {
@@ -80,7 +81,7 @@ export function useCostos(sucursal_id?: string) {
   const fetchCostos = async () => {
     try {
       setLoading(true);
-      let query = supabase.from('costos').select(COSTOS_EMBED).order('created_at', { ascending: false });
+      let query = insforgeDb().from('costos').select(COSTOS_EMBED).order('created_at', { ascending: false });
       let { data, error } = await query;
 
       if (!error && data?.length) {
@@ -97,9 +98,9 @@ export function useCostos(sucursal_id?: string) {
         return;
       }
 
-      let fallback = await supabase.from('costos').select('*').order('created_at', { ascending: false });
+      let fallback = await insforgeDb().from('costos').select('*').order('created_at', { ascending: false });
       if (fallback.error) {
-        fallback = await supabase.from('costos').select('*');
+        fallback = await insforgeDb().from('costos').select('*');
       }
       if (fallback.error) throw fallback.error;
       let plain = (fallback.data || []) as Record<string, unknown>[];
@@ -121,7 +122,7 @@ export function useCostos(sucursal_id?: string) {
 
   const createCosto = async (costo: Omit<Costo, 'id' | 'created_at' | 'updated_at' | 'talla' | 'prenda'>) => {
     try {
-      const { data, error } = await supabase.from('costos').insert([costo]).select('*').single();
+      const { data, error } = await insforgeDb().from('costos').insert([costo]).select('*').single();
 
       if (error) throw error;
       const [enriched] = await enrichCostosFromPlainRows([(data || {}) as Record<string, unknown>]);
@@ -134,7 +135,7 @@ export function useCostos(sucursal_id?: string) {
 
   const createMultipleCostos = async (costos: Omit<Costo, 'id' | 'created_at' | 'updated_at' | 'talla' | 'prenda'>[]) => {
     try {
-      const { data, error } = await supabase.from('costos').insert(costos).select('*');
+      const { data, error } = await insforgeDb().from('costos').insert(costos).select('*');
 
       if (error) throw error;
       const enriched = await enrichCostosFromPlainRows((data || []) as Record<string, unknown>[]);
@@ -147,7 +148,7 @@ export function useCostos(sucursal_id?: string) {
 
   const deleteCosto = async (id: string) => {
     try {
-      const { error } = await supabase
+      const { error } = await insforgeDb()
         .from('costos')
         .delete()
         .eq('id', id);
@@ -163,7 +164,7 @@ export function useCostos(sucursal_id?: string) {
   /** Por prenda; prueba FK snake_case y camelCase (`fetchCostosRowsByPrenda`). Enriquece tallas/prendas como `fetchCostos`. */
   const getCostosByPrenda = async (prenda_id: string) => {
     try {
-      let rows = await fetchCostosRowsByPrenda(supabase, prenda_id);
+      let rows = await fetchCostosRowsByPrenda(insforgeDb(), prenda_id);
       rows = filtrarFilasPorSucursalSiHayColumna(rows as Record<string, unknown>[], sucursal_id) as Record<
         string,
         unknown
@@ -182,7 +183,7 @@ export function useCostos(sucursal_id?: string) {
       delete (payload as Partial<Costo & { talla?: unknown; prenda?: unknown }>).talla;
       delete (payload as Partial<Costo & { talla?: unknown; prenda?: unknown }>).prenda;
 
-      const { data, error } = await supabase.from('costos').update(payload).eq('id', id).select('*').single();
+      const { data, error } = await insforgeDb().from('costos').update(payload).eq('id', id).select('*').single();
 
       if (error) throw error;
       const [enriched] = await enrichCostosFromPlainRows([(data || {}) as Record<string, unknown>]);

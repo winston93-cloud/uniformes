@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../supabase';
+import { insforgeDb } from '@/lib/insforgeBrowser';
 import { Sucursal } from '../types';
 
 export function useSucursales() {
@@ -14,7 +14,7 @@ export function useSucursales() {
       setLoading(true);
       setError(null);
 
-      const { data, error: errorSupabase } = await supabase
+      const { data, error: errorSupabase } = await insforgeDb()
         .from('sucursales')
         .select('*')
         .order('es_matriz', { ascending: false }) // Matriz primero
@@ -48,7 +48,7 @@ export function useSucursales() {
 }
 
 export async function crearSucursal(sucursal: Partial<Sucursal>) {
-  const { data, error } = await supabase
+  const { data, error } = await insforgeDb()
     .from('sucursales')
     .insert([sucursal])
     .select()
@@ -59,7 +59,7 @@ export async function crearSucursal(sucursal: Partial<Sucursal>) {
 }
 
 export async function actualizarSucursal(id: string, sucursal: Partial<Sucursal>) {
-  const { data, error } = await supabase
+  const { data, error } = await insforgeDb()
     .from('sucursales')
     .update(sucursal)
     .eq('id', id)
@@ -71,7 +71,7 @@ export async function actualizarSucursal(id: string, sucursal: Partial<Sucursal>
 }
 
 export async function eliminarSucursal(id: string) {
-  const { error } = await supabase
+  const { error } = await insforgeDb()
     .from('sucursales')
     .delete()
     .eq('id', id);

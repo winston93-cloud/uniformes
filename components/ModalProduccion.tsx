@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight, X, Check, FileText, Pencil, FileDown } from 'lucide-react';
 import { useCotizaciones } from '@/lib/hooks/useCotizaciones';
 import { supabase } from '@/lib/supabase';
+import { insforgeDb } from '@/lib/insforgeBrowser';
 import type { Cotizacion, DetalleCotizacion, Costo } from '@/lib/types';
 import {
   compareCotizacionesPorFechaEntrega,
@@ -317,7 +318,7 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
               )
             ) as string[];
             if (costoIds.length === 0) return;
-            const { data: costosRows, error: costosErr } = await supabase
+            const { data: costosRows, error: costosErr } = await insforgeDb()
               .from('costos')
               .select('*')
               .in('id', costoIds);
@@ -380,7 +381,7 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
         if (costoIds.length > 0) {
           const faltantes = costoIds.filter((cid) => !costoPorId[cid]);
           if (faltantes.length > 0) {
-            const { data: costosRows, error: costosErr } = await supabase
+            const { data: costosRows, error: costosErr } = await insforgeDb()
               .from('costos')
               .select('*')
               .in('id', faltantes);
@@ -440,7 +441,7 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
       }
       if (costoIds.length === 0) return;
       const uniq = [...new Set(costoIds)];
-      const { data: costosRows, error: costosErr } = await supabase.from('costos').select('*').in('id', uniq);
+      const { data: costosRows, error: costosErr } = await insforgeDb().from('costos').select('*').in('id', uniq);
       if (cancelled || costosErr || !costosRows?.length) return;
       setCostoPorId((prev) => {
         const n = { ...prev };
@@ -473,7 +474,7 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
             next[cid] = Number(c.precio_compra) || 0;
             return;
           }
-          const diag = await obtenerDiagnosticoRecetaPrendaTalla(supabase, c.prenda_id, c.talla_id);
+          const diag = await obtenerDiagnosticoRecetaPrendaTalla(insforgeDb(), c.prenda_id, c.talla_id);
           if (diag.ok) {
             next[cid] = diag.costo_bruto_unitario;
           } else {

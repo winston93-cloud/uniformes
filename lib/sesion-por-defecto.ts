@@ -1,4 +1,5 @@
-import { supabase, getSupabaseErrorMessage } from '@/lib/supabase';
+import { getSupabaseErrorMessage } from '@/lib/supabase';
+import { insforgeDb } from '@/lib/insforgeBrowser';
 import type { SesionUsuario } from '@/lib/types';
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -35,7 +36,7 @@ export function supabaseClienteConfigurado(): boolean {
 }
 
 async function queryPrimeraSucursalActiva(): Promise<{ data: Record<string, unknown> | null; error: unknown }> {
-  return supabase
+  return insforgeDb()
     .from('sucursales')
     .select('id,codigo,nombre,es_matriz,activo')
     .eq('activo', true)

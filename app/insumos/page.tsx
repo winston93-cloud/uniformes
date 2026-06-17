@@ -6,7 +6,7 @@ import AuxiliarCatalogoModal from '@/components/AuxiliarCatalogoModal';
 import { useInsumos } from '@/lib/hooks/useInsumos';
 import { usePresentaciones } from '@/lib/hooks/usePresentaciones';
 import { useUbicacionesAlmacenamiento } from '@/lib/hooks/useUbicacionesAlmacenamiento';
-import { supabase } from '@/lib/supabase';
+import { insforgeDb } from '@/lib/insforgeBrowser';
 import type { Insumo } from '@/lib/types';
 import {
   parseNumeroFormateado,
@@ -352,7 +352,7 @@ export default function InsumosPage() {
     }
 
     try {
-      const { data: existing, error: exErr } = await supabase
+      const { data: existing, error: exErr } = await insforgeDb()
         .from('insumo_ubicaciones')
         .select('id')
         .eq('insumo_id', insumoEditando.id)
@@ -362,17 +362,17 @@ export default function InsumosPage() {
 
       if (existing?.id) {
         if (nextQty <= 0) {
-          const { error: delErr } = await supabase.from('insumo_ubicaciones').delete().eq('id', existing.id);
+          const { error: delErr } = await insforgeDb().from('insumo_ubicaciones').delete().eq('id', existing.id);
           if (delErr) throw delErr;
         } else {
-          const { error: updErr } = await supabase
+          const { error: updErr } = await insforgeDb()
             .from('insumo_ubicaciones')
             .update({ cantidad: nextQty })
             .eq('id', existing.id);
           if (updErr) throw updErr;
         }
       } else if (nextQty > 0) {
-        const { error: insErr } = await supabase.from('insumo_ubicaciones').insert({
+        const { error: insErr } = await insforgeDb().from('insumo_ubicaciones').insert({
           insumo_id: insumoEditando.id,
           ubicacion_almacenamiento_id: ajusteUbicacionId,
           cantidad: nextQty,
@@ -380,7 +380,7 @@ export default function InsumosPage() {
         if (insErr) throw insErr;
       }
 
-      const { data: filasUb, error: errUb } = await supabase
+      const { data: filasUb, error: errUb } = await insforgeDb()
         .from('insumo_ubicaciones')
         .select('id, ubicacion_almacenamiento_id, cantidad')
         .eq('insumo_id', insumoEditando.id);
@@ -394,7 +394,7 @@ export default function InsumosPage() {
       setUbicacionesInsumo(nextUi);
 
       const nextTotal = round2((filasUb || []).reduce((s: number, f: any) => s + (Number(f.cantidad) || 0), 0));
-      const { error: upInsumoErr } = await supabase
+      const { error: upInsumoErr } = await insforgeDb()
         .from('insumos')
         .update({ stock: nextTotal, stock_inicial: nextTotal })
         .eq('id', insumoEditando.id);
@@ -449,7 +449,7 @@ export default function InsumosPage() {
         return;
       }
       try {
-        const { data: filasUb, error: errUb } = await supabase
+        const { data: filasUb, error: errUb } = await insforgeDb()
           .from('insumo_ubicaciones')
           .select('id, ubicacion_almacenamiento_id, cantidad')
           .eq('insumo_id', insumoEditando.id);
@@ -551,7 +551,7 @@ export default function InsumosPage() {
     };
 
     const aplicarUbicacionesInsumo = async (insumoId: string) => {
-      const { error: delErr } = await supabase
+      const { error: delErr } = await insforgeDb()
         .from('insumo_ubicaciones')
         .delete()
         .eq('insumo_id', insumoId);
@@ -565,7 +565,7 @@ export default function InsumosPage() {
           }))
           .filter((row) => row.cantidad > 0);
         if (inserts.length > 0) {
-          const { error: insErr } = await supabase.from('insumo_ubicaciones').insert(inserts);
+          const { error: insErr } = await insforgeDb().from('insumo_ubicaciones').insert(inserts);
           if (insErr) throw insErr;
         }
       }

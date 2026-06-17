@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { getSupabaseErrorMessage, supabase } from '@/lib/supabase';
+import { getSupabaseErrorMessage } from '@/lib/supabase';
+import { insforgeDb } from '@/lib/insforgeBrowser';
 import { filtrarFilasPorSucursalSiHayColumna } from '@/lib/sucursalCliente';
 
 function readFk(row: Record<string, unknown>, snake: string, camel: string): string | null {
@@ -39,7 +40,7 @@ export function useAlertasStockPrendas(sucursal_id?: string) {
       setError(null);
 
       // Nunca .eq('sucursal_id') en URL: en InsForge a veces no existe la columna (400).
-      const { data: costosRaw, error: costosError } = await supabase.from('costos').select('*');
+      const { data: costosRaw, error: costosError } = await insforgeDb().from('costos').select('*');
 
       if (costosError) throw costosError;
 
@@ -69,10 +70,10 @@ export function useAlertasStockPrendas(sucursal_id?: string) {
 
       const [preRes, taRes] = await Promise.all([
         prendaIds.length > 0
-          ? supabase.from('prendas').select('id, nombre, codigo').in('id', prendaIds)
+          ? insforgeDb().from('prendas').select('id, nombre, codigo').in('id', prendaIds)
           : Promise.resolve({ data: [] as unknown[] }),
         tallaIds.length > 0
-          ? supabase.from('tallas').select('id, nombre').in('id', tallaIds)
+          ? insforgeDb().from('tallas').select('id, nombre').in('id', tallaIds)
           : Promise.resolve({ data: [] as unknown[] }),
       ]);
       if ('error' in preRes && preRes.error) throw preRes.error;

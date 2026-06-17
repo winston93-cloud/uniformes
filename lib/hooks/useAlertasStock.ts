@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { getSupabaseErrorMessage, supabase } from '@/lib/supabase';
+import { getSupabaseErrorMessage } from '@/lib/supabase';
+import { insforgeDb } from '@/lib/insforgeBrowser';
 
 export interface AlertaStock {
   insumo_id: string;
@@ -27,7 +28,7 @@ export function useAlertasStock() {
       setError(null);
 
       // 1. select('*') — en InsForge a veces no existe columna stock_minimo (migración distinta)
-      const { data: insumosRaw, error: insumosError } = await supabase.from('insumos').select('*');
+      const { data: insumosRaw, error: insumosError } = await insforgeDb().from('insumos').select('*');
 
       if (insumosError) throw insumosError;
       const insumosData = (insumosRaw || []).filter((row) => {
@@ -58,7 +59,7 @@ export function useAlertasStock() {
       ] as string[];
       let presById = new Map<string, { nombre: string; descripcion?: string | null }>();
       if (presIds.length > 0) {
-        const { data: presRows, error: presErr } = await supabase
+        const { data: presRows, error: presErr } = await insforgeDb()
           .from('presentaciones')
           .select('id, nombre, descripcion')
           .in('id', presIds);
@@ -75,7 +76,7 @@ export function useAlertasStock() {
       }
 
       // 2. Obtener todas las compras de insumos
-      const { data: comprasData, error: comprasError } = await supabase
+      const { data: comprasData, error: comprasError } = await insforgeDb()
         .from('compras_insumos')
         .select('insumo_id, cantidad_comprada');
 

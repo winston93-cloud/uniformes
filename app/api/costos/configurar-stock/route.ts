@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
+import { getInsforge } from '@/lib/insforge';
 
 function clampInt(v: unknown, fallback = 0) {
   const n = Number(v);
@@ -47,10 +47,10 @@ export async function POST(req: Request) {
       );
     }
 
-    const supabaseAdmin = getSupabaseAdmin();
+    const db = getInsforge().database;
 
     // Actualizar stock (fuente de verdad)
-    const { error: upCostoErr } = await supabaseAdmin
+    const { error: upCostoErr } = await db
       .from('costos')
       .update({
         stock_inicial: stock,
@@ -62,11 +62,11 @@ export async function POST(req: Request) {
     if (upCostoErr) throw upCostoErr;
 
     // Reemplazar ubicaciones
-    const { error: delErr } = await supabaseAdmin.from('costo_ubicaciones').delete().eq('costo_id', costoId);
+    const { error: delErr } = await db.from('costo_ubicaciones').delete().eq('costo_id', costoId);
     if (delErr) throw delErr;
 
     if (partidas.length > 0) {
-      const { error: insErr } = await supabaseAdmin.from('costo_ubicaciones').insert(
+      const { error: insErr } = await db.from('costo_ubicaciones').insert(
         partidas.map((p: any) => ({
           costo_id: costoId,
           ubicacion_almacenamiento_id: p.ubicacion_almacenamiento_id,

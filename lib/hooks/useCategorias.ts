@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '../supabase';
+import { insforgeDb } from '@/lib/insforgeBrowser';
 
 export interface CategoriaPrenda {
   id: string;
@@ -19,7 +19,7 @@ export function useCategorias() {
   const fetchCategorias = async (soloActivas: boolean = true) => {
     try {
       setLoading(true);
-      let query = supabase
+      let query = insforgeDb()
         .from('categorias_prendas')
         .select('*');
       
@@ -30,7 +30,7 @@ export function useCategorias() {
       let { data, error } = await query.order('nombre', { ascending: true });
 
       if (error && soloActivas) {
-        const fallback = await supabase
+        const fallback = await insforgeDb()
           .from('categorias_prendas')
           .select('*')
           .order('nombre', { ascending: true });
@@ -56,7 +56,7 @@ export function useCategorias() {
 
   const createCategoria = async (categoria: Omit<CategoriaPrenda, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await insforgeDb()
         .from('categorias_prendas')
         .insert([categoria])
         .select()
@@ -72,7 +72,7 @@ export function useCategorias() {
 
   const updateCategoria = async (id: string, updates: Partial<CategoriaPrenda>) => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await insforgeDb()
         .from('categorias_prendas')
         .update(updates)
         .eq('id', id)
@@ -89,7 +89,7 @@ export function useCategorias() {
 
   const deleteCategoria = async (id: string) => {
     try {
-      const { error } = await supabase
+      const { error } = await insforgeDb()
         .from('categorias_prendas')
         .delete()
         .eq('id', id);

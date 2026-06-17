@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
+import { getInsforge } from '@/lib/insforge';
 
 function isTaller(nombre: unknown) {
   return String(nombre ?? '').trim().toLowerCase() === 'taller';
@@ -13,9 +13,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Falta costo_id' }, { status: 400 });
     }
 
-    const supabaseAdmin = getSupabaseAdmin();
+    const db = getInsforge().database;
 
-    const { data: costo, error: costoErr } = await supabaseAdmin
+    const { data: costo, error: costoErr } = await db
       .from('costos')
       .select('id, stock')
       .eq('id', costoId)
@@ -27,7 +27,7 @@ export async function POST(req: Request) {
 
     const stock = Math.max(0, Number((costo as any).stock ?? 0) || 0);
 
-    const { data: ubRows, error: ubErr } = await supabaseAdmin
+    const { data: ubRows, error: ubErr } = await db
       .from('costo_ubicaciones')
       .select('id, ubicacion_almacenamiento_id, cantidad, ubicaciones_almacenamiento(nombre)')
       .eq('costo_id', costoId);
@@ -66,7 +66,7 @@ export async function POST(req: Request) {
       const target = ordenadas[0];
       const cur = Math.max(0, Number(target.cantidad ?? 0) || 0);
       const nueva = cur + diff;
-      const { error: upErr } = await supabaseAdmin
+      const { error: upErr } = await db
         .from('costo_ubicaciones')
         .update({ cantidad: nueva })
         .eq('id', target.id);
@@ -81,7 +81,7 @@ export async function POST(req: Request) {
         if (take <= 0) continue;
         const nueva = cur - take;
         // eslint-disable-next-line no-await-in-loop
-        const { error: upErr } = await supabaseAdmin
+        const { error: upErr } = await db
           .from('costo_ubicaciones')
           .update({ cantidad: nueva })
           .eq('id', row.id);

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { insforgeDb } from '@/lib/insforgeBrowser';
 
 export interface InsumoFaltante {
   insumo_id: string;
@@ -85,7 +86,7 @@ export function useInsumosFaltantes() {
         const cantidad_prendas = detalle.cantidad;
 
         // Obtener los insumos para esta combinación prenda-talla
-        const { data: insumosPrenda, error: errorInsumos } = await supabase
+        const { data: insumosPrenda, error: errorInsumos } = await insforgeDb()
           .from('prenda_talla_insumos')
           .select(`
             cantidad,
@@ -142,7 +143,7 @@ export function useInsumosFaltantes() {
       // Obtener cantidades compradas de cada insumo
       const insumosConCompras = await Promise.all(
         Array.from(insumosMap.values()).map(async (insumo) => {
-          const { data: compras } = await supabase
+          const { data: compras } = await insforgeDb()
             .from('compras_insumos')
             .select('cantidad_comprada')
             .eq('insumo_id', insumo.insumo_id);

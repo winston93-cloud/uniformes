@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../supabase';
+import { insforgeDb } from '@/lib/insforgeBrowser';
 import type { Insumo } from '../types';
 
 /** Sin alias `foo:tabla(*)` — InsForge puede responder 400. */
@@ -52,7 +52,7 @@ export function useInsumos() {
   const fetchInsumos = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase.from('insumos').select(INSUMOS_EMBED).order('created_at', { ascending: false });
+      const { data, error } = await insforgeDb().from('insumos').select(INSUMOS_EMBED).order('created_at', { ascending: false });
 
       if (error) throw error;
       setInsumos((data || []).map((row) => normalizeInsumo(row as Record<string, unknown>)));
@@ -65,35 +65,12 @@ export function useInsumos() {
 
   useEffect(() => {
     fetchInsumos();
-
-    // Suscripción en tiempo real
-    const subscription = supabase
-      .channel('insumos_changes')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'insumos' 
-      }, () => {
-        fetchInsumos();
-      })
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'insumo_ubicaciones',
-      }, () => {
-        fetchInsumos();
-      })
-      .subscribe();
-
-    return () => {
-      subscription.unsubscribe();
-    };
   }, []);
 
   const createInsumo = async (insumoData: Omit<Insumo, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       // Validar duplicado por nombre
-      const { data: existingByName } = await supabase
+      const { data: existingByName } = await insforgeDb()
         .from('insumos')
         .select('id')
         .ilike('nombre', insumoData.nombre)
@@ -104,7 +81,7 @@ export function useInsumos() {
       }
 
       // Validar duplicado por código
-      const { data: existingByCode } = await supabase
+      const { data: existingByCode } = await insforgeDb()
         .from('insumos')
         .select('id')
         .ilike('codigo', insumoData.codigo)
@@ -114,7 +91,7 @@ export function useInsumos() {
         return { data: null, error: 'Ya existe un insumo con ese código' };
       }
 
-      const { data, error } = await supabase
+      const { data, error } = await insforgeDb()
         .from('insumos')
         .insert([insumoData])
         .select()
@@ -132,7 +109,7 @@ export function useInsumos() {
     try {
       // Validar duplicado por nombre (excluyendo el registro actual)
       if (insumoData.nombre) {
-        const { data: existingByName } = await supabase
+        const { data: existingByName } = await insforgeDb()
           .from('insumos')
           .select('id')
           .ilike('nombre', insumoData.nombre)
@@ -146,7 +123,7 @@ export function useInsumos() {
 
       // Validar duplicado por código (excluyendo el registro actual)
       if (insumoData.codigo) {
-        const { data: existingByCode } = await supabase
+        const { data: existingByCode } = await insforgeDb()
           .from('insumos')
           .select('id')
           .ilike('codigo', insumoData.codigo)
@@ -158,7 +135,7 @@ export function useInsumos() {
         }
       }
 
-      const { data, error } = await supabase
+      const { data, error } = await insforgeDb()
         .from('insumos')
         .update(insumoData)
         .eq('id', id)
@@ -175,7 +152,7 @@ export function useInsumos() {
 
   const deleteInsumo = async (id: string) => {
     try {
-      const { error } = await supabase
+      const { error } = await insforgeDb()
         .from('insumos')
         .delete()
         .eq('id', id);
@@ -190,7 +167,7 @@ export function useInsumos() {
 
   const searchInsumos = async (query: string) => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await insforgeDb()
         .from('insumos')
         .select(INSUMOS_EMBED)
         .or(`nombre.ilike.%${query}%,codigo.ilike.%${query}%,descripcion.ilike.%${query}%`)

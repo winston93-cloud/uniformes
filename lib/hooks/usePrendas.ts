@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { fetchCostosRowsByPrenda, normalizarCamposCostoApi } from '@/lib/costoQueries';
 import { normalizarCamposPrendaApi } from '@/lib/insforgeNormalize';
 import { supabase } from '../supabase';
+import { insforgeDb } from '@/lib/insforgeBrowser';
 import type { CategoriaPrenda, Prenda } from '../types';
 
 /** InsForge / SDK pueden devolver camelCase o UUID con distinta capitalización → normalizar antes de hacer Map.get */
@@ -117,11 +118,11 @@ export function usePrendas() {
     try {
       setLoading(true);
       const [preResFirst, catRes] = await Promise.all([
-        supabase.from('prendas').select('*, categorias_prendas(*)').order('nombre', { ascending: true }),
-        supabase.from('categorias_prendas').select('*'),
+        insforgeDb().from('prendas').select('*, categorias_prendas(*)').order('nombre', { ascending: true }),
+        insforgeDb().from('categorias_prendas').select('*'),
       ]);
       const preRes = preResFirst.error
-        ? await supabase.from('prendas').select('*').order('nombre', { ascending: true })
+        ? await insforgeDb().from('prendas').select('*').order('nombre', { ascending: true })
         : preResFirst;
       if (preRes.error) throw preRes.error;
       if (catRes.error) throw catRes.error;
@@ -147,7 +148,7 @@ export function usePrendas() {
       }
       const idsFaltantes = [...fkDesdePrendas].filter((id) => !catById.has(id));
       if (idsFaltantes.length > 0) {
-        const { data: catExtra, error: errExtra } = await supabase
+        const { data: catExtra, error: errExtra } = await insforgeDb()
           .from('categorias_prendas')
           .select('*')
           .in('id', idsFaltantes);
@@ -208,7 +209,7 @@ export function usePrendas() {
 
   const createPrenda = async (prenda: Omit<Prenda, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await insforgeDb()
         .from('prendas')
         .insert([prenda])
         .select()
@@ -224,7 +225,7 @@ export function usePrendas() {
 
   const updatePrenda = async (id: string, updates: Partial<Prenda>) => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await insforgeDb()
         .from('prendas')
         .update(updates)
         .eq('id', id)
@@ -250,7 +251,7 @@ export function usePrendas() {
       if (detallePrendaError) throw detallePrendaError;
 
       // 2. Obtener todos los costos de la prenda (InsForge: columna prenda_id o prendaId)
-      const costosRows = await fetchCostosRowsByPrenda(supabase, id);
+      const costosRows = await fetchCostosRowsByPrenda(insforgeDb(), id);
       const costosIds = costosRows
         .map((c) => {
           const n = normalizarCamposCostoApi(c as Record<string, unknown>);
@@ -280,16 +281,16 @@ export function usePrendas() {
 
       // 4. Eliminar los costos de la prenda
       if (costosIds.length > 0) {
-        const { error: costosDelError } = await supabase.from('costos').delete().in('id', costosIds);
+        const { error: costosDelError } = await insforgeDb().from('costos').delete().in('id', costosIds);
         if (costosDelError) throw costosDelError;
       } else {
-        let d = await supabase.from('costos').delete().eq('prenda_id', id);
-        if (d.error) d = await supabase.from('costos').delete().eq('prendaId', id);
+        let d = await insforgeDb().from('costos').delete().eq('prenda_id', id);
+        if (d.error) d = await insforgeDb().from('costos').delete().eq('prendaId', id);
         if (d.error) throw d.error;
       }
 
       // 5. Finalmente eliminar la prenda
-      const { error } = await supabase
+      const { error } = await insforgeDb()
         .from('prendas')
         .delete()
         .eq('id', id);

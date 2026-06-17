@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import ModalDevolucion from '@/components/ModalDevolucion';
 import { supabase } from '@/lib/supabase';
+import { insforgeDb } from '@/lib/insforgeBrowser';
 import {
   handlersTapSeleccionDropdown,
   instalarCierrePointerFuera,
@@ -619,7 +620,7 @@ function PedidosPageContent() {
       const nuevoStock = (costo.stock || 0) + nuevaCantidad;
 
       // Actualizar stock en la base de datos
-      const { error } = await supabase
+      const { error } = await insforgeDb()
         .from('costos')
         .update({ stock: nuevoStock })
         .eq('id', costo.id);

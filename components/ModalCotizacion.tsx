@@ -17,7 +17,7 @@ import {
   TASA_ISR_RETENCION,
 } from '@/lib/cotizacionesImpuestos';
 import type { Cotizacion } from '@/lib/types';
-import { supabase } from '@/lib/supabase';
+import { insforgeDb } from '@/lib/insforgeBrowser';
 import ModalDatosFiscalesCliente from '@/components/ModalDatosFiscalesCliente';
 import PartidaAccionesToolbar from '@/components/cotizacion/PartidaAccionesToolbar';
 import ModalCatalogosSatPago from '@/components/ModalCatalogosSatPago';
@@ -501,7 +501,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
 
     void (async () => {
       try {
-        const { data, error } = await supabase
+        const { data, error } = await insforgeDb()
           .from('costos')
           .select('id, prenda_id, talla_id, precio_mayoreo, precio_menudeo, activo, talla:tallas(nombre)')
           .in('prenda_id', prendaIds);
@@ -969,7 +969,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   const seleccionarPrendaSistemaParaPartida = async (index: number, prendaId: string, prendaNombre: string) => {
     let costos = costosPorPrendaId[prendaId];
     if (!costos) {
-      const { data, error } = await supabase
+      const { data, error } = await insforgeDb()
         .from('costos')
         .select('id, prenda_id, talla_id, precio_mayoreo, precio_menudeo, activo, talla:tallas(nombre)')
         .eq('prenda_id', prendaId);
@@ -1048,7 +1048,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     }
 
     // Buscar el costo correspondiente
-    const { data: costo, error } = await supabase
+    const { data: costo, error } = await insforgeDb()
       .from('costos')
       .select('precio_mayoreo, precio_menudeo')
       .eq('id', partida.costo_id)

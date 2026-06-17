@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../supabase';
+import { insforgeDb } from '@/lib/insforgeBrowser';
 import type { Presentacion } from '../types';
 
 export function usePresentaciones() {
@@ -10,7 +10,7 @@ export function usePresentaciones() {
   const fetchPresentaciones = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      const { data, error } = await insforgeDb()
         .from('presentaciones')
         .select('*')
         .order('nombre', { ascending: true });
@@ -26,28 +26,12 @@ export function usePresentaciones() {
 
   useEffect(() => {
     fetchPresentaciones();
-
-    // Suscripción en tiempo real
-    const subscription = supabase
-      .channel('presentaciones_changes')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'presentaciones' 
-      }, () => {
-        fetchPresentaciones();
-      })
-      .subscribe();
-
-    return () => {
-      subscription.unsubscribe();
-    };
   }, []);
 
   const createPresentacion = async (presentacionData: Omit<Presentacion, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       // Validar duplicado por nombre
-      const { data: existing } = await supabase
+      const { data: existing } = await insforgeDb()
         .from('presentaciones')
         .select('id')
         .ilike('nombre', presentacionData.nombre)
@@ -57,7 +41,7 @@ export function usePresentaciones() {
         return { data: null, error: 'Ya existe una presentación con ese nombre' };
       }
 
-      const { data, error } = await supabase
+      const { data, error } = await insforgeDb()
         .from('presentaciones')
         .insert([presentacionData])
         .select()
@@ -75,7 +59,7 @@ export function usePresentaciones() {
     try {
       // Validar duplicado por nombre (excluyendo el registro actual)
       if (presentacionData.nombre) {
-        const { data: existing } = await supabase
+        const { data: existing } = await insforgeDb()
           .from('presentaciones')
           .select('id')
           .ilike('nombre', presentacionData.nombre)
@@ -87,7 +71,7 @@ export function usePresentaciones() {
         }
       }
 
-      const { data, error } = await supabase
+      const { data, error } = await insforgeDb()
         .from('presentaciones')
         .update(presentacionData)
         .eq('id', id)
@@ -104,7 +88,7 @@ export function usePresentaciones() {
 
   const deletePresentacion = async (id: string) => {
     try {
-      const { error } = await supabase
+      const { error } = await insforgeDb()
         .from('presentaciones')
         .delete()
         .eq('id', id);

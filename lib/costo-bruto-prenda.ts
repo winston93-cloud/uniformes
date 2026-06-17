@@ -1,4 +1,4 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Block3Database } from '@/lib/insforgeBrowser';
 
 /**
  * Costo por unidad de insumo según presentación (ej. 100 botones / $100 → $1/botón).
@@ -54,11 +54,11 @@ function insumoTieneCostoValido(insumo: {
  * Si no hay receta, devuelve `null` (el llamador puede usar respaldo legacy).
  */
 export async function obtenerCostoBrutoPrendaTalla(
-  supabase: SupabaseClient,
+  db: Block3Database,
   prendaId: string,
   tallaId: string
 ): Promise<number | null> {
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('prenda_talla_insumos')
     .select('cantidad, insumo:insumos(costo_compra, cantidad_por_presentacion, stock_inicial, stock, insumo_ubicaciones(cantidad))')
     .eq('prenda_id', prendaId)
@@ -99,11 +99,11 @@ export async function obtenerCostoBrutoPrendaTalla(
  * - INSUMO_SIN_COSTO: hay receta, pero algún insumo no tiene costo/presentación válidos
  */
 export async function obtenerDiagnosticoRecetaPrendaTalla(
-  supabase: SupabaseClient,
+  db: Block3Database,
   prendaId: string,
   tallaId: string
 ): Promise<DiagnosticoRecetaInsumos> {
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('prenda_talla_insumos')
     .select('cantidad, insumo:insumos(costo_compra, cantidad_por_presentacion, stock_inicial, stock, insumo_ubicaciones(cantidad))')
     .eq('prenda_id', prendaId)

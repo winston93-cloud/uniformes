@@ -5,7 +5,7 @@ import LayoutWrapper from '@/components/LayoutWrapper';
 import { useCostos } from '@/lib/hooks/useCostos';
 import { usePrendas } from '@/lib/hooks/usePrendas';
 import { useTallas } from '@/lib/hooks/useTallas';
-import { supabase } from '@/lib/supabase';
+import { insforgeDb } from '@/lib/insforgeBrowser';
 import type { Costo } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -162,7 +162,7 @@ export default function StockPage() {
         }
       } else {
         // Crear nuevo costo con stock existente
-        const { error } = await supabase
+        const { error } = await insforgeDb()
           .from('costos')
           .insert([{
             prenda_id: formData.prenda_id,

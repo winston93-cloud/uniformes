@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { insforgeDb } from '@/lib/insforgeBrowser';
 
 export interface CompraInsumo {
   id: string;
@@ -84,7 +84,7 @@ export function useComprasInsumos(insumo_id?: string) {
       setCargando(true);
       setError(null);
 
-      const { data, error: errorCompras } = await supabase
+      const { data, error: errorCompras } = await insforgeDb()
         .from('compras_insumos')
         .select(COMPRAS_INSUMOS_EMBED)
         .order('fecha_compra', { ascending: false });
@@ -105,7 +105,7 @@ export function useComprasInsumos(insumo_id?: string) {
       setCargando(true);
       setError(null);
 
-      const { data, error: errorCompras } = await supabase
+      const { data, error: errorCompras } = await insforgeDb()
         .from('compras_insumos')
         .select(COMPRAS_INSUMOS_EMBED)
         .eq('insumo_id', insumoId)
@@ -132,7 +132,7 @@ export function useComprasInsumos(insumo_id?: string) {
           ? nuevaCompra.cantidad_comprada * nuevaCompra.costo_unitario 
           : null);
 
-      const { error: errorCrear } = await supabase
+      const { error: errorCrear } = await insforgeDb()
         .from('compras_insumos')
         .insert({
           ...nuevaCompra,
@@ -177,7 +177,7 @@ export function useComprasInsumos(insumo_id?: string) {
           ? cantidadFinal * costoUnitarioFinal 
           : null);
 
-      const { error: errorActualizar } = await supabase
+      const { error: errorActualizar } = await insforgeDb()
         .from('compras_insumos')
         .update({
           ...datosActualizados,
@@ -206,7 +206,7 @@ export function useComprasInsumos(insumo_id?: string) {
     try {
       setError(null);
 
-      const { error: errorEliminar } = await supabase
+      const { error: errorEliminar } = await insforgeDb()
         .from('compras_insumos')
         .delete()
         .eq('id', id);
@@ -230,7 +230,7 @@ export function useComprasInsumos(insumo_id?: string) {
 
   async function obtenerTotalCompradoPorInsumo(insumoId: string): Promise<number> {
     try {
-      const { data, error: errorTotal } = await supabase
+      const { data, error: errorTotal } = await insforgeDb()
         .from('compras_insumos')
         .select('cantidad_comprada')
         .eq('insumo_id', insumoId);

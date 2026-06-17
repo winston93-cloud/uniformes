@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { getSupabaseErrorMessage, supabase, usuarioIdParaRpc } from '@/lib/supabase';
+import { insforgeDb } from '@/lib/insforgeBrowser';
 import { REFETCH_PEDIDOS_EVENT } from '@/lib/refetchPedidosEvent';
 
 interface Pedido {
@@ -191,7 +192,7 @@ export function usePedidos(sucursal_id?: string) {
         for (const d of vendidos) {
           if (!sucId) continue;
           // eslint-disable-next-line no-await-in-loop
-          const { data: costoRow, error: costoErr } = await supabase
+          const { data: costoRow, error: costoErr } = await insforgeDb()
             .from('costos')
             .select('id')
             .eq('prenda_id', String(d.prenda_id))

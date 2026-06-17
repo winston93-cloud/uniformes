@@ -8,7 +8,7 @@ import { usePrendas } from '@/lib/hooks/usePrendas';
 import { useTallas } from '@/lib/hooks/useTallas';
 import ModalCostosPrenda, { agruparCostosPorPrenda, resumenRangoPrecios } from '@/components/ModalCostosPrenda';
 import { compararTallas } from '@/lib/ordenTallas';
-import { supabase } from '@/lib/supabase';
+import { insforgeDb } from '@/lib/insforgeBrowser';
 import type { Costo } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -55,7 +55,7 @@ export default function CostosPage() {
       if (formData.prenda_id && sesion?.sucursal_id) {
         // Obtener las tallas asociadas a esta prenda EN LA SUCURSAL ACTUAL
         // Estas son las tallas que se pueden configurar con precios
-        const { data, error } = await supabase
+        const { data, error } = await insforgeDb()
           .from('costos')
           .select('talla_id')
           .eq('prenda_id', formData.prenda_id)
@@ -132,7 +132,7 @@ export default function CostosPage() {
     }
     
     // Obtener costos existentes para esta prenda EN ESTA SUCURSAL
-    const { data: costosExistentes } = await supabase
+    const { data: costosExistentes } = await insforgeDb()
       .from('costos')
       .select('*')
       .eq('prenda_id', formData.prenda_id)

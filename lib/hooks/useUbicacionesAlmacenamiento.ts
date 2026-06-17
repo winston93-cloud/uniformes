@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../supabase';
+import { insforgeDb } from '@/lib/insforgeBrowser';
 import type { UbicacionAlmacenamiento } from '../types';
 
 export function useUbicacionesAlmacenamiento() {
@@ -10,7 +10,7 @@ export function useUbicacionesAlmacenamiento() {
   const fetchUbicaciones = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      const { data, error } = await insforgeDb()
         .from('ubicaciones_almacenamiento')
         .select('*')
         .order('nombre', { ascending: true });
@@ -26,26 +26,11 @@ export function useUbicacionesAlmacenamiento() {
 
   useEffect(() => {
     fetchUbicaciones();
-
-    const subscription = supabase
-      .channel('ubicaciones_almacenamiento_changes')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'ubicaciones_almacenamiento' 
-      }, () => {
-        fetchUbicaciones();
-      })
-      .subscribe();
-
-    return () => {
-      subscription.unsubscribe();
-    };
   }, []);
 
   const createUbicacion = async (ubicacionData: Omit<UbicacionAlmacenamiento, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      const { data: existing } = await supabase
+      const { data: existing } = await insforgeDb()
         .from('ubicaciones_almacenamiento')
         .select('id')
         .ilike('nombre', ubicacionData.nombre)
@@ -55,7 +40,7 @@ export function useUbicacionesAlmacenamiento() {
         return { data: null, error: 'Ya existe una ubicación con ese nombre' };
       }
 
-      const { data, error } = await supabase
+      const { data, error } = await insforgeDb()
         .from('ubicaciones_almacenamiento')
         .insert([ubicacionData])
         .select()
@@ -72,7 +57,7 @@ export function useUbicacionesAlmacenamiento() {
   const updateUbicacion = async (id: string, ubicacionData: Partial<UbicacionAlmacenamiento>) => {
     try {
       if (ubicacionData.nombre) {
-        const { data: existing } = await supabase
+        const { data: existing } = await insforgeDb()
           .from('ubicaciones_almacenamiento')
           .select('id')
           .ilike('nombre', ubicacionData.nombre)
@@ -84,7 +69,7 @@ export function useUbicacionesAlmacenamiento() {
         }
       }
 
-      const { data, error } = await supabase
+      const { data, error } = await insforgeDb()
         .from('ubicaciones_almacenamiento')
         .update(ubicacionData)
         .eq('id', id)
@@ -101,7 +86,7 @@ export function useUbicacionesAlmacenamiento() {
 
   const deleteUbicacion = async (id: string) => {
     try {
-      const { error } = await supabase
+      const { error } = await insforgeDb()
         .from('ubicaciones_almacenamiento')
         .delete()
         .eq('id', id);

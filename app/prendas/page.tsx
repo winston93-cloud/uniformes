@@ -10,7 +10,7 @@ import { useCostos } from '@/lib/hooks/useCostos';
 import { usePrendaTallaInsumos } from '@/lib/hooks/usePrendaTallaInsumos';
 import { useUbicacionesAlmacenamiento } from '@/lib/hooks/useUbicacionesAlmacenamiento';
 import { fetchCostoStockModal } from '@/lib/costoQueries';
-import { supabase } from '@/lib/supabase';
+import { insforgeDb } from '@/lib/insforgeBrowser';
 import type { Prenda } from '@/lib/types';
 import { sortTallas } from '@/lib/ordenTallas';
 import ModalInsumosTalla from '@/components/ModalInsumosTalla';
@@ -119,7 +119,7 @@ export default function PrendasPage() {
   
   useEffect(() => {
     const cargarTodasCategorias = async () => {
-      const { data } = await supabase
+      const { data } = await insforgeDb()
         .from('categorias_prendas')
         .select('*')
         .order('nombre', { ascending: true });
@@ -136,7 +136,7 @@ export default function PrendasPage() {
     const cargarStockExistente = async () => {
       if (modalStockAbierto && prendaEditando && tallaSeleccionadaStock) {
         try {
-          const costoExistente = await fetchCostoStockModal(supabase, {
+          const costoExistente = await fetchCostoStockModal(insforgeDb(), {
             prendaId: prendaEditando.id,
             tallaId: tallaSeleccionadaStock.id,
             sucursalId: sesion?.sucursal_id ?? null,
@@ -150,7 +150,7 @@ export default function PrendasPage() {
               stock_minimo: Number.isFinite(minNum) ? minNum.toLocaleString('en-US') : '',
             });
 
-            const { data: filasUb, error: errUb } = await supabase
+            const { data: filasUb, error: errUb } = await insforgeDb()
               .from('costo_ubicaciones')
               .select('id, ubicacion_almacenamiento_id, cantidad')
               .eq('costo_id', costoExistente.id);
@@ -369,7 +369,7 @@ export default function PrendasPage() {
       // Agregar costos para nuevas tallas en TODAS las sucursales
       if (tallasAAgregar.length > 0) {
         // Obtener todas las sucursales activas
-        const { data: sucursales, error: sucursalesError } = await supabase
+        const { data: sucursales, error: sucursalesError } = await insforgeDb()
           .from('sucursales')
           .select('id')
           .eq('activo', true);
@@ -438,7 +438,7 @@ export default function PrendasPage() {
       // Crear costos para cada talla seleccionada en TODAS las sucursales
       if (nuevaPrenda && tallasSeleccionadas.length > 0) {
         // Obtener todas las sucursales
-        const { data: sucursales, error: sucursalesError } = await supabase
+        const { data: sucursales, error: sucursalesError } = await insforgeDb()
           .from('sucursales')
           .select('id')
           .eq('activo', true);
@@ -1198,7 +1198,7 @@ export default function PrendasPage() {
               e.preventDefault();
               
               try {
-                const costoExistente = await fetchCostoStockModal(supabase, {
+                const costoExistente = await fetchCostoStockModal(insforgeDb(), {
                   prendaId: prendaEditando.id,
                   tallaId: tallaSeleccionadaStock.id,
                   sucursalId: sesion?.sucursal_id ?? null,

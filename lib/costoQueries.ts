@@ -1,5 +1,13 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
 import { filtrarFilasPorSucursalSiHayColumna } from '@/lib/sucursalCliente';
+
+/** Cliente PostgREST (Supabase o InsForge `database`). */
+export type CostoDbClient = {
+  from: (table: string) => {
+    select: (columns?: string) => {
+      eq: (col: string, val: string) => PromiseLike<{ data: unknown[] | null; error: { message?: string } | null }>;
+    };
+  };
+};
 
 /** PostgREST devuelve columnas snake_case; APIs a veces solo camelCase en JSON */
 export function normalizarCamposCostoApi(row: Record<string, unknown>): Record<string, unknown> {
@@ -46,32 +54,32 @@ const PARES_PRENDA_TALLA: [string, string][] = [
 
 /** Todas las filas costo de una prenda; prueba columnas snake_case y camelCase (InsForge). */
 export async function fetchCostosRowsByPrenda(
-  supabase: SupabaseClient,
+  db: CostoDbClient,
   prendaId: string
 ): Promise<Record<string, unknown>[]> {
   for (const col of ['prenda_id', 'prendaId'] as const) {
-    const res = await supabase.from('costos').select('*').eq(col, prendaId);
+    const res = await db.from('costos').select('*').eq(col, prendaId);
     if (res.error) continue;
     if ((res.data || []).length > 0) return (res.data || []) as Record<string, unknown>[];
   }
-  const last = await supabase.from('costos').select('*').eq('prenda_id', prendaId);
+  const last = await db.from('costos').select('*').eq('prenda_id', prendaId);
   if (!last.error) return (last.data || []) as Record<string, unknown>[];
-  const last2 = await supabase.from('costos').select('*').eq('prendaId', prendaId);
+  const last2 = await db.from('costos').select('*').eq('prendaId', prendaId);
   return (last2.data || []) as Record<string, unknown>[];
 }
 
 async function fetchCostosRawPrendaYTalla(
-  supabase: SupabaseClient,
+  db: CostoDbClient,
   prendaId: string,
   tallaId: string
 ): Promise<Record<string, unknown>[]> {
   for (const [pc, tc] of PARES_PRENDA_TALLA) {
-    const res = await supabase.from('costos').select('*').eq(pc, prendaId).eq(tc, tallaId);
+    const res = await db.from('costos').select('*').eq(pc, prendaId).eq(tc, tallaId);
     if (res.error) continue;
     const rows = (res.data || []) as Record<string, unknown>[];
     if (rows.length > 0) return rows;
   }
-  const fallback = await supabase
+  const fallback = await db
     .from('costos')
     .select('*')
     .eq('prenda_id', prendaId)
@@ -82,11 +90,11 @@ async function fetchCostosRawPrendaYTalla(
 
 /** Busca costo sin usar sucursal_id en la URL (columna puede no existir en InsForge). */
 export async function fetchCostoStockModal(
-  supabase: SupabaseClient,
+  db: CostoDbClient,
   opts: { prendaId: string; tallaId: string; sucursalId?: string | null }
 ): Promise<Record<string, unknown> | null> {
   const { prendaId, tallaId, sucursalId } = opts;
-  const rows = await fetchCostosRawPrendaYTalla(supabase, prendaId, tallaId);
+  const rows = await fetchCostosRawPrendaYTalla(db, prendaId, tallaId);
   const picked = elegirCostoPrendaTalla(rows, sucursalId);
   return picked ? normalizarCamposCostoApi(picked) : null;
 }

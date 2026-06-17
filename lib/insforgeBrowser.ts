@@ -23,3 +23,6 @@ export const insforgeBrowser: InsForgeClient = createClient({
 export function insforgeDb() {
   return insforgeBrowser.database;
 }
+
+/** Cliente con `.from` / `.rpc` para Bloque 3 (inventario maestro). */
+export type Block3Database = ReturnType<typeof insforgeDb>;

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { crearTransferencia } from '@/lib/hooks/useTransferencias';
-import { supabase } from '@/lib/supabase';
+import { insforgeDb } from '@/lib/insforgeBrowser';
 
 interface ModalTransferenciaProps {
   onClose: () => void;
@@ -35,7 +35,7 @@ export default function ModalTransferencia({ onClose }: ModalTransferenciaProps)
 
   const cargarDatos = async () => {
     // Cargar sucursales (excepto la actual)
-    const { data: sucursalesData } = await supabase
+    const { data: sucursalesData } = await insforgeDb()
       .from('sucursales')
       .select('*')
       .eq('activo', true)
@@ -45,7 +45,7 @@ export default function ModalTransferencia({ onClose }: ModalTransferenciaProps)
     if (sucursalesData) setSucursales(sucursalesData);
 
     // Cargar prendas activas
-    const { data: prendasData } = await supabase
+    const { data: prendasData } = await insforgeDb()
       .from('prendas')
       .select('*')
       .eq('activo', true)
