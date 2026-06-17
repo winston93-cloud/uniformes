@@ -24,5 +24,5 @@ export function insforgeDb() {
   return insforgeBrowser.database;
 }
 
-/** Cliente con `.from` / `.rpc` / `.storage` — Bloques 1–5 cortados a InsForge. */
+/** Cliente con `.from` / `.rpc` / `.storage` — Bloques 1–10 cortados a InsForge. */
 export type Block3Database = ReturnType<typeof insforgeDb>;

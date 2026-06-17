@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { insforge } from '@/lib/insforge';
 import { getSupabaseErrorMessage } from '@/lib/supabase';
 
 function clampInt(v: number, min: number, max: number) {
@@ -7,7 +7,7 @@ function clampInt(v: number, min: number, max: number) {
   return Math.max(min, Math.min(max, Math.trunc(v)));
 }
 
-function supabaseHostFromUrl(url: string | undefined | null) {
+function insforgeHostFromUrl(url: string | undefined | null) {
   if (!url) return null;
   try {
     return new URL(url).host;
@@ -56,22 +56,20 @@ const TABLAS_UNIFORMES = [
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
-    const desde = url.searchParams.get('desde'); // YYYY-MM-DD
-    const hasta = url.searchParams.get('hasta'); // YYYY-MM-DD
+    const desde = url.searchParams.get('desde');
+    const hasta = url.searchParams.get('hasta');
     const tabla = url.searchParams.get('tabla');
-    const operacion = url.searchParams.get('operacion'); // INSERT/UPDATE/DELETE
+    const operacion = url.searchParams.get('operacion');
 
     const limit = clampInt(Number(url.searchParams.get('limit') || 100), 1, 500);
     const offset = clampInt(Number(url.searchParams.get('offset') || 0), 0, 50_000);
 
-    // Evitar full-scan accidental: si no mandan rango, default a últimos 7 días.
     const now = new Date();
     const defaultDesde = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
     const defaultHasta = now.toISOString();
 
-    let q = supabase
+    let q = insforge.database
       .from('auditoria')
-      // Evitar `count: 'exact'` (caro) para no disparar statement timeout.
       .select('id,tabla,operacion,registro_id,registro_pk,usuario_id,timestamp,datos_anteriores,datos_nuevos')
       .order('timestamp', { ascending: false })
       .range(offset, offset + limit - 1);
@@ -79,8 +77,6 @@ export async function GET(req: Request) {
     if (tabla && tabla.trim()) {
       q = q.eq('tabla', tabla.trim());
     } else {
-      // Esta instancia comparte BD con otros sistemas. Para que la Bitácora sea confiable
-      // en Uniformes, si NO filtras por tabla aplicamos lista blanca (solo tablas del sistema).
       q = q.in('tabla', [...TABLAS_UNIFORMES]);
     }
     if (operacion && operacion.trim()) {
@@ -102,7 +98,7 @@ export async function GET(req: Request) {
       limit,
       offset,
       debug: {
-        supabaseHost: supabaseHostFromUrl(process.env.NEXT_PUBLIC_SUPABASE_URL),
+        insforgeHost: insforgeHostFromUrl(process.env.NEXT_PUBLIC_INSFORGE_URL),
         serverNowIso: new Date().toISOString(),
       },
     });
@@ -113,4 +109,3 @@ export async function GET(req: Request) {
     );
   }
 }
-

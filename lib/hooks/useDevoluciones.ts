@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { filtrarFilasPorSucursalSiHayColumna } from '@/lib/sucursalCliente';
-import { getSupabaseErrorMessage, supabase } from '@/lib/supabase';
+import { getSupabaseErrorMessage } from '@/lib/supabase';
 import { insforgeDb } from '@/lib/insforgeBrowser';
 
 function readFk(row: Record<string, unknown>, snake: string, camel: string): string | null {
@@ -79,13 +79,13 @@ export function useDevoluciones(sucursal_id?: string) {
       setLoading(true);
       setError(null);
 
-      let { data, error: fetchError } = await supabase
+      let { data, error: fetchError } = await insforgeDb()
         .from('devoluciones')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (fetchError) {
-        const fb = await supabase.from('devoluciones').select('*');
+        const fb = await insforgeDb().from('devoluciones').select('*');
         if (!fb.error && fb.data) {
           data = fb.data;
           fetchError = null;
@@ -142,7 +142,7 @@ export function useDevoluciones(sucursal_id?: string) {
         .map((id) => parseInt(id, 10))
         .filter((n) => !Number.isNaN(n));
       if (usuarioNumericIds.length > 0) {
-        const ur = await supabase.from('usuario').select('*').in('usuario_id', usuarioNumericIds);
+        const ur = await insforgeDb().from('usuario').select('*').in('usuario_id', usuarioNumericIds);
         if (!ur.error && ur.data) {
           usuarioPorId = new Map(
             ur.data.map((u) => {
@@ -164,7 +164,7 @@ export function useDevoluciones(sucursal_id?: string) {
 
       for (const dev of devs) {
         const dr = dev as Record<string, unknown>;
-        const { data: detalles, error: detallesError } = await supabase
+        const { data: detalles, error: detallesError } = await insforgeDb()
           .from('detalle_devoluciones')
           .select('*')
           .eq('devolucion_id', dr.id as string);
@@ -203,16 +203,12 @@ export function useDevoluciones(sucursal_id?: string) {
 
   const crearDevolucion = async (data: CrearDevolucionData) => {
     try {
-      console.log('📦 Creando devolución...', data);
-
-      // 1. Calcular total de devolución
       const totalDevolucion = data.detalles.reduce(
         (sum, det) => sum + det.subtotal,
         0
       );
 
-      // 2. Insertar devolución
-      const { data: devolucion, error: devError } = await supabase
+      const { data: devolucion, error: devError } = await insforgeDb()
         .from('devoluciones')
         .insert({
           pedido_id: data.pedido_id,
@@ -229,29 +225,20 @@ export function useDevoluciones(sucursal_id?: string) {
         .select()
         .single();
 
-      if (devError) {
-        console.error('❌ Error al crear devolución:', devError);
-        throw devError;
-      }
+      if (devError) throw devError;
 
-      console.log('✅ Devolución creada:', devolucion);
-
-      // 3. Insertar detalles
       const detallesConId = data.detalles.map((det) => ({
         ...det,
         devolucion_id: devolucion.id,
       }));
 
-      const { error: detallesError } = await supabase
+      const { error: detallesError } = await insforgeDb()
         .from('detalle_devoluciones')
         .insert(detallesConId);
 
-      if (detallesError) {
-        console.error('❌ Error al insertar detalles:', detallesError);
-        throw detallesError;
-      }
-      // 4. Procesar devolución de forma atómica (stock + movimientos + cambios)
-      const { data: proc, error: procErr } = await supabase.rpc('procesar_devolucion_atomica', {
+      if (detallesError) throw detallesError;
+
+      const { data: proc, error: procErr } = await insforgeDb().rpc('procesar_devolucion_atomica', {
         p_devolucion_id: devolucion.id,
       });
       if (procErr) throw procErr;
@@ -259,21 +246,20 @@ export function useDevoluciones(sucursal_id?: string) {
         throw new Error(proc.error || 'Error al procesar devolución');
       }
 
-      // 6. Recargar devoluciones
       await fetchDevoluciones();
 
       return { success: true, data: devolucion };
-    } catch (err: any) {
-      console.error('❌ Error en crearDevolucion:', err);
-      return { success: false, error: err.message };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('Error en crearDevolucion:', err);
+      return { success: false, error: msg };
     }
   };
 
   const procesarDevolucion = async (id: string) => {
     try {
-      // Usar función atómica para procesar devolución
-      const { data, error } = await supabase.rpc('procesar_devolucion_atomica', {
-        p_devolucion_id: id
+      const { data, error } = await insforgeDb().rpc('procesar_devolucion_atomica', {
+        p_devolucion_id: id,
       });
 
       if (error) throw error;
@@ -284,15 +270,16 @@ export function useDevoluciones(sucursal_id?: string) {
 
       await fetchDevoluciones();
       return { success: true, message: data.message };
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
       console.error('Error al procesar devolución:', err);
-      return { success: false, error: err.message };
+      return { success: false, error: msg };
     }
   };
 
   const cancelarDevolucion = async (id: string) => {
     try {
-      const { error } = await supabase
+      const { error } = await insforgeDb()
         .from('devoluciones')
         .update({ estado: 'CANCELADA' })
         .eq('id', id);
@@ -301,9 +288,10 @@ export function useDevoluciones(sucursal_id?: string) {
 
       await fetchDevoluciones();
       return { success: true };
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
       console.error('Error al cancelar devolución:', err);
-      return { success: false, error: err.message };
+      return { success: false, error: msg };
     }
   };
 

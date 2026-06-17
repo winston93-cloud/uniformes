@@ -276,7 +276,7 @@
 
   <script>
     const STORAGE_KEY = 'uniformes_plan_migracion_insforge_v1';
-    const PLAN_REVISION = 8; // rev 8: manejo de errores visible si falla el JS del plan
+    const PLAN_REVISION = 9; // rev 9: bloques 6–10 completados (satélites + auditoría)
 
     const STATUS_LABELS = {
       pendiente: '⬜ Pendiente',
@@ -570,7 +570,8 @@
           { id: 'b6-t2', label: 'Recibir/procesar transferencia.' },
           { id: 'b6-t3', label: 'Regresión pedidos/stock.' }
         ],
-        env: [{ id: 'b6-e1', label: 'sucursales en mismo backend que transferencias.' }]
+        env: [{ id: 'b6-e1', label: 'sucursales en mismo backend que transferencias.' }],
+        defaultStatus: 'completado'
       },
       {
         id: 'b7',
@@ -597,7 +598,8 @@
           { id: 'b7-t1', label: 'Registrar y procesar devolución.' },
           { id: 'b7-t2', label: 'Stock y ubicaciones se restauran correctamente.' }
         ],
-        env: []
+        env: [],
+        defaultStatus: 'completado'
       },
       {
         id: 'b8',
@@ -623,7 +625,8 @@
           { id: 'b8-t1', label: 'Crear corte por rango de fechas.' },
           { id: 'b8-t2', label: 'Totales coinciden con pedidos liquidados.' }
         ],
-        env: []
+        env: [],
+        defaultStatus: 'completado'
       },
       {
         id: 'b9',
@@ -650,7 +653,8 @@
           { id: 'b9-t1', label: 'Pedidos muestran usuario correcto.' },
           { id: 'b9-t2', label: 'Devoluciones/transferencias muestran usuario.' }
         ],
-        env: []
+        env: [],
+        defaultStatus: 'completado'
       },
       {
         id: 'b10',
@@ -677,7 +681,8 @@
           { id: 'b10-t1', label: 'API /auditoria lista eventos recientes.' },
           { id: 'b10-t2', label: 'Cambios en pedidos/costos generan filas auditoría.' }
         ],
-        env: []
+        env: [],
+        defaultStatus: 'completado'
       }
     ];
 
@@ -697,6 +702,13 @@
             if (PLAN_REVISION >= 6) {
               s.statuses.b2 = 'completado';
               s.statuses.b5 = 'completado';
+            }
+            if (PLAN_REVISION >= 9) {
+              s.statuses.b6 = 'completado';
+              s.statuses.b7 = 'completado';
+              s.statuses.b8 = 'completado';
+              s.statuses.b9 = 'completado';
+              s.statuses.b10 = 'completado';
             }
             s._revision = PLAN_REVISION;
             localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
