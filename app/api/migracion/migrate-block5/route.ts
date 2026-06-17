@@ -41,9 +41,13 @@ export async function POST(req: Request) {
       await runInsforgeRawSql(`
         SELECT setval(
           'public.cotizacion_folio_seq',
-          COALESCE(
-            (SELECT MAX(NULLIF(regexp_replace(folio, '.*-([0-9]+)$', '\\1'), folio)::bigint) FROM public.cotizaciones WHERE folio IS NOT NULL AND folio <> ''),
-            0
+          GREATEST(
+            COALESCE(
+              (SELECT MAX(NULLIF(regexp_replace(folio, '.*-([0-9]+)$', '\\1'), folio)::bigint)
+               FROM public.cotizaciones WHERE folio IS NOT NULL AND folio <> ''),
+              0
+            ),
+            1
           ),
           true
         );

@@ -27,8 +27,11 @@ BEGIN
   FROM public.cotizaciones
   WHERE folio IS NOT NULL AND folio <> '';
 
-  -- Dejar nextval en v_max+1
-  PERFORM setval('public.cotizacion_folio_seq', v_max, true);
+  IF v_max <= 0 THEN
+    PERFORM setval('public.cotizacion_folio_seq', 1, false);
+  ELSE
+    PERFORM setval('public.cotizacion_folio_seq', v_max, true);
+  END IF;
 END $$;
 
 -- 3) Reemplazar función para generar folio (global)
@@ -90,10 +93,3 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.refoliar_cotizaciones_existentes() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.refoliar_cotizaciones_existentes() TO anon;
-
-
--- Al marcar una cotización como "terminado", crear un registro en pedidos con folio
--- para el historial de ventas, sin movimiento de inventario de prendas (ni insumos:
--- los insumos se descontaron al pasar a "trabajando" si aplica).
-
--- Folio de pedido (misma idea que cotización: PED-YYYYMM-0001)

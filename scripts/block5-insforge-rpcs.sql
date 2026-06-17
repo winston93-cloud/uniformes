@@ -380,8 +380,11 @@ BEGIN
   FROM public.cotizaciones
   WHERE folio IS NOT NULL AND folio <> '';
 
-  -- Dejar nextval en v_max+1
-  PERFORM setval('public.cotizacion_folio_seq', v_max, true);
+  IF v_max <= 0 THEN
+    PERFORM setval('public.cotizacion_folio_seq', 1, false);
+  ELSE
+    PERFORM setval('public.cotizacion_folio_seq', v_max, true);
+  END IF;
 END $$;
 
 -- 3) Reemplazar función para generar folio (global)
