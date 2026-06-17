@@ -3,6 +3,7 @@ import mysql from 'mysql2/promise';
 import { z } from 'zod';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { sendEmailReport } from '@/lib/emailReport';
+import { mirrorAlumnoChunkToInsforge } from '@/lib/migracion/mirrorAlumnoChunkToInsforge';
 
 export const runtime = 'nodejs';
 
@@ -210,6 +211,14 @@ export async function POST(req: Request) {
         const chunk = mapped.slice(i, i + chunkSize);
         const { error } = await supabaseAdmin.from('alumno').upsert(chunk, { onConflict: 'alumno_ref' });
         if (error) throw error;
+        // Espejo InsForge (desactivado por defecto; ver INSFORGE_MIRROR_ALUMNO_SYNC)
+        const withIds = await supabaseAdmin.from('alumno').select('*').in(
+          'alumno_ref',
+          chunk.map((r) => r.alumno_ref as string)
+        );
+        if (withIds.data?.length) {
+          await mirrorAlumnoChunkToInsforge(withIds.data as Record<string, unknown>[]);
+        }
         upserted += chunk.length;
       }
 

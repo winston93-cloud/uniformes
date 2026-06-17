@@ -276,7 +276,7 @@
 
   <script>
     const STORAGE_KEY = 'uniformes_plan_migracion_insforge_v1';
-    const PLAN_REVISION = 2; // rev 2: Bloque 3 completado (corte inventario InsForge)
+    const PLAN_REVISION = 3; // rev 3: Bloque 4 espejo clientes (DDL + datos + bucket)
 
     const STATUS_LABELS = {
       pendiente: '⬜ Pendiente',
@@ -452,22 +452,22 @@
         id: 'b4',
         num: '4',
         title: 'Clientes y datos fiscales',
-        subtitle: 'Alumnos (MySQL sync), externos, constancia SAT PDF',
-        isolation: 'Réplica en IF no cambia sync MySQL (sigue a SB). Cotizaciones/pedidos en SB no se rompen si IF falla.',
+        subtitle: 'Fase espejo — DDL + datos en InsForge; UI y sync MySQL siguen en Supabase',
+        isolation: 'Réplica verificada en IF (jun 2026). Sync MySQL y pantallas siguen en SB hasta pruebas Alexx y corte.',
         tech: {
           tablas: ['alumno', 'externos', 'datos_fiscales_cliente'],
-          fks: ['datos_fiscales → alumno o externo (según diseño)', 'cotizaciones/pedidos referencian alumno/externo'],
-          triggers: ['updated_at en externos'],
+          fks: ['datos_fiscales.alumno_id TEXT (UUID legado o id numérico)', 'datos_fiscales.externo_id → externos'],
+          triggers: ['updated_at en externos y datos_fiscales_cliente'],
           rpcs: [],
-          apis: ['/api/alumno/sync-mysql'],
+          apis: ['/api/alumno/sync-mysql', '/api/migracion/migrate-table'],
           hooks: ['useAlumnos', 'useExternos', 'ModalDatosFiscalesCliente', 'lib/datosFiscalesPdf'],
-          storage: ['Bucket constancia fiscal PDF (Supabase Storage)'],
-          integraciones: ['Sync MySQL hosting → alumno (hoy Supabase)']
+          storage: ['Bucket datos-fiscales-clientes (IF creado; PDFs aún en Supabase Storage)'],
+          integraciones: ['Sync MySQL hosting → alumno (Supabase; espejo IF manual/migrate-table)']
         },
         builder: [
-          { id: 'b4-m1', label: 'DDL 3 tablas + índices en InsForge.' },
-          { id: 'b4-m2', label: 'Copiar datos alumno/externos/fiscales; verify count.' },
-          { id: 'b4-m3', label: 'Bucket Storage en InsForge + copiar PDFs existentes.' },
+          { id: 'b4-m1', label: 'DDL 3 tablas + índices en InsForge. ✓ scripts/block4-insforge-ddl.sql' },
+          { id: 'b4-m2', label: 'Copiar datos: alumno 2346, externos 21, fiscales 1 — verify OK.' },
+          { id: 'b4-m3', label: 'Bucket Storage IF datos-fiscales-clientes ✓; pendiente copiar PDFs.' },
           { id: 'b4-m4', label: 'Preparar switch sync-mysql destino (NO activar hasta corte aprobado).' },
           { id: 'b4-m5', label: 'Dualidad: sync y UI siguen en SB hasta prueba OK.' }
         ],
@@ -480,8 +480,9 @@
         ],
         env: [
           { id: 'b4-e1', label: 'Credenciales MySQL sync en Vercel.' },
-          { id: 'b4-e2', label: 'Storage Supabase accesible; InsForge bucket creado para réplica.' }
-        ]
+          { id: 'b4-e2', label: 'Bucket InsForge datos-fiscales-clientes creado; PDFs origen en Supabase Storage.' }
+        ],
+        defaultStatus: 'pruebas'
       },
       {
         id: 'b5',
@@ -687,7 +688,8 @@
           const s = JSON.parse(raw);
           if (!s._revision || s._revision < PLAN_REVISION) {
             s.statuses = s.statuses || {};
-            s.statuses.b3 = 'completado';
+            if (PLAN_REVISION >= 2) s.statuses.b3 = 'completado';
+            if (PLAN_REVISION >= 3) s.statuses.b4 = 'pruebas';
             s._revision = PLAN_REVISION;
             localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
           }
