@@ -88,6 +88,8 @@ function PedidosPageContent() {
   const [partidaParaAgregarStock, setPartidaParaAgregarStock] = useState<number | null>(null);
   const [mostrarExitoStock, setMostrarExitoStock] = useState(false);
   const [mensajeExitoStock, setMensajeExitoStock] = useState('');
+  const [guardandoPedido, setGuardandoPedido] = useState(false);
+  const enviandoPedidoRef = useRef(false);
   const { costos, getCostosByPrenda, refetch: refetchCostos } = useCostos(sesion?.sucursal_id);
   const { alumnos, searchAlumnos } = useAlumnos(cicloEscolar);
   const { searchExternos } = useExternos();
@@ -426,7 +428,7 @@ function PedidosPageContent() {
       
       if ((e.ctrlKey || e.metaKey) && e.key === 's' && mostrarFormulario) {
         e.preventDefault();
-        // Simular submit del formulario
+        if (enviandoPedidoRef.current) return;
         const form = document.querySelector('form');
         if (form) {
           form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
@@ -681,6 +683,8 @@ function PedidosPageContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (enviandoPedidoRef.current) return;
+
     console.log('🚀 Iniciando creación de pedido...');
     console.log('📋 FormData:', formData);
     console.log('🛍️ Detalles:', formData.detalles);
@@ -742,24 +746,35 @@ function PedidosPageContent() {
 
     // Crear el pedido en la base de datos
     console.log('💾 Llamando a crearPedido...');
-    const resultado = await crearPedido(pedidoParaDB, detallesParaDB, sesion?.sucursal_id, sesion?.usuario_id);
-    console.log('📦 Resultado:', resultado);
+    enviandoPedidoRef.current = true;
+    setGuardandoPedido(true);
+    try {
+      const resultado = await crearPedido(
+        pedidoParaDB,
+        detallesParaDB,
+        sesion?.sucursal_id,
+        sesion?.usuario_id
+      );
+      console.log('📦 Resultado:', resultado);
 
-    if (resultado.success && resultado.data) {
-      console.log('✅ Pedido creado exitosamente, ID:', resultado.data.id);
-      console.log('🔀 Navegando a /pedidos/' + resultado.data.id);
-      // Navegar a la página de detalles del pedido
-      router.push(`/pedidos/${resultado.data.id}`);
-    } else {
-      console.error('❌ Error al crear pedido:', resultado.error);
-      
-      // Mostrar mensaje de error específico
-      const errorMsg = typeof resultado.error === 'string' 
-        ? resultado.error 
-        : resultado.error?.message || 'Error desconocido al crear el pedido';
-      
-      alert(`❌ Error al crear el pedido\n\n${errorMsg}`);
-      console.error('Error completo:', resultado.error);
+      if (resultado.success && resultado.data) {
+        console.log('✅ Pedido creado exitosamente, ID:', resultado.data.id);
+        console.log('🔀 Navegando a /pedidos/' + resultado.data.id);
+        router.push(`/pedidos/${resultado.data.id}`);
+      } else {
+        console.error('❌ Error al crear pedido:', resultado.error);
+
+        const errorMsg =
+          typeof resultado.error === 'string'
+            ? resultado.error
+            : resultado.error?.message || 'Error desconocido al crear el pedido';
+
+        alert(`❌ Error al crear el pedido\n\n${errorMsg}`);
+        console.error('Error completo:', resultado.error);
+      }
+    } finally {
+      enviandoPedidoRef.current = false;
+      setGuardandoPedido(false);
     }
   };
 
@@ -1713,8 +1728,12 @@ function PedidosPageContent() {
               </div>
 
               <div className="btn-group" style={{ marginTop: '1rem' }}>
-                <button type="submit" className="btn btn-primary" disabled={formData.detalles.length === 0}>
-                  💾 Crear Pedido
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={formData.detalles.length === 0 || guardandoPedido}
+                >
+                  {guardandoPedido ? '⏳ Guardando pedido…' : '💾 Crear Pedido'}
                 </button>
                 <button
                   type="button"
