@@ -246,6 +246,15 @@ export function useDevoluciones(sucursal_id?: string) {
         throw new Error(proc.error || 'Error al procesar devolución');
       }
 
+      const { data: ajuste, error: ajusteErr } = await insforgeDb().rpc(
+        'ajustar_precio_pedido_tras_devolucion',
+        { p_devolucion_id: devolucion.id }
+      );
+      if (ajusteErr) throw ajusteErr;
+      if (ajuste && ajuste.success === false) {
+        throw new Error(ajuste.error || 'Error al ajustar precio del pedido tras devolución');
+      }
+
       await fetchDevoluciones();
 
       return { success: true, data: devolucion };
@@ -266,6 +275,15 @@ export function useDevoluciones(sucursal_id?: string) {
 
       if (!data.success) {
         throw new Error(data.error || 'Error al procesar devolución');
+      }
+
+      const { data: ajuste, error: ajusteErr } = await insforgeDb().rpc(
+        'ajustar_precio_pedido_tras_devolucion',
+        { p_devolucion_id: id }
+      );
+      if (ajusteErr) throw ajusteErr;
+      if (ajuste && ajuste.success === false) {
+        throw new Error(ajuste.error || 'Error al ajustar precio del pedido tras devolución');
       }
 
       await fetchDevoluciones();

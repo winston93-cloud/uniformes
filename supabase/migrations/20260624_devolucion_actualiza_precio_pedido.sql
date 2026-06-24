@@ -1,4 +1,6 @@
--- Bloque 7: RPC procesar_devolucion_atomica (sumar_costo ya en Bloque 5)
+-- Devolución: además de stock, actualizar precio/cantidad del pedido y recalcular total.
+-- Cambio de prenda/talla: precio desde precio_cambio o catálogo costos.
+-- Devolución sin cambio: reduce cantidad y subtotal de la partida.
 
 CREATE OR REPLACE FUNCTION public.procesar_devolucion_atomica(
   p_devolucion_id UUID
@@ -170,4 +172,4 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.procesar_devolucion_atomica(UUID) IS
-  'Procesa devolución: repone stock solo de entregado (cantidad-pendiente). Si es cambio, descuenta stock del nuevo artículo y actualiza detalle_pedidos.';
+  'Procesa devolución: stock, actualiza detalle_pedidos (precio/cantidad en cambio o devolución) y recalcula total del pedido.';

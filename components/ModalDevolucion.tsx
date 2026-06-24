@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDevoluciones, type CrearDevolucionData } from '@/lib/hooks/useDevoluciones';
 import { usePrendas } from '@/lib/hooks/usePrendas';
+import { useCostos } from '@/lib/hooks/useCostos';
 import { useTallas } from '@/lib/hooks/useTallas';
 
 interface ModalDevolucionProps {
@@ -96,6 +97,7 @@ export default function ModalDevolucion({ isOpen, onClose, pedido, onSuccess }: 
   const { crearDevolucion } = useDevoluciones(sesion?.sucursal_id);
   const { prendas } = usePrendas();
   const { tallas } = useTallas();
+  const { costos } = useCostos(sesion?.sucursal_id);
 
   const [tipoDevolucion, setTipoDevolucion] = useState<'COMPLETA' | 'PARCIAL' | 'CAMBIO_TALLA' | 'CAMBIO_PRENDA'>('COMPLETA');
   const [motivo, setMotivo] = useState('');
@@ -116,7 +118,7 @@ export default function ModalDevolucion({ isOpen, onClose, pedido, onSuccess }: 
         cantidad_original: det.cantidad,
         pendiente: det.pendiente ?? 0,
         cantidad_devuelta: 0,
-        precio_unitario: det.precio,
+        precio_unitario: det.precio_unitario ?? det.precio ?? 0,
         seleccionado: tipoDevolucion === 'COMPLETA',
         es_cambio: false,
       }));
@@ -246,6 +248,30 @@ export default function ModalDevolucion({ isOpen, onClose, pedido, onSuccess }: 
   const toggleCambio = (index: number) => {
     setDetalles((prev) =>
       prev.map((d, i) => (i === index ? { ...d, es_cambio: !d.es_cambio } : d))
+    );
+  };
+
+  const resolverPrecioCambio = (prendaId?: string, tallaId?: string) => {
+    if (!prendaId || !tallaId) return undefined;
+    const costo = costos.find(
+      (c) => c.prenda_id === prendaId && c.talla_id === tallaId && c.activo !== false
+    );
+    return costo?.precio_menudeo ?? costo?.precio_venta;
+  };
+
+  const actualizarCambio = (
+    index: number,
+    patch: Partial<Pick<DetalleDevolucionForm, 'prenda_cambio_id' | 'talla_cambio_id' | 'cantidad_cambio'>>
+  ) => {
+    setDetalles((prev) =>
+      prev.map((d, i) => {
+        if (i !== index) return d;
+        const next = { ...d, ...patch };
+        const prendaId = patch.prenda_cambio_id ?? d.prenda_cambio_id;
+        const tallaId = patch.talla_cambio_id ?? d.talla_cambio_id;
+        const precio = resolverPrecioCambio(prendaId, tallaId);
+        return precio != null ? { ...next, precio_cambio: precio } : next;
+      })
     );
   };
 
@@ -608,11 +634,7 @@ export default function ModalDevolucion({ isOpen, onClose, pedido, onSuccess }: 
                                   <select
                                     value={det.prenda_cambio_id || ''}
                                     onChange={(e) =>
-                                      setDetalles((prev) =>
-                                        prev.map((d, i) =>
-                                          i === index ? { ...d, prenda_cambio_id: e.target.value } : d
-                                        )
-                                      )
+                                      actualizarCambio(index, { prenda_cambio_id: e.target.value })
                                     }
                                     style={{ ...inputBase, fontSize: '0.88rem' }}
                                   >
@@ -629,11 +651,7 @@ export default function ModalDevolucion({ isOpen, onClose, pedido, onSuccess }: 
                                   <select
                                     value={det.talla_cambio_id || ''}
                                     onChange={(e) =>
-                                      setDetalles((prev) =>
-                                        prev.map((d, i) =>
-                                          i === index ? { ...d, talla_cambio_id: e.target.value } : d
-                                        )
-                                      )
+                                      actualizarCambio(index, { talla_cambio_id: e.target.value })
                                     }
                                     style={{ ...inputBase, fontSize: '0.88rem' }}
                                   >
@@ -652,13 +670,9 @@ export default function ModalDevolucion({ isOpen, onClose, pedido, onSuccess }: 
                                     min={1}
                                     value={det.cantidad_cambio || det.cantidad_devuelta}
                                     onChange={(e) =>
-                                      setDetalles((prev) =>
-                                        prev.map((d, i) =>
-                                          i === index
-                                            ? { ...d, cantidad_cambio: parseInt(e.target.value) || 0 }
-                                            : d
-                                        )
-                                      )
+                                      actualizarCambio(index, {
+                                        cantidad_cambio: parseInt(e.target.value) || 0,
+                                      })
                                     }
                                     style={inputBase}
                                   />
