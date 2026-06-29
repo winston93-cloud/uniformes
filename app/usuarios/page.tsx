@@ -270,7 +270,7 @@ export default function UsuariosPage() {
             role="presentation"
           >
             <div
-              className="card"
+              className="card modal-form-shell"
               style={{ maxWidth: 440, width: '100%', margin: 0 }}
               onClick={(ev) => ev.stopPropagation()}
               role="dialog"
@@ -280,8 +280,8 @@ export default function UsuariosPage() {
               <h2 id="modal-usuarios-titulo" style={{ marginTop: 0 }}>
                 {editando ? 'Editar usuario' : 'Nuevo usuario'}
               </h2>
-              <form onSubmit={handleSubmit}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <form onSubmit={handleSubmit} style={{ width: '100%' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%' }}>
                   <div>
                     <label className="form-label" htmlFor="uu-nombre">
                       Nombre
