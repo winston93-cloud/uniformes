@@ -144,7 +144,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
             >
               {(sesion?.usuario_username || 'U').charAt(0).toUpperCase()}
             </div>
-            <span>Bienvenido, {sesion?.usuario_username || 'Usuario'}</span>
+            <span>Bienvenido, {sesion?.usuario_nombre || sesion?.usuario_username || 'Usuario'}</span>
           </div>
           {sesion && (
             <div style={{

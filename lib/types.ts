@@ -358,6 +358,7 @@ export type EstadoUsuarioUniforme = 'pendiente_validacion' | 'activo' | 'inactiv
 export interface UsuarioUniforme {
   id: string;
   nombre: string;
+  usuario: string;
   correo: string;
   rol_id: string;
   estado: EstadoUsuarioUniforme;
@@ -368,9 +369,14 @@ export interface UsuarioUniforme {
 
 // Contexto de sesión del usuario
 export interface SesionUsuario {
+  usuario_uniforme_id: string;
   usuario_id: number;
   usuario_username: string;
+  usuario_nombre: string;
   usuario_email: string;
+  rol_id: string;
+  rol_nombre: string;
+  es_admin: boolean;
   sucursal_id: string;
   sucursal_codigo: string;
   sucursal_nombre: string;

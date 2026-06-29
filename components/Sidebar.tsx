@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
+import { esAdministrador } from '@/lib/permisos';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -9,24 +11,27 @@ interface SidebarProps {
 }
 
 const menuItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: '📊' },
-  { href: '/insumos', label: 'Insumos', icon: '🧵' },
-  { href: '/tallas', label: 'Tallas', icon: '📏' },
-  { href: '/prendas', label: 'Prendas', icon: '👕' },
-  { href: '/costos', label: 'Costos', icon: '💰' },
-  { href: '/stock', label: 'Stock', icon: '📦' },
-  { href: '/pedidos', label: 'Pedidos', icon: '🛒' },
-  { href: '/inventario', label: 'Inventario', icon: '📦' },
-  { href: '/alumnos', label: 'Alumnos', icon: '👨‍🎓' },
-  { href: '/externos', label: 'Clientes Externos', icon: '👤' },
-  { href: '/usuarios', label: 'Usuarios', icon: '👥' },
-  { href: '/cortes', label: 'Cortes de Caja', icon: '💵' },
-  { href: '/reportes', label: 'Reportes', icon: '📈' },
-  { href: '/produccion-semanal', label: 'Producción Semanal', icon: '📅' },
+  { href: '/dashboard', label: 'Dashboard', icon: '📊', adminOnly: false },
+  { href: '/insumos', label: 'Insumos', icon: '🧵', adminOnly: true },
+  { href: '/tallas', label: 'Tallas', icon: '📏', adminOnly: true },
+  { href: '/prendas', label: 'Prendas', icon: '👕', adminOnly: true },
+  { href: '/costos', label: 'Costos', icon: '💰', adminOnly: true },
+  { href: '/stock', label: 'Stock', icon: '📦', adminOnly: true },
+  { href: '/pedidos', label: 'Pedidos', icon: '🛒', adminOnly: true },
+  { href: '/inventario', label: 'Inventario', icon: '📦', adminOnly: true },
+  { href: '/alumnos', label: 'Alumnos', icon: '👨‍🎓', adminOnly: true },
+  { href: '/externos', label: 'Clientes Externos', icon: '👤', adminOnly: true },
+  { href: '/usuarios', label: 'Usuarios', icon: '👥', adminOnly: true },
+  { href: '/cortes', label: 'Cortes de Caja', icon: '💵', adminOnly: true },
+  { href: '/reportes', label: 'Reportes', icon: '📈', adminOnly: true },
+  { href: '/produccion-semanal', label: 'Producción Semanal', icon: '📅', adminOnly: true },
 ];
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
+  const { sesion } = useAuth();
+  const admin = esAdministrador(sesion);
+  const items = menuItems.filter((item) => !item.adminOnly || admin);
 
   return (
     <>
@@ -41,7 +46,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         </div>
 
         <nav className="sidebar-menu">
-          {menuItems.map((item) => (
+          {items.map((item) => (
             <Link
               key={item.href}
               href={item.href}

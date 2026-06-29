@@ -6,29 +6,35 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export default function Home() {
   const router = useRouter();
-  const { loading } = useAuth();
+  const { loading, sesion } = useAuth();
 
   useEffect(() => {
     if (!loading) {
-      // Respaldo MySQL → Supabase desactivado temporalmente (cambio de servidor / ETIMEDOUT).
-      // window.location.replace('/api/alumno/refresh-full?redirect=/dashboard');
-      router.replace('/dashboard');
+      if (sesion) {
+        router.replace('/dashboard');
+      } else {
+        router.replace('/login');
+      }
     }
-  }, [loading, router]);
+  }, [loading, sesion, router]);
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    }}>
-      <div style={{
-        textAlign: 'center',
-        color: 'white',
-        fontSize: '1.5rem',
-      }}>
+    <div
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      }}
+    >
+      <div
+        style={{
+          textAlign: 'center',
+          color: 'white',
+          fontSize: '1.5rem',
+        }}
+      >
         <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🎓</div>
         Cargando Sistema de Uniformes...
       </div>

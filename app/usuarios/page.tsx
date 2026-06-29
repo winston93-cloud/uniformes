@@ -26,16 +26,20 @@ export default function UsuariosPage() {
   const [guardando, setGuardando] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [nombre, setNombre] = useState('');
+  const [usuarioLogin, setUsuarioLogin] = useState('');
   const [correo, setCorreo] = useState('');
+  const [password, setPassword] = useState('');
   const [rolId, setRolId] = useState('');
-  const [estado, setEstado] = useState<EstadoUsuarioUniforme>('pendiente_validacion');
+  const [estado, setEstado] = useState<EstadoUsuarioUniforme>('activo');
 
   const abrirNuevo = () => {
     setEditando(null);
     setNombre('');
+    setUsuarioLogin('');
     setCorreo('');
-    setRolId(roles[0]?.id ?? '');
-    setEstado('pendiente_validacion');
+    setPassword('');
+    setRolId(roles.find((r) => r.nombre.toLowerCase() === 'administrador')?.id ?? roles[0]?.id ?? '');
+    setEstado('activo');
     setFormError(null);
     setModalAbierto(true);
   };
@@ -43,7 +47,9 @@ export default function UsuariosPage() {
   const abrirEditar = (u: UsuarioUniforme) => {
     setEditando(u);
     setNombre(u.nombre);
+    setUsuarioLogin(u.usuario);
     setCorreo(u.correo);
+    setPassword('');
     setRolId(u.rol_id);
     setEstado(u.estado);
     setFormError(null);
@@ -60,9 +66,15 @@ export default function UsuariosPage() {
     e.preventDefault();
     setFormError(null);
     const nombreTrim = nombre.trim();
+    const usuarioTrim = usuarioLogin.trim().toLowerCase();
     const correoTrim = correo.trim().toLowerCase();
+
     if (!nombreTrim) {
       setFormError('Indica el nombre.');
+      return;
+    }
+    if (!usuarioTrim) {
+      setFormError('Indica el usuario de login.');
       return;
     }
     if (!correoTrim || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correoTrim)) {
@@ -73,16 +85,23 @@ export default function UsuariosPage() {
       setFormError('Selecciona un rol.');
       return;
     }
+    if (!editando && password.length < 6) {
+      setFormError('La contraseña debe tener al menos 6 caracteres.');
+      return;
+    }
 
     setGuardando(true);
     try {
       if (editando) {
-        const r = await actualizarUsuario(editando.id, {
+        const payload: Parameters<typeof actualizarUsuario>[1] = {
           nombre: nombreTrim,
+          usuario: usuarioTrim,
           correo: correoTrim,
           rol_id: rolId,
           estado,
-        });
+        };
+        if (password.length > 0) payload.password = password;
+        const r = await actualizarUsuario(editando.id, payload);
         if (!r.ok) {
           setFormError(r.message ?? 'No se pudo actualizar.');
           return;
@@ -90,7 +109,9 @@ export default function UsuariosPage() {
       } else {
         const r = await crearUsuario({
           nombre: nombreTrim,
+          usuario: usuarioTrim,
           correo: correoTrim,
+          password,
           rol_id: rolId,
           estado,
         });
@@ -141,9 +162,8 @@ export default function UsuariosPage() {
           <div>
             <h1 className="page-title">👥 Usuarios del sistema</h1>
             <p style={{ color: 'var(--text-secondary)', marginTop: '0.5rem', maxWidth: '42rem' }}>
-              Registro en <code>usuarios_uniformes</code> con roles en catálogo separado. Los nuevos registros quedan en
-              estado «Pendiente de validación» hasta gobernanza formal. El middleware de autenticación no usa aún esta
-              tabla.
+              Cuentas con usuario y contraseña para acceder al sistema. Solo usuarios <strong>Activos</strong> pueden
+              iniciar sesión. El rol <strong>Administrador</strong> accede a todos los módulos.
             </p>
           </div>
           <button type="button" className="btn btn-primary" onClick={abrirNuevo} disabled={roles.length === 0}>
@@ -160,9 +180,7 @@ export default function UsuariosPage() {
               background: '#fffbeb',
             }}
           >
-            <strong>No hay roles en catálogo.</strong> Aplica la migración SQL{' '}
-            <code>create_usuarios_uniformes.sql</code> en Supabase para crear <code>roles_uniformes</code> y datos
-            iniciales.
+            <strong>No hay roles en catálogo.</strong> Aplica la migración de roles en InsForge.
           </div>
         )}
 
@@ -181,7 +199,7 @@ export default function UsuariosPage() {
           <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
             <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>👥</div>
             <h3>No hay usuarios registrados</h3>
-            <p style={{ color: 'var(--text-secondary)' }}>Crea el primero para comenzar la gobernanza.</p>
+            <p style={{ color: 'var(--text-secondary)' }}>Crea el primero para comenzar.</p>
           </div>
         ) : (
           <div className="table-container">
@@ -189,6 +207,7 @@ export default function UsuariosPage() {
               <thead>
                 <tr>
                   <th>Nombre</th>
+                  <th>Usuario</th>
                   <th>Correo</th>
                   <th>Rol</th>
                   <th>Estado</th>
@@ -200,8 +219,9 @@ export default function UsuariosPage() {
                   <tr key={u.id}>
                     <td style={{ fontWeight: 600 }}>{u.nombre}</td>
                     <td>
-                      <code style={{ background: '#f3f4f6', padding: '0.2rem 0.45rem', borderRadius: 4 }}>{u.correo}</code>
+                      <code style={{ background: '#f3f4f6', padding: '0.2rem 0.45rem', borderRadius: 4 }}>{u.usuario}</code>
                     </td>
+                    <td>{u.correo}</td>
                     <td>
                       <span className="badge badge-info">{u.rol?.nombre ?? '—'}</span>
                     </td>
@@ -276,6 +296,19 @@ export default function UsuariosPage() {
                     />
                   </div>
                   <div>
+                    <label className="form-label" htmlFor="uu-usuario">
+                      Usuario (login)
+                    </label>
+                    <input
+                      id="uu-usuario"
+                      className="form-input"
+                      value={usuarioLogin}
+                      onChange={(e) => setUsuarioLogin(e.target.value)}
+                      autoComplete="username"
+                      required
+                    />
+                  </div>
+                  <div>
                     <label className="form-label" htmlFor="uu-correo">
                       Correo
                     </label>
@@ -287,6 +320,21 @@ export default function UsuariosPage() {
                       onChange={(e) => setCorreo(e.target.value)}
                       autoComplete="email"
                       required
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label" htmlFor="uu-password">
+                      Contraseña {editando ? '(vacío = sin cambio)' : ''}
+                    </label>
+                    <input
+                      id="uu-password"
+                      type="password"
+                      className="form-input"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      autoComplete={editando ? 'new-password' : 'new-password'}
+                      required={!editando}
+                      minLength={editando ? undefined : 6}
                     />
                   </div>
                   <div>

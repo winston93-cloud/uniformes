@@ -9,6 +9,7 @@ import TarjetaAlertasStock from '@/components/TarjetaAlertasStock';
 import TarjetaAlertasStockPrendas from '@/components/TarjetaAlertasStockPrendas';
 import UserCard from '@/components/UserCard';
 import ModalActualizarBaseDatos from '@/components/ModalActualizarBaseDatos';
+import { esAdministrador } from '@/lib/permisos';
 
 function AlumnoSyncModal() {
   const [abierta, setAbierta] = useState(false);
@@ -122,6 +123,7 @@ function AlumnoSyncModal() {
 
 export default function Dashboard() {
   const { sesion, loading, sesionError, recargarSesion } = useAuth();
+  const esAdmin = esAdministrador(sesion);
   const [tarjetaExpandida, setTarjetaExpandida] = useState<'insumos' | 'alertas' | 'prendas' | null>(null);
   const [actualizarBDAbierto, setActualizarBDAbierto] = useState(false);
   // Respaldo MySQL → Supabase desactivado temporalmente (cambio de servidor).
@@ -221,6 +223,16 @@ export default function Dashboard() {
           <span className="title-icon">✨</span>
         </h1>
 
+        {!esAdmin ? (
+          <div className="card" style={{ padding: '2rem', textAlign: 'center', marginBottom: '2rem' }}>
+            <h2 style={{ marginTop: 0 }}>Sesión iniciada</h2>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: 0 }}>
+              Tu rol ({sesion?.rol_nombre}) no tiene acceso a los módulos operativos. Contacta al administrador si
+              necesitas permisos adicionales.
+            </p>
+          </div>
+        ) : (
+          <>
         {/* ⭐ MÓDULOS PRINCIPALES VIP - Layout Dinámico con 3 Tarjetas ⭐ */}
         <div 
           className="modulos-vip-grid"
@@ -907,9 +919,13 @@ export default function Dashboard() {
             </p>
           </Link>
         </div>
+          </>
+        )}
       </div>
 
+      {esAdmin && (
       <ModalActualizarBaseDatos abierto={actualizarBDAbierto} onClose={() => setActualizarBDAbierto(false)} />
+      )}
     </LayoutWrapper>
   );
 }

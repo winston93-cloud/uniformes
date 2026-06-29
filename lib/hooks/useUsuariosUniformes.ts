@@ -26,7 +26,14 @@ export function useUsuariosUniformes() {
     const { data, error: err } = await insforgeDb()
       .from('usuarios_uniformes')
       .select(`
-        *,
+        id,
+        nombre,
+        usuario,
+        correo,
+        rol_id,
+        estado,
+        created_at,
+        updated_at,
         rol:roles_uniformes (*)
       `)
       .order('created_at', { ascending: false });
@@ -58,23 +65,28 @@ export function useUsuariosUniformes() {
 
   async function crearUsuario(payload: {
     nombre: string;
+    usuario: string;
     correo: string;
+    password: string;
     rol_id: string;
     estado: EstadoUsuarioUniforme;
   }): Promise<{ ok: boolean; message?: string }> {
     try {
       setError(null);
-      const { error: err } = await insforgeDb().from('usuarios_uniformes').insert({
-        nombre: payload.nombre.trim(),
-        correo: payload.correo.trim().toLowerCase(),
-        rol_id: payload.rol_id,
-        estado: payload.estado,
+      const res = await fetch('/api/usuarios', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
       });
-      if (err) throw err;
+      const data = (await res.json()) as { ok: boolean; message?: string };
+      if (!res.ok || !data.ok) {
+        throw new Error(data.message ?? 'No se pudo crear el usuario.');
+      }
       await cargarUsuarios();
       return { ok: true };
     } catch (e) {
-      const msg = getSupabaseErrorMessage(e);
+      const msg = e instanceof Error ? e.message : getSupabaseErrorMessage(e);
       setError(msg);
       return { ok: false, message: msg };
     }
@@ -84,25 +96,29 @@ export function useUsuariosUniformes() {
     id: string,
     payload: Partial<{
       nombre: string;
+      usuario: string;
       correo: string;
+      password: string;
       rol_id: string;
       estado: EstadoUsuarioUniforme;
     }>
   ): Promise<{ ok: boolean; message?: string }> {
     try {
       setError(null);
-      const update: Record<string, unknown> = {};
-      if (payload.nombre !== undefined) update.nombre = payload.nombre.trim();
-      if (payload.correo !== undefined) update.correo = payload.correo.trim().toLowerCase();
-      if (payload.rol_id !== undefined) update.rol_id = payload.rol_id;
-      if (payload.estado !== undefined) update.estado = payload.estado;
-
-      const { error: err } = await insforgeDb().from('usuarios_uniformes').update(update).eq('id', id);
-      if (err) throw err;
+      const res = await fetch(`/api/usuarios/${id}`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = (await res.json()) as { ok: boolean; message?: string };
+      if (!res.ok || !data.ok) {
+        throw new Error(data.message ?? 'No se pudo actualizar.');
+      }
       await cargarUsuarios();
       return { ok: true };
     } catch (e) {
-      const msg = getSupabaseErrorMessage(e);
+      const msg = e instanceof Error ? e.message : getSupabaseErrorMessage(e);
       setError(msg);
       return { ok: false, message: msg };
     }
@@ -111,12 +127,18 @@ export function useUsuariosUniformes() {
   async function eliminarUsuario(id: string): Promise<{ ok: boolean; message?: string }> {
     try {
       setError(null);
-      const { error: err } = await insforgeDb().from('usuarios_uniformes').delete().eq('id', id);
-      if (err) throw err;
+      const res = await fetch(`/api/usuarios/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      const data = (await res.json()) as { ok: boolean; message?: string };
+      if (!res.ok || !data.ok) {
+        throw new Error(data.message ?? 'No se pudo eliminar.');
+      }
       await cargarUsuarios();
       return { ok: true };
     } catch (e) {
-      const msg = getSupabaseErrorMessage(e);
+      const msg = e instanceof Error ? e.message : getSupabaseErrorMessage(e);
       setError(msg);
       return { ok: false, message: msg };
     }

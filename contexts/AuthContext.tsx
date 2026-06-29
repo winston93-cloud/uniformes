@@ -3,7 +3,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { SesionUsuario } from '@/lib/types';
 import { getCicloEscolarActual } from '@/lib/utils/cicloEscolar';
-import { resolverSesionInvitado } from '@/lib/sesion-por-defecto';
 
 interface AuthContextType {
   sesion: SesionUsuario | null;
@@ -11,8 +10,8 @@ interface AuthContextType {
   sesionError: string | null;
   cicloEscolar: number;
   setCicloEscolar: (ciclo: number) => void;
-  setSesion: (sesion: SesionUsuario | null) => void;
-  cerrarSesion: () => void;
+  iniciarSesion: (usuario: string, password: string) => Promise<{ ok: boolean; message?: string }>;
+  cerrarSesion: () => Promise<void>;
   recargarSesion: () => Promise<void>;
 }
 
@@ -24,89 +23,76 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [sesionError, setSesionError] = useState<string | null>(null);
   const [cicloEscolar, setCicloEscolarState] = useState<number>(getCicloEscolarActual());
 
-  const aplicarSesionInvitado = useCallback(async () => {
-    const { sesion: inv, errorDetalle } = await resolverSesionInvitado();
-    if (inv) {
-      setSesionState(inv);
-      localStorage.setItem('sesion_uniformes', JSON.stringify(inv));
+  const aplicarSesion = useCallback((nueva: SesionUsuario | null) => {
+    setSesionState(nueva);
+    if (nueva) {
+      localStorage.setItem('sesion_uniformes', JSON.stringify(nueva));
       setSesionError(null);
-    } else {
-      setSesionState(null);
-      setSesionError(errorDetalle);
-    }
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    (async () => {
-      try {
-        setSesionError(null);
-        const sesionGuardada = localStorage.getItem('sesion_uniformes');
-        if (sesionGuardada) {
-          try {
-            const parsed = JSON.parse(sesionGuardada) as SesionUsuario;
-            if (parsed?.sucursal_id) {
-              setSesionState(parsed);
-            } else {
-              localStorage.removeItem('sesion_uniformes');
-            }
-          } catch (error) {
-            console.error('Error cargando sesión:', error);
-            localStorage.removeItem('sesion_uniformes');
-          }
-        }
-
-        if (!cancelled && !localStorage.getItem('sesion_uniformes')) {
-          await aplicarSesionInvitado();
-        }
-
-        const cicloGuardado = localStorage.getItem('ciclo_escolar_actual');
-        if (cicloGuardado) {
-          setCicloEscolarState(parseInt(cicloGuardado));
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [aplicarSesionInvitado]);
-
-  const setSesion = (nuevaSesion: SesionUsuario | null) => {
-    setSesionState(nuevaSesion);
-    setSesionError(null);
-    if (nuevaSesion) {
-      localStorage.setItem('sesion_uniformes', JSON.stringify(nuevaSesion));
     } else {
       localStorage.removeItem('sesion_uniformes');
     }
-  };
+  }, []);
+
+  const recargarSesion = useCallback(async () => {
+    setLoading(true);
+    setSesionError(null);
+    try {
+      const res = await fetch('/api/auth/login', { credentials: 'include' });
+      if (res.ok) {
+        const data = (await res.json()) as { ok: boolean; sesion?: SesionUsuario };
+        if (data.ok && data.sesion) {
+          aplicarSesion(data.sesion);
+          return;
+        }
+      }
+      aplicarSesion(null);
+    } catch {
+      aplicarSesion(null);
+      setSesionError('No se pudo verificar la sesión.');
+    } finally {
+      setLoading(false);
+    }
+  }, [aplicarSesion]);
+
+  useEffect(() => {
+    void recargarSesion();
+    const cicloGuardado = localStorage.getItem('ciclo_escolar_actual');
+    if (cicloGuardado) {
+      setCicloEscolarState(parseInt(cicloGuardado, 10));
+    }
+  }, [recargarSesion]);
+
+  const iniciarSesion = useCallback(
+    async (usuario: string, password: string) => {
+      setSesionError(null);
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usuario, password }),
+      });
+      const data = (await res.json()) as { ok: boolean; message?: string; sesion?: SesionUsuario };
+      if (!res.ok || !data.ok || !data.sesion) {
+        const msg = data.message ?? 'No se pudo iniciar sesión.';
+        setSesionError(msg);
+        return { ok: false, message: msg };
+      }
+      aplicarSesion(data.sesion);
+      return { ok: true };
+    },
+    [aplicarSesion]
+  );
+
+  const cerrarSesion = useCallback(async () => {
+    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+    aplicarSesion(null);
+    window.location.href = '/login';
+  }, [aplicarSesion]);
 
   const setCicloEscolar = (nuevoCiclo: number) => {
     setCicloEscolarState(nuevoCiclo);
     localStorage.setItem('ciclo_escolar_actual', nuevoCiclo.toString());
   };
-
-  const cerrarSesion = () => {
-    localStorage.removeItem('sesion_uniformes');
-    void (async () => {
-      await aplicarSesionInvitado();
-      window.location.href = '/dashboard';
-    })();
-  };
-
-  const recargarSesion = useCallback(async () => {
-    setLoading(true);
-    setSesionError(null);
-    localStorage.removeItem('sesion_uniformes');
-    await aplicarSesionInvitado();
-    setLoading(false);
-  }, [aplicarSesionInvitado]);
 
   return (
     <AuthContext.Provider
@@ -116,7 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         sesionError,
         cicloEscolar,
         setCicloEscolar,
-        setSesion,
+        iniciarSesion,
         cerrarSesion,
         recargarSesion,
       }}
