@@ -19,10 +19,18 @@ export type SesionCookiePayload = {
 };
 
 function secret(): string {
-  const s = process.env.AUTH_SESSION_SECRET?.trim();
+  const s =
+    process.env.AUTH_SESSION_SECRET?.trim() ||
+    process.env.INSFORGE_ADMIN_TOKEN?.trim() ||
+    process.env.INSFORGE_API_KEY?.trim() ||
+    process.env.NEXT_PUBLIC_INSFORGE_ADMIN_TOKEN?.trim() ||
+    process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY?.trim() ||
+    process.env.INSFORGE_ANON_KEY?.trim();
   if (!s) {
     if (process.env.NODE_ENV === 'production') {
-      throw new Error('AUTH_SESSION_SECRET no configurado en producción.');
+      throw new Error(
+        'Falta AUTH_SESSION_SECRET o claves InsForge (INSFORGE_ADMIN_TOKEN / NEXT_PUBLIC_INSFORGE_ANON_KEY) en Vercel.'
+      );
     }
     return 'uniformes-dev-secret-cambiar-en-prod';
   }
