@@ -9,6 +9,23 @@ function readStr(row: Record<string, unknown>, snake: string, camel: string): st
   return v != null ? String(v).trim() : '';
 }
 
+function normalizarIdKey(id: string) {
+  return id.trim().toLowerCase();
+}
+
+async function buscarCostoDestino(
+  db: DbClient,
+  prendaId: string,
+  tallaId: string,
+  sucursalDestinoId: string
+): Promise<Record<string, unknown> | null> {
+  const destKey = normalizarIdKey(sucursalDestinoId);
+  const res = await db.from('costos').select('*').eq('prenda_id', prendaId).eq('talla_id', tallaId);
+  const rows = ((res.data as Record<string, unknown>[] | null) ?? []).map((r) => normalizarCamposCostoApi(r));
+  const match = rows.find((r) => normalizarIdKey(readStr(r, 'sucursal_id', 'sucursalId')) === destKey);
+  return match ?? null;
+}
+
 function readStock(row: Record<string, unknown>): number {
   return Math.max(0, Math.trunc(Number(row.stock ?? 0)));
 }
@@ -47,8 +64,8 @@ export async function descontarStockOrigenTransferencia(
   if (res.error || !row) throw new Error('Costo de origen no encontrado');
 
   const norm = normalizarCamposCostoApi(row);
-  const sid = readStr(norm, 'sucursal_id', 'sucursalId');
-  if (sid !== sucursalOrigenId) {
+  const sid = normalizarIdKey(readStr(norm, 'sucursal_id', 'sucursalId'));
+  if (sid !== normalizarIdKey(sucursalOrigenId)) {
     throw new Error('El costo no pertenece a la sucursal origen');
   }
 
@@ -78,15 +95,7 @@ export async function abonarStockDestinoTransferencia(
   const tallaId = readStr(origen, 'talla_id', 'tallaId');
   if (!prendaId || !tallaId) throw new Error('Detalle de transferencia incompleto (prenda/talla)');
 
-  const existente = await db
-    .from('costos')
-    .select('*')
-    .eq('prenda_id', prendaId)
-    .eq('talla_id', tallaId)
-    .eq('sucursal_id', sucursalDestinoId)
-    .maybeSingle();
-
-  const fila = existente.data as Record<string, unknown> | null;
+  const fila = await buscarCostoDestino(db, prendaId, tallaId, sucursalDestinoId);
 
   if (fila?.id) {
     const costoId = String(fila.id);
