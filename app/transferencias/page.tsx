@@ -57,9 +57,19 @@ export default function TransferenciasPage() {
             </button>
         </div>
 
-        <div className="alert alert-info" style={{ marginBottom: '2rem' }}>
-          ℹ️ Las transferencias son <strong>bidireccionales</strong>: matriz ↔ sucursal. Quien envía elige prendas de su inventario;
-          quien recibe confirma con <strong>Confirmar recepción</strong> para que el stock aparezca en su tienda.
+        <div
+          className="alert alert-info"
+          style={{
+            marginBottom: '2rem',
+            background: '#ffffff',
+            color: '#334155',
+            border: '1px solid #dbeafe',
+            borderLeft: '4px solid #3b82f6',
+            boxShadow: '0 4px 16px rgba(15, 23, 42, 0.08)',
+          }}
+        >
+          ℹ️ Las transferencias son <strong style={{ color: '#1e40af' }}>bidireccionales</strong>: matriz ↔ sucursal. Quien envía elige prendas de su inventario;
+          quien recibe confirma con <strong style={{ color: '#1e40af' }}>Confirmar recepción</strong> para que el stock aparezca en su tienda.
         </div>
 
         {loading ? (
