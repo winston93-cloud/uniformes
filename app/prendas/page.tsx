@@ -83,10 +83,14 @@ export default function PrendasPage() {
   const [mensajeError, setMensajeError] = useState<string>('');
   const [modalErrorAbierto, setModalErrorAbierto] = useState(false);
   const inputBusquedaRef = useRef<HTMLInputElement>(null);
-  const { prendas, loading, error, createPrenda, updatePrenda, deletePrenda } = usePrendas();
+  const inventarioOpts = { sucursalId: sesion?.sucursal_id, esMatriz: sesion?.es_matriz };
+  const { prendas, loading, error, createPrenda, updatePrenda, deletePrenda } = usePrendas(inventarioOpts);
   const { categorias, loading: loadingCategorias, refetch: refetchCategorias } = useCategorias();
   const { tallas } = useTallas();
-  const { createMultipleCostos, getCostosByPrenda, deleteCosto } = useCostos(sesion?.sucursal_id);
+  const { createMultipleCostos, getCostosByPrenda, deleteCosto } = useCostos(
+    sesion?.sucursal_id,
+    sesion?.es_matriz
+  );
   
   // Cargar todas las categorías (activas e inactivas) para el select
   const [todasLasCategorias, setTodasLasCategorias] = useState<typeof categorias>([]);
@@ -1036,7 +1040,9 @@ export default function PrendasPage() {
 
         <div className="table-container">
           <div style={{ marginBottom: '1rem', textAlign: 'right', padding: '0 1rem', display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-            <button 
+            {sesion?.es_matriz && (
+              <>
+              <button 
                 className="btn btn-secondary" 
                 onClick={() => window.location.href = '/categorias-prendas'}
                 style={{ backgroundColor: '#6c757d', borderColor: '#6c757d', minWidth: '200px' }}
@@ -1054,6 +1060,8 @@ export default function PrendasPage() {
               }} style={{ minWidth: '200px' }}>
                 ➕ Nueva Prenda
               </button>
+              </>
+            )}
           </div>
           
           <table className="table">
@@ -1071,7 +1079,11 @@ export default function PrendasPage() {
               {prendasFiltradas.length === 0 ? (
                 <tr>
                   <td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
-                    {busqueda ? 'No se encontraron prendas con ese criterio.' : 'No hay prendas registradas. Crea tu primera prenda.'}
+                    {busqueda
+                      ? 'No se encontraron prendas con ese criterio.'
+                      : sesion?.es_matriz
+                        ? 'No hay prendas registradas. Crea tu primera prenda.'
+                        : 'No hay prendas en el inventario de esta sucursal. Aparecerán cuando recibas transferencias desde matriz.'}
                   </td>
                 </tr>
               ) : (
@@ -1087,6 +1099,7 @@ export default function PrendasPage() {
                       </span>
                     </td>
                     <td>
+                      {sesion?.es_matriz ? (
                       <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
                         <button
                           className="btn btn-secondary"
@@ -1103,6 +1116,9 @@ export default function PrendasPage() {
                           🗑️ Eliminar
                         </button>
                       </div>
+                      ) : (
+                        <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Inventario de sucursal</span>
+                      )}
                     </td>
                   </tr>
                 ))

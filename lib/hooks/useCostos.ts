@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { getSupabaseErrorMessage } from '../supabase';
 import { insforgeDb } from '@/lib/insforgeBrowser';
 import { fetchCostosRowsByPrenda, normalizarCamposCostoApi } from '@/lib/costoQueries';
-import { filtrarFilasPorSucursalSiHayColumna } from '@/lib/sucursalCliente';
+import { filtrarCostosInventarioTienda, type OpcionesInventarioTienda } from '@/lib/inventarioSucursal';
 import type { Costo } from '../types';
 
 function readCol(r: Record<string, unknown>, snake: string, camel: string): string | null {
@@ -73,7 +73,16 @@ function sortCostosPorFecha(rows: Costo[]): Costo[] {
   return [...rows].sort((a, b) => ts(b) - ts(a));
 }
 
-export function useCostos(sucursal_id?: string) {
+function aplicarFiltroTienda<T extends Record<string, unknown>>(
+  rows: T[],
+  opts?: OpcionesInventarioTienda
+): T[] {
+  if (!opts?.sucursalId?.trim()) return rows;
+  return filtrarCostosInventarioTienda(rows, opts);
+}
+
+export function useCostos(sucursal_id?: string, es_matriz?: boolean) {
+  const inventarioOpts: OpcionesInventarioTienda = { sucursalId: sucursal_id, esMatriz: es_matriz };
   const [costos, setCostos] = useState<Costo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -86,7 +95,7 @@ export function useCostos(sucursal_id?: string) {
 
       if (!error && data?.length) {
         let rows = (data || []).map((r) => r as Record<string, unknown>);
-        rows = filtrarFilasPorSucursalSiHayColumna(rows, sucursal_id);
+        rows = aplicarFiltroTienda(rows, inventarioOpts);
         setCostos(
           sortCostosPorFecha(
             rows.map((r) =>
@@ -104,7 +113,7 @@ export function useCostos(sucursal_id?: string) {
       }
       if (fallback.error) throw fallback.error;
       let plain = (fallback.data || []) as Record<string, unknown>[];
-      plain = filtrarFilasPorSucursalSiHayColumna(plain, sucursal_id);
+      plain = aplicarFiltroTienda(plain, inventarioOpts);
       const enriched = await enrichCostosFromPlainRows(plain);
       setCostos(sortCostosPorFecha(enriched));
       setError(null);
@@ -118,7 +127,7 @@ export function useCostos(sucursal_id?: string) {
 
   useEffect(() => {
     fetchCostos();
-  }, [sucursal_id]);
+  }, [sucursal_id, es_matriz]);
 
   const createCosto = async (costo: Omit<Costo, 'id' | 'created_at' | 'updated_at' | 'talla' | 'prenda'>) => {
     try {
@@ -165,7 +174,7 @@ export function useCostos(sucursal_id?: string) {
   const getCostosByPrenda = async (prenda_id: string) => {
     try {
       let rows = await fetchCostosRowsByPrenda(insforgeDb(), prenda_id);
-      rows = filtrarFilasPorSucursalSiHayColumna(rows as Record<string, unknown>[], sucursal_id) as Record<
+      rows = aplicarFiltroTienda(rows as Record<string, unknown>[], inventarioOpts) as Record<
         string,
         unknown
       >[];

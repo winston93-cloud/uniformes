@@ -16,8 +16,12 @@ export const dynamic = 'force-dynamic';
 export default function CostosPage() {
   const { sesion } = useAuth();
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
-  const { costos, loading: costosLoading, error, createCosto, updateCosto, deleteCosto } = useCostos(sesion?.sucursal_id);
-  const { prendas } = usePrendas();
+  const inventarioOpts = { sucursalId: sesion?.sucursal_id, esMatriz: sesion?.es_matriz };
+  const { costos, loading: costosLoading, error, createCosto, updateCosto, deleteCosto } = useCostos(
+    sesion?.sucursal_id,
+    sesion?.es_matriz
+  );
+  const { prendas } = usePrendas(inventarioOpts);
   const { tallas } = useTallas();
   
   // Estado para edición agrupada por prenda
@@ -669,6 +673,7 @@ export default function CostosPage() {
 
         <div className="table-container">
           <div style={{ marginBottom: '1rem', textAlign: 'right', padding: '0 1rem' }}>
+            {sesion?.es_matriz && (
             <button className="btn btn-primary" onClick={() => {
               setMostrarFormulario(!mostrarFormulario);
               setMensajeError('');
@@ -679,6 +684,7 @@ export default function CostosPage() {
             }} style={{ minWidth: '200px' }}>
               ➕ Nuevo Costo
             </button>
+            )}
           </div>
           
           <table className="table">
@@ -695,7 +701,11 @@ export default function CostosPage() {
               {prendasAgrupadas.length === 0 ? (
                 <tr>
                   <td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
-                    {busquedaTabla ? 'No se encontraron prendas con ese criterio.' : 'No hay costos registrados. Crea tu primer costo.'}
+                    {busquedaTabla
+                      ? 'No se encontraron prendas con ese criterio.'
+                      : sesion?.es_matriz
+                        ? 'No hay costos registrados. Crea tu primer costo.'
+                        : 'No hay costos en esta sucursal. Aparecerán cuando recibas transferencias desde matriz.'}
                   </td>
                 </tr>
               ) : (

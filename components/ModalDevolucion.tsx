@@ -95,9 +95,10 @@ const inputBase: CSSProperties = {
 export default function ModalDevolucion({ isOpen, onClose, pedido, onSuccess }: ModalDevolucionProps) {
   const { sesion } = useAuth();
   const { crearDevolucion } = useDevoluciones(sesion?.sucursal_id);
-  const { prendas } = usePrendas();
+  const inventarioOpts = { sucursalId: sesion?.sucursal_id, esMatriz: sesion?.es_matriz };
+  const { prendas } = usePrendas(inventarioOpts);
   const { tallas } = useTallas();
-  const { costos } = useCostos(sesion?.sucursal_id);
+  const { costos } = useCostos(sesion?.sucursal_id, sesion?.es_matriz);
 
   const [tipoDevolucion, setTipoDevolucion] = useState<'COMPLETA' | 'PARCIAL' | 'CAMBIO_TALLA' | 'CAMBIO_PRENDA'>('COMPLETA');
   const [motivo, setMotivo] = useState('');

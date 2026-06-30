@@ -14,10 +14,12 @@ export const dynamic = 'force-dynamic';
 export default function StockPage() {
   const { sesion } = useAuth();
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const inventarioOpts = { sucursalId: sesion?.sucursal_id, esMatriz: sesion?.es_matriz };
   const { costos, loading: costosLoading, error, getCostosByPrenda, updateCosto } = useCostos(
-    sesion?.sucursal_id
+    sesion?.sucursal_id,
+    sesion?.es_matriz
   );
-  const { prendas } = usePrendas();
+  const { prendas } = usePrendas(inventarioOpts);
   const { tallas } = useTallas();
   
   const [formData, setFormData] = useState({

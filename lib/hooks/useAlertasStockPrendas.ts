@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getSupabaseErrorMessage } from '@/lib/supabase';
 import { insforgeDb } from '@/lib/insforgeBrowser';
-import { filtrarFilasPorSucursalSiHayColumna } from '@/lib/sucursalCliente';
+import { filtrarCostosInventarioTienda } from '@/lib/inventarioSucursal';
 
 function readFk(row: Record<string, unknown>, snake: string, camel: string): string | null {
   const v = row[snake] ?? row[camel];
@@ -29,7 +29,7 @@ export interface AlertaStockPrenda {
   precio_menudeo: number;
 }
 
-export function useAlertasStockPrendas(sucursal_id?: string) {
+export function useAlertasStockPrendas(sucursal_id?: string, es_matriz?: boolean) {
   const [alertas, setAlertas] = useState<AlertaStockPrenda[]>([]);
   const [cargando, setCargando] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -44,9 +44,9 @@ export function useAlertasStockPrendas(sucursal_id?: string) {
 
       if (costosError) throw costosError;
 
-      let costosData = filtrarFilasPorSucursalSiHayColumna(
+      let costosData = filtrarCostosInventarioTienda(
         (costosRaw || []) as Record<string, unknown>[],
-        sucursal_id
+        { sucursalId: sucursal_id, esMatriz: es_matriz }
       );
 
       costosData = costosData.filter((row) => {
@@ -152,7 +152,7 @@ export function useAlertasStockPrendas(sucursal_id?: string) {
     } finally {
       setCargando(false);
     }
-  }, [sucursal_id]);
+  }, [sucursal_id, es_matriz]);
 
   useEffect(() => {
     cargarAlertas();

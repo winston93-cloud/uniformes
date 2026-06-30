@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { fetchCostosRowsByPrenda, normalizarCamposCostoApi } from '@/lib/costoQueries';
+import { filtrarCostosInventarioTienda, normalizarPrendaIdKey, type OpcionesInventarioTienda } from '@/lib/inventarioSucursal';
 import { normalizarCamposPrendaApi } from '@/lib/insforgeNormalize';
 import { insforgeDb } from '@/lib/insforgeBrowser';
 import type { CategoriaPrenda, Prenda } from '../types';
@@ -108,10 +109,12 @@ function rowACategoriaPrenda(c: Record<string, unknown>): CategoriaPrenda {
 }
 
 /** InsForge: sin embed; categorías en paralelo. Si existe solo `categoria` VARCHAR, enlazamos por nombre. */
-export function usePrendas() {
+export function usePrendas(opts?: OpcionesInventarioTienda) {
   const [prendas, setPrendas] = useState<Prenda[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const sucursalId = opts?.sucursalId;
+  const esMatriz = opts?.esMatriz;
 
   const fetchPrendas = async () => {
     try {
@@ -193,7 +196,28 @@ export function usePrendas() {
           categoria: cat,
         };
       });
-      setPrendas(mapped);
+
+      let resultado = mapped;
+      if (esMatriz === false && sucursalId?.trim()) {
+        const { data: costosRaw, error: costosErr } = await insforgeDb().from('costos').select('*');
+        if (costosErr) throw costosErr;
+        const costosTienda = filtrarCostosInventarioTienda(
+          (costosRaw || []) as Record<string, unknown>[],
+          { sucursalId, esMatriz: false }
+        );
+        const idsInventario = new Set(
+          costosTienda
+            .map((c) => {
+              const n = normalizarCamposCostoApi(c);
+              const pid = n.prenda_id;
+              return pid != null ? normalizarPrendaIdKey(String(pid)) : '';
+            })
+            .filter(Boolean)
+        );
+        resultado = mapped.filter((p) => idsInventario.has(normalizarPrendaIdKey(String(p.id))));
+      }
+
+      setPrendas(resultado);
     } catch (err: any) {
       setError(err.message);
       console.error('Error fetching prendas:', err);
@@ -204,7 +228,7 @@ export function usePrendas() {
 
   useEffect(() => {
     fetchPrendas();
-  }, []);
+  }, [sucursalId, esMatriz]);
 
   const createPrenda = async (prenda: Omit<Prenda, 'id' | 'created_at' | 'updated_at'>) => {
     try {

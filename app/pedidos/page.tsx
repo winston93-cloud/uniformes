@@ -90,10 +90,14 @@ function PedidosPageContent() {
   const [mensajeExitoStock, setMensajeExitoStock] = useState('');
   const [guardandoPedido, setGuardandoPedido] = useState(false);
   const enviandoPedidoRef = useRef(false);
-  const { costos, getCostosByPrenda, refetch: refetchCostos } = useCostos(sesion?.sucursal_id);
+  const inventarioOpts = { sucursalId: sesion?.sucursal_id, esMatriz: sesion?.es_matriz };
+  const { costos, getCostosByPrenda, refetch: refetchCostos } = useCostos(
+    sesion?.sucursal_id,
+    sesion?.es_matriz
+  );
   const { alumnos, searchAlumnos } = useAlumnos(cicloEscolar);
   const { searchExternos } = useExternos();
-  const { prendas, loading: prendasLoading, error: prendasError, refetch: refetchPrendas } = usePrendas();
+  const { prendas, loading: prendasLoading, error: prendasError, refetch: refetchPrendas } = usePrendas(inventarioOpts);
   const { tallas } = useTallas();
   const { pedidos: pedidosDB, loading: loadingPedidos, crearPedido, actualizarEstadoPedido, eliminarPedidoDefinitivo } =
     usePedidos(sesion?.sucursal_id);
