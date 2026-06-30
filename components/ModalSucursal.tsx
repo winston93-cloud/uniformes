@@ -250,8 +250,9 @@ export default function ModalSucursal({ sucursal, onClose }: ModalSucursalProps)
               fontSize: '0.9rem',
               color: '#1e40af',
             }}>
-              ℹ️ <strong>Nota:</strong> La sucursal matriz es donde se encuentran todos los insumos.
-              Las demás sucursales solo manejan stock de prendas.
+              ℹ️ <strong>Nota:</strong> Marca <strong>matriz</strong> solo al taller (origen de transferencias).
+              El catálogo de <strong>insumos es compartido</strong> por todas las tiendas.
+              El <strong>stock de prendas en venta</strong> es independiente por sucursal.
             </div>
           </div>
 

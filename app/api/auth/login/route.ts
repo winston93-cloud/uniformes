@@ -10,7 +10,7 @@ import {
   TOKEN_MAX_AGE_SEC,
 } from '@/lib/auth-cookie';
 import { normalizarUsuarioLogin } from '@/lib/permisos';
-import { resolverSucursalMatriz } from '@/lib/auth-sucursal';
+import { resolverSucursalMatriz, resolverSucursalParaUsuario } from '@/lib/auth-sucursal';
 
 type UsuarioRow = {
   id: string;
@@ -20,6 +20,7 @@ type UsuarioRow = {
   password_hash: string;
   rol_id: string;
   estado: string;
+  sucursal_id?: string | null;
   rol: { nombre: string } | { nombre: string }[] | null;
 };
 
@@ -34,7 +35,7 @@ async function buscarPorUsuario(usuario: string): Promise<UsuarioRow | null> {
   const login = normalizarUsuarioLogin(usuario);
   const { data, error } = await getInsforge().database
     .from('usuarios_uniformes')
-    .select('id,nombre,usuario,correo,password_hash,rol_id,estado,rol:roles_uniformes(nombre)')
+    .select('id,nombre,usuario,correo,password_hash,rol_id,estado,sucursal_id,rol:roles_uniformes(nombre)')
     .eq('usuario', login)
     .maybeSingle();
 
@@ -43,13 +44,16 @@ async function buscarPorUsuario(usuario: string): Promise<UsuarioRow | null> {
 }
 
 async function construirRespuestaSesion(row: UsuarioRow) {
-  const sucursal = await resolverSucursalMatriz();
+  const sucursal = await resolverSucursalParaUsuario({
+    usuario: row.usuario,
+    sucursal_id: row.sucursal_id,
+  });
   if (!sucursal) {
     return NextResponse.json(
       {
         ok: false,
         message:
-          'No se pudo cargar la sucursal matriz. Revisa sucursales activas o NEXT_PUBLIC_DEFAULT_SUCURSAL_ID.',
+          'No se pudo cargar la tienda del usuario. Revisa sucursales activas (MAT-MAD, SUC-WIN) y sucursal_id en usuarios_uniformes.',
       },
       { status: 503 }
     );
@@ -166,6 +170,8 @@ export async function PUT(request: Request) {
       return NextResponse.json({ ok: false, message: 'No existe el rol Administrador en catálogo.' }, { status: 500 });
     }
 
+    const matriz = await resolverSucursalMatriz();
+
     const { data: inserted, error: insErr } = await getInsforge().database
       .from('usuarios_uniformes')
       .insert({
@@ -175,8 +181,9 @@ export async function PUT(request: Request) {
         password_hash: hashPassword(password),
         rol_id: rolAdmin.id,
         estado: 'activo',
+        sucursal_id: matriz?.sucursal_id ?? null,
       })
-      .select('id,nombre,usuario,correo,password_hash,rol_id,estado,rol:roles_uniformes(nombre)')
+      .select('id,nombre,usuario,correo,password_hash,rol_id,estado,sucursal_id,rol:roles_uniformes(nombre)')
       .single();
 
     if (insErr || !inserted) {
