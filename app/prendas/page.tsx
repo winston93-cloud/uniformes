@@ -86,7 +86,7 @@ export default function PrendasPage() {
   const { prendas, loading, error, createPrenda, updatePrenda, deletePrenda } = usePrendas();
   const { categorias, loading: loadingCategorias, refetch: refetchCategorias } = useCategorias();
   const { tallas } = useTallas();
-  const { createMultipleCostos, getCostosByPrenda, deleteCosto } = useCostos();
+  const { createMultipleCostos, getCostosByPrenda, deleteCosto } = useCostos(sesion?.sucursal_id);
   
   // Cargar todas las categorías (activas e inactivas) para el select
   const [todasLasCategorias, setTodasLasCategorias] = useState<typeof categorias>([]);

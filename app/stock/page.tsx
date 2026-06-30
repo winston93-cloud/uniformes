@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import LayoutWrapper from '@/components/LayoutWrapper';
+import { useAuth } from '@/contexts/AuthContext';
 import { useCostos } from '@/lib/hooks/useCostos';
 import { usePrendas } from '@/lib/hooks/usePrendas';
 import { useTallas } from '@/lib/hooks/useTallas';
@@ -11,8 +12,11 @@ import type { Costo } from '@/lib/types';
 export const dynamic = 'force-dynamic';
 
 export default function StockPage() {
+  const { sesion } = useAuth();
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
-  const { costos, loading: costosLoading, error, getCostosByPrenda, updateCosto } = useCostos();
+  const { costos, loading: costosLoading, error, getCostosByPrenda, updateCosto } = useCostos(
+    sesion?.sucursal_id
+  );
   const { prendas } = usePrendas();
   const { tallas } = useTallas();
   

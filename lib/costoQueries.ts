@@ -37,6 +37,9 @@ export function elegirCostoPrendaTalla<T extends Record<string, unknown>>(
     norm as unknown as Record<string, unknown>[],
     sucursalSesion ?? undefined
   ) as unknown as T[];
+  if (sucursalSesion?.trim()) {
+    return filtradas[0] ?? null;
+  }
   return filtradas[0] ?? norm[0];
 }
 
