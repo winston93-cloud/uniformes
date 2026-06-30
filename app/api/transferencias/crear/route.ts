@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { exigirMatriz } from '@/lib/auth-api';
+import { exigirSesion } from '@/lib/auth-api';
 import { getInsforge } from '@/lib/insforge';
 import { abonarStockDestinoTransferencia, descontarStockOrigenTransferencia } from '@/lib/transferenciasStock';
 
@@ -11,9 +11,9 @@ type LineaTransferencia = {
 };
 
 export async function POST(req: Request) {
-  const sesion = await exigirMatriz();
+  const sesion = await exigirSesion();
   if (!sesion) {
-    return NextResponse.json({ ok: false, message: 'Solo la matriz puede crear transferencias.' }, { status: 403 });
+    return NextResponse.json({ ok: false, message: 'Sesión requerida.' }, { status: 401 });
   }
 
   try {

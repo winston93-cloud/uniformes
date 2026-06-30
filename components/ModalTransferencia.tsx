@@ -121,7 +121,7 @@ export default function ModalTransferencia({ onClose }: ModalTransferenciaProps)
       setCostosDisponibles(lista);
     } catch (err) {
       console.error(err);
-      setError('No se pudo cargar el inventario de matriz.');
+      setError('No se pudo cargar el inventario de tu tienda.');
     } finally {
       setCargandoCostos(false);
     }
@@ -144,7 +144,7 @@ export default function ModalTransferencia({ onClose }: ModalTransferenciaProps)
       return;
     }
     if (qty > costo.stock) {
-      setError(`Stock insuficiente: hay ${costo.stock} en matriz.`);
+      setError(`Stock insuficiente: hay ${costo.stock} disponibles.`);
       return;
     }
 
@@ -255,7 +255,7 @@ export default function ModalTransferencia({ onClose }: ModalTransferenciaProps)
             >
               <strong>📤 Origen:</strong> {sesion?.sucursal_nombre}
               <div style={{ fontSize: '0.9rem', color: '#166534', marginTop: '0.35rem' }}>
-                Al enviar se descuenta el stock de matriz. La sucursal destino lo recibe al confirmar.
+                Al enviar se descuenta el stock de {sesion?.sucursal_nombre}. La tienda destino lo recibe al confirmar.
               </div>
             </div>
 
@@ -293,9 +293,9 @@ export default function ModalTransferencia({ onClose }: ModalTransferenciaProps)
               <h3 style={{ marginBottom: '1rem', fontSize: '1.1rem' }}>Prendas a transferir</h3>
 
               {cargandoCostos ? (
-                <p style={{ color: '#64748b' }}>Cargando inventario de matriz…</p>
+                <p style={{ color: '#64748b' }}>Cargando inventario de {sesion?.sucursal_nombre}…</p>
               ) : costosDisponibles.length === 0 ? (
-                <p style={{ color: '#64748b' }}>No hay stock disponible en matriz para transferir.</p>
+                <p style={{ color: '#64748b' }}>No hay stock en esta tienda para transferir.</p>
               ) : (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1rem' }}>
                   <select

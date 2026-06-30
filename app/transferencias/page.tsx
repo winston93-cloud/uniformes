@@ -34,7 +34,6 @@ export default function TransferenciasPage() {
   };
 
   const esDestinoPendiente = (t: Transferencia) =>
-    !sesion?.es_matriz &&
     String(t.sucursal_destino_id) === sesion?.sucursal_id &&
     (t.estado === 'EN_TRANSITO' || t.estado === 'PENDIENTE');
 
@@ -50,21 +49,18 @@ export default function TransferenciasPage() {
           <h1 className="page-title">
             🚚 Transferencias de Mercancía
           </h1>
-          {sesion?.es_matriz && (
-            <button 
+          <button 
               className="btn btn-primary"
               onClick={handleNuevaTransferencia}
             >
               ➕ Nueva Transferencia
             </button>
-          )}
         </div>
 
-        {!sesion?.es_matriz && (
-          <div className="alert alert-info" style={{ marginBottom: '2rem' }}>
-            ℹ️ Las transferencias las envía la matriz. Cuando llegue mercancía, ábrela y pulsa <strong>Confirmar recepción</strong> para que aparezca en tu inventario.
-          </div>
-        )}
+        <div className="alert alert-info" style={{ marginBottom: '2rem' }}>
+          ℹ️ Las transferencias son <strong>bidireccionales</strong>: matriz ↔ sucursal. Quien envía elige prendas de su inventario;
+          quien recibe confirma con <strong>Confirmar recepción</strong> para que el stock aparezca en su tienda.
+        </div>
 
         {loading ? (
           <div style={{ textAlign: 'center', padding: '3rem' }}>
@@ -76,9 +72,7 @@ export default function TransferenciasPage() {
             <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>🚚</div>
             <h3>No hay transferencias registradas</h3>
             <p>
-              {sesion?.es_matriz 
-                ? 'Comienza creando la primera transferencia hacia una sucursal.' 
-                : 'Las transferencias aparecerán aquí cuando la matriz las envíe.'}
+              Crea una transferencia hacia otra tienda (matriz o sucursal) usando el botón de arriba.
             </p>
           </div>
         ) : (

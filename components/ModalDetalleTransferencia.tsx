@@ -32,7 +32,6 @@ export default function ModalDetalleTransferencia({
   const [error, setError] = useState<string | null>(null);
 
   const puedeRecibir =
-    !sesion?.es_matriz &&
     String(transferencia.sucursal_destino_id) === sesion?.sucursal_id &&
     (transferencia.estado === 'EN_TRANSITO' || transferencia.estado === 'PENDIENTE');
 
