@@ -1,7 +1,18 @@
 import type { SesionUsuario } from '@/lib/types';
 
 const COOKIE_NAME = 'uniformes_sesion';
-const MAX_AGE_SEC = 60 * 60 * 24 * 7;
+
+/** Duración por defecto: 8 h (jornada). Override: AUTH_SESSION_MAX_AGE_SEC en segundos. */
+function resolverMaxAgeSec(): number {
+  const raw = process.env.AUTH_SESSION_MAX_AGE_SEC?.trim();
+  if (raw) {
+    const n = parseInt(raw, 10);
+    if (!Number.isNaN(n) && n > 0) return n;
+  }
+  return 60 * 60 * 8;
+}
+
+const MAX_AGE_SEC = resolverMaxAgeSec();
 
 export type SesionCookiePayload = {
   sub: string;
