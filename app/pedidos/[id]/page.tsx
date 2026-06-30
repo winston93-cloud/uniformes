@@ -125,6 +125,13 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
         throw pedidoError;
       }
 
+      const pedidoSucursalId = String(pedidoData.sucursal_id ?? pedidoData.sucursalId ?? '').trim();
+      if (sesion?.sucursal_id && pedidoSucursalId && pedidoSucursalId !== sesion.sucursal_id) {
+        alert('Este pedido pertenece a otra tienda.');
+        router.push('/pedidos');
+        return;
+      }
+
       // Si hay alumno_id, obtener sus datos
       let alumnoData = null;
       if (pedidoData.alumno_id) {

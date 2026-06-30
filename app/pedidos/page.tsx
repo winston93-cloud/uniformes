@@ -877,6 +877,25 @@ function PedidosPageContent() {
           🛒 Gestión de Pedidos
         </h1>
 
+        {sesion?.sucursal_nombre && (
+          <div
+            style={{
+              marginBottom: '1.25rem',
+              background: '#ffffff',
+              color: '#334155',
+              border: '1px solid #dbeafe',
+              borderLeft: '4px solid #3b82f6',
+              borderRadius: '10px',
+              padding: '0.85rem 1.15rem',
+              boxShadow: '0 4px 16px rgba(15, 23, 42, 0.08)',
+              fontSize: '0.92rem',
+            }}
+          >
+            Mostrando pedidos de <strong style={{ color: '#1e40af' }}>{sesion.sucursal_nombre}</strong> únicamente.
+            Cada tienda tiene su propio historial y folios (ej. PED-MAT-MAD-… / PED-SUC-WIN-…).
+          </div>
+        )}
+
         {mostrarFormulario && (
           <div 
             style={{

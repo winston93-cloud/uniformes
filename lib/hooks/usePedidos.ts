@@ -58,64 +58,42 @@ export function usePedidos(sucursal_id?: string) {
   const fetchPedidos = useCallback(async () => {
     try {
       setLoading(true);
-      // InsForge a veces devuelve 400 con or(sucursal_id...); unimos dos consultas
+
+      if (!sucursal_id?.trim()) {
+        setPedidos([]);
+        return;
+      }
+
+      const sid = sucursal_id.trim();
       let data: unknown[] | null = null;
       let error: { message: string } | null = null;
 
-      if (sucursal_id) {
-        const [q1, q2] = await Promise.all([
-          insforgeDb().from('pedidos').select('*').eq('sucursal_id', sucursal_id),
-          insforgeDb().from('pedidos').select('*').is('sucursal_id', null),
-        ]);
-        if (q1.error && q2.error) {
-          error = q1.error;
-        } else {
-          const m = new Map<string, unknown>();
-          for (const row of [...(q1.data || []), ...(q2.data || [])]) {
-            const id = (row as { id: string }).id;
-            if (id) m.set(String(id), row);
-          }
-          data = [...m.values()];
-          const ts = (r: unknown) => {
-            const p = r as Record<string, unknown>;
-            const raw = p.created_at ?? p.createdAt;
-            return raw ? Date.parse(String(raw)) : 0;
-          };
-          data.sort((a, b) => ts(b) - ts(a));
-        }
-      } else {
-        const r = await insforgeDb().from('pedidos').select('*').order('created_at', { ascending: false });
-        data = r.data ?? null;
-        error = r.error;
-        if (error) {
-          const plain = await insforgeDb().from('pedidos').select('*');
-          if (!plain.error && plain.data) {
-            data = plain.data;
-            error = null;
-            const ts = (row: unknown) => {
-              const p = row as Record<string, unknown>;
-              const raw = p.created_at ?? p.createdAt;
-              return raw ? Date.parse(String(raw)) : 0;
-            };
-            data.sort((a, b) => ts(b) - ts(a));
-          }
+      const r = await insforgeDb()
+        .from('pedidos')
+        .select('*')
+        .eq('sucursal_id', sid);
+
+      data = r.data ?? null;
+      error = r.error;
+
+      if (error) {
+        const plain = await insforgeDb().from('pedidos').select('*').eq('sucursal_id', sid);
+        if (!plain.error) {
+          data = plain.data ?? null;
+          error = null;
         }
       }
 
       if (error) throw error;
 
-      // Sesión (env) puede apuntar a otro UUID que los pedidos migrados en InsForge
-      if (sucursal_id && (!data || data.length === 0)) {
-        const fb = await insforgeDb().from('pedidos').select('*');
-        if (!fb.error && fb.data && fb.data.length > 0) {
-          console.warn(
-            '[pedidos] Sin resultados para la sucursal de la sesión; mostrando todos los pedidos. Revisa NEXT_PUBLIC_DEFAULT_SUCURSAL_ID vs pedidos.sucursal_id en InsForge.'
-          );
-          data = fb.data;
-        }
-      }
+      const ts = (row: unknown) => {
+        const p = row as Record<string, unknown>;
+        const raw = p.created_at ?? p.createdAt;
+        return raw ? Date.parse(String(raw)) : 0;
+      };
+      const sorted = [...(data || [])].sort((a, b) => ts(b) - ts(a));
 
-      const pedidosMapeados = (data || []).map((raw) => {
+      const pedidosMapeados = sorted.map((raw) => {
         const p = normalizarFilaPedidoApi(raw as Record<string, unknown>);
         const fechaStr =
           p.created_at && !Number.isNaN(Date.parse(String(p.created_at)))
