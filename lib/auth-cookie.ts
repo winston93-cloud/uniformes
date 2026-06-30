@@ -2,17 +2,23 @@ import type { SesionUsuario } from '@/lib/types';
 
 const COOKIE_NAME = 'uniformes_sesion';
 
-/** Duración por defecto: 8 h (jornada). Override: AUTH_SESSION_MAX_AGE_SEC en segundos. */
-function resolverMaxAgeSec(): number {
-  const raw = process.env.AUTH_SESSION_MAX_AGE_SEC?.trim();
+/**
+ * Tope del JWT mientras el navegador sigue abierto (la cookie no persiste al cerrarlo).
+ * Override: AUTH_SESSION_TOKEN_MAX_AGE_SEC
+ */
+function resolverTokenMaxAgeSec(): number {
+  const raw =
+    process.env.AUTH_SESSION_TOKEN_MAX_AGE_SEC?.trim() ||
+    process.env.AUTH_SESSION_MAX_AGE_SEC?.trim();
   if (raw) {
     const n = parseInt(raw, 10);
     if (!Number.isNaN(n) && n > 0) return n;
   }
-  return 60 * 60 * 8;
+  return 60 * 60 * 12;
 }
 
-const MAX_AGE_SEC = resolverMaxAgeSec();
+/** Duración del JWT interno (no define persistencia de la cookie). */
+const TOKEN_MAX_AGE_SEC = resolverTokenMaxAgeSec();
 
 export type SesionCookiePayload = {
   sub: string;
@@ -92,7 +98,7 @@ function timingSafeEqualStr(a: string, b: string): boolean {
 
 export async function crearTokenSesion(
   payload: Omit<SesionCookiePayload, 'exp'>,
-  maxAgeSec = MAX_AGE_SEC
+  maxAgeSec = TOKEN_MAX_AGE_SEC
 ): Promise<string> {
   const full: SesionCookiePayload = {
     ...payload,
@@ -138,13 +144,18 @@ export function payloadASesionUsuario(p: SesionCookiePayload): SesionUsuario {
   };
 }
 
-export function cookieHeader(token: string, maxAgeSec = MAX_AGE_SEC): string {
+/** Cookie de sesión: sin Max-Age → se elimina al cerrar el navegador. */
+export function cookieHeader(token: string): string {
   const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
-  return `${COOKIE_NAME}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAgeSec}${secure}`;
+  if (process.env.AUTH_SESSION_PERSISTENT === '1') {
+    const maxAge = resolverTokenMaxAgeSec();
+    return `${COOKIE_NAME}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure}`;
+  }
+  return `${COOKIE_NAME}=${token}; Path=/; HttpOnly; SameSite=Lax${secure}`;
 }
 
 export function clearCookieHeader(): string {
   return `${COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
 }
 
-export { COOKIE_NAME, MAX_AGE_SEC };
+export { COOKIE_NAME, TOKEN_MAX_AGE_SEC };

@@ -7,7 +7,7 @@ import {
   payloadASesionUsuario,
   verificarTokenSesion,
   COOKIE_NAME,
-  MAX_AGE_SEC,
+  TOKEN_MAX_AGE_SEC,
 } from '@/lib/auth-cookie';
 import { normalizarUsuarioLogin } from '@/lib/permisos';
 import { resolverSucursalMatriz } from '@/lib/auth-sucursal';
@@ -78,7 +78,7 @@ async function construirRespuestaSesion(row: UsuarioRow) {
     rol_nombre: rolNombreVal,
     es_admin: esAdmin,
     ...sucursal,
-    exp: Math.floor(Date.now() / 1000) + MAX_AGE_SEC,
+    exp: Math.floor(Date.now() / 1000) + TOKEN_MAX_AGE_SEC,
   });
 
   const res = NextResponse.json({ ok: true, sesion });

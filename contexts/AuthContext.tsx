@@ -26,10 +26,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const aplicarSesion = useCallback((nueva: SesionUsuario | null) => {
     setSesionState(nueva);
     if (nueva) {
-      localStorage.setItem('sesion_uniformes', JSON.stringify(nueva));
       setSesionError(null);
-    } else {
-      localStorage.removeItem('sesion_uniformes');
     }
   }, []);
 
