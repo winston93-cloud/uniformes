@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { insforgeDb } from '@/lib/insforgeBrowser';
 import { compararTallas } from '../ordenTallas';
+import { filtrarCostosInventarioTienda } from '@/lib/inventarioSucursal';
+import { normalizarCamposCostoApi } from '@/lib/costoQueries';
 
 export interface ReporteVentas {
   id: string;
@@ -43,8 +45,14 @@ export interface ReporteGanancias {
   }[];
 }
 
-export function useReportes(sucursal_id?: string) {
+export function useReportes(sucursal_id?: string, es_matriz?: boolean) {
   const [loading, setLoading] = useState(false);
+
+  const sid = sucursal_id?.trim() || '';
+  const inventarioOpts = { sucursalId: sid || undefined, esMatriz: es_matriz };
+
+  const filtrarCostosTienda = (rows: Record<string, unknown>[]) =>
+    sid ? filtrarCostosInventarioTienda(rows, inventarioOpts) : rows;
 
   const rangoLocalAIso = (fechaInicio: string, fechaFin: string) => {
     const [y1, m1, d1] = fechaInicio.split('-').map(Number);
@@ -67,9 +75,9 @@ export function useReportes(sucursal_id?: string) {
         .in('estado', ['PENDIENTE', 'COMPLETADO'])
         .order('created_at', { ascending: true });
 
-      // Filtrar por sucursal si se proporciona
-      if (sucursal_id) {
-        query = query.eq('sucursal_id', sucursal_id);
+      // Filtrar por sucursal de la sesión (obligatorio en multi-tienda)
+      if (sid) {
+        query = query.eq('sucursal_id', sid);
       }
 
       const { data, error } = await query;
@@ -125,16 +133,31 @@ export function useReportes(sucursal_id?: string) {
 
       if (fechaInicio && fechaFin) {
         const { startIso, endIso } = rangoLocalAIso(fechaInicio, fechaFin);
-        const { data: pedidos } = await insforgeDb()
+        let pedidosQuery = insforgeDb()
           .from('pedidos')
           .select('id')
           .in('estado', ['COMPLETADO'])
           .gte('created_at', startIso)
           .lte('created_at', endIso);
+        if (sid) pedidosQuery = pedidosQuery.eq('sucursal_id', sid);
+        const { data: pedidos } = await pedidosQuery;
 
         if (pedidos && pedidos.length > 0) {
           const pedidoIds = pedidos.map(p => p.id);
           query = query.in('pedido_id', pedidoIds);
+        } else {
+          return [];
+        }
+      } else if (sid) {
+        const { data: pedidos } = await insforgeDb()
+          .from('pedidos')
+          .select('id')
+          .in('estado', ['COMPLETADO'])
+          .eq('sucursal_id', sid);
+        if (pedidos?.length) {
+          query = query.in('pedido_id', pedidos.map((p) => p.id));
+        } else {
+          return [];
         }
       }
 
@@ -179,7 +202,7 @@ export function useReportes(sucursal_id?: string) {
   const stockBajo = async () => {
     try {
       setLoading(true);
-      const { data, error } = await insforgeDb()
+      const { data: costosRaw, error } = await insforgeDb()
         .from('costos')
         .select(`
           *,
@@ -190,8 +213,8 @@ export function useReportes(sucursal_id?: string) {
 
       if (error) throw error;
 
-      // Filtrar en JavaScript donde stock <= 0 (sin stock)
-      const stockBajoData = (data || []).filter((costo: any) => costo.stock <= 0);
+      const costosTienda = filtrarCostosTienda((costosRaw || []) as Record<string, unknown>[]);
+      const stockBajoData = costosTienda.filter((costo) => Number(costo.stock ?? 0) <= 0);
 
       return stockBajoData;
     } catch (err: any) {
@@ -249,7 +272,7 @@ export function useReportes(sucursal_id?: string) {
       if (prendaIds.size === 0) return [];
 
       const ids = Array.from(prendaIds);
-      const { data, error } = await insforgeDb()
+      const { data: costosRaw, error } = await insforgeDb()
         .from('costos')
         .select(`
           id,
@@ -264,12 +287,15 @@ export function useReportes(sucursal_id?: string) {
 
       if (error) throw error;
 
-      const filas = (data || []).map((row: any) => {
-        const cat = row.prenda?.categorias_prendas;
+      const costosTienda = filtrarCostosTienda((costosRaw || []) as Record<string, unknown>[]);
+
+      const filas = costosTienda.map((row) => {
+        const r = row as Record<string, any>;
+        const cat = r.prenda?.categorias_prendas;
         return {
-          ...row,
+          ...r,
           categoriaNombre: cat?.nombre || 'Sin categoría',
-          categoriaId: row.prenda?.categoria_id ?? null,
+          categoriaId: r.prenda?.categoria_id ?? null,
         };
       });
 
@@ -285,11 +311,13 @@ export function useReportes(sucursal_id?: string) {
   const pedidosPendientes = async () => {
     try {
       setLoading(true);
-      const { data, error } = await insforgeDb()
+      let query = insforgeDb()
         .from('pedidos')
         .select('*')
         .in('estado', ['PENDIENTE'])
         .order('created_at', { ascending: false });
+      if (sid) query = query.eq('sucursal_id', sid);
+      const { data, error } = await query;
 
       if (error) throw error;
       return data || [];
@@ -306,10 +334,12 @@ export function useReportes(sucursal_id?: string) {
       setLoading(true);
       
       // Obtener pedidos liquidados con nombre del cliente
-      const { data: pedidos, error } = await insforgeDb()
+      let query = insforgeDb()
         .from('pedidos')
         .select('cliente_nombre, tipo_cliente, total')
         .in('estado', ['COMPLETADO']);
+      if (sid) query = query.eq('sucursal_id', sid);
+      const { data: pedidos, error } = await query;
 
       if (error) throw error;
 
@@ -348,21 +378,29 @@ export function useReportes(sucursal_id?: string) {
   const resumenGeneral = async () => {
     try {
       setLoading(true);
-      
+
+      let countPedidos = insforgeDb().from('pedidos').select('*', { count: 'exact', head: true });
+      let liquidadosQuery = insforgeDb().from('pedidos').select('total').in('estado', ['COMPLETADO']);
+      if (sid) {
+        countPedidos = countPedidos.eq('sucursal_id', sid);
+        liquidadosQuery = liquidadosQuery.eq('sucursal_id', sid);
+      }
+
       const [
         { count: totalPedidos },
         { data: pedidosLiquidados },
         { count: totalAlumnos },
-        { data: costos },
+        { data: costosRaw },
       ] = await Promise.all([
-        insforgeDb().from('pedidos').select('*', { count: 'exact', head: true }),
-        insforgeDb().from('pedidos').select('total').in('estado', ['COMPLETADO']),
+        countPedidos,
+        liquidadosQuery,
         insforgeDb().from('alumno').select('*', { count: 'exact', head: true }),
         insforgeDb().from('costos').select('stock').eq('activo', true),
       ]);
 
-      const ventasTotales = pedidosLiquidados?.reduce((sum, p) => sum + parseFloat(p.total.toString()), 0) || 0;
-      const prendasStock = costos?.reduce((sum, c) => sum + c.stock, 0) || 0;
+      const costosTienda = filtrarCostosTienda((costosRaw || []) as Record<string, unknown>[]);
+      const ventasTotales = pedidosLiquidados?.reduce((sum, p) => sum + parseFloat(String(p.total ?? 0)), 0) || 0;
+      const prendasStock = costosTienda.reduce((sum, c) => sum + Number(c.stock ?? 0), 0);
 
       return {
         totalPedidos: totalPedidos || 0,
@@ -390,10 +428,12 @@ export function useReportes(sucursal_id?: string) {
       const { startLocal, endLocal } = rangoLocalAIso(fechaInicio, fechaFin);
 
       // Obtener pedidos liquidados en el periodo
-      const { data: pedidos, error: pedidosError } = await insforgeDb()
+      let pedidosQuery = insforgeDb()
         .from('pedidos')
         .select('id, created_at')
         .in('estado', ['COMPLETADO']);
+      if (sid) pedidosQuery = pedidosQuery.eq('sucursal_id', sid);
+      const { data: pedidos, error: pedidosError } = await pedidosQuery;
 
       if (pedidosError) throw pedidosError;
 
@@ -433,15 +473,19 @@ export function useReportes(sucursal_id?: string) {
       if (detallesError) throw detallesError;
 
       // Obtener precios de compra de costos
-      const { data: costos, error: costosError } = await insforgeDb()
+      let costosQuery = insforgeDb()
         .from('costos')
-        .select('prenda_id, talla_id, precio_compra, precio_venta');
+        .select('prenda_id, talla_id, precio_compra, precio_venta, sucursal_id');
+      if (sid) costosQuery = costosQuery.eq('sucursal_id', sid);
+      const { data: costos, error: costosError } = await costosQuery;
 
       if (costosError) throw costosError;
 
-      // Crear mapa de costos
       const costosMap = new Map(
-        costos?.map((c: any) => [`${c.prenda_id}-${c.talla_id}`, c]) || []
+        (costos || []).map((c: Record<string, unknown>) => {
+          const n = normalizarCamposCostoApi(c);
+          return [`${n.prenda_id}-${n.talla_id}`, n];
+        })
       );
 
       // Calcular por prenda
@@ -457,7 +501,7 @@ export function useReportes(sucursal_id?: string) {
         const keyPrenda = `${prendaNombre}-${tallaNombre}`;
 
         const ingresos = detalle.subtotal;
-        const costoTotal = (costo?.precio_compra || 0) * detalle.cantidad;
+        const costoTotal = Number(costo?.precio_compra ?? 0) * detalle.cantidad;
 
         totalVentas += ingresos;
         totalCostos += costoTotal;

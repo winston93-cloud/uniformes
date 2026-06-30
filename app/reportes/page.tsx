@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import LayoutWrapper from '@/components/LayoutWrapper';
+import { useAuth } from '@/contexts/AuthContext';
 import { useReportes } from '@/lib/hooks/useReportes';
 import { useCategorias } from '@/lib/hooks/useCategorias';
 import ModalReportes from '@/components/ModalReportes';
@@ -13,6 +14,7 @@ import autoTable from 'jspdf-autotable';
 export const dynamic = 'force-dynamic';
 
 export default function ReportesPage() {
+  const { sesion } = useAuth();
   const {
     loading,
     ventasPorPeriodo,
@@ -22,7 +24,7 @@ export default function ReportesPage() {
     clientesFrecuentes,
     resumenGeneral,
     ingresosYGanancias,
-  } = useReportes();
+  } = useReportes(sesion?.sucursal_id, sesion?.es_matriz);
   
   const [modalReportesAbierto, setModalReportesAbierto] = useState(false);
   const [modalInventarioAbierto, setModalInventarioAbierto] = useState(false);
@@ -47,23 +49,25 @@ export default function ReportesPage() {
   });
 
   useEffect(() => {
-    cargarResumen();
+    void cargarResumen();
     refetchCategorias(false);
-  }, []);
+  }, [sesion?.sucursal_id]);
 
-  const cargarResumen = async () => {
+  const cargarResumen = useCallback(async () => {
     const datos = await resumenGeneral();
     setResumen(datos);
-  };
+  }, [resumenGeneral]);
 
   const generarPDFVentas = (datos: any[]) => {
     const doc = new jsPDF();
+    const tienda = sesion?.sucursal_nombre ?? 'Tienda';
     
     // Título
     doc.setFontSize(18);
     doc.text('Reporte de Ventas por Período', 14, 20);
     doc.setFontSize(11);
-    doc.text(`Período: ${periodo.fechaInicio} al ${periodo.fechaFin}`, 14, 28);
+    doc.text(`Tienda: ${tienda}`, 14, 28);
+    doc.text(`Período: ${periodo.fechaInicio} al ${periodo.fechaFin}`, 14, 34);
     
     // Calcular total
     const totalGeneral = datos.reduce((sum, v) => sum + v.total, 0);
@@ -401,13 +405,34 @@ export default function ReportesPage() {
   return (
     <LayoutWrapper>
       <div className="main-container">
-        <h1 style={{ fontSize: '2.5rem', fontWeight: '700', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.2)', marginBottom: '3rem' }}>
+        <h1 style={{ fontSize: '2.5rem', fontWeight: '700', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.2)', marginBottom: '1.5rem' }}>
           📈 Reportes y Estadísticas
         </h1>
 
+        {sesion?.sucursal_nombre && (
+          <div
+            style={{
+              marginBottom: '2rem',
+              background: '#ffffff',
+              color: '#334155',
+              border: '1px solid #dbeafe',
+              borderLeft: '4px solid #3b82f6',
+              borderRadius: '10px',
+              padding: '0.85rem 1.15rem',
+              boxShadow: '0 4px 16px rgba(15, 23, 42, 0.08)',
+              fontSize: '0.92rem',
+            }}
+          >
+            Reportes de <strong style={{ color: '#1e40af' }}>{sesion.sucursal_nombre}</strong> únicamente
+            (ventas, inventario y clientes de esta tienda).
+          </div>
+        )}
+
         {/* Resumen Rápido */}
         <div className="table-container" style={{ marginBottom: '3rem' }}>
-          <h3 style={{ marginBottom: '1rem', fontSize: '1.5rem', fontWeight: '600' }}>Resumen General</h3>
+          <h3 style={{ marginBottom: '1rem', fontSize: '1.5rem', fontWeight: '600' }}>
+            Resumen General{sesion?.sucursal_nombre ? ` — ${sesion.sucursal_nombre}` : ''}
+          </h3>
           
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginTop: '2rem' }}>
             <div style={{ textAlign: 'center', padding: '1.5rem', background: 'linear-gradient(135deg, rgba(236, 72, 153, 0.1) 0%, rgba(251, 146, 60, 0.05) 100%)', borderRadius: '15px' }}>
