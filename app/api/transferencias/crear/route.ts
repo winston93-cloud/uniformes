@@ -18,18 +18,29 @@ export async function POST(req: Request) {
 
   try {
     const body = (await req.json()) as {
+      sucursal_origen_id?: string;
       sucursal_destino_id?: string;
       observaciones?: string;
       detalles?: LineaTransferencia[];
     };
 
+    const sucursalOrigenId = String(body.sucursal_origen_id ?? sesion.sucursal_id).trim();
     const sucursalDestinoId = String(body.sucursal_destino_id ?? '').trim();
     const detalles = Array.isArray(body.detalles) ? body.detalles : [];
 
+    if (!sucursalOrigenId) {
+      return NextResponse.json({ ok: false, message: 'Selecciona sucursal origen.' }, { status: 400 });
+    }
+    if (sucursalOrigenId !== sesion.sucursal_id) {
+      return NextResponse.json(
+        { ok: false, message: 'Solo puedes enviar mercancía desde tu tienda activa.' },
+        { status: 403 }
+      );
+    }
     if (!sucursalDestinoId) {
       return NextResponse.json({ ok: false, message: 'Selecciona sucursal destino.' }, { status: 400 });
     }
-    if (sucursalDestinoId === sesion.sucursal_id) {
+    if (sucursalDestinoId === sucursalOrigenId) {
       return NextResponse.json({ ok: false, message: 'Origen y destino deben ser distintos.' }, { status: 400 });
     }
     if (detalles.length === 0) {
@@ -48,6 +59,15 @@ export async function POST(req: Request) {
 
     const db = getInsforge().database;
 
+    const { data: origen, error: errOrigen } = await db
+      .from('sucursales')
+      .select('id, activo')
+      .eq('id', sucursalOrigenId)
+      .maybeSingle();
+    if (errOrigen || !origen?.id || origen.activo === false) {
+      return NextResponse.json({ ok: false, message: 'Sucursal origen no válida.' }, { status: 400 });
+    }
+
     const { data: destino, error: errDestino } = await db
       .from('sucursales')
       .select('id, activo')
@@ -62,7 +82,7 @@ export async function POST(req: Request) {
     try {
       for (const d of detalles) {
         const cantidad = Math.trunc(Number(d.cantidad));
-        await descontarStockOrigenTransferencia(db, d.costo_id, cantidad, sesion.sucursal_id);
+        await descontarStockOrigenTransferencia(db, d.costo_id, cantidad, sucursalOrigenId);
         descontados.push({ ...d, cantidad });
       }
 
@@ -70,7 +90,7 @@ export async function POST(req: Request) {
         .from('transferencias')
         .insert([
           {
-            sucursal_origen_id: sesion.sucursal_id,
+            sucursal_origen_id: sucursalOrigenId,
             sucursal_destino_id: sucursalDestinoId,
             usuario_id: null,
             estado: 'EN_TRANSITO',
@@ -106,7 +126,7 @@ export async function POST(req: Request) {
             await abonarStockDestinoTransferencia(
               db,
               costoOrigen as Record<string, unknown>,
-              sesion.sucursal_id,
+              sucursalOrigenId,
               d.cantidad
             );
           }

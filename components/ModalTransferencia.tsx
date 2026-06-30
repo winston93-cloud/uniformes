@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { insforgeDb } from '@/lib/insforgeBrowser';
@@ -9,6 +9,8 @@ import { normalizarCamposCostoApi } from '@/lib/costoQueries';
 interface ModalTransferenciaProps {
   onClose: () => void;
 }
+
+type SucursalOption = { id: string; nombre: string; es_matriz?: boolean };
 
 type CostoDisponible = {
   costo_id: string;
@@ -30,6 +32,12 @@ type LineaForm = {
   label: string;
 };
 
+function destinoAutomatico(origenId: string, sucursales: SucursalOption[]): string {
+  if (!origenId || sucursales.length < 2) return '';
+  const otra = sucursales.find((s) => s.id !== origenId);
+  return otra?.id ?? '';
+}
+
 export default function ModalTransferencia({ onClose }: ModalTransferenciaProps) {
   const { sesion } = useAuth();
   const [mounted, setMounted] = useState(false);
@@ -37,45 +45,49 @@ export default function ModalTransferencia({ onClose }: ModalTransferenciaProps)
   const [cargandoCostos, setCargandoCostos] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [sucursales, setSucursales] = useState<Array<{ id: string; nombre: string; es_matriz?: boolean }>>([]);
+  const [sucursales, setSucursales] = useState<SucursalOption[]>([]);
+  const [sucursalOrigenId, setSucursalOrigenId] = useState('');
   const [costosDisponibles, setCostosDisponibles] = useState<CostoDisponible[]>([]);
 
-  const [sucursalDestinoId, setSucursalDestinoId] = useState('');
   const [observaciones, setObservaciones] = useState('');
   const [costoSeleccionado, setCostoSeleccionado] = useState('');
   const [cantidadNueva, setCantidadNueva] = useState('');
   const [detalles, setDetalles] = useState<LineaForm[]>([]);
 
-  useEffect(() => {
-    setMounted(true);
-    void cargarDatos();
-  }, [sesion?.sucursal_id]);
+  const sucursalDestinoId = useMemo(
+    () => destinoAutomatico(sucursalOrigenId, sucursales),
+    [sucursalOrigenId, sucursales]
+  );
 
-  const cargarDatos = async () => {
+  const sucursalOrigen = sucursales.find((s) => s.id === sucursalOrigenId);
+  const sucursalDestino = sucursales.find((s) => s.id === sucursalDestinoId);
+
+  const puedeEnviarDesdeOrigen = Boolean(
+    sesion?.sucursal_id && sucursalOrigenId && sucursalOrigenId === sesion.sucursal_id
+  );
+
+  const cargarInventarioOrigen = useCallback(async (origenId: string) => {
+    if (!origenId) {
+      setCostosDisponibles([]);
+      setCargandoCostos(false);
+      return;
+    }
+
     setCargandoCostos(true);
     try {
-      const { data: sucursalesData } = await insforgeDb()
-        .from('sucursales')
-        .select('id, nombre, es_matriz')
-        .eq('activo', true)
-        .neq('id', sesion?.sucursal_id ?? '')
-        .order('nombre');
-
-      if (sucursalesData) setSucursales(sucursalesData);
-
       const { data: costosRaw, error: errCostos } = await insforgeDb().from('costos').select('*');
       if (errCostos) throw errCostos;
 
-      const sid = sesion?.sucursal_id?.trim().toLowerCase();
-      const costosMatriz = (costosRaw || [])
+      const oid = origenId.trim().toLowerCase();
+      const costosOrigen = (costosRaw || [])
         .map((r) => normalizarCamposCostoApi(r as Record<string, unknown>))
         .filter((c) => {
           const cs = String(c.sucursal_id ?? '').trim().toLowerCase();
-          return cs === sid && Number(c.stock ?? 0) > 0;
+          return cs === oid && Number(c.stock ?? 0) > 0;
         });
 
-      const prendaIds = [...new Set(costosMatriz.map((c) => String(c.prenda_id)).filter(Boolean))];
-      const tallaIds = [...new Set(costosMatriz.map((c) => String(c.talla_id)).filter(Boolean))];
+      const prendaIds = [...new Set(costosOrigen.map((c) => String(c.prenda_id)).filter(Boolean))];
+      const tallaIds = [...new Set(costosOrigen.map((c) => String(c.talla_id)).filter(Boolean))];
 
       const [preRes, taRes] = await Promise.all([
         prendaIds.length
@@ -99,7 +111,7 @@ export default function ModalTransferencia({ onClose }: ModalTransferenciaProps)
         })
       );
 
-      const lista: CostoDisponible[] = costosMatriz.map((c) => {
+      const lista: CostoDisponible[] = costosOrigen.map((c) => {
         const pid = String(c.prenda_id ?? '');
         const tid = String(c.talla_id ?? '');
         const pre = preMap.get(pid.toLowerCase());
@@ -121,11 +133,46 @@ export default function ModalTransferencia({ onClose }: ModalTransferenciaProps)
       setCostosDisponibles(lista);
     } catch (err) {
       console.error(err);
-      setError('No se pudo cargar el inventario de tu tienda.');
+      setError('No se pudo cargar el inventario del origen seleccionado.');
+      setCostosDisponibles([]);
     } finally {
       setCargandoCostos(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    setMounted(true);
+    const init = async () => {
+      try {
+        const { data: sucursalesData } = await insforgeDb()
+          .from('sucursales')
+          .select('id, nombre, es_matriz')
+          .eq('activo', true)
+          .order('es_matriz', { ascending: false });
+
+        const lista = (sucursalesData || []) as SucursalOption[];
+        setSucursales(lista);
+
+        const origenInicial =
+          sesion?.sucursal_id && lista.some((s) => s.id === sesion.sucursal_id)
+            ? sesion.sucursal_id
+            : lista[0]?.id ?? '';
+        setSucursalOrigenId(origenInicial);
+      } catch (err) {
+        console.error(err);
+        setError('No se pudieron cargar las sucursales.');
+      }
+    };
+    void init();
+  }, [sesion?.sucursal_id]);
+
+  useEffect(() => {
+    if (!sucursalOrigenId) return;
+    setDetalles([]);
+    setCostoSeleccionado('');
+    setCantidadNueva('');
+    void cargarInventarioOrigen(sucursalOrigenId);
+  }, [sucursalOrigenId, cargarInventarioOrigen]);
 
   const costosFiltradosSelect = useMemo(() => {
     const usados = new Set(detalles.map((d) => d.costo_id));
@@ -133,6 +180,11 @@ export default function ModalTransferencia({ onClose }: ModalTransferenciaProps)
   }, [costosDisponibles, detalles]);
 
   const agregarLinea = () => {
+    if (!puedeEnviarDesdeOrigen) {
+      setError(`Solo puedes enviar desde tu tienda (${sesion?.sucursal_nombre}).`);
+      return;
+    }
+
     const costo = costosDisponibles.find((c) => c.costo_id === costoSeleccionado);
     if (!costo) {
       setError('Selecciona una prenda/talla con stock.');
@@ -175,6 +227,16 @@ export default function ModalTransferencia({ onClose }: ModalTransferenciaProps)
     setError(null);
 
     try {
+      if (!puedeEnviarDesdeOrigen) {
+        setError(`Solo puedes enviar mercancía desde ${sesion?.sucursal_nombre}.`);
+        setLoading(false);
+        return;
+      }
+      if (!sucursalDestinoId) {
+        setError('Selecciona un origen válido (matriz o sucursal).');
+        setLoading(false);
+        return;
+      }
       if (detalles.length === 0) {
         setError('Agrega al menos una prenda a la transferencia.');
         setLoading(false);
@@ -186,6 +248,7 @@ export default function ModalTransferencia({ onClose }: ModalTransferenciaProps)
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          sucursal_origen_id: sucursalOrigenId,
           sucursal_destino_id: sucursalDestinoId,
           observaciones,
           detalles: detalles.map((d) => ({
@@ -244,39 +307,69 @@ export default function ModalTransferencia({ onClose }: ModalTransferenciaProps)
               </div>
             )}
 
-            <div
-              style={{
-                background: '#f0fdf4',
-                padding: '1rem',
-                borderRadius: '8px',
-                marginBottom: '1.5rem',
-                border: '2px solid #86efac',
-              }}
-            >
-              <strong>📤 Origen:</strong> {sesion?.sucursal_nombre}
-              <div style={{ fontSize: '0.9rem', color: '#166534', marginTop: '0.35rem' }}>
-                Al enviar se descuenta el stock de {sesion?.sucursal_nombre}. La tienda destino lo recibe al confirmar.
-              </div>
-            </div>
-
             <div className="form-group">
               <label className="form-label">
-                Sucursal Destino <span style={{ color: 'red' }}>*</span>
+                Origen <span style={{ color: 'red' }}>*</span>
               </label>
               <select
                 className="form-input"
-                value={sucursalDestinoId}
-                onChange={(e) => setSucursalDestinoId(e.target.value)}
+                value={sucursalOrigenId}
+                onChange={(e) => setSucursalOrigenId(e.target.value)}
                 required
               >
-                <option value="">Selecciona una sucursal...</option>
+                <option value="">Selecciona origen…</option>
                 {sucursales.map((suc) => (
                   <option key={suc.id} value={suc.id}>
                     {suc.es_matriz ? '🏛️' : '📍'} {suc.nombre}
                   </option>
                 ))}
               </select>
+              <small style={{ color: '#64748b', display: 'block', marginTop: '0.35rem' }}>
+                Al enviar se descuenta el stock del origen. Solo puedes enviar desde{' '}
+                <strong>{sesion?.sucursal_nombre}</strong>.
+              </small>
             </div>
+
+            <div className="form-group">
+              <label className="form-label">Destino</label>
+              <div
+                className="form-input"
+                style={{
+                  background: '#f8fafc',
+                  color: '#334155',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  minHeight: '2.75rem',
+                }}
+              >
+                {sucursalDestino ? (
+                  <>
+                    {sucursalDestino.es_matriz ? '🏛️' : '📍'} {sucursalDestino.nombre}
+                  </>
+                ) : (
+                  <span style={{ color: '#94a3b8', fontWeight: 400 }}>Se asigna al elegir el origen</span>
+                )}
+              </div>
+            </div>
+
+            {!puedeEnviarDesdeOrigen && sucursalOrigenId && (
+              <div
+                style={{
+                  background: '#fffbeb',
+                  border: '1px solid #fde68a',
+                  borderRadius: '8px',
+                  padding: '0.85rem 1rem',
+                  marginBottom: '1rem',
+                  color: '#92400e',
+                  fontSize: '0.92rem',
+                }}
+              >
+                El origen seleccionado no es tu tienda. Cambia el origen a{' '}
+                <strong>{sesion?.sucursal_nombre}</strong> para armar y enviar la transferencia.
+              </div>
+            )}
 
             <div className="form-group">
               <label className="form-label">Observaciones</label>
@@ -290,13 +383,23 @@ export default function ModalTransferencia({ onClose }: ModalTransferenciaProps)
             </div>
 
             <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1.25rem', marginTop: '0.5rem' }}>
-              <h3 style={{ marginBottom: '1rem', fontSize: '1.1rem' }}>Prendas a transferir</h3>
+              <h3 style={{ marginBottom: '1rem', fontSize: '1.1rem' }}>
+                Prendas a transferir
+                {sucursalOrigen ? (
+                  <span style={{ fontWeight: 400, color: '#64748b', fontSize: '0.95rem' }}>
+                    {' '}
+                    — inventario de {sucursalOrigen.nombre}
+                  </span>
+                ) : null}
+              </h3>
 
-              {cargandoCostos ? (
-                <p style={{ color: '#64748b' }}>Cargando inventario de {sesion?.sucursal_nombre}…</p>
+              {!sucursalOrigenId ? (
+                <p style={{ color: '#64748b' }}>Elige el origen para ver el inventario disponible.</p>
+              ) : cargandoCostos ? (
+                <p style={{ color: '#64748b' }}>Cargando inventario…</p>
               ) : costosDisponibles.length === 0 ? (
-                <p style={{ color: '#64748b' }}>No hay stock en esta tienda para transferir.</p>
-              ) : (
+                <p style={{ color: '#64748b' }}>No hay stock en {sucursalOrigen?.nombre ?? 'esta tienda'} para transferir.</p>
+              ) : puedeEnviarDesdeOrigen ? (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1rem' }}>
                   <select
                     className="form-input"
@@ -324,7 +427,7 @@ export default function ModalTransferencia({ onClose }: ModalTransferenciaProps)
                     ➕ Agregar
                   </button>
                 </div>
-              )}
+              ) : null}
 
               {detalles.length > 0 && (
                 <table className="table" style={{ marginTop: '0.5rem' }}>
@@ -341,7 +444,12 @@ export default function ModalTransferencia({ onClose }: ModalTransferenciaProps)
                         <td>{d.label}</td>
                         <td>{d.cantidad}</td>
                         <td>
-                          <button type="button" className="btn btn-danger" style={{ padding: '0.35rem 0.75rem' }} onClick={() => quitarLinea(d.tempId)}>
+                          <button
+                            type="button"
+                            className="btn btn-danger"
+                            style={{ padding: '0.35rem 0.75rem' }}
+                            onClick={() => quitarLinea(d.tempId)}
+                          >
                             Quitar
                           </button>
                         </td>
@@ -360,7 +468,13 @@ export default function ModalTransferencia({ onClose }: ModalTransferenciaProps)
             <button
               type="submit"
               className="btn btn-primary"
-              disabled={loading || !sucursalDestinoId || detalles.length === 0}
+              disabled={
+                loading ||
+                !sucursalOrigenId ||
+                !sucursalDestinoId ||
+                !puedeEnviarDesdeOrigen ||
+                detalles.length === 0
+              }
             >
               {loading ? '⏳ Enviando…' : '🚚 Enviar transferencia'}
             </button>
