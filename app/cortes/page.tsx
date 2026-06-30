@@ -2,16 +2,18 @@
 
 import { useState } from 'react';
 import LayoutWrapper from '@/components/LayoutWrapper';
+import { useAuth } from '@/contexts/AuthContext';
 import { useCortes } from '@/lib/hooks/useCortes';
 import type { Corte } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
 export default function CortesPage() {
+  const { sesion } = useAuth();
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [corteSeleccionado, setCorteSeleccionado] = useState<string | null>(null);
   const [detalleCorte, setDetalleCorte] = useState<any[] | null>(null);
-  const { cortes, loading, error, crearCorte, getDetalleCorte, cerrarCorte } = useCortes();
+  const { cortes, loading, error, crearCorte, getDetalleCorte, cerrarCorte } = useCortes(sesion?.sucursal_id);
 
   const [formData, setFormData] = useState({
     fechaInicio: '',
@@ -87,6 +89,25 @@ export default function CortesPage() {
           </button>
         </div>
 
+        {sesion?.sucursal_nombre && (
+          <div
+            style={{
+              marginBottom: '1.25rem',
+              background: '#ffffff',
+              color: '#334155',
+              border: '1px solid #dbeafe',
+              borderLeft: '4px solid #3b82f6',
+              borderRadius: '10px',
+              padding: '0.85rem 1.15rem',
+              boxShadow: '0 4px 16px rgba(15, 23, 42, 0.08)',
+              fontSize: '0.92rem',
+            }}
+          >
+            Cortes de <strong style={{ color: '#1e40af' }}>{sesion.sucursal_nombre}</strong> únicamente.
+            Solo se incluyen pedidos <strong>COMPLETADOS</strong> (liquidados) de esta tienda en el rango de fechas.
+          </div>
+        )}
+
         {error && (
           <div className="alert alert-error">
             Error al cargar los cortes: {error}
@@ -97,7 +118,8 @@ export default function CortesPage() {
           <div className="form-container">
             <h2 className="form-title">Generar Nuevo Corte de Caja</h2>
             <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', textAlign: 'center' }}>
-              El corte incluirá todos los pedidos <strong>LIQUIDADOS</strong> entre las fechas seleccionadas
+              El corte incluirá los pedidos <strong>COMPLETADOS</strong> (liquidados) de{' '}
+              <strong>{sesion?.sucursal_nombre ?? 'tu tienda'}</strong> entre las fechas seleccionadas.
             </p>
             
             <form onSubmit={handleSubmit}>

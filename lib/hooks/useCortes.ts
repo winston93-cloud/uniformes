@@ -1,24 +1,37 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { insforgeDb } from '@/lib/insforgeBrowser';
 import type { Corte } from '../types';
 
-export function useCortes() {
+function readSucursalId(row: Record<string, unknown>): string {
+  const v = row.sucursal_id ?? row.sucursalId;
+  return v != null ? String(v).trim() : '';
+}
+
+export function useCortes(sucursal_id?: string) {
   const [cortes, setCortes] = useState<Corte[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchCortes = async () => {
+  const fetchCortes = useCallback(async () => {
     try {
       setLoading(true);
-      const { data, error } = await insforgeDb()
+      if (!sucursal_id?.trim()) {
+        setCortes([]);
+        setError(null);
+        return;
+      }
+
+      const { data, error: qErr } = await insforgeDb()
         .from('cortes')
         .select('*')
+        .eq('sucursal_id', sucursal_id.trim())
         .order('fecha', { ascending: false });
 
-      if (error) throw error;
-      setCortes(data || []);
+      if (qErr) throw qErr;
+      setCortes((data || []) as Corte[]);
+      setError(null);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       setError(msg);
@@ -26,30 +39,36 @@ export function useCortes() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [sucursal_id]);
 
   useEffect(() => {
-    fetchCortes();
-  }, []);
+    void fetchCortes();
+  }, [fetchCortes]);
 
   const crearCorte = async (fechaInicio: string, fechaFin: string) => {
+    if (!sucursal_id?.trim()) {
+      return { data: null, error: 'No hay sucursal activa en la sesión.' };
+    }
+
     try {
+      const sid = sucursal_id.trim();
       const fechaInicioObj = new Date(fechaInicio + 'T00:00:00');
       const fechaFinObj = new Date(fechaFin + 'T23:59:59');
 
       const { data: pedidos, error: pedidosError } = await insforgeDb()
         .from('pedidos')
-        .select('id, total, estado')
+        .select('id, total, estado, sucursal_id')
         .eq('estado', 'COMPLETADO')
+        .eq('sucursal_id', sid)
         .gte('created_at', fechaInicioObj.toISOString())
         .lte('created_at', fechaFinObj.toISOString());
 
       if (pedidosError) throw pedidosError;
 
-      const totalVentas = pedidos?.reduce((sum, p) => sum + parseFloat(p.total.toString()), 0) || 0;
+      const totalVentas = pedidos?.reduce((sum, p) => sum + parseFloat(String(p.total ?? 0)), 0) || 0;
       const totalPedidos = pedidos?.length || 0;
 
-      const { data, error } = await insforgeDb()
+      const { data, error: insErr } = await insforgeDb()
         .from('cortes')
         .insert([
           {
@@ -57,13 +76,14 @@ export function useCortes() {
             fecha_fin: fechaFin,
             total_ventas: totalVentas,
             total_pedidos: totalPedidos,
+            sucursal_id: sid,
             activo: true,
           },
         ])
         .select()
         .single();
 
-      if (error) throw error;
+      if (insErr) throw insErr;
 
       if (pedidos && pedidos.length > 0) {
         const detalles = pedidos.map((pedido) => ({
@@ -89,7 +109,23 @@ export function useCortes() {
   };
 
   const getDetalleCorte = async (corteId: string) => {
+    if (!sucursal_id?.trim()) {
+      return { data: null, error: 'No hay sucursal activa en la sesión.' };
+    }
+
     try {
+      const { data: corteRow, error: corteErr } = await insforgeDb()
+        .from('cortes')
+        .select('id, sucursal_id')
+        .eq('id', corteId)
+        .maybeSingle();
+
+      if (corteErr) throw corteErr;
+      if (!corteRow?.id) return { data: null, error: 'Corte no encontrado.' };
+      if (readSucursalId(corteRow as Record<string, unknown>) !== sucursal_id.trim()) {
+        return { data: null, error: 'Este corte pertenece a otra tienda.' };
+      }
+
       const { data: detalles, error } = await insforgeDb()
         .from('detalle_cortes')
         .select('*')
@@ -101,7 +137,11 @@ export function useCortes() {
       let pedidoPorId = new Map<string, Record<string, unknown>>();
 
       if (pedidoIds.length > 0) {
-        const pr = await insforgeDb().from('pedidos').select('*').in('id', pedidoIds);
+        const pr = await insforgeDb()
+          .from('pedidos')
+          .select('*')
+          .in('id', pedidoIds)
+          .eq('sucursal_id', sucursal_id.trim());
         if (!pr.error && pr.data) {
           pedidoPorId = new Map(pr.data.map((p) => [String((p as Record<string, unknown>).id), p as Record<string, unknown>]));
         }
@@ -168,11 +208,28 @@ export function useCortes() {
   };
 
   const cerrarCorte = async (id: string) => {
+    if (!sucursal_id?.trim()) {
+      return { data: null, error: 'No hay sucursal activa en la sesión.' };
+    }
+
     try {
+      const { data: corteRow, error: corteErr } = await insforgeDb()
+        .from('cortes')
+        .select('id, sucursal_id')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (corteErr) throw corteErr;
+      if (!corteRow?.id) return { data: null, error: 'Corte no encontrado.' };
+      if (readSucursalId(corteRow as Record<string, unknown>) !== sucursal_id.trim()) {
+        return { data: null, error: 'Este corte pertenece a otra tienda.' };
+      }
+
       const { data, error } = await insforgeDb()
         .from('cortes')
         .update({ activo: false })
         .eq('id', id)
+        .eq('sucursal_id', sucursal_id.trim())
         .select()
         .single();
 
