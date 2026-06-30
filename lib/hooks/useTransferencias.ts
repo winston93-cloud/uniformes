@@ -127,54 +127,37 @@ export function useTransferencias(sucursalId?: string) {
 export async function crearTransferencia(
   sucursal_origen_id: string,
   sucursal_destino_id: string,
-  usuario_id: number,
+  _usuario_id: number,
   detalles: Array<{ prenda_id: string; talla_id: string; cantidad: number; costo_id: string }>,
   observaciones?: string
 ) {
-  const { data: transferencia, error: errorTransferencia } = await insforgeDb()
-    .from('transferencias')
-    .insert([
-      {
-        sucursal_origen_id,
-        sucursal_destino_id,
-        usuario_id,
-        estado: 'PENDIENTE',
-        observaciones,
-      },
-    ])
-    .select()
-    .single();
-
-  if (errorTransferencia) throw errorTransferencia;
-
-  const detallesConId = detalles.map((d) => ({
-    ...d,
-    transferencia_id: transferencia.id,
-  }));
-
-  const { error: errorDetalles } = await insforgeDb()
-    .from('detalle_transferencias')
-    .insert(detallesConId);
-
-  if (errorDetalles) throw errorDetalles;
-
-  return transferencia;
+  const res = await fetch('/api/transferencias/crear', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      sucursal_destino_id,
+      observaciones,
+      detalles,
+    }),
+  });
+  const json = (await res.json()) as { ok?: boolean; message?: string; transferencia?: unknown };
+  if (!res.ok || !json.ok) {
+    throw new Error(json.message ?? 'No se pudo crear la transferencia.');
+  }
+  return json.transferencia;
 }
 
 export async function procesarTransferencia(transferencia_id: string) {
-  const { data: transferencia, error } = await insforgeDb()
-    .from('transferencias')
-    .update({ estado: 'RECIBIDA' })
-    .eq('id', transferencia_id)
-    .select()
-    .single();
-
-  if (error) throw error;
-
-  const { data: detalles } = await insforgeDb()
-    .from('detalle_transferencias')
-    .select('*')
-    .eq('transferencia_id', transferencia_id);
-
-  return { ...transferencia, detalles: detalles || [] };
+  const res = await fetch('/api/transferencias/recibir', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ transferencia_id }),
+  });
+  const json = (await res.json()) as { ok?: boolean; message?: string; transferencia?: unknown };
+  if (!res.ok || !json.ok) {
+    throw new Error(json.message ?? 'No se pudo recibir la transferencia.');
+  }
+  return json.transferencia;
 }

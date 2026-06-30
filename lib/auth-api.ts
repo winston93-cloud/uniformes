@@ -11,6 +11,16 @@ export async function sesionDesdeCookie(): Promise<SesionUsuario | null> {
   return payloadASesionUsuario(payload);
 }
 
+export async function exigirSesion(): Promise<SesionUsuario | null> {
+  return sesionDesdeCookie();
+}
+
+export async function exigirMatriz(): Promise<SesionUsuario | null> {
+  const sesion = await sesionDesdeCookie();
+  if (!sesion?.es_matriz) return null;
+  return sesion;
+}
+
 export async function exigirAdmin(): Promise<SesionUsuario | null> {
   const sesion = await sesionDesdeCookie();
   if (!sesion || !esAdministrador(sesion)) return null;

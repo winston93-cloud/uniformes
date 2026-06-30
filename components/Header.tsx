@@ -84,6 +84,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
               <span className="btn-text">Ir al Panel</span>
             </button>
 
+            {sesion?.es_matriz && (
             <button 
               onClick={() => setModalCotizacionAbierto(true)} 
               className="btn header-btn"
@@ -103,6 +104,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
               <FileText size={18} aria-hidden />
               <span className="btn-text">Cotizaciones</span>
             </button>
+            )}
 
             <button 
               className="logout-button header-btn"

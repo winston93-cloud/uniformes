@@ -4,12 +4,15 @@ import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import ModalTransferencia from '@/components/ModalTransferencia';
+import ModalDetalleTransferencia from '@/components/ModalDetalleTransferencia';
 import { useTransferencias } from '@/lib/hooks/useTransferencias';
+import type { Transferencia } from '@/lib/types';
 
 export default function TransferenciasPage() {
   const { sesion } = useAuth();
   const { transferencias, loading, recargar } = useTransferencias(sesion?.sucursal_id);
   const [modalAbierto, setModalAbierto] = useState(false);
+  const [transferenciaDetalle, setTransferenciaDetalle] = useState<Transferencia | null>(null);
 
   const handleNuevaTransferencia = () => {
     setModalAbierto(true);
@@ -29,6 +32,11 @@ export default function TransferenciasPage() {
     };
     return badges[estado as keyof typeof badges] || badges.PENDIENTE;
   };
+
+  const esDestinoPendiente = (t: Transferencia) =>
+    !sesion?.es_matriz &&
+    String(t.sucursal_destino_id) === sesion?.sucursal_id &&
+    (t.estado === 'EN_TRANSITO' || t.estado === 'PENDIENTE');
 
   return (
     <LayoutWrapper>
@@ -54,7 +62,7 @@ export default function TransferenciasPage() {
 
         {!sesion?.es_matriz && (
           <div className="alert alert-info" style={{ marginBottom: '2rem' }}>
-            ℹ️ Solo la sucursal matriz puede crear transferencias de mercancía.
+            ℹ️ Las transferencias las envía la matriz. Cuando llegue mercancía, ábrela y pulsa <strong>Confirmar recepción</strong> para que aparezca en tu inventario.
           </div>
         )}
 
@@ -69,8 +77,8 @@ export default function TransferenciasPage() {
             <h3>No hay transferencias registradas</h3>
             <p>
               {sesion?.es_matriz 
-                ? 'Comienza creando la primera transferencia' 
-                : 'Las transferencias aparecerán aquí cuando se realicen'}
+                ? 'Comienza creando la primera transferencia hacia una sucursal.' 
+                : 'Las transferencias aparecerán aquí cuando la matriz las envíe.'}
             </p>
           </div>
         ) : (
@@ -83,12 +91,11 @@ export default function TransferenciasPage() {
                   <th>Destino</th>
                   <th>Fecha</th>
                   <th>Estado</th>
-                  <th>Usuario</th>
                   <th>Acciones</th>
                 </tr>
               </thead>
               <tbody>
-                {transferencias.map((transferencia: any) => {
+                {transferencias.map((transferencia) => {
                   const badge = getBadgeEstado(transferencia.estado);
                   return (
                     <tr key={transferencia.id}>
@@ -137,14 +144,25 @@ export default function TransferenciasPage() {
                           {badge.emoji} {transferencia.estado}
                         </span>
                       </td>
-                      <td>{transferencia.usuario?.usuario_username || '-'}</td>
                       <td>
-                        <button
-                          className="btn btn-secondary"
-                          style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}
-                        >
-                          👁️ Ver Detalles
-                        </button>
+                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          <button
+                            className="btn btn-secondary"
+                            style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}
+                            onClick={() => setTransferenciaDetalle(transferencia)}
+                          >
+                            👁️ Ver
+                          </button>
+                          {esDestinoPendiente(transferencia) && (
+                            <button
+                              className="btn btn-primary"
+                              style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}
+                              onClick={() => setTransferenciaDetalle(transferencia)}
+                            >
+                              ✅ Recibir
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -157,6 +175,14 @@ export default function TransferenciasPage() {
 
       {modalAbierto && (
         <ModalTransferencia onClose={handleCerrarModal} />
+      )}
+
+      {transferenciaDetalle && (
+        <ModalDetalleTransferencia
+          transferencia={transferenciaDetalle}
+          onClose={() => setTransferenciaDetalle(null)}
+          onRecibida={recargar}
+        />
       )}
     </LayoutWrapper>
   );
