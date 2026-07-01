@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   crearOnBlurCerrarDropdown,
@@ -45,6 +45,7 @@ export default function AutocompleteTallaCotizacion({
   ariaLabel = 'Talla',
   borderColor = '#ddd',
 }: Props) {
+  const listboxId = useId();
   const [abierto, setAbierto] = useState(false);
   const [pos, setPos] = useState<PosicionDropdown | null>(null);
   const [indice, setIndice] = useState(-1);
@@ -52,8 +53,33 @@ export default function AutocompleteTallaCotizacion({
   const anchorRef = useRef<HTMLInputElement>(null);
   const portalRef = useRef<HTMLDivElement>(null);
   const interaccionRef = useRef(false);
+  const indiceRef = useRef(-1);
+  const abiertoRef = useRef(false);
+  const opcionesRef = useRef<OpcionTallaCotizacion[]>([]);
+  const valueRef = useRef(value);
+  const selectedIdRef = useRef(selectedId);
+  const onSelectRef = useRef(onSelect);
+  const onEnterRef = useRef(onEnter);
 
   useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    indiceRef.current = indice;
+  }, [indice]);
+  useEffect(() => {
+    abiertoRef.current = abierto;
+  }, [abierto]);
+  useEffect(() => {
+    valueRef.current = value;
+  }, [value]);
+  useEffect(() => {
+    selectedIdRef.current = selectedId;
+  }, [selectedId]);
+  useEffect(() => {
+    onSelectRef.current = onSelect;
+  }, [onSelect]);
+  useEffect(() => {
+    onEnterRef.current = onEnter;
+  }, [onEnter]);
 
   const opcionesFiltradas = useMemo(
     () =>
@@ -64,54 +90,147 @@ export default function AutocompleteTallaCotizacion({
     [opciones, value]
   );
 
-  const reposicionar = () => {
-    const anchor = inputRef?.current || anchorRef.current;
+  useEffect(() => {
+    opcionesRef.current = opcionesFiltradas;
+  }, [opcionesFiltradas]);
+
+  const obtenerInput = useCallback(
+    () => inputRef?.current || anchorRef.current,
+    [inputRef]
+  );
+
+  const reposicionar = useCallback(() => {
+    const anchor = obtenerInput();
     if (!anchor) return;
     setPos(posicionDropdownFijo(anchor, 120, 220));
-  };
+  }, [obtenerInput]);
+
+  const hayTextoBusqueda = value.trim().length > 0;
+  const mostrarDropdown = abierto && hayTextoBusqueda && opcionesFiltradas.length > 0;
 
   useEffect(() => {
-    if (!abierto) return;
+    if (!mostrarDropdown) return;
     reposicionar();
     return instalarCierrePointerFuera(
       [anchorRef, portalRef, ...(inputRef ? [inputRef] : [])],
       () => setAbierto(false),
       interaccionRef
     );
-  }, [abierto, inputRef, value]);
+  }, [mostrarDropdown, inputRef, value, reposicionar]);
 
-  const abrir = (resetIndice = true) => {
-    if (disabled) return;
-    reposicionar();
-    setAbierto(true);
-    if (resetIndice) setIndice(-1);
-  };
+  useEffect(() => {
+    if (indice < 0 || !portalRef.current) return;
+    const items = portalRef.current.querySelectorAll('.cotizacion-autocomplete-dropdown-item');
+    (items[indice] as HTMLElement | undefined)?.scrollIntoView({ block: 'nearest' });
+  }, [indice, opcionesFiltradas]);
 
-  const elegir = (opcion: OpcionTallaCotizacion, avanzarFocus = false) => {
-    onSelect(opcion);
+  const cerrar = useCallback(() => {
     setAbierto(false);
     setIndice(-1);
-    if (avanzarFocus) {
-      setTimeout(() => onEnter?.(), 0);
-    }
-  };
+  }, []);
 
-  const opcionParaTeclado = (): OpcionTallaCotizacion | null => {
-    if (opcionesFiltradas.length === 0) return null;
-    if (indice >= 0 && indice < opcionesFiltradas.length) {
-      return opcionesFiltradas[indice];
-    }
-    if (opcionesFiltradas.length === 1) {
-      return opcionesFiltradas[0];
-    }
-    const q = value.trim().toUpperCase();
+  const abrir = useCallback(
+    (resetIndice = true) => {
+      if (disabled || !valueRef.current.trim()) return;
+      reposicionar();
+      setAbierto(true);
+      if (resetIndice) setIndice(-1);
+    },
+    [disabled, reposicionar]
+  );
+
+  const elegir = useCallback(
+    (opcion: OpcionTallaCotizacion, avanzarFocus = false) => {
+      onSelectRef.current(opcion);
+      cerrar();
+      if (avanzarFocus) {
+        setTimeout(() => onEnterRef.current?.(), 0);
+      }
+    },
+    [cerrar]
+  );
+
+  const resolverOpcionTeclado = useCallback((): OpcionTallaCotizacion | null => {
+    const lista = opcionesRef.current;
+    if (lista.length === 0) return null;
+    const idx = indiceRef.current;
+    if (idx >= 0 && idx < lista.length) return lista[idx];
+    if (lista.length === 1) return lista[0];
+    const q = valueRef.current.trim().toUpperCase();
     if (!q) return null;
     return (
-      opcionesFiltradas.find((o) => o.nombre.toUpperCase() === q) ??
-      opcionesFiltradas.find((o) => o.nombre.toUpperCase().startsWith(q)) ??
+      lista.find((o) => o.nombre.toUpperCase() === q) ??
+      lista.find((o) => o.nombre.toUpperCase().startsWith(q)) ??
       null
     );
-  };
+  }, []);
+
+  const moverIndice = useCallback((delta: 1 | -1) => {
+    const lista = opcionesRef.current;
+    if (lista.length === 0) {
+      setIndice(-1);
+      return;
+    }
+    setIndice((actual) => {
+      if (actual < 0) return delta > 0 ? 0 : lista.length - 1;
+      const siguiente = actual + delta;
+      if (siguiente < 0) return 0;
+      if (siguiente >= lista.length) return lista.length - 1;
+      return siguiente;
+    });
+  }, []);
+
+  useEffect(() => {
+    const el = obtenerInput();
+    if (!el || disabled) return;
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp' && e.key !== 'Enter' && e.key !== 'Escape') {
+        return;
+      }
+
+      if (e.key === 'ArrowDown') {
+        if (!valueRef.current.trim()) return;
+        e.preventDefault();
+        e.stopPropagation();
+        if (!abiertoRef.current) abrir(false);
+        moverIndice(1);
+        return;
+      }
+
+      if (e.key === 'ArrowUp') {
+        if (!valueRef.current.trim()) return;
+        e.preventDefault();
+        e.stopPropagation();
+        if (!abiertoRef.current) abrir(false);
+        moverIndice(-1);
+        return;
+      }
+
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        const pick = abiertoRef.current ? resolverOpcionTeclado() : null;
+        if (pick) {
+          elegir(pick, true);
+          return;
+        }
+        if (selectedIdRef.current || valueRef.current.trim()) {
+          onEnterRef.current?.();
+        }
+        return;
+      }
+
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        cerrar();
+      }
+    };
+
+    el.addEventListener('keydown', onKeyDown, true);
+    return () => el.removeEventListener('keydown', onKeyDown, true);
+  }, [abrir, cerrar, disabled, elegir, moverIndice, obtenerInput, resolverOpcionTeclado]);
 
   const inputEl = (
     <input
@@ -126,54 +245,26 @@ export default function AutocompleteTallaCotizacion({
       disabled={disabled}
       placeholder={placeholder}
       aria-label={ariaLabel}
-      aria-expanded={abierto}
+      aria-expanded={mostrarDropdown}
       aria-autocomplete="list"
+      aria-controls={mostrarDropdown ? listboxId : undefined}
+      aria-activedescendant={
+        mostrarDropdown && indice >= 0 ? `${listboxId}-opcion-${indice}` : undefined
+      }
       autoComplete="off"
-      onFocus={() => abrir()}
+      onFocus={() => {
+        if (value.trim()) abrir(false);
+      }}
       onChange={(e) => {
-        onChangeTexto(e.target.value);
-        abrir(true);
-      }}
-      onBlur={crearOnBlurCerrarDropdown(interaccionRef, () => setAbierto(false))}
-      onKeyDown={(e) => {
-        if (e.key === 'ArrowDown') {
-          e.preventDefault();
-          if (!abierto) abrir(false);
-          setIndice((i) => {
-            if (opcionesFiltradas.length === 0) return -1;
-            if (i < 0) return 0;
-            return Math.min(i + 1, opcionesFiltradas.length - 1);
-          });
-          return;
-        }
-        if (e.key === 'ArrowUp') {
-          e.preventDefault();
-          if (!abierto) abrir(false);
-          setIndice((i) => {
-            if (opcionesFiltradas.length === 0) return -1;
-            if (i <= 0) return 0;
-            return i - 1;
-          });
-          return;
-        }
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          const pick = abierto ? opcionParaTeclado() : null;
-          if (pick) {
-            elegir(pick, true);
-            return;
-          }
-          if (selectedId || value.trim()) {
-            onEnter?.();
-          }
-          return;
-        }
-        if (e.key === 'Escape') {
-          e.preventDefault();
-          setAbierto(false);
-          setIndice(-1);
+        const texto = e.target.value;
+        onChangeTexto(texto);
+        if (texto.trim()) {
+          abrir(true);
+        } else {
+          cerrar();
         }
       }}
+      onBlur={crearOnBlurCerrarDropdown(interaccionRef, cerrar)}
       style={{
         padding: '0.5rem',
         borderRadius: '4px',
@@ -185,10 +276,12 @@ export default function AutocompleteTallaCotizacion({
   );
 
   const dropdown =
-    abierto && pos && opcionesFiltradas.length > 0 && mounted
+    mostrarDropdown && pos && mounted
       ? createPortal(
           <div
             ref={portalRef}
+            id={listboxId}
+            role="listbox"
             className="cotizacion-autocomplete-dropdown"
             {...mergePropsDropdownPortal(interaccionRef, {
               position: 'fixed',
@@ -204,29 +297,25 @@ export default function AutocompleteTallaCotizacion({
               boxShadow: '0 10px 30px rgba(0,0,0,0.15)',
             })}
           >
-            {opcionesFiltradas.map((opcion, idx) => (
-              <div
-                key={opcion.id}
-                className={`cotizacion-autocomplete-dropdown-item${
-                  idx === indice || opcion.id === selectedId ? ' selected' : ''
-                }`}
-                onMouseEnter={() => setIndice(idx)}
-                {...handlersTapSeleccionDropdown(() => {
-                  elegir(opcion);
-                  focusSinScroll(anchorRef.current);
-                }, interaccionRef)}
-                style={{
-                  padding: '0.55rem 0.75rem',
-                  cursor: 'pointer',
-                  background:
-                    idx === indice || opcion.id === selectedId ? '#eef2ff' : 'white',
-                  borderBottom: '1px solid #f3f4f6',
-                  fontSize: '0.9rem',
-                }}
-              >
-                {opcion.nombre}
-              </div>
-            ))}
+            {opcionesFiltradas.map((opcion, idx) => {
+              const activa = idx === indice;
+              return (
+                <div
+                  key={opcion.id}
+                  id={`${listboxId}-opcion-${idx}`}
+                  role="option"
+                  aria-selected={activa}
+                  className={`cotizacion-autocomplete-dropdown-item${activa ? ' is-active' : ''}`}
+                  onMouseEnter={() => setIndice(idx)}
+                  {...handlersTapSeleccionDropdown(() => {
+                    elegir(opcion);
+                    focusSinScroll(anchorRef.current);
+                  }, interaccionRef)}
+                >
+                  {opcion.nombre}
+                </div>
+              );
+            })}
           </div>,
           document.body
         )
