@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCotizaciones, type PartidaCotizacion } from '@/lib/hooks/useCotizaciones';
@@ -208,6 +208,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   const [cotizacionEstadoActual, setCotizacionEstadoActual] = useState<string | null>(null);
   const [guardandoBorrador, setGuardandoBorrador] = useState(false);
   const [ultimoGuardadoBorrador, setUltimoGuardadoBorrador] = useState<Date | null>(null);
+  const [alertaPartidasSinCliente, setAlertaPartidasSinCliente] = useState(false);
   const debounceBorradorRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [busquedaTallaSubPartida, setBusquedaTallaSubPartida] = useState<Record<string, string>>({});
   const [modalDatosFiscalesAbierto, setModalDatosFiscalesAbierto] = useState(false);
@@ -326,6 +327,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     setBusquedaCliente(nombreCliente);
     setResultadosBusqueda([]);
     setIndiceSeleccionadoCliente(-1);
+    setAlertaPartidasSinCliente(false);
     focusCotizacionSiEscritorio(
       cotizacionDirecta ? inputPrendaManualRef.current : inputPrendaRef.current
     );
@@ -833,11 +835,14 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
         const actualizada = { ...sp, [campo]: valor };
 
         if (campo === 'costo_id' && valor && tipoPrecio) {
-          const costo = costosDisponibles.find((c) => c.id === valor);
+          const costo = buscarCostoDisponible(String(valor), sp.talla);
           if (costo) {
-            actualizada.talla = costo.talla?.nombre || '';
-            actualizada.precio_unitario =
+            actualizada.costo_id = String(costo.id);
+            actualizada.talla = String(costo.talla?.nombre || '').trim();
+            const bruto =
               tipoPrecio === 'mayoreo' ? costo.precio_mayoreo : costo.precio_menudeo;
+            const precio = Number(bruto);
+            actualizada.precio_unitario = Number.isFinite(precio) ? precio : 0;
           }
         }
 
@@ -867,6 +872,12 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
 
     if (!colorGlobal.trim()) {
       alert('⚠️ Debes especificar el Color de la prenda');
+      return;
+    }
+
+    if (!clienteSeleccionado) {
+      setAlertaPartidasSinCliente(true);
+      focusCotizacionSiEscritorio(inputClienteRef.current);
       return;
     }
 
@@ -915,6 +926,9 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
 
     setPartidas((prev) => {
       const merged = insertarPartidasEnPosicion(prev, nuevasPartidas, insertarDespuesDeIndex);
+      if (esBorradorEditable && merged.length > 0 && !clienteSeleccionado) {
+        setAlertaPartidasSinCliente(true);
+      }
       void ejecutarAutoGuardado(merged);
       return merged;
     });
@@ -1145,15 +1159,91 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     [tallasCatalogo]
   );
 
-  const opcionesTallaSistema = useMemo(
-    () =>
-      costosDisponibles
-        .filter((c) => c.activo !== false)
-        .map((c) => ({
-          id: String(c.id),
-          nombre: String(c.talla?.nombre || 'Sin talla'),
-        })),
-    [costosDisponibles]
+  const opcionesTallaSistema = useMemo(() => {
+    const activos = costosDisponibles.filter((c) => c.activo !== false);
+    const porNombre = new Map<string, { id: string; nombre: string }>();
+    const precioDe = (c: (typeof activos)[0]) => {
+      const bruto =
+        tipoPrecio === 'mayoreo' ? c.precio_mayoreo : c.precio_menudeo;
+      const n = Number(bruto);
+      return Number.isFinite(n) ? n : 0;
+    };
+    for (const c of activos) {
+      const nombre = String(c.talla?.nombre || 'Sin talla').trim().replace(/\s+/g, ' ');
+      const clave = nombre.toUpperCase();
+      const opcion = { id: String(c.id), nombre };
+      const prev = porNombre.get(clave);
+      if (!prev) {
+        porNombre.set(clave, opcion);
+        continue;
+      }
+      const costoPrev = activos.find((x) => String(x.id) === prev.id);
+      const costoNuevo = c;
+      if (costoPrev && precioDe(costoNuevo) > precioDe(costoPrev)) {
+        porNombre.set(clave, opcion);
+      }
+    }
+    return Array.from(porNombre.values()).sort((a, b) =>
+      a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' })
+    );
+  }, [costosDisponibles, tipoPrecio]);
+
+  const buscarCostoDisponible = useCallback(
+    (costoId?: string, nombreTalla?: string) => {
+      const normalizar = (nombre: string) =>
+        nombre.trim().replace(/\s+/g, ' ').toUpperCase();
+      if (costoId) {
+        const porId = costosDisponibles.find((c) => String(c.id) === String(costoId));
+        if (porId) return porId;
+      }
+      const clave = normalizar(nombreTalla || '');
+      if (!clave) return undefined;
+      const candidatos = costosDisponibles.filter(
+        (c) =>
+          c.activo !== false &&
+          normalizar(String(c.talla?.nombre || '')) === clave
+      );
+      if (candidatos.length === 0) return undefined;
+      if (!tipoPrecio) return candidatos[0];
+      const precioDe = (c: (typeof candidatos)[0]) => {
+        const bruto =
+          tipoPrecio === 'mayoreo' ? c.precio_mayoreo : c.precio_menudeo;
+        const n = Number(bruto);
+        return Number.isFinite(n) ? n : 0;
+      };
+      return [...candidatos].sort((a, b) => precioDe(b) - precioDe(a))[0];
+    },
+    [costosDisponibles, tipoPrecio]
+  );
+
+  const seleccionarCostoEnSubPartida = useCallback(
+    (subPartidaId: string, opcion: { id: string; nombre: string }) => {
+      setBusquedaTallaSubPartida((prev) => ({ ...prev, [subPartidaId]: opcion.nombre }));
+      setSubPartidas((prev) =>
+        prev.map((sp) => {
+          if (sp.id !== subPartidaId) return sp;
+          const costo = buscarCostoDisponible(opcion.id, opcion.nombre);
+          if (!costo || !tipoPrecio) {
+            return {
+              ...sp,
+              costo_id: '',
+              talla: opcion.nombre.trim(),
+              precio_unitario: 0,
+            };
+          }
+          const bruto =
+            tipoPrecio === 'mayoreo' ? costo.precio_mayoreo : costo.precio_menudeo;
+          const precio = Number(bruto);
+          return {
+            ...sp,
+            costo_id: String(costo.id),
+            talla: String(costo.talla?.nombre || opcion.nombre).trim(),
+            precio_unitario: Number.isFinite(precio) ? precio : 0,
+          };
+        })
+      );
+    },
+    [buscarCostoDisponible, tipoPrecio]
   );
 
   const construirPayloadCotizacion = (partidasActuales: PartidaCotizacion[]) => {
@@ -1826,6 +1916,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     setCotizacionEditId(null);
     setCotizacionEstadoActual(null);
     setUltimoGuardadoBorrador(null);
+    setAlertaPartidasSinCliente(false);
+    setBusquedaTallaSubPartida({});
     setIncluirIva(false);
     setIncluirIsr(false);
     setTipoPrecio(null);
@@ -2003,6 +2095,24 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
         {/* Contenido */}
         {vista === 'nueva' ? (
           <div>
+            {alertaPartidasSinCliente && !clienteSeleccionado && partidas.length > 0 && (
+              <div
+                role="alert"
+                style={{
+                  marginBottom: '1rem',
+                  padding: '0.85rem 1rem',
+                  background: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)',
+                  border: '2px solid #fb923c',
+                  borderRadius: '10px',
+                  color: '#9a3412',
+                  fontWeight: 600,
+                  fontSize: '0.95rem',
+                }}
+              >
+                ⚠️ Tienes <strong>{partidas.length}</strong> partida(s) capturada(s) pero aún no hay cliente
+                seleccionado. El borrador <strong>no se guardará</strong> hasta que elijas un cliente arriba.
+              </div>
+            )}
             {cotizacionEditId && esEstadoBorradorCotizacion(cotizacionEstadoActual || '') && (
               <div
                 style={{
@@ -2878,14 +2988,51 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                           placeholder="Escribe la talla…"
                           onChangeTexto={(texto) => {
                             setBusquedaTallaSubPartida((prev) => ({ ...prev, [sp.id]: texto }));
-                            if (!texto.trim()) {
-                              actualizarSubPartida(sp.id, 'costo_id', '');
-                              actualizarSubPartida(sp.id, 'talla', '');
-                            }
+                            setSubPartidas((prev) =>
+                              prev.map((row) => {
+                                if (row.id !== sp.id) return row;
+                                const tallaNorm = texto.trim().replace(/\s+/g, ' ');
+                                if (!tallaNorm) {
+                                  return {
+                                    ...row,
+                                    costo_id: '',
+                                    talla: '',
+                                    precio_unitario: 0,
+                                  };
+                                }
+                                const costo = buscarCostoDisponible(undefined, tallaNorm);
+                                if (
+                                  costo &&
+                                  tipoPrecio &&
+                                  tallaNorm.toUpperCase() ===
+                                    String(costo.talla?.nombre || '')
+                                      .trim()
+                                      .replace(/\s+/g, ' ')
+                                      .toUpperCase()
+                                ) {
+                                  const bruto =
+                                    tipoPrecio === 'mayoreo'
+                                      ? costo.precio_mayoreo
+                                      : costo.precio_menudeo;
+                                  const precio = Number(bruto);
+                                  return {
+                                    ...row,
+                                    costo_id: String(costo.id),
+                                    talla: String(costo.talla?.nombre || tallaNorm).trim(),
+                                    precio_unitario: Number.isFinite(precio) ? precio : 0,
+                                  };
+                                }
+                                return {
+                                  ...row,
+                                  costo_id: '',
+                                  talla: tallaNorm,
+                                  precio_unitario: 0,
+                                };
+                              })
+                            );
                           }}
                           onSelect={(opcion) => {
-                            setBusquedaTallaSubPartida((prev) => ({ ...prev, [sp.id]: opcion.nombre }));
-                            actualizarSubPartida(sp.id, 'costo_id', opcion.id);
+                            seleccionarCostoEnSubPartida(sp.id, opcion);
                           }}
                           onEnter={() => {
                             setTimeout(() => {

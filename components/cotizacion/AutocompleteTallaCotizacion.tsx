@@ -156,13 +156,13 @@ export default function AutocompleteTallaCotizacion({
     const idx = indiceRef.current;
     if (idx >= 0 && idx < lista.length) return lista[idx];
     if (lista.length === 1) return lista[0];
-    const q = valueRef.current.trim().toUpperCase();
+    const q = valueRef.current.trim().replace(/\s+/g, ' ').toUpperCase();
     if (!q) return null;
-    return (
-      lista.find((o) => o.nombre.toUpperCase() === q) ??
-      lista.find((o) => o.nombre.toUpperCase().startsWith(q)) ??
-      null
+    const exacta = lista.find(
+      (o) => o.nombre.trim().replace(/\s+/g, ' ').toUpperCase() === q
     );
+    if (exacta) return exacta;
+    return null;
   }, []);
 
   const moverIndice = useCallback((delta: 1 | -1) => {
@@ -210,7 +210,8 @@ export default function AutocompleteTallaCotizacion({
       if (e.key === 'Enter') {
         e.preventDefault();
         e.stopPropagation();
-        const pick = abiertoRef.current ? resolverOpcionTeclado() : null;
+        const pick =
+          valueRef.current.trim().length > 0 ? resolverOpcionTeclado() : null;
         if (pick) {
           elegir(pick, true);
           return;

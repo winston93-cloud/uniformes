@@ -329,7 +329,13 @@ export function filtrarTallasPorPrefijo<T extends { nombre: string; activo?: boo
   const q = query.trim().toUpperCase();
   if (!q) return activas.slice(0, limite);
   return activas
-    .filter((t) => String(t.nombre || '').toUpperCase().startsWith(q))
+    .filter((t) =>
+      String(t.nombre || '')
+        .trim()
+        .replace(/\s+/g, ' ')
+        .toUpperCase()
+        .startsWith(q)
+    )
     .slice(0, limite);
 }
 
