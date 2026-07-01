@@ -133,7 +133,7 @@ export default function ModalTransferencia({ onClose }: ModalTransferenciaProps)
   if (!mounted) return null;
 
   const modalContent = (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay">
       <div
         className="modal-content"
         style={{ maxWidth: '980px', width: 'min(96vw, 980px)', maxHeight: '94vh', overflowY: 'auto' }}

@@ -353,17 +353,6 @@ export default function TallasPage() {
             zIndex: 2000,
             padding: '1rem',
           }}
-          onClick={() => {
-            setModalErrorAbierto(false);
-            setMensajeError('');
-            setMostrarFormulario(false);
-            setTallaEditando(null);
-            setFormData({ nombre: '', orden: '', activo: true });
-            setBotonEstado('normal');
-            setTimeout(() => {
-              inputBusquedaRef.current?.focus();
-            }, 100);
-          }}
         >
           <div
             style={{

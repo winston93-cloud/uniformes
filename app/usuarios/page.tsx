@@ -273,7 +273,6 @@ export default function UsuariosPage() {
               zIndex: 2100,
               padding: '1rem',
             }}
-            onClick={cerrarModal}
             role="presentation"
           >
             <div

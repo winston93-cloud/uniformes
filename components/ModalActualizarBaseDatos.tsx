@@ -114,7 +114,7 @@ export default function ModalActualizarBaseDatos({
   }
 
   return (
-    <div className="modal-overlay" style={{ zIndex: 11000 }} onClick={onClose}>
+    <div className="modal-overlay" style={{ zIndex: 11000 }}>
       <div
         className="modal-content"
         style={{

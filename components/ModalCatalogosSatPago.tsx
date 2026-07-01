@@ -169,7 +169,7 @@ export default function ModalCatalogosSatPago({
     form.descripcion.trim() || (editId ? '—' : 'Escribe la descripción que saldrá en el PDF');
 
   const modal = (
-    <div className="modal-catalogos-sat-overlay" onClick={onClose} role="presentation">
+    <div className="modal-catalogos-sat-overlay" role="presentation">
       <div
         className="modal-catalogos-sat-panel"
         onClick={(e) => e.stopPropagation()}

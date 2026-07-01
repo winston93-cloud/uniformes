@@ -63,7 +63,7 @@ export default function ModalRegistrarCompra({
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay">
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2>💰 Registrar Compra de Insumo</h2>

@@ -129,7 +129,6 @@ export default function ModalFiltroInventario({
         background: 'rgba(15, 23, 42, 0.55)',
         backdropFilter: 'blur(6px)',
       }}
-      onClick={onClose}
     >
       <div
         className="form-container"

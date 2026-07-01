@@ -283,7 +283,7 @@ export default function ModalDevolucion({ isOpen, onClose, pedido, onSuccess }: 
   if (!isOpen) return null;
 
   return createPortal(
-    <div style={overlay} onClick={onClose} role="presentation">
+    <div style={overlay} role="presentation">
       <div style={panel} onClick={(e) => e.stopPropagation()}>
         <header style={headerGradient}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', minWidth: 0 }}>

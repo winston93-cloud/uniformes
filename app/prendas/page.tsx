@@ -1164,16 +1164,6 @@ export default function PrendasPage() {
             zIndex: 2000,
             padding: '1rem',
           }}
-          onClick={() => {
-            setModalStockAbierto(false);
-            setTallaSeleccionadaStock(null);
-            setStockData({
-              stock_inicial: '',
-              stock_minimo: '',
-            });
-            setPartidasUbicacion([]);
-            setUbicacionSelectStock('');
-          }}
         >
           <div
             style={{
@@ -1584,19 +1574,6 @@ export default function PrendasPage() {
             zIndex: 2000,
             padding: '1rem',
           }}
-          onClick={() => {
-            setModalErrorAbierto(false);
-            setMensajeError('');
-            setMostrarFormulario(false);
-            setPrendaEditando(null);
-            setFormData({ nombre: '', codigo: '', descripcion: '', categoria_id: '', activo: true });
-            setTallasSeleccionadas([]);
-            setTallasAsociadas([]);
-            setBotonEstado('normal');
-            setTimeout(() => {
-              inputBusquedaRef.current?.focus();
-            }, 100);
-          }}
         >
           <div
             style={{
@@ -1668,7 +1645,6 @@ export default function PrendasPage() {
             alignItems: 'center',
             zIndex: 3000,
           }}
-          onClick={() => setModalExitoStockAbierto(false)}
         >
           <div
             style={{

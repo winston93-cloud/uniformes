@@ -232,7 +232,6 @@ export default function CiclosEscolaresPage() {
               justifyContent: 'center',
               zIndex: 1000,
             }}
-            onClick={() => setMostrarFormulario(false)}
           >
             <div
               style={{

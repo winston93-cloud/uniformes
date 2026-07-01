@@ -110,7 +110,7 @@ export default function ModalDetalleTransferencia({
   if (!mounted) return null;
 
   return createPortal(
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay">
       <div className="modal-content" style={{ maxWidth: '640px' }} onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2>📦 Transferencia {transferencia.folio}</h2>

@@ -197,7 +197,7 @@ export default function ModalGastosFijos({ onClose }: ModalGastosFijosProps) {
   if (!mounted) return null;
 
   const modalContent = (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay">
       <div
         className="modal-content"
         style={{ maxWidth: '640px' }}

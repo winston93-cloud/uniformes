@@ -912,22 +912,6 @@ function PedidosPageContent() {
               padding: '1rem',
               overflowY: 'auto'
             }}
-            onClick={(e) => {
-              if (e.target === e.currentTarget) {
-                setMostrarFormulario(false);
-                setFormData({ 
-                  cliente_id: '', 
-                  cliente_tipo: '', 
-                  cliente_nombre: '', 
-                  detalles: [],
-                  observaciones: '',
-                  modalidad_pago: 'TOTAL',
-                  efectivo_recibido: ''
-                });
-                setBusquedaCliente('');
-                setClienteSeleccionado(null);
-              }
-            }}
           >
             <div 
               className="form-container" 
@@ -2046,7 +2030,6 @@ function PedidosPageContent() {
           zIndex: 9999,
           padding: '2rem'
         }}
-        onClick={() => setMostrarModal(false)}
         >
           <div style={{
             backgroundColor: 'white',
@@ -2231,15 +2214,6 @@ function PedidosPageContent() {
             zIndex: 10002,
             padding: '1rem'
           }}
-          onClick={() => {
-            setMostrarModalAgregarStock(false);
-            setCantidadAgregar('');
-            setStockActualDetalle(null);
-            setPartidaParaAgregarStock(null);
-            setTimeout(() => {
-              inputPrendaRef.current?.focus();
-            }, 100);
-          }}
         >
           <div 
             style={{
@@ -2417,7 +2391,6 @@ function PedidosPageContent() {
             zIndex: 10003,
             animation: 'fadeIn 0.3s ease-out',
           }}
-          onClick={() => setMostrarExitoStock(false)}
         >
           <div 
             style={{
@@ -2467,7 +2440,6 @@ function PedidosPageContent() {
             zIndex: 10000,
             padding: '1rem'
           }}
-          onClick={() => setMostrarAyuda(false)}
         >
           <div 
             style={{

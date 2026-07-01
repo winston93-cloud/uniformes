@@ -340,17 +340,6 @@ export default function CategoriasPrendasPage() {
             zIndex: 2000,
             padding: '1rem',
           }}
-          onClick={() => {
-            setModalErrorAbierto(false);
-            setMensajeError('');
-            setMostrarFormulario(false);
-            setCategoriaEditando(null);
-            setFormData({ nombre: '', activo: true });
-            setBotonEstado('normal');
-            setTimeout(() => {
-              inputBusquedaRef.current?.focus();
-            }, 100);
-          }}
         >
           <div
             style={{

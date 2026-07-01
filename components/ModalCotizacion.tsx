@@ -1717,22 +1717,6 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
         zIndex: 9999,
         padding: '1rem',
       }}
-      onClick={(e) => {
-        if (supresorClickFantasma.activo()) return;
-        if (e.target === e.currentTarget) onClose();
-      }}
-      onTouchEnd={(e) => {
-        if (!supresorClickFantasma.activo()) return;
-        e.preventDefault();
-        e.stopPropagation();
-      }}
-      onPointerUp={(e) => {
-        if (!supresorClickFantasma.activo()) return;
-        if (e.target === e.currentTarget) {
-          e.preventDefault();
-          e.stopPropagation();
-        }
-      }}
     >
       <div 
         ref={modalScrollRef}

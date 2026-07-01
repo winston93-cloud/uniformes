@@ -757,11 +757,6 @@ export default function StockPage() {
               justifyContent: 'center',
               zIndex: 2000,
             }}
-            onClick={() => {
-              setMostrarModalEdicion(false);
-              setCostoEditando(null);
-              setBotonEstado('normal');
-            }}
           >
             <div
               className="form-container"

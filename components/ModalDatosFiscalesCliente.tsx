@@ -334,7 +334,6 @@ export default function ModalDatosFiscalesCliente({ open, onClose, tipoCliente, 
         justifyContent: 'center',
         padding: '1rem',
       }}
-      onClick={onClose}
     >
       <div
         role="dialog"

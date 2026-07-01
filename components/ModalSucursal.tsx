@@ -90,7 +90,6 @@ export default function ModalSucursal({ sucursal, onClose }: ModalSucursalProps)
   const modalContent = (
     <div 
       className="modal-overlay"
-      onClick={onClose}
     >
       <div 
         className="modal-content"

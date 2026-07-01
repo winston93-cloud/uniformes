@@ -53,7 +53,6 @@ export default function AuxiliarCatalogoModal({
         zIndex: 2100,
         padding: '1rem',
       }}
-      onClick={onClose}
     >
       <div
         className="form-container"

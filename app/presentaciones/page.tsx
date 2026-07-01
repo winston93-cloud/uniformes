@@ -394,14 +394,6 @@ export default function PresentacionesPage() {
               alignItems: 'center',
               zIndex: 2000,
             }}
-            onClick={() => {
-              setModalErrorAbierto(false);
-              setMensajeError('');
-              setMostrarFormulario(false);
-              setPresentacionEditando(null);
-              setFormData({ nombre: '', descripcion: '', activo: true });
-              setBotonEstado('normal');
-            }}
           >
             <div
               style={{
@@ -449,7 +441,6 @@ export default function PresentacionesPage() {
               alignItems: 'center',
               zIndex: 2000,
             }}
-            onClick={() => setModalExitoAbierto(false)}
           >
             <div
               style={{

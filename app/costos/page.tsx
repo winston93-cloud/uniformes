@@ -380,7 +380,6 @@ export default function CostosPage() {
               padding: '1rem',
               overflowY: 'auto',
             }}
-            onClick={() => setMostrarFormulario(false)}
           >
             <div
               className="form-container"
@@ -799,14 +798,6 @@ export default function CostosPage() {
             zIndex: 2000,
             padding: '1rem',
           }}
-          onClick={() => {
-            setModalErrorAbierto(false);
-            setMensajeError('');
-            setMostrarFormulario(false);
-            setGrupoEditando(null);
-            setFormData({ prenda_id: '', tallas_seleccionadas: [], precioMayoreo: '', precioMenudeo: '' });
-            setBusquedaPrenda('');
-          }}
         >
           <div
             style={{
@@ -873,10 +864,6 @@ export default function CostosPage() {
             alignItems: 'center',
             zIndex: 2000,
             padding: '1rem',
-          }}
-          onClick={() => {
-            setModalExitoAbierto(false);
-            setMensajeExito('');
           }}
         >
           <div

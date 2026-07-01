@@ -1374,7 +1374,6 @@ export default function InsumosPage() {
               padding: '1rem',
               overflowY: 'auto',
             }}
-            onClick={() => setModalAjusteStockAbierto(false)}
           >
             <div
               className="form-container"
@@ -1581,27 +1580,6 @@ export default function InsumosPage() {
               alignItems: 'center',
               zIndex: 2000,
             }}
-            onClick={() => {
-              setModalErrorAbierto(false);
-              setMensajeError('');
-              setMostrarFormulario(false);
-              setInsumoEditando(null);
-              setUbicacionesInsumo([]);
-              setUbicacionCatalogoSeleccionada('');
-              setFormData({
-                nombre: '',
-                codigo: '',
-                descripcion: '',
-                presentacion_id: '',
-                cantidad_por_presentacion: '',
-                unidad_medida: 'unidades',
-                costo_compra: '',
-                stock_inicial: '',
-                stock_minimo: '',
-                activo: true,
-              });
-              setBotonEstado('normal');
-            }}
           >
             <div
               style={{
@@ -1662,7 +1640,6 @@ export default function InsumosPage() {
               alignItems: 'center',
               zIndex: 2000,
             }}
-            onClick={() => setModalExitoAbierto(false)}
           >
             <div
               style={{

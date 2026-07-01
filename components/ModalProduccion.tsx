@@ -927,7 +927,7 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
   );
 
   const modalPrincipal = (
-    <div className="modal-overlay" onClick={handleClosePrincipal}>
+    <div className="modal-overlay">
       <div
         className="modal-content"
         style={{
@@ -1197,7 +1197,6 @@ export default function ModalProduccion({ onClose, onGuardar }: ModalProduccionP
     <div
       className="modal-overlay"
       style={{ zIndex: 10050 }}
-      onClick={() => setModalPartidasAbierto(false)}
     >
       <div
         className="modal-content"

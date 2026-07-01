@@ -211,7 +211,6 @@ export default function ModalInsumosTalla({
         zIndex: 1000,
         padding: '1rem'
       }}
-      onClick={onClose}
     >
       <div 
         style={{

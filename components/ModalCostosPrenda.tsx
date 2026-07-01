@@ -160,7 +160,6 @@ export default function ModalCostosPrenda({
         background: 'rgba(15, 23, 42, 0.65)',
         backdropFilter: 'blur(8px)',
       }}
-      onClick={onClose}
     >
       <div
         className="form-container"

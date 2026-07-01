@@ -204,7 +204,6 @@ export default function ModalReportes({ onClose }: ModalReportesProps) {
         zIndex: 9999,
         padding: '1rem',
       }}
-      onClick={onClose}
     >
       <div
         style={{
