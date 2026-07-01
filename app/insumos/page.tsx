@@ -1467,6 +1467,7 @@ export default function InsumosPage() {
           <table className="table">
             <thead>
               <tr>
+                <th className="table-col-eliminar" aria-label="Eliminar" />
                 <th>Código</th>
                 <th>Nombre</th>
                 <th>Proveedor</th>
@@ -1482,13 +1483,24 @@ export default function InsumosPage() {
             <tbody>
               {insumosFiltrados.length === 0 ? (
                 <tr>
-                  <td colSpan={9} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                  <td colSpan={10} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
                     {busqueda ? 'No se encontraron insumos con ese criterio.' : 'No hay insumos registrados. Crea tu primer insumo.'}
                   </td>
                 </tr>
               ) : (
                 insumosFiltrados.map((insumo) => (
                   <tr key={insumo.id}>
+                    <td className="table-col-eliminar" data-label="">
+                      <button
+                        type="button"
+                        className="btn btn-danger btn-eliminar-fila"
+                        onClick={() => handleEliminar(insumo.id)}
+                        title="Eliminar insumo"
+                        aria-label="Eliminar insumo"
+                      >
+                        🗑️
+                      </button>
+                    </td>
                     <td data-label="Código" style={{ fontFamily: 'monospace', fontWeight: '600' }}>{insumo.codigo}</td>
                     <td data-label="Nombre" style={{ fontWeight: '600' }}>{insumo.nombre}</td>
                     <td data-label="Proveedor"><span className="badge badge-info">{insumo.presentacion?.nombre || '-'}</span></td>
@@ -1538,24 +1550,6 @@ export default function InsumosPage() {
                       </span>
                     </td>
                     <td data-label="Acciones" style={{ verticalAlign: 'middle' }}>
-                      <div
-                        className="acciones-fila"
-                        style={{
-                          flexWrap: 'wrap',
-                          gap: '0.5rem',
-                          alignItems: 'center',
-                          justifyContent: 'flex-start',
-                          maxWidth: '100%',
-                        }}
-                      >
-                        <button
-                          type="button"
-                          className="btn btn-danger"
-                          style={{ padding: '0.5rem 0.75rem', flex: '1 1 auto', minWidth: 'min(100%, 7.5rem)' }}
-                          onClick={() => handleEliminar(insumo.id)}
-                        >
-                          🗑️ Eliminar
-                        </button>
                         <button
                           type="button"
                           className="btn btn-secondary"
@@ -1564,7 +1558,6 @@ export default function InsumosPage() {
                         >
                           ✏️ Editar
                         </button>
-                      </div>
                     </td>
                   </tr>
                 ))

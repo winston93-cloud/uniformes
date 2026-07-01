@@ -220,6 +220,7 @@ export default function UbicacionesAlmacenamientoPage() {
           <table className="table">
             <thead>
               <tr>
+                <th className="table-col-eliminar" aria-label="Eliminar" />
                 <th>Nombre</th>
                 <th>Descripción</th>
                 <th>Estado</th>
@@ -229,23 +230,31 @@ export default function UbicacionesAlmacenamientoPage() {
             <tbody>
               {ubicacionesFiltradas.length === 0 ? (
                 <tr>
-                  <td colSpan={4} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                  <td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
                     {busqueda ? 'No se encontraron ubicaciones.' : 'No hay ubicaciones. Crea Taller, Bodega uno, Bodega dos.'}
                   </td>
                 </tr>
               ) : (
                 ubicacionesFiltradas.map((u) => (
                   <tr key={u.id}>
+                    <td className="table-col-eliminar" data-label="">
+                      <button
+                        type="button"
+                        className="btn btn-danger btn-eliminar-fila"
+                        onClick={() => handleEliminar(u.id)}
+                        title="Eliminar ubicación"
+                        aria-label="Eliminar ubicación"
+                      >
+                        🗑️
+                      </button>
+                    </td>
                     <td data-label="Nombre" style={{ fontWeight: '600' }}>{u.nombre}</td>
                     <td data-label="Descripción">{u.descripcion || '-'}</td>
                     <td data-label="Estado">
                       <span className={`badge ${u.activo ? 'badge-success' : 'badge-danger'}`}>{u.activo ? '✓ Activa' : '✗ Inactiva'}</span>
                     </td>
-                    <td>
-                      <div className="acciones-fila" style={{ gap: '1rem' }}>
-                        <button className="btn btn-danger" style={{ padding: '0.5rem 1rem' }} onClick={() => handleEliminar(u.id)}>🗑️ Eliminar</button>
+                    <td data-label="Acciones">
                         <button className="btn btn-secondary" style={{ padding: '0.5rem 1rem' }} onClick={() => handleEditar(u)}>✏️ Editar</button>
-                      </div>
                     </td>
                   </tr>
                 ))

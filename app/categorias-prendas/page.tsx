@@ -274,6 +274,7 @@ export default function CategoriasPrendasPage() {
           <table className="table">
             <thead>
               <tr>
+                <th className="table-col-eliminar" aria-label="Eliminar" />
                 <th>Nombre</th>
                 <th>Estado</th>
                 <th>Acciones</th>
@@ -282,28 +283,31 @@ export default function CategoriasPrendasPage() {
             <tbody>
               {categoriasFiltradas.length === 0 ? (
                 <tr>
-                  <td colSpan={3} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                  <td colSpan={4} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
                     {busqueda ? 'No se encontraron categorías con ese nombre.' : 'No hay categorías registradas. Crea tu primera categoría.'}
                   </td>
                 </tr>
               ) : (
                 categoriasFiltradas.map((categoria) => (
                   <tr key={categoria.id}>
+                    <td className="table-col-eliminar" data-label="">
+                      <button
+                        type="button"
+                        className="btn btn-danger btn-eliminar-fila"
+                        onClick={() => handleEliminar(categoria.id)}
+                        title="Eliminar categoría"
+                        aria-label="Eliminar categoría"
+                      >
+                        🗑️
+                      </button>
+                    </td>
                     <td data-label="Nombre" style={{ fontWeight: '600' }}>{categoria.nombre}</td>
                     <td data-label="Estado">
                       <span className={`badge ${categoria.activo ? 'badge-success' : 'badge-danger'}`}>
                         {categoria.activo ? '✓ Activa' : '✗ Inactiva'}
                       </span>
                     </td>
-                    <td>
-                      <div className="acciones-fila" style={{ gap: '2rem', alignItems: 'center' }}>
-                        <button
-                          className="btn btn-danger"
-                          style={{ padding: '0.5rem 1rem' }}
-                          onClick={() => handleEliminar(categoria.id)}
-                        >
-                          🗑️ Eliminar
-                        </button>
+                    <td data-label="Acciones">
                         <button
                           className="btn btn-secondary"
                           style={{ padding: '0.5rem 1rem' }}
@@ -311,7 +315,6 @@ export default function CategoriasPrendasPage() {
                         >
                           ✏️ Editar
                         </button>
-                      </div>
                     </td>
                   </tr>
                 ))

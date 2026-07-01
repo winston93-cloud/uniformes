@@ -285,6 +285,7 @@ export default function TallasPage() {
           <table className="table">
             <thead>
               <tr>
+                <th className="table-col-eliminar" aria-label="Eliminar" />
                 <th>Orden</th>
                 <th>Nombre</th>
                 <th>Estado</th>
@@ -294,13 +295,24 @@ export default function TallasPage() {
             <tbody>
               {tallasFiltradas.length === 0 ? (
                 <tr>
-                  <td colSpan={4} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                  <td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
                     {busqueda ? 'No se encontraron tallas con ese nombre.' : 'No hay tallas registradas. Crea tu primera talla.'}
                   </td>
                 </tr>
               ) : (
                 tallasFiltradas.map((talla) => (
                   <tr key={talla.id}>
+                    <td className="table-col-eliminar" data-label="">
+                      <button
+                        type="button"
+                        className="btn btn-danger btn-eliminar-fila"
+                        onClick={() => handleEliminar(talla.id)}
+                        title="Eliminar talla"
+                        aria-label="Eliminar talla"
+                      >
+                        🗑️
+                      </button>
+                    </td>
                     <td data-label="Orden">{talla.orden}</td>
                     <td data-label="Nombre" style={{ fontWeight: '600' }}>{talla.nombre}</td>
                     <td data-label="Estado">
@@ -308,15 +320,7 @@ export default function TallasPage() {
                         {talla.activo ? '✓ Activa' : '✗ Inactiva'}
                       </span>
                     </td>
-                    <td>
-                      <div className="acciones-fila" style={{ gap: '2rem', alignItems: 'center' }}>
-                        <button
-                          className="btn btn-danger"
-                          style={{ padding: '0.5rem 1rem' }}
-                          onClick={() => handleEliminar(talla.id)}
-                        >
-                          🗑️ Eliminar
-                        </button>
+                    <td data-label="Acciones">
                         <button
                           className="btn btn-secondary"
                           style={{ padding: '0.5rem 1rem' }}
@@ -324,7 +328,6 @@ export default function TallasPage() {
                         >
                           ✏️ Editar
                         </button>
-                      </div>
                     </td>
                   </tr>
                 ))

@@ -472,7 +472,21 @@ export default function ModalInsumosTalla({
                     onMouseOver={(e) => e.currentTarget.style.borderColor = '#cbd5e1'}
                     onMouseOut={(e) => e.currentTarget.style.borderColor = '#e2e8f0'}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleEliminar(item.id, item.insumo?.nombre || 'este insumo')}
+                        className="btn btn-danger btn-eliminar-fila"
+                        style={{
+                          padding: '0.5rem 0.75rem',
+                          flexShrink: 0,
+                        }}
+                        title="Eliminar"
+                        aria-label="Eliminar insumo de la talla"
+                      >
+                        🗑️
+                      </button>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flex: 1, minWidth: 0 }}>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontWeight: '600', color: '#1e293b', marginBottom: '0.25rem' }}>
                           {item.insumo?.nombre || 'Insumo desconocido'}
@@ -534,21 +548,7 @@ export default function ModalInsumosTalla({
                           </button>
                         </div>
                       ) : (
-                        <div className="acciones-fila" style={{ gap: '1rem', alignItems: 'center' }}>
-                          <button
-                            onClick={() => handleEliminar(item.id, item.insumo?.nombre || 'este insumo')}
-                            style={{
-                              padding: '0.5rem 0.75rem',
-                              background: '#fee2e2',
-                              border: '1px solid #fecaca',
-                              borderRadius: '6px',
-                              cursor: 'pointer',
-                              fontSize: '0.9rem'
-                            }}
-                            title="Eliminar"
-                          >
-                            🗑️
-                          </button>
+                        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                           <div style={{ textAlign: 'right' }}>
                             <div style={{ fontWeight: '700', fontSize: '1.1rem', color: '#667eea' }}>
                               {item.cantidad}
@@ -576,6 +576,7 @@ export default function ModalInsumosTalla({
                           </button>
                         </div>
                       )}
+                      </div>
                     </div>
                   </div>
                 ))}

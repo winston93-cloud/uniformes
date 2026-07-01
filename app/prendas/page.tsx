@@ -1055,6 +1055,7 @@ export default function PrendasPage() {
           <table className="table">
             <thead>
               <tr>
+                <th className="table-col-eliminar" aria-label="Eliminar" />
                 <th>Código</th>
                 <th>Nombre</th>
                 <th>Categoría</th>
@@ -1066,7 +1067,7 @@ export default function PrendasPage() {
             <tbody>
               {prendasFiltradas.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                  <td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
                     {busqueda
                       ? 'No se encontraron prendas con ese criterio.'
                       : sesion?.es_matriz
@@ -1077,6 +1078,19 @@ export default function PrendasPage() {
               ) : (
                 prendasFiltradas.map((prenda) => (
                   <tr key={prenda.id}>
+                    <td className="table-col-eliminar" data-label="">
+                      {sesion?.es_matriz ? (
+                        <button
+                          type="button"
+                          className="btn btn-danger btn-eliminar-fila"
+                          onClick={() => handleEliminar(prenda.id)}
+                          title="Eliminar prenda"
+                          aria-label="Eliminar prenda"
+                        >
+                          🗑️
+                        </button>
+                      ) : null}
+                    </td>
                     <td data-label="Código" style={{ fontFamily: 'monospace', fontWeight: '600' }}>{prenda.codigo || '-'}</td>
                     <td data-label="Nombre" style={{ fontWeight: '600' }}>{prenda.nombre}</td>
                     <td data-label="Categoría"><span className="badge badge-info">{prenda.categoria?.nombre || '-'}</span></td>
@@ -1086,16 +1100,8 @@ export default function PrendasPage() {
                         {prenda.activo ? '✓ Activa' : '✗ Inactiva'}
                       </span>
                     </td>
-                    <td>
+                    <td data-label="Acciones">
                       {sesion?.es_matriz ? (
-                      <div className="acciones-fila" style={{ gap: '2rem', alignItems: 'center' }}>
-                        <button
-                          className="btn btn-danger"
-                          style={{ padding: '0.5rem 1rem' }}
-                          onClick={() => handleEliminar(prenda.id)}
-                        >
-                          🗑️ Eliminar
-                        </button>
                         <button
                           className="btn btn-secondary"
                           style={{ padding: '0.5rem 1rem' }}
@@ -1103,7 +1109,6 @@ export default function PrendasPage() {
                         >
                           ✏️ Editar
                         </button>
-                      </div>
                       ) : (
                         <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Inventario de sucursal</span>
                       )}

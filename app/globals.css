@@ -515,6 +515,24 @@ body {
   order: -1;
 }
 
+/* Columna fija de eliminar al inicio de cada fila en tablas */
+.table-col-eliminar {
+  width: 3.25rem;
+  min-width: 3.25rem;
+  max-width: 3.25rem;
+  text-align: center;
+  vertical-align: middle;
+  padding-left: 0.35rem !important;
+  padding-right: 0.35rem !important;
+}
+
+.table .btn-eliminar-fila {
+  padding: 0.4rem 0.55rem;
+  font-size: 0.85rem;
+  line-height: 1;
+  min-width: 2.25rem;
+}
+
 /* Tabla */
 .table-container {
   background: var(--card-bg);
@@ -715,19 +733,19 @@ body {
   min-width: 8rem;
 }
 
-.cotizacion-partidas-table th:nth-child(2),
+.cotizacion-partidas-table th:nth-child(3),
 .cotizacion-partidas-table td[data-label='Prenda'] {
   min-width: 16rem;
   width: 22%;
 }
 
-.cotizacion-partidas-table th:nth-child(3),
+.cotizacion-partidas-table th:nth-child(4),
 .cotizacion-partidas-table td[data-label='Talla'] {
   min-width: 6.75rem;
   width: 9%;
 }
 
-.cotizacion-partidas-table th:nth-child(4),
+.cotizacion-partidas-table th:nth-child(5),
 .cotizacion-partidas-table td[data-label='Color'] {
   min-width: 9rem;
   width: 11%;

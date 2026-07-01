@@ -116,16 +116,39 @@ export default function CiclosEscolaresPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+                <th style={{ padding: '1rem', width: '3.25rem' }} aria-label="Eliminar" />
                 <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 'bold', color: '#374151' }}>Valor</th>
                 <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 'bold', color: '#374151' }}>Ciclo Escolar</th>
                 <th style={{ padding: '1rem', textAlign: 'center', fontWeight: 'bold', color: '#374151' }}>Estado</th>
                 <th style={{ padding: '1rem', textAlign: 'center', fontWeight: 'bold', color: '#374151' }}>Actual</th>
-                <th style={{ padding: '1rem', textAlign: 'center', fontWeight: 'bold', color: '#374151' }}>Acciones</th>
               </tr>
             </thead>
             <tbody>
               {ciclos.map((ciclo) => (
                 <tr key={ciclo.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                  <td style={{ padding: '1rem', textAlign: 'center' }}>
+                    <button
+                      onClick={() => handleEliminar(ciclo.id, ciclo.nombre)}
+                      disabled={ciclo.es_actual}
+                      className="btn btn-danger btn-eliminar-fila"
+                      style={{
+                        background: ciclo.es_actual 
+                          ? '#e5e7eb' 
+                          : undefined,
+                        color: ciclo.es_actual ? '#9ca3af' : 'white',
+                        padding: '0.4rem 0.55rem',
+                        borderRadius: '8px',
+                        border: 'none',
+                        fontSize: '0.85rem',
+                        cursor: ciclo.es_actual ? 'not-allowed' : 'pointer',
+                        opacity: ciclo.es_actual ? 0.5 : 1,
+                      }}
+                      title="Eliminar ciclo"
+                      aria-label="Eliminar ciclo"
+                    >
+                      🗑️
+                    </button>
+                  </td>
                   <td style={{ padding: '1rem' }}>
                     <span style={{
                       background: '#f3f4f6',
@@ -187,27 +210,6 @@ export default function CiclosEscolaresPage() {
                         Marcar como actual
                       </button>
                     )}
-                  </td>
-                  <td style={{ padding: '1rem', textAlign: 'center' }}>
-                    <button
-                      onClick={() => handleEliminar(ciclo.id, ciclo.nombre)}
-                      disabled={ciclo.es_actual}
-                      style={{
-                        background: ciclo.es_actual 
-                          ? '#e5e7eb' 
-                          : 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-                        color: 'white',
-                        padding: '0.4rem 1rem',
-                        borderRadius: '8px',
-                        border: 'none',
-                        fontSize: '0.85rem',
-                        fontWeight: 'bold',
-                        cursor: ciclo.es_actual ? 'not-allowed' : 'pointer',
-                        opacity: ciclo.es_actual ? 0.5 : 1,
-                      }}
-                    >
-                      🗑️ Eliminar
-                    </button>
                   </td>
                 </tr>
               ))}

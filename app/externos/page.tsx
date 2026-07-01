@@ -196,6 +196,7 @@ export default function ExternosPage() {
           <table className="table">
             <thead>
               <tr>
+                <th className="table-col-eliminar" aria-label="Eliminar" />
                 <th>ID</th>
                 <th>Nombre</th>
                 <th>Teléfono</th>
@@ -208,13 +209,24 @@ export default function ExternosPage() {
             <tbody>
               {externos.length === 0 ? (
                 <tr>
-                  <td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                  <td colSpan={8} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
                     No hay clientes externos registrados. Crea tu primer cliente.
                   </td>
                 </tr>
               ) : (
                 externos.map((cliente) => (
                   <tr key={cliente.id}>
+                    <td className="table-col-eliminar" data-label="">
+                      <button
+                        type="button"
+                        className="btn btn-danger btn-eliminar-fila"
+                        onClick={() => handleEliminar(cliente.id)}
+                        title="Eliminar cliente"
+                        aria-label="Eliminar cliente"
+                      >
+                        🗑️
+                      </button>
+                    </td>
                     <td data-label="ID" style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>{cliente.id.substring(0, 8)}...</td>
                     <td data-label="Nombre" style={{ fontWeight: '600' }}>{cliente.nombre}</td>
                     <td data-label="Teléfono">{cliente.telefono || '-'}</td>
@@ -225,15 +237,7 @@ export default function ExternosPage() {
                         {cliente.activo ? '✓ Activo' : '✗ Inactivo'}
                       </span>
                     </td>
-                    <td>
-                      <div className="acciones-fila" style={{ gap: '0.5rem' }}>
-                        <button
-                          className="btn btn-danger"
-                          style={{ padding: '0.5rem 1rem' }}
-                          onClick={() => handleEliminar(cliente.id)}
-                        >
-                          🗑️ Eliminar
-                        </button>
+                    <td data-label="Acciones">
                         <button
                           className="btn btn-secondary"
                           style={{ padding: '0.5rem 1rem' }}
@@ -241,7 +245,6 @@ export default function ExternosPage() {
                         >
                           ✏️ Editar
                         </button>
-                      </div>
                     </td>
                   </tr>
                 ))

@@ -3047,6 +3047,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                   <table className="cotizacion-partidas-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr style={{ background: '#667eea', color: 'white' }}>
+                        <th className="table-col-eliminar" aria-label="Eliminar" />
                         <th style={{ padding: '0.75rem', textAlign: 'left' }}>#</th>
                         <th style={{ padding: '0.75rem', textAlign: 'left' }}>Prenda</th>
                         <th style={{ padding: '0.75rem', textAlign: 'left' }}>Talla</th>
@@ -3071,6 +3072,20 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                               insertarDespuesDeIndex === index ? '2px solid #fdba74' : undefined,
                           }}
                         >
+                          <td className="table-col-eliminar" data-label="" style={{ padding: '0.75rem' }}>
+                            <button
+                              type="button"
+                              className="cotizacion-partida-btn cotizacion-partida-btn--eliminar btn-eliminar-fila"
+                              onClick={() => eliminarPartida(index)}
+                              title="Eliminar partida"
+                              aria-label={`Eliminar partida ${index + 1}`}
+                            >
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden style={{ width: 17, height: 17 }}>
+                                <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14Z" strokeLinecap="round" strokeLinejoin="round" />
+                                <path d="M10 11v6M14 11v6" strokeLinecap="round" />
+                              </svg>
+                            </button>
+                          </td>
                           <td data-label="#" style={{ padding: '0.75rem' }}>{index + 1}</td>
                           <td data-label="Prenda" style={{ padding: '0.75rem', fontWeight: 'bold', minWidth: '16rem' }}>
                             {esModoEdicion ? (
@@ -3401,7 +3416,6 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                               onInsertar={() => setInsertarDespuesDeIndex(index)}
                               onSubir={() => moverPartida(index, -1)}
                               onBajar={() => moverPartida(index, 1)}
-                              onEliminar={() => eliminarPartida(index)}
                             />
                           </td>
                         </tr>
@@ -3699,6 +3713,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                 <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
                   <thead>
                     <tr style={{ background: '#667eea', color: 'white' }}>
+                      <th className="table-col-eliminar" aria-label="Eliminar" />
                       <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.9rem' }}>Folio</th>
                       <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.9rem' }}>Cliente</th>
                       <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.9rem' }}>Fecha</th>
@@ -3742,6 +3757,39 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                       const estatusBloqueado = opcionesEstado.length <= 1;
                       return (
                       <tr key={cot.id} style={{ borderBottom: '1px solid #eee' }}>
+                        <td className="table-col-eliminar" style={{ padding: '0.75rem' }}>
+                          <button
+                            type="button"
+                            onClick={() => confirmarYEliminarCotizacion(cot)}
+                            disabled={eliminandoCotizacionId === cot.id || cot.estado !== 'emitido'}
+                            className="btn btn-danger btn-eliminar-fila"
+                            style={{
+                              background:
+                                eliminandoCotizacionId === cot.id || cot.estado !== 'emitido'
+                                  ? '#e5e7eb'
+                                  : '#dc2626',
+                              color:
+                                eliminandoCotizacionId === cot.id || cot.estado !== 'emitido'
+                                  ? '#6b7280'
+                                  : 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor:
+                                eliminandoCotizacionId === cot.id || cot.estado !== 'emitido'
+                                  ? 'not-allowed'
+                                  : 'pointer',
+                              fontWeight: 'bold',
+                            }}
+                            title={
+                              cot.estado !== 'emitido'
+                                ? 'Solo se permite eliminar en estado Emitido'
+                                : 'Eliminar definitivamente'
+                            }
+                            aria-label="Eliminar cotización"
+                          >
+                            {eliminandoCotizacionId === cot.id ? '⏳' : '🗑️'}
+                          </button>
+                        </td>
                         <td style={{ padding: '0.75rem', fontWeight: 'bold', color: '#667eea', fontSize: '0.9rem' }}>
                           {cot.folio}
                         </td>
@@ -3855,7 +3903,6 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                         </td>
                         <td style={{ padding: '1rem', textAlign: 'center' }}>
                           <div
-                            className="acciones-fila"
                             style={{
                               display: 'inline-flex',
                               flexWrap: 'wrap',
@@ -3864,36 +3911,6 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                               alignItems: 'center',
                             }}
                           >
-                            <button
-                              type="button"
-                              onClick={() => confirmarYEliminarCotizacion(cot)}
-                              disabled={eliminandoCotizacionId === cot.id || cot.estado !== 'emitido'}
-                              style={{
-                                background:
-                                  eliminandoCotizacionId === cot.id || cot.estado !== 'emitido'
-                                    ? '#e5e7eb'
-                                    : '#dc2626',
-                                color:
-                                  eliminandoCotizacionId === cot.id || cot.estado !== 'emitido'
-                                    ? '#6b7280'
-                                    : 'white',
-                                border: 'none',
-                                padding: '0.5rem 1rem',
-                                borderRadius: '4px',
-                                cursor:
-                                  eliminandoCotizacionId === cot.id || cot.estado !== 'emitido'
-                                    ? 'not-allowed'
-                                    : 'pointer',
-                                fontWeight: 'bold',
-                              }}
-                              title={
-                                cot.estado !== 'emitido'
-                                  ? 'Solo se permite eliminar en estado Emitido'
-                                  : 'Eliminar definitivamente'
-                              }
-                            >
-                              {eliminandoCotizacionId === cot.id ? '⏳ Eliminando…' : '🗑 Eliminar'}
-                            </button>
                             <button
                               type="button"
                               onClick={() => verPDF(cot)}

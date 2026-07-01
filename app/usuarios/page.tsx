@@ -206,6 +206,7 @@ export default function UsuariosPage() {
             <table className="table">
               <thead>
                 <tr>
+                  <th className="table-col-eliminar" aria-label="Eliminar" />
                   <th>Nombre</th>
                   <th>Usuario</th>
                   <th>Correo</th>
@@ -217,6 +218,17 @@ export default function UsuariosPage() {
               <tbody>
                 {usuarios.map((u) => (
                   <tr key={u.id}>
+                    <td className="table-col-eliminar" data-label="">
+                      <button
+                        type="button"
+                        className="btn btn-danger btn-eliminar-fila"
+                        onClick={() => handleEliminar(u)}
+                        title="Eliminar usuario"
+                        aria-label="Eliminar usuario"
+                      >
+                        🗑️
+                      </button>
+                    </td>
                     <td style={{ fontWeight: 600 }}>{u.nombre}</td>
                     <td>
                       <code style={{ background: '#f3f4f6', padding: '0.2rem 0.45rem', borderRadius: 4 }}>{u.usuario}</code>
@@ -237,15 +249,10 @@ export default function UsuariosPage() {
                         {etiquetaEstado(u.estado)}
                       </span>
                     </td>
-                    <td>
-                      <div className="acciones-fila" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
-                        <button type="button" className="btn btn-danger" onClick={() => handleEliminar(u)}>
-                          🗑️ Eliminar
-                        </button>
+                    <td data-label="Acciones">
                         <button type="button" className="btn btn-secondary" onClick={() => abrirEditar(u)}>
                           ✏️ Editar
                         </button>
-                      </div>
                     </td>
                   </tr>
                 ))}

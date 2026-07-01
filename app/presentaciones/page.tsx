@@ -328,6 +328,7 @@ export default function PresentacionesPage() {
           <table className="table">
             <thead>
               <tr>
+                <th className="table-col-eliminar" aria-label="Eliminar" />
                 <th>Nombre</th>
                 <th>Descripción</th>
                 <th>Estado</th>
@@ -337,13 +338,24 @@ export default function PresentacionesPage() {
             <tbody>
               {presentacionesFiltradas.length === 0 ? (
                 <tr>
-                  <td colSpan={4} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                  <td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
                     {busqueda ? 'No se encontraron presentaciones con ese criterio.' : 'No hay presentaciones registradas. Crea tu primera presentación.'}
                   </td>
                 </tr>
               ) : (
                 presentacionesFiltradas.map((presentacion) => (
                   <tr key={presentacion.id}>
+                    <td className="table-col-eliminar" data-label="">
+                      <button
+                        type="button"
+                        className="btn btn-danger btn-eliminar-fila"
+                        onClick={() => handleEliminar(presentacion.id)}
+                        title="Eliminar presentación"
+                        aria-label="Eliminar presentación"
+                      >
+                        🗑️
+                      </button>
+                    </td>
                     <td data-label="Nombre" style={{ fontWeight: '600', fontSize: '1.1rem' }}>{presentacion.nombre}</td>
                     <td data-label="Descripción">{presentacion.descripcion || '-'}</td>
                     <td data-label="Estado">
@@ -351,15 +363,7 @@ export default function PresentacionesPage() {
                         {presentacion.activo ? '✓ Activa' : '✗ Inactiva'}
                       </span>
                     </td>
-                    <td>
-                      <div className="acciones-fila" style={{ gap: '2rem', alignItems: 'center' }}>
-                        <button
-                          className="btn btn-danger"
-                          style={{ padding: '0.5rem 1rem' }}
-                          onClick={() => handleEliminar(presentacion.id)}
-                        >
-                          🗑️ Eliminar
-                        </button>
+                    <td data-label="Acciones">
                         <button
                           className="btn btn-secondary"
                           style={{ padding: '0.5rem 1rem' }}
@@ -367,7 +371,6 @@ export default function PresentacionesPage() {
                         >
                           ✏️ Editar
                         </button>
-                      </div>
                     </td>
                   </tr>
                 ))
