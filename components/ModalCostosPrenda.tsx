@@ -28,7 +28,10 @@ interface ModalCostosPrendaProps {
   onGuardar: (
     cambios: Array<{ id: string; precio_mayoreo: number; precio_menudeo: number; precio_venta: number }>
   ) => Promise<{ ok: boolean; error?: string }>;
-  onEliminarTalla?: (costoId: string, tallaNombre: string) => Promise<{ ok: boolean; error?: string }>;
+  onEliminarTalla?: (
+    costoId: string,
+    tallaNombre: string
+  ) => Promise<{ ok: boolean; error?: string; info?: string }>;
 }
 
 export default function ModalCostosPrenda({
@@ -379,6 +382,9 @@ export default function ModalCostosPrenda({
                             const r = await onEliminarTalla(fila.costoId, fila.tallaNombre);
                             if (r.ok) {
                               setFilas((prev) => prev.filter((x) => x.costoId !== fila.costoId));
+                              if (r.info) {
+                                setMensaje({ tipo: 'ok', text: r.info });
+                              }
                             } else {
                               setMensaje({ tipo: 'err', text: r.error || 'No se pudo eliminar.' });
                             }
@@ -425,7 +431,7 @@ export function resumenRangoPrecios(costos: Costo[], campo: 'precio_mayoreo' | '
 
 export function agruparCostosPorPrenda(costos: Costo[]) {
   const map = new Map<string, Costo[]>();
-  for (const c of costos) {
+  for (const c of costos.filter((row) => row.activo !== false)) {
     const list = map.get(c.prenda_id) || [];
     list.push(c);
     map.set(c.prenda_id, list);

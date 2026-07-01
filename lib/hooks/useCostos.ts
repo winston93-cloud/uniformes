@@ -157,16 +157,23 @@ export function useCostos(sucursal_id?: string, es_matriz?: boolean) {
 
   const deleteCosto = async (id: string) => {
     try {
-      const { error } = await insforgeDb()
-        .from('costos')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
+      const res = await fetch('/api/costos/eliminar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ costo_id: id }),
+      });
+      const json = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        message?: string;
+        modo?: 'eliminado' | 'desactivado';
+      };
+      if (!res.ok || !json.ok) {
+        throw new Error(json.message || 'No se pudo eliminar el precio.');
+      }
       await fetchCostos();
-      return { error: null };
+      return { error: null, modo: json.modo, message: json.message ?? null };
     } catch (err: any) {
-      return { error: err.message };
+      return { error: err.message, modo: null, message: null };
     }
   };
 

@@ -105,6 +105,7 @@ export default function CostosPage() {
   const costosFiltrados = useMemo(
     () =>
       costos.filter((costo) => {
+        if (costo.activo === false) return false;
         if (!busquedaTabla) return true;
         const prendaNombre = costo.prenda?.nombre?.toLowerCase() || '';
         const prendaCodigo = costo.prenda?.codigo?.toLowerCase() || '';
@@ -234,7 +235,7 @@ export default function CostosPage() {
   };
 
   const handleEliminarCostoTalla = async (costoId: string) => {
-    const { error } = await deleteCosto(costoId);
+    const { error, message } = await deleteCosto(costoId);
     if (error) return { ok: false, error };
     if (grupoEditando) {
       const restantes = grupoEditando.costos.filter((c) => c.id !== costoId);
@@ -244,7 +245,7 @@ export default function CostosPage() {
         setGrupoEditando({ ...grupoEditando, costos: restantes });
       }
     }
-    return { ok: true };
+    return { ok: true, info: message ?? undefined };
   };
 
   if (costosLoading) {
