@@ -12,6 +12,7 @@ import type { Costo } from '@/lib/types';
 import { compareCotizacionesPorFechaCotizacionDesc } from '@/lib/cotizacionesSort';
 import { obtenerEstadosCotizacionPermitidosDesde, esEstadoBorradorCotizacion, ESTADO_COTIZACION_BORRADOR } from '@/lib/cotizacionesEstados';
 import AutocompleteTallaCotizacion from '@/components/cotizacion/AutocompleteTallaCotizacion';
+import PickerTallaCotizacion from '@/components/cotizacion/PickerTallaCotizacion';
 import { useTallas } from '@/lib/hooks/useTallas';
 import {
   calcularMontosImpuestosCotizacion,
@@ -2788,7 +2789,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                   {/* Header de la tabla */}
                   <div className="subpartidas-grid-header" style={{
                     display: 'grid',
-                    gridTemplateColumns: '40px 1fr 80px 100px',
+                    gridTemplateColumns: '40px minmax(0, 260px) 80px 100px',
                     gap: '0.5rem',
                     padding: '0.5rem',
                     background: cotizacionDirecta ? '#1e40af' : '#667eea',
@@ -2810,7 +2811,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                       className="subpartidas-grid-row"
                       style={{
                         display: 'grid',
-                        gridTemplateColumns: '40px 1fr 80px 100px',
+                        gridTemplateColumns: '40px minmax(0, 260px) 80px 100px',
                         gap: '0.5rem',
                         padding: '0.75rem 0.5rem',
                         background: 'white',
@@ -2838,8 +2839,9 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
 
                       {/* Talla */}
                       {cotizacionDirecta ? (
-                        <AutocompleteTallaCotizacion
+                        <PickerTallaCotizacion
                           opciones={opcionesTallaManual}
+                          tituloCatalogo="Tallas del catálogo"
                           value={busquedaTallaSubPartida[sp.id] ?? sp.talla}
                           selectedId={sp.talla ? sp.talla : undefined}
                           inputRef={index === 0 ? primeraSubPartidaInputRef : undefined}
@@ -2867,8 +2869,9 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                           }}
                         />
                       ) : (
-                        <AutocompleteTallaCotizacion
+                        <PickerTallaCotizacion
                           opciones={opcionesTallaSistema}
+                          tituloCatalogo="Tallas de la prenda"
                           value={busquedaTallaSubPartida[sp.id] ?? sp.talla}
                           selectedId={sp.costo_id || undefined}
                           inputRef={index === 0 ? primeraSubPartidaInputRef : undefined}
