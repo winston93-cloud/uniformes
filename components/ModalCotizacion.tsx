@@ -10,7 +10,9 @@ import { usePrendas } from '@/lib/hooks/usePrendas';
 import { useCostos } from '@/lib/hooks/useCostos';
 import type { Costo } from '@/lib/types';
 import { compareCotizacionesPorFechaCotizacionDesc } from '@/lib/cotizacionesSort';
-import { obtenerEstadosCotizacionPermitidosDesde } from '@/lib/cotizacionesEstados';
+import { obtenerEstadosCotizacionPermitidosDesde, esEstadoBorradorCotizacion, ESTADO_COTIZACION_BORRADOR } from '@/lib/cotizacionesEstados';
+import AutocompleteTallaCotizacion from '@/components/cotizacion/AutocompleteTallaCotizacion';
+import { useTallas } from '@/lib/hooks/useTallas';
 import {
   calcularMontosImpuestosCotizacion,
   TASA_IVA_TRASLADADO,
@@ -90,6 +92,8 @@ interface ModalCotizacionProps {
 /** Resalta visualmente el control de estatus en historial (colores alineados al flujo del negocio). */
 function estilosEstadoCotizacion(estado: string) {
   switch (estado) {
+    case 'en_proceso':
+      return { chip: '#8b5cf6', wrapBg: '#f5f3ff', wrapBorder: '#a78bfa', text: '#6d28d9', soft: '#ede9fe' };
     case 'emitido':
       return { chip: '#10b981', wrapBg: '#ecfdf5', wrapBorder: '#34d399', text: '#047857', soft: '#d1fae5' };
     case 'aprobado':
@@ -200,6 +204,11 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   const [incluirIsr, setIncluirIsr] = useState(false);
   /** Si no es null, estamos editando una cotización existente (mismo folio al guardar). */
   const [cotizacionEditId, setCotizacionEditId] = useState<string | null>(null);
+  const [cotizacionEstadoActual, setCotizacionEstadoActual] = useState<string | null>(null);
+  const [guardandoBorrador, setGuardandoBorrador] = useState(false);
+  const [ultimoGuardadoBorrador, setUltimoGuardadoBorrador] = useState<Date | null>(null);
+  const debounceBorradorRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [busquedaTallaSubPartida, setBusquedaTallaSubPartida] = useState<Record<string, string>>({});
   const [modalDatosFiscalesAbierto, setModalDatosFiscalesAbierto] = useState(false);
   const [modalCatalogosSatAbierto, setModalCatalogosSatAbierto] = useState(false);
   const [metodoPagoId, setMetodoPagoId] = useState<string>('');
@@ -223,6 +232,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   const { cicloEscolar, sesion } = useAuth();
   const {
     crearCotizacion,
+    sincronizarBorradorCotizacion,
     cotizaciones,
     obtenerCotizacion,
     cargando,
@@ -237,6 +247,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   const { searchAlumnos } = useAlumnos(cicloEscolar);
   const { searchExternos } = useExternos();
   const { prendas } = usePrendas();
+  const { tallas: tallasCatalogo } = useTallas();
   const { getCostosByPrenda } = useCostos(sesion?.sucursal_id);
   type CostoSlim = {
     id: string;
@@ -875,7 +886,11 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       ui_key: crypto.randomUUID(),
     }));
 
-    setPartidas((prev) => insertarPartidasEnPosicion(prev, nuevasPartidas, insertarDespuesDeIndex));
+    setPartidas((prev) => {
+      const merged = insertarPartidasEnPosicion(prev, nuevasPartidas, insertarDespuesDeIndex);
+      void ejecutarAutoGuardado(merged);
+      return merged;
+    });
     
     // Limpiar formulario según el modo
     if (cotizacionDirecta) {
@@ -898,7 +913,11 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
 
   // Eliminar partida
   const eliminarPartida = (index: number) => {
-    setPartidas((prev) => reordenarPartidasCotizacion(prev.filter((_, i) => i !== index)));
+    setPartidas((prev) => {
+      const next = reordenarPartidasCotizacion(prev.filter((_, i) => i !== index));
+      programarAutoGuardado(next);
+      return next;
+    });
     setInsertarDespuesDeIndex((prevIdx) => {
       if (prevIdx === null) return null;
       if (index < prevIdx) return prevIdx - 1;
@@ -913,7 +932,9 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       if (destino < 0 || destino >= prev.length) return prev;
       const next = [...prev];
       [next[index], next[destino]] = [next[destino], next[index]];
-      return reordenarPartidasCotizacion(next);
+      const reordered = reordenarPartidasCotizacion(next);
+      programarAutoGuardado(reordered);
+      return reordered;
     });
   };
 
@@ -945,6 +966,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       actualizado.subtotal = cantidad * precio;
 
       next[index] = actualizado;
+      programarAutoGuardado(next);
       return next;
     });
   };
@@ -1082,6 +1104,105 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     () => calcularMontosImpuestosCotizacion(subtotal, incluirIva, incluirIsr),
     [subtotal, incluirIva, incluirIsr]
   );
+
+  const esBorradorEditable =
+    !cotizacionEditId ||
+    cotizacionEstadoActual === null ||
+    esEstadoBorradorCotizacion(cotizacionEstadoActual);
+
+  const opcionesTallaManual = useMemo(
+    () =>
+      tallasCatalogo
+        .filter((t) => t.activo !== false)
+        .map((t) => ({ id: t.id, nombre: t.nombre })),
+    [tallasCatalogo]
+  );
+
+  const opcionesTallaSistema = useMemo(
+    () =>
+      costosDisponibles
+        .filter((c) => c.activo !== false)
+        .map((c) => ({
+          id: String(c.id),
+          nombre: String(c.talla?.nombre || 'Sin talla'),
+        })),
+    [costosDisponibles]
+  );
+
+  const construirPayloadCotizacion = (partidasActuales: PartidaCotizacion[]) => {
+    if (!clienteSeleccionado || !tipoPrecio || partidasActuales.length === 0) return null;
+    const textosPagoPdf = textosPagoPdfDesdeSeleccion();
+    return {
+      alumno_id: tipoCliente === 'alumno' ? clienteSeleccionado.id : undefined,
+      alumno_referencia:
+        tipoCliente === 'alumno' ? clienteSeleccionado.referencia || clienteSeleccionado.alumno_ref : undefined,
+      alumno_nombre: tipoCliente === 'alumno' ? clienteSeleccionado.nombre : undefined,
+      externo_id: tipoCliente === 'externo' ? clienteSeleccionado.id : undefined,
+      tipo_cliente: tipoCliente,
+      fecha_vigencia: fechaVigencia || undefined,
+      fecha_entrega: fechaEntrega || undefined,
+      observaciones,
+      condiciones_pago: condicionesPago,
+      tiempo_entrega: tiempoEntrega,
+      partidas: partidasActuales,
+      incluir_iva: incluirIva,
+      incluir_isr: incluirIsr,
+      metodo_pago_id: idSatPersistible(metodoPagoId),
+      forma_pago_id: idSatPersistible(formaPagoId),
+      metodo_pago_pdf: textosPagoPdf.metodoPago,
+      forma_pago_pdf: textosPagoPdf.formaPago,
+    };
+  };
+
+  const ejecutarAutoGuardado = async (partidasActuales: PartidaCotizacion[]) => {
+    if (!esBorradorEditable) return;
+    const payload = construirPayloadCotizacion(partidasActuales);
+    if (!payload) return;
+
+    try {
+      setGuardandoBorrador(true);
+      const { data, error, id } = await sincronizarBorradorCotizacion(cotizacionEditId, payload);
+      if (error) {
+        console.warn('Auto-guardado cotización:', error);
+        return;
+      }
+      if (id) setCotizacionEditId(id);
+      if (data) setCotizacionEstadoActual(ESTADO_COTIZACION_BORRADOR);
+      setUltimoGuardadoBorrador(new Date());
+    } finally {
+      setGuardandoBorrador(false);
+    }
+  };
+
+  const programarAutoGuardado = (partidasActuales: PartidaCotizacion[]) => {
+    if (!esBorradorEditable) return;
+    if (debounceBorradorRef.current) clearTimeout(debounceBorradorRef.current);
+    debounceBorradorRef.current = setTimeout(() => {
+      void ejecutarAutoGuardado(partidasActuales);
+    }, 700);
+  };
+
+  useEffect(() => {
+    if (!esBorradorEditable || partidas.length === 0) return;
+    programarAutoGuardado(partidas);
+    return () => {
+      if (debounceBorradorRef.current) clearTimeout(debounceBorradorRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    observaciones,
+    condicionesPago,
+    tiempoEntrega,
+    fechaEntrega,
+    fechaVigencia,
+    incluirIva,
+    incluirIsr,
+    metodoPagoId,
+    formaPagoId,
+    clienteSeleccionado?.id,
+    tipoCliente,
+    tipoPrecio,
+  ]);
 
   type DatosPdfCotizacion = {
     folio: string;
@@ -1470,6 +1591,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
         throw new Error(error || 'Error al guardar cotización');
       }
 
+      setCotizacionEstadoActual('emitido');
+
       await new Promise<void>((resolve) => {
         requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
       });
@@ -1507,9 +1630,9 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       mostrarPdfJsPDF(pdf, `Cotizacion-${data.folio}`, ventanaPdf);
 
       alert(
-        cotizacionEditId
-          ? `✅ Cotización ${data.folio} actualizada (folio conservado)`
-          : `✅ Cotización ${data.folio} generada exitosamente`
+        esEstadoBorradorCotizacion(cotizacionEstadoActual || ESTADO_COTIZACION_BORRADOR) || !cotizacionEditId
+          ? `✅ Cotización ${data.folio} generada exitosamente`
+          : `✅ Cotización ${data.folio} actualizada (folio conservado)`
       );
 
       limpiarCotizacionNueva();
@@ -1596,7 +1719,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   };
 
   const iniciarEdicionDesdeHistorial = async (cot: Cotizacion) => {
-    if (cot.estado !== 'emitido') return;
+    if (cot.estado !== 'emitido' && !esEstadoBorradorCotizacion(cot.estado)) return;
     try {
       const { cotizacion: cotFull, detalle } = await obtenerCotizacion(cot.id);
       const partidasFormateadas: PartidaCotizacion[] = detalle.map((d: any) => ({
@@ -1632,6 +1755,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       setMetodoPagoId(cotFull.metodo_pago_id || metodoDefault.id);
       setFormaPagoId(cotFull.forma_pago_id || formaDefault.id);
       setCotizacionEditId(cotFull.id);
+      setCotizacionEstadoActual(cotFull.estado);
       setBusquedaCliente(cotFull.alumno?.nombre || cotFull.externo?.nombre || '');
       setCotizacionDirecta(partidasFormateadas.some((p) => p.es_manual));
       setVista('nueva');
@@ -1642,8 +1766,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   };
 
   const confirmarYEliminarCotizacion = async (cot: Cotizacion) => {
-    if (cot.estado !== 'emitido') {
-      alert('Solo puedes eliminar cotizaciones en estado "Emitido".');
+    if (cot.estado !== 'emitido' && !esEstadoBorradorCotizacion(cot.estado)) {
+      alert('Solo puedes eliminar cotizaciones en estado "Emitido" o "En proceso".');
       return;
     }
     const folio = cot.folio || '(sin folio)';
@@ -1673,6 +1797,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   const limpiarCotizacionNueva = () => {
     setModalDatosFiscalesAbierto(false);
     setCotizacionEditId(null);
+    setCotizacionEstadoActual(null);
+    setUltimoGuardadoBorrador(null);
     setIncluirIva(false);
     setIncluirIsr(false);
     setTipoPrecio(null);
@@ -2650,73 +2776,65 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
 
                       {/* Talla */}
                       {cotizacionDirecta ? (
-                        /* Modo manual: Input de texto */
-                        <input
-                          ref={index === 0 ? primeraSubPartidaInputRef : null}
-                          type="text"
-                          value={sp.talla}
-                          onChange={(e) => actualizarSubPartida(sp.id, 'talla', e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && sp.talla.trim()) {
-                              e.preventDefault();
-                              // Auto-focus a cantidad
-                              const inputElement = e.target as HTMLInputElement;
-                              const fila = inputElement.closest('.subpartidas-grid-row');
-                              if (fila) {
-                                const inputCantidad = fila.querySelector('input[type="number"]') as HTMLInputElement;
-                                if (inputCantidad) {
-                                  inputCantidad.focus();
-                                  inputCantidad.select();
-                                }
-                              }
-                            }
-                          }}
+                        <AutocompleteTallaCotizacion
+                          opciones={opcionesTallaManual}
+                          value={busquedaTallaSubPartida[sp.id] ?? sp.talla}
+                          selectedId={sp.talla ? sp.talla : undefined}
+                          inputRef={index === 0 ? primeraSubPartidaInputRef : undefined}
+                          borderColor="#1e40af"
                           placeholder="Ej: M"
-                          style={{
-                            padding: '0.5rem',
-                            borderRadius: '4px',
-                            border: '1px solid #1e40af',
-                            fontSize: '0.9rem',
+                          onChangeTexto={(texto) => {
+                            setBusquedaTallaSubPartida((prev) => ({ ...prev, [sp.id]: texto }));
+                            actualizarSubPartida(sp.id, 'talla', texto);
+                          }}
+                          onSelect={(opcion) => {
+                            setBusquedaTallaSubPartida((prev) => ({ ...prev, [sp.id]: opcion.nombre }));
+                            actualizarSubPartida(sp.id, 'talla', opcion.nombre);
+                          }}
+                          onEnter={() => {
+                            const fila = document.querySelector(
+                              `.subpartidas-grid-row:nth-child(${index + 2})`
+                            );
+                            const inputCantidad = fila?.querySelector(
+                              'input[type="number"]'
+                            ) as HTMLInputElement | null;
+                            if (inputCantidad) {
+                              inputCantidad.focus();
+                              inputCantidad.select();
+                            }
                           }}
                         />
                       ) : (
-                        /* Modo normal: Select del sistema */
-                        <select
-                          ref={index === 0 ? primeraSubPartidaSelectRef : null}
-                          value={sp.costo_id}
-                          onChange={(e) => {
-                            actualizarSubPartida(sp.id, 'costo_id', e.target.value);
-                            // Auto-focus a cantidad después de seleccionar talla
-                            if (e.target.value) {
-                              setTimeout(() => {
-                                const selectElement = e.target as HTMLSelectElement;
-                                const fila = selectElement.closest('.subpartidas-grid-row');
-                                if (fila) {
-                                  const inputCantidad = fila.querySelector('input[type="number"]') as HTMLInputElement;
-                                  if (inputCantidad) {
-                                    inputCantidad.focus();
-                                    inputCantidad.select();
-                                  }
-                                }
-                              }, 50);
+                        <AutocompleteTallaCotizacion
+                          opciones={opcionesTallaSistema}
+                          value={busquedaTallaSubPartida[sp.id] ?? sp.talla}
+                          selectedId={sp.costo_id || undefined}
+                          inputRef={index === 0 ? primeraSubPartidaInputRef : undefined}
+                          placeholder="Escribe la talla…"
+                          onChangeTexto={(texto) => {
+                            setBusquedaTallaSubPartida((prev) => ({ ...prev, [sp.id]: texto }));
+                            if (!texto.trim()) {
+                              actualizarSubPartida(sp.id, 'costo_id', '');
+                              actualizarSubPartida(sp.id, 'talla', '');
                             }
                           }}
-                          style={{
-                            padding: '0.5rem',
-                            borderRadius: '4px',
-                            border: '1px solid #ddd',
-                            fontSize: '0.9rem',
+                          onSelect={(opcion) => {
+                            setBusquedaTallaSubPartida((prev) => ({ ...prev, [sp.id]: opcion.nombre }));
+                            actualizarSubPartida(sp.id, 'costo_id', opcion.id);
                           }}
-                        >
-                          <option value="">Selecciona...</option>
-                          {costosDisponibles
-                            .filter(c => c.activo !== false)
-                            .map(costo => (
-                              <option key={costo.id} value={costo.id}>
-                                {costo.talla?.nombre || 'Sin talla'}
-                              </option>
-                            ))}
-                        </select>
+                          onEnter={() => {
+                            setTimeout(() => {
+                              const fila = document.querySelectorAll('.subpartidas-grid-row')[index];
+                              const inputCantidad = fila?.querySelector(
+                                'input[type="number"]'
+                              ) as HTMLInputElement | null;
+                              if (inputCantidad) {
+                                inputCantidad.focus();
+                                inputCantidad.select();
+                              }
+                            }, 50);
+                          }}
+                        />
                       )}
 
                       {/* Cantidad */}
@@ -3163,20 +3281,42 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                           <td data-label="Talla" style={{ padding: '0.75rem' }}>
                             {esModoEdicion ? (
                               !partida.es_manual && partida.prenda_id ? (
-                                <select
-                                  className="cotizacion-partida-campo-input"
-                                  value={partida.costo_id || ''}
-                                  ref={(el) => {
-                                    editTallaRefs.current[index] = el;
+                                <AutocompleteTallaCotizacion
+                                  opciones={(costosPorPrendaId[String(partida.prenda_id)] || [])
+                                    .filter((c) => c.activo !== false)
+                                    .map((c) => ({
+                                      id: String(c.id),
+                                      nombre: String(c.talla?.nombre || 'Sin talla'),
+                                    }))}
+                                  value={partida.talla}
+                                  selectedId={partida.costo_id || undefined}
+                                  inputRef={{
+                                    get current() {
+                                      return editTallaRefs.current[index] as HTMLInputElement | null;
+                                    },
+                                    set current(el) {
+                                      editTallaRefs.current[index] = el;
+                                    },
                                   }}
-                                  onChange={(e) => {
+                                  placeholder="Escribe la talla…"
+                                  onChangeTexto={(texto) => {
+                                    actualizarPartida(index, 'talla', texto);
+                                    if (!texto.trim()) {
+                                      actualizarPartida(index, 'costo_id', null);
+                                    }
+                                  }}
+                                  onSelect={(opcion) => {
                                     const prendaId = String(partida.prenda_id);
-                                    const lista = (costosPorPrendaId[prendaId] || []).filter((c) => c.activo !== false);
-                                    const costoMatch = lista.find((c) => String(c.id) === String(e.target.value));
+                                    const lista = (costosPorPrendaId[prendaId] || []).filter(
+                                      (c) => c.activo !== false
+                                    );
+                                    const costoMatch = lista.find((c) => String(c.id) === opcion.id);
                                     if (!costoMatch) return;
                                     const tipo = partida.tipo_precio_usado || 'menudeo';
                                     const precio =
-                                      tipo === 'mayoreo' ? costoMatch.precio_mayoreo : costoMatch.precio_menudeo;
+                                      tipo === 'mayoreo'
+                                        ? costoMatch.precio_mayoreo
+                                        : costoMatch.precio_menudeo;
                                     aplicarCostoSistema(index, {
                                       prenda_id: prendaId,
                                       prenda_nombre: partida.prenda_nombre,
@@ -3186,47 +3326,36 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                                       precio_unitario: precio,
                                     });
                                   }}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                      e.preventDefault();
-                                      setTimeout(() => {
-                                        const node = editColorRefs.current[index];
-                                        if (node) node.focus();
-                                      }, 60);
-                                    }
+                                  onEnter={() => {
+                                    setTimeout(() => {
+                                      const node = editColorRefs.current[index];
+                                      if (node) node.focus();
+                                    }, 60);
                                   }}
-                                  style={{
-                                    padding: '0.4rem 0.5rem',
-                                    borderRadius: 6,
-                                    border: '1px solid #d1d5db',
-                                    background: 'white',
-                                    cursor: 'pointer',
-                                  }}
-                                  aria-label={`Talla partida ${index + 1}`}
-                                >
-                                  <option value="">Selecciona...</option>
-                                  {(costosPorPrendaId[String(partida.prenda_id)] || [])
-                                    .filter((c) => c.activo !== false)
-                                    .map((costo) => (
-                                      <option key={String(costo.id)} value={String(costo.id)}>
-                                        {costo.talla?.nombre || 'Sin talla'}
-                                      </option>
-                                    ))}
-                                </select>
+                                  ariaLabel={`Talla partida ${index + 1}`}
+                                />
                               ) : (
-                                <input
-                                  className="cotizacion-partida-campo-input"
+                                <AutocompleteTallaCotizacion
+                                  opciones={opcionesTallaManual}
                                   value={partida.talla}
-                                  onChange={(e) => actualizarPartida(index, 'talla', e.target.value)}
-                                  ref={(el) => {
-                                    editTallaRefs.current[index] = el;
+                                  inputRef={{
+                                    get current() {
+                                      return editTallaRefs.current[index] as HTMLInputElement | null;
+                                    },
+                                    set current(el) {
+                                      editTallaRefs.current[index] = el;
+                                    },
                                   }}
-                                  style={{
-                                    padding: '0.4rem 0.5rem',
-                                    borderRadius: 6,
-                                    border: '1px solid #d1d5db',
+                                  placeholder="Ej: M"
+                                  onChangeTexto={(texto) => actualizarPartida(index, 'talla', texto)}
+                                  onSelect={(opcion) => actualizarPartida(index, 'talla', opcion.nombre)}
+                                  onEnter={() => {
+                                    setTimeout(() => {
+                                      const node = editColorRefs.current[index];
+                                      if (node) node.focus();
+                                    }, 60);
                                   }}
-                                  aria-label={`Talla partida ${index + 1}`}
+                                  ariaLabel={`Talla partida ${index + 1}`}
                                 />
                               )
                             ) : (
@@ -3544,6 +3673,39 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
               </div>
             </div>
 
+            {(esBorradorEditable && partidas.length > 0 && clienteSeleccionado) || cotizacionEditId ? (
+              <div
+                style={{
+                  marginBottom: '0.75rem',
+                  padding: '0.65rem 0.85rem',
+                  borderRadius: '8px',
+                  background: esEstadoBorradorCotizacion(cotizacionEstadoActual || ESTADO_COTIZACION_BORRADOR)
+                    ? '#f5f3ff'
+                    : '#ecfdf5',
+                  border: `1px solid ${esEstadoBorradorCotizacion(cotizacionEstadoActual || '') ? '#c4b5fd' : '#86efac'}`,
+                  fontSize: '0.88rem',
+                  color: '#475569',
+                }}
+              >
+                {guardandoBorrador ? (
+                  <>💾 Guardando borrador en proceso…</>
+                ) : ultimoGuardadoBorrador ? (
+                  <>
+                    ✓ Borrador guardado{' '}
+                    {ultimoGuardadoBorrador.toLocaleTimeString('es-MX', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                    {cotizacionEditId
+                      ? ` · Folio ${cotizaciones.find((c) => c.id === cotizacionEditId)?.folio || ''}`
+                      : ''}
+                  </>
+                ) : (
+                  <>Las partidas se guardan automáticamente con estatus <strong>En proceso</strong> hasta que pulses Generar cotización.</>
+                )}
+              </div>
+            ) : null}
+
             {/* Botón generar */}
             <button
               type="button"
@@ -3564,9 +3726,10 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
             >
               {generando
                 ? '⏳ Generando...'
-                : cotizacionEditId
-                  ? '💾 Guardar cambios (mismo folio)'
-                  : '📄 Generar Cotización'}
+                : esEstadoBorradorCotizacion(cotizacionEstadoActual || ESTADO_COTIZACION_BORRADOR) ||
+                    !cotizacionEditId
+                  ? '📄 Generar Cotización'
+                  : '💾 Guardar cambios (mismo folio)'}
             </button>
           </div>
         ) : (
@@ -3748,34 +3911,36 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                       const est = estilosEstadoCotizacion(cot.estado);
                       const opcionesEstado = obtenerEstadosCotizacionPermitidosDesde(cot.estado);
                       const estatusBloqueado = opcionesEstado.length <= 1;
+                      const puedeEliminar =
+                        cot.estado === 'emitido' || esEstadoBorradorCotizacion(cot.estado);
                       return (
                       <tr key={cot.id} style={{ borderBottom: '1px solid #eee' }}>
                         <td className="table-col-eliminar">
                           <button
                             type="button"
                             onClick={() => confirmarYEliminarCotizacion(cot)}
-                            disabled={eliminandoCotizacionId === cot.id || cot.estado !== 'emitido'}
+                            disabled={eliminandoCotizacionId === cot.id || !puedeEliminar}
                             className="btn btn-danger btn-eliminar-fila"
                             style={{
                               background:
-                                eliminandoCotizacionId === cot.id || cot.estado !== 'emitido'
+                                eliminandoCotizacionId === cot.id || !puedeEliminar
                                   ? '#e5e7eb'
                                   : '#dc2626',
                               color:
-                                eliminandoCotizacionId === cot.id || cot.estado !== 'emitido'
+                                eliminandoCotizacionId === cot.id || !puedeEliminar
                                   ? '#6b7280'
                                   : 'white',
                               border: 'none',
                               borderRadius: '4px',
                               cursor:
-                                eliminandoCotizacionId === cot.id || cot.estado !== 'emitido'
+                                eliminandoCotizacionId === cot.id || !puedeEliminar
                                   ? 'not-allowed'
                                   : 'pointer',
                               fontWeight: 'bold',
                             }}
                             title={
-                              cot.estado !== 'emitido'
-                                ? 'Solo se permite eliminar en estado Emitido'
+                              !puedeEliminar
+                                ? 'Solo se permite eliminar en Emitido o En proceso'
                                 : 'Eliminar definitivamente'
                             }
                             aria-label="Eliminar cotización"
@@ -3840,7 +4005,9 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                               disabled={actualizandoEstadoId === cot.id || estatusBloqueado}
                               title={
                                 estatusBloqueado
-                                  ? 'En Terminado no se puede cambiar el estatus'
+                                  ? esEstadoBorradorCotizacion(cot.estado)
+                                    ? 'Genera la cotización para avanzar el estatus'
+                                    : 'En Terminado no se puede cambiar el estatus'
                                   : 'Solo puedes avanzar el estatus, no retroceder'
                               }
                               onChange={async (e) => {
@@ -3904,22 +4071,41 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                               alignItems: 'center',
                             }}
                           >
-                            <button
-                              type="button"
-                              onClick={() => verPDF(cot)}
-                              style={{
-                                background: '#667eea',
-                                color: 'white',
-                                border: 'none',
-                                padding: '0.5rem 1rem',
-                                borderRadius: '4px',
-                                cursor: 'pointer',
-                                fontWeight: 'bold',
-                              }}
-                            >
-                              📄 Ver PDF
-                            </button>
-                            {cot.estado === 'emitido' ? (
+                            {!esEstadoBorradorCotizacion(cot.estado) ? (
+                              <button
+                                type="button"
+                                onClick={() => verPDF(cot)}
+                                style={{
+                                  background: '#667eea',
+                                  color: 'white',
+                                  border: 'none',
+                                  padding: '0.5rem 1rem',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer',
+                                  fontWeight: 'bold',
+                                }}
+                              >
+                                📄 Ver PDF
+                              </button>
+                            ) : null}
+                            {esEstadoBorradorCotizacion(cot.estado) ? (
+                              <button
+                                type="button"
+                                onClick={() => iniciarEdicionDesdeHistorial(cot)}
+                                style={{
+                                  background: '#8b5cf6',
+                                  color: 'white',
+                                  border: 'none',
+                                  padding: '0.5rem 1rem',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer',
+                                  fontWeight: 'bold',
+                                }}
+                                title="Continuar captura de partidas"
+                              >
+                                ▶️ Continuar
+                              </button>
+                            ) : cot.estado === 'emitido' ? (
                               <button
                                 type="button"
                                 onClick={() => iniciarEdicionDesdeHistorial(cot)}

@@ -319,6 +319,20 @@ export function posicionDropdownPrendaCotizacion(anchor: HTMLElement): PosicionD
   return posicionDropdownFijo(anchor, 320, 200, { forzarArribaEnTactil: true });
 }
 
+/** Autocomplete de tallas: filtra por prefijo (primer carácter o más). */
+export function filtrarTallasPorPrefijo<T extends { nombre: string; activo?: boolean | null }>(
+  tallas: T[],
+  query: string,
+  limite = 25
+): T[] {
+  const activas = tallas.filter((t) => t.activo !== false);
+  const q = query.trim().toUpperCase();
+  if (!q) return activas.slice(0, limite);
+  return activas
+    .filter((t) => String(t.nombre || '').toUpperCase().startsWith(q))
+    .slice(0, limite);
+}
+
 /** Reposiciona dropdowns cuando el teclado móvil cambia el viewport visible. */
 export function suscribirReposicionDropdownViewport(onChange: () => void): () => void {
   if (typeof window === 'undefined') return () => {};

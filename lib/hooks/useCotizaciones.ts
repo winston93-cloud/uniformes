@@ -6,7 +6,7 @@ import { insforgeDb } from '@/lib/insforgeBrowser';
 import type { Alumno, Cotizacion, DetalleCotizacion, Externo } from '@/lib/types';
 import { compareCotizacionesPorFechaCotizacionDesc } from '@/lib/cotizacionesSort';
 import { calcularMontosImpuestosCotizacion } from '@/lib/cotizacionesImpuestos';
-import { transicionEstadoCotizacionValida } from '@/lib/cotizacionesEstados';
+import { transicionEstadoCotizacionValida, ESTADO_COTIZACION_BORRADOR } from '@/lib/cotizacionesEstados';
 import { isUuid, resolverAlumnoUuidParaCotizacion } from '@/lib/resolverAlumnoCotizacion';
 import { mapAlumnoRow } from '@/lib/hooks/useAlumnos';
 import { REFETCH_PEDIDOS_EVENT } from '@/lib/refetchPedidosEvent';
@@ -170,70 +170,173 @@ export function useCotizaciones(options?: { autoCargar?: boolean }) {
     }
   };
 
-  // Crear cotización
-  const crearCotizacion = async (nuevaCotizacion: NuevaCotizacion) => {
-    try {
-      // 1. Generar folio
-      const folio = await generarFolio();
+  type EstadoGuardadoCotizacion = typeof ESTADO_COTIZACION_BORRADOR | 'emitido';
 
-      // 2. Calcular totales (subtotal de partidas + IVA opcional − ISR retención opcional)
-      const subtotalPartidas = nuevaCotizacion.partidas.reduce((sum, p) => sum + p.subtotal, 0);
-      const incluirIva = nuevaCotizacion.incluir_iva === true;
-      const incluirIsr = nuevaCotizacion.incluir_isr === true;
-      const { subtotal, total } = calcularMontosImpuestosCotizacion(
-        subtotalPartidas,
-        incluirIva,
-        incluirIsr
+  const resolverClienteIds = async (datos: NuevaCotizacion) => {
+    let alumnoId: string | null = datos.alumno_id ?? null;
+    if (datos.tipo_cliente === 'alumno' && alumnoId) {
+      alumnoId = await resolverAlumnoUuidParaCotizacion(
+        alumnoId,
+        datos.alumno_referencia,
+        datos.alumno_nombre || ''
       );
+    }
 
-      let alumnoId: string | null = nuevaCotizacion.alumno_id ?? null;
-      if (nuevaCotizacion.tipo_cliente === 'alumno' && alumnoId) {
-        alumnoId = await resolverAlumnoUuidParaCotizacion(
-          alumnoId,
-          nuevaCotizacion.alumno_referencia,
-          nuevaCotizacion.alumno_nombre || ''
-        );
+    const externoId = datos.externo_id ?? null;
+    if (datos.tipo_cliente === 'externo' && externoId && !isUuid(externoId)) {
+      return {
+        error: 'Cliente externo inválido. Vuelve a seleccionar el cliente.',
+        alumnoId: null,
+        externoId: null,
+      };
+    }
+
+    return { error: null, alumnoId, externoId };
+  };
+
+  const calcularTotalesPartidas = (datos: NuevaCotizacion) => {
+    const subtotalPartidas = datos.partidas.reduce((sum, p) => sum + p.subtotal, 0);
+    const incluirIva = datos.incluir_iva === true;
+    const incluirIsr = datos.incluir_isr === true;
+    return {
+      subtotalPartidas,
+      incluirIva,
+      incluirIsr,
+      ...calcularMontosImpuestosCotizacion(subtotalPartidas, incluirIva, incluirIsr),
+    };
+  };
+
+  /** Crea o actualiza cotización con estado en_proceso o emitido. */
+  const guardarCotizacion = async (
+    cotizacionId: string | null,
+    datos: NuevaCotizacion,
+    estadoDestino: EstadoGuardadoCotizacion
+  ) => {
+    try {
+      const cliente = await resolverClienteIds(datos);
+      if (cliente.error) {
+        return { data: null, error: cliente.error, id: cotizacionId };
       }
 
-      const externoId = nuevaCotizacion.externo_id ?? null;
-      if (nuevaCotizacion.tipo_cliente === 'externo' && externoId && !isUuid(externoId)) {
-        return {
-          data: null,
-          error: 'Cliente externo inválido. Vuelve a seleccionar el cliente.',
-        };
+      const { subtotal, total, incluirIva, incluirIsr } = calcularTotalesPartidas(datos);
+
+      if (cotizacionId) {
+        const { data: existente, error: fetchErr } = await insforgeDb()
+          .from('cotizaciones')
+          .select('estado')
+          .eq('id', cotizacionId)
+          .maybeSingle();
+
+        if (fetchErr) throw fetchErr;
+        if (!existente?.estado) {
+          return { data: null, error: 'No se encontró la cotización.', id: cotizacionId };
+        }
+
+        if (
+          estadoDestino === ESTADO_COTIZACION_BORRADOR &&
+          existente.estado !== ESTADO_COTIZACION_BORRADOR
+        ) {
+          return {
+            data: null,
+            error: 'Solo se puede guardar borrador en cotizaciones en proceso.',
+            id: cotizacionId,
+          };
+        }
+
+        if (
+          estadoDestino === 'emitido' &&
+          existente.estado !== ESTADO_COTIZACION_BORRADOR &&
+          existente.estado !== 'emitido'
+        ) {
+          return {
+            data: null,
+            error: 'Solo se puede editar cotizaciones en proceso o emitidas.',
+            id: cotizacionId,
+          };
+        }
+
+        const { data: cotizacion, error: cotError } = await insforgeDb()
+          .from('cotizaciones')
+          .update({
+            alumno_id: datos.tipo_cliente === 'alumno' ? cliente.alumnoId : null,
+            externo_id: datos.tipo_cliente === 'externo' ? cliente.externoId : null,
+            tipo_cliente: datos.tipo_cliente,
+            fecha_vigencia: datos.fecha_vigencia || null,
+            fecha_entrega: datos.fecha_entrega || null,
+            subtotal,
+            total,
+            observaciones: datos.observaciones || null,
+            condiciones_pago: datos.condiciones_pago || '50% anticipo, 50% contra entrega',
+            tiempo_entrega: datos.tiempo_entrega || '5-7 días hábiles',
+            incluir_iva: incluirIva,
+            incluir_isr: incluirIsr,
+            metodo_pago_id: datos.metodo_pago_id || null,
+            forma_pago_id: datos.forma_pago_id || null,
+            metodo_pago_pdf: datos.metodo_pago_pdf?.trim() || null,
+            forma_pago_pdf: datos.forma_pago_pdf?.trim() || null,
+            estado: estadoDestino,
+          })
+          .eq('id', cotizacionId)
+          .select()
+          .single();
+
+        if (cotError) throw cotError;
+
+        const { error: delErr } = await insforgeDb()
+          .from('detalle_cotizacion')
+          .delete()
+          .eq('cotizacion_id', cotizacionId);
+
+        if (delErr) throw delErr;
+
+        const partidas = datos.partidas.map((p, index) => {
+          const { ui_key: _uiKey, ...resto } = p;
+          return {
+            cotizacion_id: cotizacionId,
+            ...resto,
+            orden: index + 1,
+          };
+        });
+
+        const { error: insErr } = await insforgeDb().from('detalle_cotizacion').insert(partidas);
+        if (insErr) throw insErr;
+
+        await obtenerCotizaciones();
+        return { data: cotizacion, error: null, id: cotizacionId };
       }
 
-      // 3. Crear cotización
+      const folio = await generarFolio();
       const { data: cotizacion, error: cotError } = await insforgeDb()
         .from('cotizaciones')
-        .insert([{
-          folio,
-          alumno_id: alumnoId,
-          externo_id: externoId,
-          tipo_cliente: nuevaCotizacion.tipo_cliente,
-          fecha_cotizacion: new Date().toISOString().split('T')[0],
-          fecha_vigencia: nuevaCotizacion.fecha_vigencia || null,
-          subtotal,
-          total,
-          observaciones: nuevaCotizacion.observaciones || null,
-          condiciones_pago: nuevaCotizacion.condiciones_pago || '50% anticipo, 50% contra entrega',
-          tiempo_entrega: nuevaCotizacion.tiempo_entrega || '5-7 días hábiles',
-          fecha_entrega: nuevaCotizacion.fecha_entrega || null,
-          estado: 'emitido',
-          incluir_iva: incluirIva,
-          incluir_isr: incluirIsr,
-          metodo_pago_id: nuevaCotizacion.metodo_pago_id || null,
-          forma_pago_id: nuevaCotizacion.forma_pago_id || null,
-          metodo_pago_pdf: nuevaCotizacion.metodo_pago_pdf?.trim() || null,
-          forma_pago_pdf: nuevaCotizacion.forma_pago_pdf?.trim() || null,
-        }])
+        .insert([
+          {
+            folio,
+            alumno_id: cliente.alumnoId,
+            externo_id: cliente.externoId,
+            tipo_cliente: datos.tipo_cliente,
+            fecha_cotizacion: new Date().toISOString().split('T')[0],
+            fecha_vigencia: datos.fecha_vigencia || null,
+            subtotal,
+            total,
+            observaciones: datos.observaciones || null,
+            condiciones_pago: datos.condiciones_pago || '50% anticipo, 50% contra entrega',
+            tiempo_entrega: datos.tiempo_entrega || '5-7 días hábiles',
+            fecha_entrega: datos.fecha_entrega || null,
+            estado: estadoDestino,
+            incluir_iva: incluirIva,
+            incluir_isr: incluirIsr,
+            metodo_pago_id: datos.metodo_pago_id || null,
+            forma_pago_id: datos.forma_pago_id || null,
+            metodo_pago_pdf: datos.metodo_pago_pdf?.trim() || null,
+            forma_pago_pdf: datos.forma_pago_pdf?.trim() || null,
+          },
+        ])
         .select()
         .single();
 
       if (cotError) throw cotError;
 
-      // 4. Crear partidas
-      const partidas = nuevaCotizacion.partidas.map((p, index) => {
+      const partidas = datos.partidas.map((p, index) => {
         const { ui_key: _uiKey, ...resto } = p;
         return {
           cotizacion_id: cotizacion.id,
@@ -242,108 +345,40 @@ export function useCotizaciones(options?: { autoCargar?: boolean }) {
         };
       });
 
-      const { error: detError } = await insforgeDb()
-        .from('detalle_cotizacion')
-        .insert(partidas);
-
+      const { error: detError } = await insforgeDb().from('detalle_cotizacion').insert(partidas);
       if (detError) throw detError;
 
       await obtenerCotizaciones();
-      return { data: cotizacion, error: null };
+      return { data: cotizacion, error: null, id: cotizacion.id as string };
     } catch (err) {
-      console.error('Error al crear cotizacion:', err);
-      return { data: null, error: getSupabaseErrorMessage(err) };
+      console.error('Error al guardar cotización:', err);
+      return { data: null, error: getSupabaseErrorMessage(err), id: cotizacionId };
     }
+  };
+
+  /** Auto-guardado mientras se capturan partidas (estado en_proceso). */
+  const sincronizarBorradorCotizacion = async (
+    cotizacionId: string | null,
+    datos: NuevaCotizacion
+  ) => guardarCotizacion(cotizacionId, datos, ESTADO_COTIZACION_BORRADOR);
+
+  // Crear cotización
+  const crearCotizacion = async (nuevaCotizacion: NuevaCotizacion) => {
+    const result = await guardarCotizacion(null, nuevaCotizacion, 'emitido');
+    return { data: result.data, error: result.error };
   };
 
   /** Actualiza cotización existente conservando el mismo folio (regenerar PDF / datos sin nuevo folio). */
-  const actualizarCotizacionCompleta = async (
-    cotizacionId: string,
-    datos: NuevaCotizacion
-  ) => {
-    try {
-      const subtotalPartidas = datos.partidas.reduce((sum, p) => sum + p.subtotal, 0);
-      const incluirIva = datos.incluir_iva === true;
-      const incluirIsr = datos.incluir_isr === true;
-      const { subtotal, total } = calcularMontosImpuestosCotizacion(
-        subtotalPartidas,
-        incluirIva,
-        incluirIsr
-      );
-
-      let alumnoId: string | null = datos.alumno_id ?? null;
-      if (datos.tipo_cliente === 'alumno' && alumnoId) {
-        alumnoId = await resolverAlumnoUuidParaCotizacion(
-          alumnoId,
-          datos.alumno_referencia,
-          datos.alumno_nombre || ''
-        );
-      }
-
-      const externoId = datos.externo_id ?? null;
-      if (datos.tipo_cliente === 'externo' && externoId && !isUuid(externoId)) {
-        return {
-          data: null,
-          error: 'Cliente externo inválido. Vuelve a seleccionar el cliente.',
-        };
-      }
-
-      const { data: cotizacion, error: cotError } = await insforgeDb()
-        .from('cotizaciones')
-        .update({
-          alumno_id: datos.tipo_cliente === 'alumno' ? alumnoId : null,
-          externo_id: datos.tipo_cliente === 'externo' ? externoId : null,
-          tipo_cliente: datos.tipo_cliente,
-          fecha_vigencia: datos.fecha_vigencia || null,
-          fecha_entrega: datos.fecha_entrega || null,
-          subtotal,
-          total,
-          observaciones: datos.observaciones || null,
-          condiciones_pago: datos.condiciones_pago || '50% anticipo, 50% contra entrega',
-          tiempo_entrega: datos.tiempo_entrega || '5-7 días hábiles',
-          incluir_iva: incluirIva,
-          incluir_isr: incluirIsr,
-          metodo_pago_id: datos.metodo_pago_id || null,
-          forma_pago_id: datos.forma_pago_id || null,
-          metodo_pago_pdf: datos.metodo_pago_pdf?.trim() || null,
-          forma_pago_pdf: datos.forma_pago_pdf?.trim() || null,
-          estado: 'emitido',
-        })
-        .eq('id', cotizacionId)
-        .select()
-        .single();
-
-      if (cotError) throw cotError;
-
-      const { error: delErr } = await insforgeDb()
-        .from('detalle_cotizacion')
-        .delete()
-        .eq('cotizacion_id', cotizacionId);
-
-      if (delErr) throw delErr;
-
-      const partidas = datos.partidas.map((p, index) => {
-        const { ui_key: _uiKey, ...resto } = p;
-        return {
-          cotizacion_id: cotizacionId,
-          ...resto,
-          orden: index + 1,
-        };
-      });
-
-      const { error: insErr } = await insforgeDb().from('detalle_cotizacion').insert(partidas);
-      if (insErr) throw insErr;
-
-      await obtenerCotizaciones();
-      return { data: cotizacion, error: null };
-    } catch (err) {
-      console.error('Error al actualizar cotización completa:', err);
-      return { data: null, error: getSupabaseErrorMessage(err) };
-    }
+  const actualizarCotizacionCompleta = async (cotizacionId: string, datos: NuevaCotizacion) => {
+    const result = await guardarCotizacion(cotizacionId, datos, 'emitido');
+    return { data: result.data, error: result.error };
   };
 
   // Actualizar estado de cotización (solo avance: no se puede retroceder en el flujo)
-  const actualizarEstado = async (id: string, estado: 'emitido' | 'aprobado' | 'trabajando' | 'terminado') => {
+  const actualizarEstado = async (
+    id: string,
+    estado: 'en_proceso' | 'emitido' | 'aprobado' | 'trabajando' | 'terminado'
+  ) => {
     try {
       const { data: row, error: fetchErr } = await insforgeDb()
         .from('cotizaciones')
@@ -429,6 +464,7 @@ export function useCotizaciones(options?: { autoCargar?: boolean }) {
     obtenerCotizaciones,
     obtenerCotizacion,
     crearCotizacion,
+    sincronizarBorradorCotizacion,
     actualizarCotizacionCompleta,
     actualizarEstado,
     actualizarPdfUrl,
