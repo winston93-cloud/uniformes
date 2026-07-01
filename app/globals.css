@@ -517,13 +517,14 @@ body {
 
 /* Columna fija de eliminar al inicio de cada fila en tablas */
 .table-col-eliminar {
-  width: 3.25rem;
-  min-width: 3.25rem;
-  max-width: 3.25rem;
+  width: 3.5rem;
+  min-width: 3.5rem;
+  max-width: 3.5rem;
+  box-sizing: border-box;
   text-align: center;
   vertical-align: middle;
-  padding-left: 0.35rem !important;
-  padding-right: 0.35rem !important;
+  padding: 0.35rem !important;
+  overflow: visible;
 }
 
 .table .btn-eliminar-fila {
@@ -531,6 +532,44 @@ body {
   font-size: 0.85rem;
   line-height: 1;
   min-width: 2.25rem;
+  box-sizing: border-box;
+}
+
+/* Historial de cotizaciones: columna eliminar sin empalmar con Folio */
+.cotizacion-historial-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.cotizacion-historial-table {
+  width: 100%;
+  min-width: 720px;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+
+.cotizacion-historial-table .table-col-eliminar {
+  width: 3.25rem;
+  min-width: 3.25rem;
+  max-width: 3.25rem;
+}
+
+.cotizacion-historial-table .table-col-eliminar .btn-eliminar-fila {
+  width: 2.35rem;
+  height: 2.35rem;
+  min-width: 2.35rem;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cotizacion-historial-table th:nth-child(2),
+.cotizacion-historial-table td:nth-child(2) {
+  width: 12%;
+  padding-left: 0.65rem !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Tabla */
@@ -1809,12 +1848,36 @@ body {
     font-size: 1.1rem !important;
   }
   
-  /* Tablas dentro de modal responsive */
-  .modal-cotizacion-container table {
+  /* Tablas dentro de modal responsive (excepto historial y partidas) */
+  .modal-cotizacion-container table:not(.cotizacion-historial-table):not(.cotizacion-partidas-table) {
     font-size: 0.8rem;
     display: block;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+  }
+
+  .modal-cotizacion-container .cotizacion-historial-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+  }
+
+  .modal-cotizacion-container .cotizacion-historial-table {
+    display: table !important;
+    min-width: 720px;
+    table-layout: fixed;
+    overflow: visible !important;
+  }
+  
+  .modal-cotizacion-container .cotizacion-historial-table th,
+  .modal-cotizacion-container .cotizacion-historial-table td {
+    white-space: nowrap;
+  }
+
+  .modal-cotizacion-container .cotizacion-historial-table td:nth-child(2) {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   
   .modal-cotizacion-container th,

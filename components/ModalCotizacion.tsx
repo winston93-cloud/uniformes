@@ -3709,8 +3709,17 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                 </button>
               </div>
             ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
+              <div className="cotizacion-historial-wrap">
+                <table className="cotizacion-historial-table" style={{ borderCollapse: 'collapse' }}>
+                  <colgroup>
+                    <col className="table-col-eliminar" />
+                    <col style={{ width: '12%' }} />
+                    <col style={{ width: '28%' }} />
+                    <col style={{ width: '11%' }} />
+                    <col style={{ width: '10%' }} />
+                    <col style={{ width: '18%' }} />
+                    <col style={{ width: '18%' }} />
+                  </colgroup>
                   <thead>
                     <tr style={{ background: '#667eea', color: 'white' }}>
                       <th className="table-col-eliminar" aria-label="Eliminar" />
@@ -3757,7 +3766,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                       const estatusBloqueado = opcionesEstado.length <= 1;
                       return (
                       <tr key={cot.id} style={{ borderBottom: '1px solid #eee' }}>
-                        <td className="table-col-eliminar" style={{ padding: '0.75rem' }}>
+                        <td className="table-col-eliminar">
                           <button
                             type="button"
                             onClick={() => confirmarYEliminarCotizacion(cot)}
