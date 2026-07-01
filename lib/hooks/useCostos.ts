@@ -155,12 +155,15 @@ export function useCostos(sucursal_id?: string, es_matriz?: boolean) {
     }
   };
 
-  const deleteCosto = async (id: string) => {
+  const deleteCosto = async (id: string, opts?: { alcanceCatalogo?: boolean }) => {
     try {
       const res = await fetch('/api/costos/eliminar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ costo_id: id }),
+        body: JSON.stringify({
+          costo_id: id,
+          alcance_catalogo: opts?.alcanceCatalogo === true,
+        }),
       });
       const json = (await res.json().catch(() => ({}))) as {
         ok?: boolean;

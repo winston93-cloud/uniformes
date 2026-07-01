@@ -350,7 +350,7 @@ export default function PrendasPage() {
         );
 
         for (const costoId of costosAEliminar) {
-          const resultado = await deleteCosto(costoId);
+          const resultado = await deleteCosto(costoId, { alcanceCatalogo: true });
           if (resultado.error) {
             setMensajeError(`❌ Error al quitar talla: ${resultado.error}`);
             setModalErrorAbierto(true);

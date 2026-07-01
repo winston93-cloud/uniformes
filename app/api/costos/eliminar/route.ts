@@ -21,8 +21,9 @@ export async function POST(req: Request) {
   }
 
   try {
-    const body = (await req.json().catch(() => ({}))) as { costo_id?: string };
+    const body = (await req.json().catch(() => ({}))) as { costo_id?: string; alcance_catalogo?: boolean };
     const costoId = String(body.costo_id ?? '').trim();
+    const alcanceCatalogo = body.alcance_catalogo === true;
     if (!costoId) {
       return NextResponse.json({ ok: false, message: 'Falta costo_id.' }, { status: 400 });
     }
@@ -38,10 +39,13 @@ export async function POST(req: Request) {
     const costo = normalizarCamposCostoApi(costoRaw as Record<string, unknown>);
     const sucursalCosto = readStr(costo, 'sucursal_id', 'sucursalId');
     if (sucursalCosto && sucursalCosto !== sesion.sucursal_id) {
-      return NextResponse.json(
-        { ok: false, message: 'Solo puedes eliminar precios de tu sucursal activa.' },
-        { status: 403 }
-      );
+      const puedeCatalogo = alcanceCatalogo && sesion.es_matriz;
+      if (!puedeCatalogo) {
+        return NextResponse.json(
+          { ok: false, message: 'Solo puedes eliminar precios de tu sucursal activa.' },
+          { status: 403 }
+        );
+      }
     }
 
     const [pedidos, transferencias] = await Promise.all([
