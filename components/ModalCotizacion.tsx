@@ -277,13 +277,13 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       .sort((a, b) => a.nombre.localeCompare(b.nombre));
 
     const q = busquedaPrenda.trim().toLowerCase();
-    const prendasFiltradas = q
-      ? prendasActivas.filter(
-          (p) =>
-            p.nombre.toLowerCase().includes(q) ||
-            (p.codigo && p.codigo.toLowerCase().includes(q))
-        )
-      : prendasActivas;
+    if (!q) return [];
+
+    const prendasFiltradas = prendasActivas.filter(
+      (p) =>
+        p.nombre.toLowerCase().includes(q) ||
+        (p.codigo && p.codigo.toLowerCase().includes(q))
+    );
 
     return prendasFiltradas.slice(0, LIMITE_RESULTADOS_PRENDA);
   }, [prendas, busquedaPrenda]);
@@ -294,13 +294,13 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       .sort((a, b) => a.nombre.localeCompare(b.nombre));
 
     const q = busquedaPrendaEdit.trim().toLowerCase();
-    const prendasFiltradas = q
-      ? prendasActivas.filter(
-          (p) =>
-            p.nombre.toLowerCase().includes(q) ||
-            (p.codigo && p.codigo.toLowerCase().includes(q))
-        )
-      : prendasActivas;
+    if (!q) return [];
+
+    const prendasFiltradas = prendasActivas.filter(
+      (p) =>
+        p.nombre.toLowerCase().includes(q) ||
+        (p.codigo && p.codigo.toLowerCase().includes(q))
+    );
 
     return prendasFiltradas.slice(0, LIMITE_RESULTADOS_PRENDA);
   }, [prendas, busquedaPrendaEdit]);
@@ -331,6 +331,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   };
 
   const handleCambioBusquedaPrenda = (nuevaBusqueda: string) => {
+    const hayTextoBusqueda = nuevaBusqueda.trim().length > 0;
     const hayDatosAtados =
       subPartidas.some((sp) => sp.cantidad > 0) || colorGlobal.trim().length > 0;
 
@@ -347,7 +348,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
           { id: crypto.randomUUID(), costo_id: '', talla: '', cantidad: 0, precio_unitario: 0 },
         ]);
         setBusquedaPrenda(nuevaBusqueda);
-        setDropdownPrendaVisible(true);
+        setDropdownPrendaVisible(hayTextoBusqueda);
         setIndiceSeleccionadoPrenda(-1);
       }
       return;
@@ -358,7 +359,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     }
 
     setBusquedaPrenda(nuevaBusqueda);
-    setDropdownPrendaVisible(true);
+    setDropdownPrendaVisible(hayTextoBusqueda);
     setIndiceSeleccionadoPrenda(-1);
   };
 
@@ -2642,7 +2643,6 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                           value={busquedaPrenda}
                           onChange={(e) => handleCambioBusquedaPrenda(e.target.value)}
                           onFocus={(e) => {
-                            setDropdownPrendaVisible(true);
                             setIndiceSeleccionadoPrenda(-1);
                             if (prendaSeleccionada && busquedaPrenda.trim()) {
                               seleccionarTodoTextoInput(e.currentTarget);
@@ -2660,6 +2660,9 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                           onKeyDown={(e) => {
                             if (e.key === 'ArrowDown') {
                               e.preventDefault();
+                              if (!dropdownPrendaVisible && busquedaPrenda.trim()) {
+                                setDropdownPrendaVisible(true);
+                              }
                               setIndiceSeleccionadoPrenda(prev => 
                                 prev < prendasMostrar.length - 1 ? prev + 1 : prev
                               );
@@ -3260,7 +3263,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                                   const q = e.target.value;
                                   setEditPartidaIdx(index);
                                   setBusquedaPrendaEdit(q);
-                                  setDropdownPrendaEditVisible(true);
+                                  setDropdownPrendaEditVisible(q.trim().length > 0);
                                   setIndiceSeleccionadoPrendaEdit(-1);
                                   setDropdownPrendaEditPos(posicionDropdownPrendaCotizacion(e.currentTarget));
                                   if (partida.es_manual) {
@@ -3271,7 +3274,6 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                                   setDropdownPrendaEditPos(posicionDropdownPrendaCotizacion(e.currentTarget));
                                   setEditPartidaIdx(index);
                                   setBusquedaPrendaEdit(partida.prenda_nombre);
-                                  setDropdownPrendaEditVisible(true);
                                   setIndiceSeleccionadoPrendaEdit(-1);
                                   if (partida.prenda_nombre.trim()) {
                                     seleccionarTodoTextoInput(e.currentTarget);
@@ -4402,7 +4404,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
         document.body
       )}
 
-      {mounted && dropdownPrendaPos && dropdownPrendaVisible && createPortal(
+      {mounted && dropdownPrendaPos && dropdownPrendaVisible && busquedaPrenda.trim() && createPortal(
         prendasMostrar.length > 0 ? (
           <div
             ref={dropdownPrendaPortalRef}
@@ -4464,7 +4466,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       )}
 
       {/* Portal: Autocomplete de prenda en edición de partidas */}
-      {mounted && dropdownPrendaEditPos && dropdownPrendaEditVisible && createPortal(
+      {mounted && dropdownPrendaEditPos && dropdownPrendaEditVisible && busquedaPrendaEdit.trim() && createPortal(
         prendasEditMostrar.length > 0 ? (
           <div
             ref={dropdownPrendaEditPortalRef}
