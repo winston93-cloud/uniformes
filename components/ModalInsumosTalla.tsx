@@ -534,7 +534,21 @@ export default function ModalInsumosTalla({
                           </button>
                         </div>
                       ) : (
-                        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                        <div className="acciones-fila" style={{ gap: '1rem', alignItems: 'center' }}>
+                          <button
+                            onClick={() => handleEliminar(item.id, item.insumo?.nombre || 'este insumo')}
+                            style={{
+                              padding: '0.5rem 0.75rem',
+                              background: '#fee2e2',
+                              border: '1px solid #fecaca',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              fontSize: '0.9rem'
+                            }}
+                            title="Eliminar"
+                          >
+                            🗑️
+                          </button>
                           <div style={{ textAlign: 'right' }}>
                             <div style={{ fontWeight: '700', fontSize: '1.1rem', color: '#667eea' }}>
                               {item.cantidad}
@@ -559,20 +573,6 @@ export default function ModalInsumosTalla({
                             title="Editar cantidad"
                           >
                             ✏️
-                          </button>
-                          <button
-                            onClick={() => handleEliminar(item.id, item.insumo?.nombre || 'este insumo')}
-                            style={{
-                              padding: '0.5rem 0.75rem',
-                              background: '#fee2e2',
-                              border: '1px solid #fecaca',
-                              borderRadius: '6px',
-                              cursor: 'pointer',
-                              fontSize: '0.9rem'
-                            }}
-                            title="Eliminar"
-                          >
-                            🗑️
                           </button>
                         </div>
                       )}

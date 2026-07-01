@@ -61,6 +61,15 @@ export default function PartidaAccionesToolbar({
 
   return (
     <div className="cotizacion-partida-acciones">
+      <button
+        type="button"
+        className="cotizacion-partida-btn cotizacion-partida-btn--eliminar"
+        onClick={onEliminar}
+        title="Eliminar partida"
+        aria-label={`Eliminar partida ${index + 1}`}
+      >
+        <IconEliminar />
+      </button>
       <div className="cotizacion-partida-acciones-orden" role="group" aria-label={`Acciones posición partida ${index + 1}`}>
         <button
           type="button"
@@ -93,15 +102,6 @@ export default function PartidaAccionesToolbar({
           <IconBajar />
         </button>
       </div>
-      <button
-        type="button"
-        className="cotizacion-partida-btn cotizacion-partida-btn--eliminar"
-        onClick={onEliminar}
-        title="Eliminar partida"
-        aria-label={`Eliminar partida ${index + 1}`}
-      >
-        <IconEliminar />
-      </button>
     </div>
   );
 }

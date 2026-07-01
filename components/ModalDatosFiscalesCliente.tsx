@@ -602,7 +602,7 @@ export default function ModalDatosFiscalesCliente({ open, onClose, tipoCliente, 
                 </p>
               )}
 
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', justifyContent: 'flex-end' }}>
+              <div className="acciones-fila" style={{ flexWrap: 'wrap', gap: '0.75rem', justifyContent: 'flex-start' }}>
                 {registroId && (
                   <button
                     type="button"

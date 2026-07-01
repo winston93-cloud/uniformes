@@ -270,16 +270,7 @@ export default function ModalCatalogosSatPago({
                     : 'Captura un registro nuevo o selecciona uno de la lista.'}
                 </p>
               </div>
-              <div className="modal-catalogos-sat-form-toolbar">
-                <button
-                  type="button"
-                  className="modal-catalogos-sat-toolbar-btn modal-catalogos-sat-toolbar-btn--primary"
-                  onClick={nuevaFila}
-                  disabled={guardando}
-                >
-                  <IconPlus />
-                  Nuevo
-                </button>
+              <div className="modal-catalogos-sat-form-toolbar acciones-fila">
                 {editId && (
                   <button
                     type="button"
@@ -291,6 +282,15 @@ export default function ModalCatalogosSatPago({
                     Eliminar
                   </button>
                 )}
+                <button
+                  type="button"
+                  className="modal-catalogos-sat-toolbar-btn modal-catalogos-sat-toolbar-btn--primary"
+                  onClick={nuevaFila}
+                  disabled={guardando}
+                >
+                  <IconPlus />
+                  Nuevo
+                </button>
               </div>
             </div>
 

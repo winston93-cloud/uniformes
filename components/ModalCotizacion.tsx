@@ -2616,7 +2616,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                   {/* Header de la tabla */}
                   <div className="subpartidas-grid-header" style={{
                     display: 'grid',
-                    gridTemplateColumns: '1fr 80px 100px 40px',
+                    gridTemplateColumns: '40px 1fr 80px 100px',
                     gap: '0.5rem',
                     padding: '0.5rem',
                     background: cotizacionDirecta ? '#1e40af' : '#667eea',
@@ -2625,10 +2625,10 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                     fontWeight: 'bold',
                     fontSize: '0.85rem',
                   }}>
+                    <div></div>
                     <div>Talla</div>
                     <div>Cantidad</div>
                     <div>Precio</div>
-                    <div></div>
                   </div>
 
                   {/* Filas de sub-partidas */}
@@ -2638,7 +2638,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                       className="subpartidas-grid-row"
                       style={{
                         display: 'grid',
-                        gridTemplateColumns: '1fr 80px 100px 40px',
+                        gridTemplateColumns: '40px 1fr 80px 100px',
                         gap: '0.5rem',
                         padding: '0.75rem 0.5rem',
                         background: 'white',
@@ -2646,6 +2646,24 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                         alignItems: 'center',
                       }}
                     >
+                      {/* Botón eliminar */}
+                      <button
+                        onClick={() => eliminarSubPartida(sp.id)}
+                        disabled={subPartidas.length === 1}
+                        title="Eliminar fila"
+                        style={{
+                          padding: '0.5rem',
+                          background: subPartidas.length === 1 ? '#e5e7eb' : '#ef4444',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: subPartidas.length === 1 ? 'not-allowed' : 'pointer',
+                          fontSize: '1rem',
+                        }}
+                      >
+                        🗑️
+                      </button>
+
                       {/* Talla */}
                       {cotizacionDirecta ? (
                         /* Modo manual: Input de texto */
@@ -2787,23 +2805,6 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                         />
                       )}
 
-                      {/* Botón eliminar */}
-                      <button
-                        onClick={() => eliminarSubPartida(sp.id)}
-                        disabled={subPartidas.length === 1}
-                        title="Eliminar fila"
-                        style={{
-                          padding: '0.5rem',
-                          background: subPartidas.length === 1 ? '#e5e7eb' : '#ef4444',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '4px',
-                          cursor: subPartidas.length === 1 ? 'not-allowed' : 'pointer',
-                          fontSize: '1rem',
-                        }}
-                      >
-                        🗑️
-                      </button>
                     </div>
                   ))}
 
@@ -3854,6 +3855,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                         </td>
                         <td style={{ padding: '1rem', textAlign: 'center' }}>
                           <div
+                            className="acciones-fila"
                             style={{
                               display: 'inline-flex',
                               flexWrap: 'wrap',
@@ -3862,6 +3864,36 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                               alignItems: 'center',
                             }}
                           >
+                            <button
+                              type="button"
+                              onClick={() => confirmarYEliminarCotizacion(cot)}
+                              disabled={eliminandoCotizacionId === cot.id || cot.estado !== 'emitido'}
+                              style={{
+                                background:
+                                  eliminandoCotizacionId === cot.id || cot.estado !== 'emitido'
+                                    ? '#e5e7eb'
+                                    : '#dc2626',
+                                color:
+                                  eliminandoCotizacionId === cot.id || cot.estado !== 'emitido'
+                                    ? '#6b7280'
+                                    : 'white',
+                                border: 'none',
+                                padding: '0.5rem 1rem',
+                                borderRadius: '4px',
+                                cursor:
+                                  eliminandoCotizacionId === cot.id || cot.estado !== 'emitido'
+                                    ? 'not-allowed'
+                                    : 'pointer',
+                                fontWeight: 'bold',
+                              }}
+                              title={
+                                cot.estado !== 'emitido'
+                                  ? 'Solo se permite eliminar en estado Emitido'
+                                  : 'Eliminar definitivamente'
+                              }
+                            >
+                              {eliminandoCotizacionId === cot.id ? '⏳ Eliminando…' : '🗑 Eliminar'}
+                            </button>
                             <button
                               type="button"
                               onClick={() => verPDF(cot)}
@@ -3895,36 +3927,6 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                                 ✏️ Modificar
                               </button>
                             ) : null}
-                            <button
-                              type="button"
-                              onClick={() => confirmarYEliminarCotizacion(cot)}
-                              disabled={eliminandoCotizacionId === cot.id || cot.estado !== 'emitido'}
-                              style={{
-                                background:
-                                  eliminandoCotizacionId === cot.id || cot.estado !== 'emitido'
-                                    ? '#e5e7eb'
-                                    : '#dc2626',
-                                color:
-                                  eliminandoCotizacionId === cot.id || cot.estado !== 'emitido'
-                                    ? '#6b7280'
-                                    : 'white',
-                                border: 'none',
-                                padding: '0.5rem 1rem',
-                                borderRadius: '4px',
-                                cursor:
-                                  eliminandoCotizacionId === cot.id || cot.estado !== 'emitido'
-                                    ? 'not-allowed'
-                                    : 'pointer',
-                                fontWeight: 'bold',
-                              }}
-                              title={
-                                cot.estado !== 'emitido'
-                                  ? 'Solo se permite eliminar en estado Emitido'
-                                  : 'Eliminar definitivamente'
-                              }
-                            >
-                              {eliminandoCotizacionId === cot.id ? '⏳ Eliminando…' : '🗑 Eliminar'}
-                            </button>
                           </div>
                         </td>
                       </tr>

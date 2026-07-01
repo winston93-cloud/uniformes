@@ -352,20 +352,20 @@ export default function PresentacionesPage() {
                       </span>
                     </td>
                     <td>
-                      <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
-                        <button
-                          className="btn btn-secondary"
-                          style={{ padding: '0.5rem 1rem' }}
-                          onClick={() => handleEditar(presentacion)}
-                        >
-                          ✏️ Editar
-                        </button>
+                      <div className="acciones-fila" style={{ gap: '2rem', alignItems: 'center' }}>
                         <button
                           className="btn btn-danger"
                           style={{ padding: '0.5rem 1rem' }}
                           onClick={() => handleEliminar(presentacion.id)}
                         >
                           🗑️ Eliminar
+                        </button>
+                        <button
+                          className="btn btn-secondary"
+                          style={{ padding: '0.5rem 1rem' }}
+                          onClick={() => handleEditar(presentacion)}
+                        >
+                          ✏️ Editar
                         </button>
                       </div>
                     </td>

@@ -497,6 +497,24 @@ body {
   margin-top: 2rem;
 }
 
+/* Eliminar siempre al inicio (izquierda) en grupos de acciones */
+.acciones-fila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.acciones-fila > .btn-danger,
+.acciones-fila > button.btn-danger,
+.acciones-fila > .modal-catalogos-sat-toolbar-btn--danger,
+.acciones-fila > .cotizacion-partida-btn--eliminar,
+.acciones-fila > button[title='Eliminar'],
+.acciones-fila > button[title='Eliminar fila'],
+.acciones-fila > button[title='Eliminar partida'],
+.acciones-fila > button[aria-label='Eliminar concepto'] {
+  order: -1;
+}
+
 /* Tabla */
 .table-container {
   background: var(--card-bg);
@@ -594,7 +612,7 @@ body {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 0.5rem;
 }
 
@@ -1169,7 +1187,7 @@ body {
   flex-shrink: 0;
   flex-wrap: wrap;
   gap: 0.45rem;
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 .modal-catalogos-sat-toolbar-btn {

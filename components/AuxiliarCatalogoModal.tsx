@@ -120,15 +120,15 @@ export default function AuxiliarCatalogoModal({
               </span>
             </label>
           </div>
-          <div className="btn-group" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
-            <button type="submit" className="btn btn-primary" disabled={guardando}>
-              {guardando ? 'Guardando…' : '💾 Guardar'}
-            </button>
+          <div className="btn-group acciones-fila" style={{ flexWrap: 'wrap', gap: '0.5rem', justifyContent: 'flex-start', marginTop: '1.5rem' }}>
             {mostrarEliminar && onDelete && (
               <button type="button" className="btn btn-danger" onClick={onDelete} disabled={guardando}>
                 🗑️ Eliminar
               </button>
             )}
+            <button type="submit" className="btn btn-primary" disabled={guardando}>
+              {guardando ? 'Guardando…' : '💾 Guardar'}
+            </button>
             <button type="button" className="btn btn-secondary" onClick={onClose} disabled={guardando}>
               Cancelar
             </button>

@@ -226,20 +226,22 @@ export default function ExternosPage() {
                       </span>
                     </td>
                     <td>
-                      <button
-                        className="btn btn-secondary"
-                        style={{ marginRight: '0.5rem', padding: '0.5rem 1rem' }}
-                        onClick={() => handleEditar(cliente)}
-                      >
-                        ✏️ Editar
-                      </button>
-                      <button
-                        className="btn btn-danger"
-                        style={{ padding: '0.5rem 1rem' }}
-                        onClick={() => handleEliminar(cliente.id)}
-                      >
-                        🗑️ Eliminar
-                      </button>
+                      <div className="acciones-fila" style={{ gap: '0.5rem' }}>
+                        <button
+                          className="btn btn-danger"
+                          style={{ padding: '0.5rem 1rem' }}
+                          onClick={() => handleEliminar(cliente.id)}
+                        >
+                          🗑️ Eliminar
+                        </button>
+                        <button
+                          className="btn btn-secondary"
+                          style={{ padding: '0.5rem 1rem' }}
+                          onClick={() => handleEditar(cliente)}
+                        >
+                          ✏️ Editar
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))

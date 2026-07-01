@@ -313,6 +313,7 @@ export default function ModalCostosPrenda({
             <table className="table" style={{ margin: 0 }}>
               <thead>
                 <tr>
+                  {onEliminarTalla ? <th style={{ width: 90 }} /> : null}
                   <th style={{ width: 44 }}>
                     <input
                       type="checkbox"
@@ -324,12 +325,40 @@ export default function ModalCostosPrenda({
                   <th>Talla</th>
                   <th>📦 Mayoreo</th>
                   <th>🛍️ Menudeo</th>
-                  {onEliminarTalla ? <th style={{ width: 90 }} /> : null}
                 </tr>
               </thead>
               <tbody>
                 {filas.map((fila) => (
                   <tr key={fila.costoId} style={{ background: fila.selected ? 'rgba(249, 115, 22, 0.06)' : undefined }}>
+                    {onEliminarTalla ? (
+                      <td>
+                        <button
+                          type="button"
+                          className="btn btn-danger"
+                          style={{ padding: '0.35rem 0.55rem', fontSize: '0.78rem' }}
+                          onClick={async () => {
+                            if (
+                              !confirm(
+                                `¿Eliminar costo de talla ${fila.tallaNombre}? Esta acción no se puede deshacer.`
+                              )
+                            ) {
+                              return;
+                            }
+                            const r = await onEliminarTalla(fila.costoId, fila.tallaNombre);
+                            if (r.ok) {
+                              setFilas((prev) => prev.filter((x) => x.costoId !== fila.costoId));
+                              if (r.info) {
+                                setMensaje({ tipo: 'ok', text: r.info });
+                              }
+                            } else {
+                              setMensaje({ tipo: 'err', text: r.error || 'No se pudo eliminar.' });
+                            }
+                          }}
+                        >
+                          🗑️
+                        </button>
+                      </td>
+                    ) : null}
                     <td>
                       <input
                         type="checkbox"
@@ -365,35 +394,6 @@ export default function ModalCostosPrenda({
                         style={{ maxWidth: 120, padding: '0.45rem 0.5rem', fontWeight: 600, color: '#059669' }}
                       />
                     </td>
-                    {onEliminarTalla ? (
-                      <td>
-                        <button
-                          type="button"
-                          className="btn btn-danger"
-                          style={{ padding: '0.35rem 0.55rem', fontSize: '0.78rem' }}
-                          onClick={async () => {
-                            if (
-                              !confirm(
-                                `¿Eliminar costo de talla ${fila.tallaNombre}? Esta acción no se puede deshacer.`
-                              )
-                            ) {
-                              return;
-                            }
-                            const r = await onEliminarTalla(fila.costoId, fila.tallaNombre);
-                            if (r.ok) {
-                              setFilas((prev) => prev.filter((x) => x.costoId !== fila.costoId));
-                              if (r.info) {
-                                setMensaje({ tipo: 'ok', text: r.info });
-                              }
-                            } else {
-                              setMensaje({ tipo: 'err', text: r.error || 'No se pudo eliminar.' });
-                            }
-                          }}
-                        >
-                          🗑️
-                        </button>
-                      </td>
-                    ) : null}
                   </tr>
                 ))}
               </tbody>

@@ -258,6 +258,13 @@ export default function ModalGastosFijos({ onClose }: ModalGastosFijosProps) {
                   <th
                     style={{
                       padding: '0.75rem 1rem',
+                      width: '48px',
+                      borderBottom: '1px solid #e5e7eb',
+                    }}
+                  />
+                  <th
+                    style={{
+                      padding: '0.75rem 1rem',
                       textAlign: 'left',
                       fontWeight: 600,
                       fontSize: '0.85rem',
@@ -280,13 +287,6 @@ export default function ModalGastosFijos({ onClose }: ModalGastosFijosProps) {
                   >
                     Monto ($)
                   </th>
-                  <th
-                    style={{
-                      padding: '0.75rem 1rem',
-                      width: '48px',
-                      borderBottom: '1px solid #e5e7eb',
-                    }}
-                  />
                 </tr>
               </thead>
               <tbody>
@@ -310,6 +310,24 @@ export default function ModalGastosFijos({ onClose }: ModalGastosFijosProps) {
                       key={gasto.id}
                       style={{ borderBottom: '1px solid #f3f4f6' }}
                     >
+                      <td style={{ padding: '0.5rem 1rem' }}>
+                        <button
+                          type="button"
+                          onClick={() => eliminarConcepto(gasto.id)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            padding: '0.5rem',
+                            color: '#ef4444',
+                            borderRadius: '8px',
+                          }}
+                          aria-label="Eliminar concepto"
+                          title="Eliminar"
+                        >
+                          <Trash2 size={20} />
+                        </button>
+                      </td>
                       <td style={{ padding: '0.5rem 1rem' }}>
                         <input
                           type="text"
@@ -335,24 +353,6 @@ export default function ModalGastosFijos({ onClose }: ModalGastosFijosProps) {
                           className="form-input"
                           style={{ margin: 0, textAlign: 'right' }}
                         />
-                      </td>
-                      <td style={{ padding: '0.5rem 1rem' }}>
-                        <button
-                          type="button"
-                          onClick={() => eliminarConcepto(gasto.id)}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            padding: '0.5rem',
-                            color: '#ef4444',
-                            borderRadius: '8px',
-                          }}
-                          aria-label="Eliminar concepto"
-                          title="Eliminar"
-                        >
-                          <Trash2 size={20} />
-                        </button>
                       </td>
                     </tr>
                   ))
@@ -441,8 +441,8 @@ export default function ModalGastosFijos({ onClose }: ModalGastosFijosProps) {
                 {gastosGuardados.map((g) => (
                   <div
                     key={g.id}
+                    className="acciones-fila"
                     style={{
-                      display: 'flex',
                       justifyContent: 'space-between',
                       gap: '1rem',
                       padding: '0.6rem 0.75rem',
@@ -451,27 +451,28 @@ export default function ModalGastosFijos({ onClose }: ModalGastosFijosProps) {
                       background: 'rgba(255,255,255,0.65)',
                     }}
                   >
-                    <span style={{ color: '#374151', fontWeight: 700 }}>{g.nombre}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleEliminarConcepto(g.nombre)}
+                      disabled={eliminandoNombre === g.nombre}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        cursor: eliminandoNombre === g.nombre ? 'not-allowed' : 'pointer',
+                        padding: '0.25rem',
+                        color: eliminandoNombre === g.nombre ? '#fca5a5' : '#ef4444',
+                        borderRadius: '8px',
+                        lineHeight: 0,
+                        flexShrink: 0,
+                      }}
+                      aria-label="Eliminar concepto"
+                      title="Eliminar"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                    <span style={{ color: '#374151', fontWeight: 700, flex: 1 }}>{g.nombre}</span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                       <span style={{ color: '#92400e', fontWeight: 900 }}>${g.monto.toFixed(2)}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleEliminarConcepto(g.nombre)}
-                        disabled={eliminandoNombre === g.nombre}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          cursor: eliminandoNombre === g.nombre ? 'not-allowed' : 'pointer',
-                          padding: '0.25rem',
-                          color: eliminandoNombre === g.nombre ? '#fca5a5' : '#ef4444',
-                          borderRadius: '8px',
-                          lineHeight: 0,
-                        }}
-                        aria-label="Eliminar concepto"
-                        title="Eliminar"
-                      >
-                        <Trash2 size={18} />
-                      </button>
                     </div>
                   </div>
                 ))}

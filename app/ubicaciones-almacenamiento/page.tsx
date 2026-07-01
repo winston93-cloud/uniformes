@@ -242,9 +242,9 @@ export default function UbicacionesAlmacenamientoPage() {
                       <span className={`badge ${u.activo ? 'badge-success' : 'badge-danger'}`}>{u.activo ? '✓ Activa' : '✗ Inactiva'}</span>
                     </td>
                     <td>
-                      <div style={{ display: 'flex', gap: '1rem' }}>
-                        <button className="btn btn-secondary" style={{ padding: '0.5rem 1rem' }} onClick={() => handleEditar(u)}>✏️ Editar</button>
+                      <div className="acciones-fila" style={{ gap: '1rem' }}>
                         <button className="btn btn-danger" style={{ padding: '0.5rem 1rem' }} onClick={() => handleEliminar(u.id)}>🗑️ Eliminar</button>
+                        <button className="btn btn-secondary" style={{ padding: '0.5rem 1rem' }} onClick={() => handleEditar(u)}>✏️ Editar</button>
                       </div>
                     </td>
                   </tr>

@@ -1145,6 +1145,7 @@ function PedidosPageContent() {
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr style={{ backgroundColor: '#f8f9fa', borderBottom: '2px solid #dee2e6' }}>
+                        <th style={{ padding: '0.3rem', textAlign: 'center', fontWeight: '600', fontSize: '0.75rem' }}>🗑️</th>
                         <th style={{ padding: '0.3rem', textAlign: 'left', fontWeight: '600', fontSize: '0.75rem' }}>👕 Prenda</th>
                         <th style={{ padding: '0.3rem', textAlign: 'left', fontWeight: '600', fontSize: '0.75rem' }}>📏 Talla</th>
                         <th style={{ padding: '0.3rem', textAlign: 'left', fontWeight: '600', fontSize: '0.75rem' }}>ℹ️ Especif.</th>
@@ -1154,7 +1155,6 @@ function PedidosPageContent() {
                         <th style={{ padding: '0.3rem', textAlign: 'center', fontWeight: '600', fontSize: '0.75rem' }}>⚠️ Pend.</th>
                         <th style={{ padding: '0.3rem', textAlign: 'right', fontWeight: '600', fontSize: '0.75rem' }}>$ Precio</th>
                         <th style={{ padding: '0.3rem', textAlign: 'right', fontWeight: '600', fontSize: '0.75rem' }}>Total</th>
-                        <th style={{ padding: '0.3rem', textAlign: 'center', fontWeight: '600', fontSize: '0.75rem' }}>🗑️</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1189,6 +1189,28 @@ function PedidosPageContent() {
                       
                       {/* Fila para agregar nuevo detalle */}
                       <tr style={{ borderBottom: '2px solid #3b82f6', backgroundColor: '#f8fafc' }}>
+                        <td style={{ padding: '0.5rem', textAlign: 'center' }}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDetalleActual({ 
+                                prenda_id: '', 
+                                prenda_nombre: '',
+                                talla_id: '', 
+                                talla_nombre: '',
+                                especificaciones: '',
+                                cantidad: '', 
+                                precio: '0' 
+                              });
+                              setTextoPrendaBusqueda('');
+                              setTallasDisponibles([]);
+                            }}
+                            className="btn btn-danger"
+                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                          >
+                            🗑️
+                          </button>
+                        </td>
                         <td style={{ padding: '0.5rem' }}>
                           <div ref={contenedorPrendaRef} style={{ position: 'relative' }}>
                             <input
@@ -1365,28 +1387,6 @@ function PedidosPageContent() {
                         <td style={{ padding: '0.5rem', textAlign: 'right', fontWeight: '600', fontSize: '0.85rem' }}>
                           ${((parseFloat(detalleActual.cantidad) || 0) * (parseFloat(detalleActual.precio) || 0)).toFixed(2)}
                         </td>
-                        <td style={{ padding: '0.5rem', textAlign: 'center' }}>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setDetalleActual({ 
-                                prenda_id: '', 
-                                prenda_nombre: '',
-                                talla_id: '', 
-                                talla_nombre: '',
-                                especificaciones: '',
-                                cantidad: '', 
-                                precio: '0' 
-                              });
-                              setTextoPrendaBusqueda('');
-                              setTallasDisponibles([]);
-                            }}
-                            className="btn btn-danger"
-                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
-                          >
-                            🗑️
-                          </button>
-                        </td>
                       </tr>
 
                       {/* Separador visual elegante */}
@@ -1441,6 +1441,16 @@ function PedidosPageContent() {
                             borderLeft: (detalle.cantidad_pendiente || 0) > 0 ? '4px solid #ef4444' : 'none'
                           }}
                         >
+                          <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                            <button
+                              type="button"
+                              onClick={() => eliminarDetalle(index)}
+                              className="btn btn-danger"
+                              style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}
+                            >
+                              🗑️
+                            </button>
+                          </td>
                           <td style={{ padding: '0.75rem', fontWeight: '600' }}>
                             {(detalle.cantidad_pendiente || 0) > 0 && (
                               <span style={{ 
@@ -1571,16 +1581,6 @@ function PedidosPageContent() {
                           </td>
                           <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: '700', color: (detalle.cantidad_pendiente || 0) > 0 ? '#f59e0b' : '#10b981' }}>
                             ${detalle.total.toFixed(2)}
-                          </td>
-                          <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                            <button
-                              type="button"
-                              onClick={() => eliminarDetalle(index)}
-                              className="btn btn-danger"
-                              style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}
-                            >
-                              🗑️
-                            </button>
                           </td>
                         </tr>
                       ))}

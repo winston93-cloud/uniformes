@@ -238,12 +238,12 @@ export default function UsuariosPage() {
                       </span>
                     </td>
                     <td>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                        <button type="button" className="btn btn-secondary" onClick={() => abrirEditar(u)}>
-                          ✏️ Editar
-                        </button>
+                      <div className="acciones-fila" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
                         <button type="button" className="btn btn-danger" onClick={() => handleEliminar(u)}>
                           🗑️ Eliminar
+                        </button>
+                        <button type="button" className="btn btn-secondary" onClick={() => abrirEditar(u)}>
+                          ✏️ Editar
                         </button>
                       </div>
                     </td>

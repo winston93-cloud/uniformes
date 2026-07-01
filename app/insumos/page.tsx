@@ -903,33 +903,35 @@ export default function InsumosPage() {
                       </option>
                     ))}
                   </select>
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    style={{ padding: '0.45rem 0.85rem', fontSize: '0.88rem', whiteSpace: 'nowrap' }}
-                    onClick={abrirNuevaPresentacion}
-                    disabled={loadingPresentaciones || auxGuardando}
-                  >
-                    + Nueva
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    style={{ padding: '0.45rem 0.85rem', fontSize: '0.88rem', whiteSpace: 'nowrap' }}
-                    onClick={abrirEditarPresentacion}
-                    disabled={!formData.presentacion_id || loadingPresentaciones || auxGuardando}
-                  >
-                    Editar
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-danger"
-                    style={{ padding: '0.45rem 0.85rem', fontSize: '0.88rem', whiteSpace: 'nowrap' }}
-                    onClick={() => void eliminarPresentacionSeleccionada(false)}
-                    disabled={!formData.presentacion_id || loadingPresentaciones || auxGuardando}
-                  >
-                    Eliminar
-                  </button>
+                  <div className="acciones-fila" style={{ gap: '0.5rem' }}>
+                    <button
+                      type="button"
+                      className="btn btn-danger"
+                      style={{ padding: '0.45rem 0.85rem', fontSize: '0.88rem', whiteSpace: 'nowrap' }}
+                      onClick={() => void eliminarPresentacionSeleccionada(false)}
+                      disabled={!formData.presentacion_id || loadingPresentaciones || auxGuardando}
+                    >
+                      Eliminar
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      style={{ padding: '0.45rem 0.85rem', fontSize: '0.88rem', whiteSpace: 'nowrap' }}
+                      onClick={abrirNuevaPresentacion}
+                      disabled={loadingPresentaciones || auxGuardando}
+                    >
+                      + Nueva
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      style={{ padding: '0.45rem 0.85rem', fontSize: '0.88rem', whiteSpace: 'nowrap' }}
+                      onClick={abrirEditarPresentacion}
+                      disabled={!formData.presentacion_id || loadingPresentaciones || auxGuardando}
+                    >
+                      Editar
+                    </button>
+                  </div>
                 </div>
                 <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
                   Opcional. Puedes crear o editar entradas del catálogo con + Nueva / Editar sin salir del formulario.
@@ -1126,33 +1128,35 @@ export default function InsumosPage() {
                       </option>
                     ))}
                   </select>
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    style={{ padding: '0.45rem 0.85rem', fontSize: '0.88rem', whiteSpace: 'nowrap' }}
-                    onClick={abrirNuevaUbicacion}
-                    disabled={loadingUbicaciones || auxGuardando}
-                  >
-                    + Nueva
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    style={{ padding: '0.45rem 0.85rem', fontSize: '0.88rem', whiteSpace: 'nowrap' }}
-                    onClick={abrirEditarUbicacion}
-                    disabled={!ubicacionCatalogoSeleccionada || loadingUbicaciones || auxGuardando}
-                  >
-                    Editar
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-danger"
-                    style={{ padding: '0.45rem 0.85rem', fontSize: '0.88rem', whiteSpace: 'nowrap' }}
-                    onClick={() => void eliminarUbicacionSeleccionada(false)}
-                    disabled={!ubicacionCatalogoSeleccionada || loadingUbicaciones || auxGuardando}
-                  >
-                    Eliminar
-                  </button>
+                  <div className="acciones-fila" style={{ gap: '0.5rem' }}>
+                    <button
+                      type="button"
+                      className="btn btn-danger"
+                      style={{ padding: '0.45rem 0.85rem', fontSize: '0.88rem', whiteSpace: 'nowrap' }}
+                      onClick={() => void eliminarUbicacionSeleccionada(false)}
+                      disabled={!ubicacionCatalogoSeleccionada || loadingUbicaciones || auxGuardando}
+                    >
+                      Eliminar
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      style={{ padding: '0.45rem 0.85rem', fontSize: '0.88rem', whiteSpace: 'nowrap' }}
+                      onClick={abrirNuevaUbicacion}
+                      disabled={loadingUbicaciones || auxGuardando}
+                    >
+                      + Nueva
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      style={{ padding: '0.45rem 0.85rem', fontSize: '0.88rem', whiteSpace: 'nowrap' }}
+                      onClick={abrirEditarUbicacion}
+                      disabled={!ubicacionCatalogoSeleccionada || loadingUbicaciones || auxGuardando}
+                    >
+                      Editar
+                    </button>
+                  </div>
                   <button
                     type="button"
                     className="btn btn-primary"
@@ -1535,8 +1539,8 @@ export default function InsumosPage() {
                     </td>
                     <td data-label="Acciones" style={{ verticalAlign: 'middle' }}>
                       <div
+                        className="acciones-fila"
                         style={{
-                          display: 'flex',
                           flexWrap: 'wrap',
                           gap: '0.5rem',
                           alignItems: 'center',
@@ -1546,19 +1550,19 @@ export default function InsumosPage() {
                       >
                         <button
                           type="button"
-                          className="btn btn-secondary"
-                          style={{ padding: '0.5rem 0.75rem', flex: '1 1 auto', minWidth: 'min(100%, 7.5rem)' }}
-                          onClick={() => handleEditar(insumo)}
-                        >
-                          ✏️ Editar
-                        </button>
-                        <button
-                          type="button"
                           className="btn btn-danger"
                           style={{ padding: '0.5rem 0.75rem', flex: '1 1 auto', minWidth: 'min(100%, 7.5rem)' }}
                           onClick={() => handleEliminar(insumo.id)}
                         >
                           🗑️ Eliminar
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          style={{ padding: '0.5rem 0.75rem', flex: '1 1 auto', minWidth: 'min(100%, 7.5rem)' }}
+                          onClick={() => handleEditar(insumo)}
+                        >
+                          ✏️ Editar
                         </button>
                       </div>
                     </td>
