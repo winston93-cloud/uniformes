@@ -109,7 +109,7 @@ function estilosEstadoCotizacion(estado: string) {
 
 export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   // Estados principales
-  const [vista, setVista] = useState<'nueva' | 'historial'>('nueva');
+  const [vista, setVista] = useState<'nueva' | 'historial' | 'en_proceso'>('nueva');
   const [tipoPrecio, setTipoPrecio] = useState<'mayoreo' | 'menudeo' | null>('menudeo');
   const [tipoCliente, setTipoCliente] = useState<'alumno' | 'externo'>('externo');
   const [cotizacionDirecta, setCotizacionDirecta] = useState(false);
@@ -362,21 +362,46 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     setIndiceSeleccionadoPrenda(-1);
   };
 
-  // Filtrar cotizaciones por cliente y fecha
-  const cotizacionesFiltradas = useMemo(() => {
-    const filtradas = cotizaciones.filter((cot) => {
-      // Filtro por cliente
-      const nombreCliente = (cot.alumno?.nombre || cot.externo?.nombre || '').toLowerCase();
-      const cumpleFiltroCliente = !filtroCliente.trim() || nombreCliente.includes(filtroCliente.toLowerCase());
+  const filtrarCotizacionesPorClienteYFecha = useMemo(() => {
+    return (lista: Cotizacion[]) => {
+      const filtradas = lista.filter((cot) => {
+        const nombreCliente = (cot.alumno?.nombre || cot.externo?.nombre || '').toLowerCase();
+        const cumpleFiltroCliente = !filtroCliente.trim() || nombreCliente.includes(filtroCliente.toLowerCase());
+        const fechaCotizacion = new Date(cot.fecha_cotizacion).toISOString().split('T')[0];
+        const cumpleFiltroFecha = !filtroFecha || fechaCotizacion === filtroFecha;
+        return cumpleFiltroCliente && cumpleFiltroFecha;
+      });
+      return [...filtradas].sort(compareCotizacionesPorFechaCotizacionDesc);
+    };
+  }, [filtroCliente, filtroFecha]);
 
-      // Filtro por fecha
-      const fechaCotizacion = new Date(cot.fecha_cotizacion).toISOString().split('T')[0];
-      const cumpleFiltroFecha = !filtroFecha || fechaCotizacion === filtroFecha;
+  const cotizacionesEnProceso = useMemo(
+    () => cotizaciones.filter((c) => esEstadoBorradorCotizacion(c.estado)),
+    [cotizaciones]
+  );
 
-      return cumpleFiltroCliente && cumpleFiltroFecha;
-    });
-    return [...filtradas].sort(compareCotizacionesPorFechaCotizacionDesc);
-  }, [cotizaciones, filtroCliente, filtroFecha]);
+  const cotizacionesHistorial = useMemo(
+    () => cotizaciones.filter((c) => !esEstadoBorradorCotizacion(c.estado)),
+    [cotizaciones]
+  );
+
+  const cotizacionesEnProcesoFiltradas = useMemo(
+    () => filtrarCotizacionesPorClienteYFecha(cotizacionesEnProceso),
+    [filtrarCotizacionesPorClienteYFecha, cotizacionesEnProceso]
+  );
+
+  const cotizacionesHistorialFiltradas = useMemo(
+    () => filtrarCotizacionesPorClienteYFecha(cotizacionesHistorial),
+    [filtrarCotizacionesPorClienteYFecha, cotizacionesHistorial]
+  );
+
+  const cotizacionesFiltradasEnVista = vista === 'en_proceso'
+    ? cotizacionesEnProcesoFiltradas
+    : cotizacionesHistorialFiltradas;
+
+  const cotizacionesTotalesEnVista = vista === 'en_proceso'
+    ? cotizacionesEnProceso
+    : cotizacionesHistorial;
 
   // Montar componente (necesario para portales)
   useEffect(() => {
@@ -409,7 +434,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   }, []);
 
   useEffect(() => {
-    if (vista === 'historial') {
+    if (vista === 'historial' || vista === 'en_proceso') {
       void obtenerCotizaciones();
     }
   }, [vista, obtenerCotizaciones]);
@@ -1940,6 +1965,23 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
             ➕ Nueva Cotización
           </button>
           <button
+            type="button"
+            onClick={() => setVista('en_proceso')}
+            style={{
+              padding: '1rem 2rem',
+              background: vista === 'en_proceso' ? 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)' : 'transparent',
+              color: vista === 'en_proceso' ? 'white' : '#666',
+              border: 'none',
+              borderBottom: vista === 'en_proceso' ? '3px solid #8b5cf6' : 'none',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              fontSize: '1rem',
+            }}
+          >
+            📝 En proceso ({cotizacionesEnProceso.length})
+          </button>
+          <button
+            type="button"
             onClick={() => setVista('historial')}
             style={{
               padding: '1rem 2rem',
@@ -1952,14 +1994,31 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
               fontSize: '1rem',
             }}
           >
-            📋 Historial ({cotizaciones.length})
+            📋 Historial ({cotizacionesHistorial.length})
           </button>
         </div>
 
         {/* Contenido */}
         {vista === 'nueva' ? (
           <div>
-            {cotizacionEditId && (
+            {cotizacionEditId && esEstadoBorradorCotizacion(cotizacionEstadoActual || '') && (
+              <div
+                style={{
+                  marginBottom: '1rem',
+                  padding: '0.85rem 1rem',
+                  background: 'linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)',
+                  border: '2px solid #a78bfa',
+                  borderRadius: '10px',
+                  color: '#5b21b6',
+                  fontWeight: 600,
+                  fontSize: '0.95rem',
+                }}
+              >
+                📝 Continuando borrador <strong>En proceso</strong>: las partidas se guardan solas. Pulsa{' '}
+                <strong>Generar cotización</strong> cuando termines.
+              </div>
+            )}
+            {cotizacionEditId && cotizacionEstadoActual === 'emitido' && (
               <div
                 style={{
                   marginBottom: '1rem',
@@ -3733,10 +3792,20 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
             </button>
           </div>
         ) : (
-          /* Historial */
+          /* Historial / En proceso */
           <div>
-            <h3 style={{ color: '#667eea', marginBottom: '1rem' }}>
-              Cotizaciones Generadas ({cotizacionesFiltradas.length}{cotizacionesFiltradas.length !== cotizaciones.length ? ` de ${cotizaciones.length}` : ''})
+            <h3 style={{ color: vista === 'en_proceso' ? '#6d28d9' : '#667eea', marginBottom: '1rem' }}>
+              {vista === 'en_proceso'
+                ? `Cotizaciones en proceso (${cotizacionesFiltradasEnVista.length}${
+                    cotizacionesFiltradasEnVista.length !== cotizacionesTotalesEnVista.length
+                      ? ` de ${cotizacionesTotalesEnVista.length}`
+                      : ''
+                  })`
+                : `Cotizaciones generadas (${cotizacionesFiltradasEnVista.length}${
+                    cotizacionesFiltradasEnVista.length !== cotizacionesTotalesEnVista.length
+                      ? ` de ${cotizacionesTotalesEnVista.length}`
+                      : ''
+                  })`}
             </h3>
 
             {errorCotizacionesLista && (
@@ -3831,12 +3900,16 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                 <div style={{ fontSize: '3rem' }}>⏳</div>
                 <div>Cargando cotizaciones desde InsForge…</div>
               </div>
-            ) : cotizaciones.length === 0 ? (
+            ) : cotizacionesTotalesEnVista.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '3rem', color: '#999' }}>
-                <div style={{ fontSize: '4rem' }}>📄</div>
-                <div>No hay cotizaciones generadas aún</div>
+                <div style={{ fontSize: '4rem' }}>{vista === 'en_proceso' ? '📝' : '📄'}</div>
+                <div>
+                  {vista === 'en_proceso'
+                    ? 'No hay cotizaciones en proceso'
+                    : 'No hay cotizaciones generadas aún'}
+                </div>
               </div>
-            ) : cotizacionesFiltradas.length === 0 ? (
+            ) : cotizacionesFiltradasEnVista.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '3rem', color: '#999' }}>
                 <div style={{ fontSize: '3rem' }}>🔍</div>
                 <div>No se encontraron cotizaciones con los filtros aplicados</div>
@@ -3907,12 +3980,14 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                     </tr>
                   </thead>
                   <tbody>
-                    {cotizacionesFiltradas.map((cot) => {
+                    {cotizacionesFiltradasEnVista.map((cot) => {
                       const est = estilosEstadoCotizacion(cot.estado);
                       const opcionesEstado = obtenerEstadosCotizacionPermitidosDesde(cot.estado);
                       const estatusBloqueado = opcionesEstado.length <= 1;
-                      const puedeEliminar =
-                        cot.estado === 'emitido' || esEstadoBorradorCotizacion(cot.estado);
+                      const esTabEnProceso = vista === 'en_proceso';
+                      const puedeEliminar = esTabEnProceso
+                        ? true
+                        : cot.estado === 'emitido';
                       return (
                       <tr key={cot.id} style={{ borderBottom: '1px solid #eee' }}>
                         <td className="table-col-eliminar">
@@ -3940,7 +4015,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                             }}
                             title={
                               !puedeEliminar
-                                ? 'Solo se permite eliminar en Emitido o En proceso'
+                                ? 'Solo se permite eliminar cotizaciones emitidas'
                                 : 'Eliminar definitivamente'
                             }
                             aria-label="Eliminar cotización"
@@ -4000,6 +4075,24 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                             >
                               Estatus
                             </span>
+                            {esTabEnProceso ? (
+                              <span
+                                style={{
+                                  display: 'block',
+                                  textAlign: 'center',
+                                  padding: '0.55rem 0.65rem',
+                                  borderRadius: '10px',
+                                  background: est.wrapBg,
+                                  border: `2px solid ${est.wrapBorder}`,
+                                  fontSize: '0.88rem',
+                                  fontWeight: 800,
+                                  color: est.text,
+                                }}
+                              >
+                                En proceso
+                              </span>
+                            ) : (
+                              <>
                             <select
                               value={cot.estado}
                               disabled={actualizandoEstadoId === cot.id || estatusBloqueado}
@@ -4059,6 +4152,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                                 Guardando…
                               </span>
                             )}
+                              </>
+                            )}
                           </div>
                         </td>
                         <td style={{ padding: '1rem', textAlign: 'center' }}>
@@ -4071,24 +4166,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                               alignItems: 'center',
                             }}
                           >
-                            {!esEstadoBorradorCotizacion(cot.estado) ? (
-                              <button
-                                type="button"
-                                onClick={() => verPDF(cot)}
-                                style={{
-                                  background: '#667eea',
-                                  color: 'white',
-                                  border: 'none',
-                                  padding: '0.5rem 1rem',
-                                  borderRadius: '4px',
-                                  cursor: 'pointer',
-                                  fontWeight: 'bold',
-                                }}
-                              >
-                                📄 Ver PDF
-                              </button>
-                            ) : null}
-                            {esEstadoBorradorCotizacion(cot.estado) ? (
+                            {esTabEnProceso ? (
                               <button
                                 type="button"
                                 onClick={() => iniciarEdicionDesdeHistorial(cot)}
@@ -4105,7 +4183,24 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                               >
                                 ▶️ Continuar
                               </button>
-                            ) : cot.estado === 'emitido' ? (
+                            ) : (
+                              <>
+                            <button
+                              type="button"
+                              onClick={() => verPDF(cot)}
+                              style={{
+                                background: '#667eea',
+                                color: 'white',
+                                border: 'none',
+                                padding: '0.5rem 1rem',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                fontWeight: 'bold',
+                              }}
+                            >
+                              📄 Ver PDF
+                            </button>
+                            {cot.estado === 'emitido' ? (
                               <button
                                 type="button"
                                 onClick={() => iniciarEdicionDesdeHistorial(cot)}
@@ -4123,6 +4218,8 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                                 ✏️ Modificar
                               </button>
                             ) : null}
+                              </>
+                            )}
                           </div>
                         </td>
                       </tr>
