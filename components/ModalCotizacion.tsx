@@ -1966,22 +1966,6 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
           </button>
           <button
             type="button"
-            onClick={() => setVista('en_proceso')}
-            style={{
-              padding: '1rem 2rem',
-              background: vista === 'en_proceso' ? 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)' : 'transparent',
-              color: vista === 'en_proceso' ? 'white' : '#666',
-              border: 'none',
-              borderBottom: vista === 'en_proceso' ? '3px solid #8b5cf6' : 'none',
-              cursor: 'pointer',
-              fontWeight: 'bold',
-              fontSize: '1rem',
-            }}
-          >
-            📝 En proceso ({cotizacionesEnProceso.length})
-          </button>
-          <button
-            type="button"
             onClick={() => setVista('historial')}
             style={{
               padding: '1rem 2rem',
@@ -1995,6 +1979,22 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
             }}
           >
             📋 Historial ({cotizacionesHistorial.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setVista('en_proceso')}
+            style={{
+              padding: '1rem 2rem',
+              background: vista === 'en_proceso' ? 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)' : 'transparent',
+              color: vista === 'en_proceso' ? 'white' : '#666',
+              border: 'none',
+              borderBottom: vista === 'en_proceso' ? '3px solid #8b5cf6' : 'none',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              fontSize: '1rem',
+            }}
+          >
+            📝 En proceso ({cotizacionesEnProceso.length})
           </button>
         </div>
 
