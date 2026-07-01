@@ -80,17 +80,37 @@ export default function AutocompleteTallaCotizacion({
     );
   }, [abierto, inputRef, value]);
 
-  const abrir = () => {
+  const abrir = (resetIndice = true) => {
     if (disabled) return;
     reposicionar();
     setAbierto(true);
-    setIndice(-1);
+    if (resetIndice) setIndice(-1);
   };
 
-  const elegir = (opcion: OpcionTallaCotizacion) => {
+  const elegir = (opcion: OpcionTallaCotizacion, avanzarFocus = false) => {
     onSelect(opcion);
     setAbierto(false);
     setIndice(-1);
+    if (avanzarFocus) {
+      setTimeout(() => onEnter?.(), 0);
+    }
+  };
+
+  const opcionParaTeclado = (): OpcionTallaCotizacion | null => {
+    if (opcionesFiltradas.length === 0) return null;
+    if (indice >= 0 && indice < opcionesFiltradas.length) {
+      return opcionesFiltradas[indice];
+    }
+    if (opcionesFiltradas.length === 1) {
+      return opcionesFiltradas[0];
+    }
+    const q = value.trim().toUpperCase();
+    if (!q) return null;
+    return (
+      opcionesFiltradas.find((o) => o.nombre.toUpperCase() === q) ??
+      opcionesFiltradas.find((o) => o.nombre.toUpperCase().startsWith(q)) ??
+      null
+    );
   };
 
   const inputEl = (
@@ -112,33 +132,46 @@ export default function AutocompleteTallaCotizacion({
       onFocus={() => abrir()}
       onChange={(e) => {
         onChangeTexto(e.target.value);
-        abrir();
+        abrir(true);
       }}
       onBlur={crearOnBlurCerrarDropdown(interaccionRef, () => setAbierto(false))}
       onKeyDown={(e) => {
         if (e.key === 'ArrowDown') {
           e.preventDefault();
-          if (!abierto) abrir();
-          setIndice((i) => Math.min(i + 1, opcionesFiltradas.length - 1));
+          if (!abierto) abrir(false);
+          setIndice((i) => {
+            if (opcionesFiltradas.length === 0) return -1;
+            if (i < 0) return 0;
+            return Math.min(i + 1, opcionesFiltradas.length - 1);
+          });
           return;
         }
         if (e.key === 'ArrowUp') {
           e.preventDefault();
-          setIndice((i) => Math.max(i - 1, 0));
+          if (!abierto) abrir(false);
+          setIndice((i) => {
+            if (opcionesFiltradas.length === 0) return -1;
+            if (i <= 0) return 0;
+            return i - 1;
+          });
           return;
         }
         if (e.key === 'Enter') {
           e.preventDefault();
-          if (abierto && indice >= 0 && opcionesFiltradas[indice]) {
-            elegir(opcionesFiltradas[indice]);
+          const pick = abierto ? opcionParaTeclado() : null;
+          if (pick) {
+            elegir(pick, true);
             return;
           }
           if (selectedId || value.trim()) {
             onEnter?.();
           }
+          return;
         }
         if (e.key === 'Escape') {
+          e.preventDefault();
           setAbierto(false);
+          setIndice(-1);
         }
       }}
       style={{
@@ -177,6 +210,7 @@ export default function AutocompleteTallaCotizacion({
                 className={`cotizacion-autocomplete-dropdown-item${
                   idx === indice || opcion.id === selectedId ? ' selected' : ''
                 }`}
+                onMouseEnter={() => setIndice(idx)}
                 {...handlersTapSeleccionDropdown(() => {
                   elegir(opcion);
                   focusSinScroll(anchorRef.current);
