@@ -96,3 +96,38 @@ export async function fetchCostoStockModal(
   const picked = elegirCostoPrendaTalla(rows, sucursalId);
   return picked ? normalizarCamposCostoApi(picked) : null;
 }
+
+/** Tallas con al menos un costo activo (cualquier sucursal). */
+export function extraerTallasActivasDeCostos(rows: Record<string, unknown>[]): string[] {
+  const ids = new Set<string>();
+  for (const r of rows) {
+    const n = normalizarCamposCostoApi(r);
+    if (n.activo === false) continue;
+    const tid = n.talla_id;
+    if (tid != null && tid !== '') ids.add(String(tid));
+  }
+  return [...ids];
+}
+
+/** IDs de costo a eliminar/desactivar al quitar tallas de una prenda (todas las sucursales). */
+export async function fetchCostosIdsParaEliminarTallas(
+  db: CostoDbClient,
+  prendaId: string,
+  tallaIds: string[]
+): Promise<string[]> {
+  if (!tallaIds.length) return [];
+  const tallaSet = new Set(tallaIds);
+  const rows = await fetchCostosRowsByPrenda(db, prendaId);
+  return rows
+    .map((r) => normalizarCamposCostoApi(r))
+    .filter((n) => n.id && tallaSet.has(String(n.talla_id)) && n.activo !== false)
+    .map((n) => String(n.id));
+}
+
+export async function fetchTallasActivasDePrenda(
+  db: CostoDbClient,
+  prendaId: string
+): Promise<string[]> {
+  const rows = await fetchCostosRowsByPrenda(db, prendaId);
+  return extraerTallasActivasDeCostos(rows);
+}

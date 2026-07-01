@@ -9,7 +9,7 @@ import { useTallas } from '@/lib/hooks/useTallas';
 import { useCostos } from '@/lib/hooks/useCostos';
 import { usePrendaTallaInsumos } from '@/lib/hooks/usePrendaTallaInsumos';
 import { useUbicacionesAlmacenamiento } from '@/lib/hooks/useUbicacionesAlmacenamiento';
-import { fetchCostoStockModal } from '@/lib/costoQueries';
+import { fetchCostoStockModal, fetchCostosIdsParaEliminarTallas, fetchTallasActivasDePrenda } from '@/lib/costoQueries';
 import { insforgeDb } from '@/lib/insforgeBrowser';
 import type { Prenda } from '@/lib/types';
 import { sortTallas } from '@/lib/ordenTallas';
@@ -87,7 +87,7 @@ export default function PrendasPage() {
   const { prendas, loading, error, createPrenda, updatePrenda, deletePrenda } = usePrendas(inventarioOpts);
   const { categorias, loading: loadingCategorias, refetch: refetchCategorias } = useCategorias();
   const { tallas } = useTallas();
-  const { createMultipleCostos, getCostosByPrenda, deleteCosto } = useCostos(
+  const { createMultipleCostos, deleteCosto } = useCostos(
     sesion?.sucursal_id,
     sesion?.es_matriz
   );
@@ -232,12 +232,9 @@ export default function PrendasPage() {
   useEffect(() => {
     const cargarTallasAsociadas = async () => {
       if (prendaEditando) {
-        const { data } = await getCostosByPrenda(prendaEditando.id);
-        if (data && data.length > 0) {
-          const tallasIds = [...new Set(data.map((c) => c.talla_id))];
-          setTallasAsociadas(tallasIds);
-          setTallasSeleccionadas(tallasIds);
-        }
+        const tallasIds = await fetchTallasActivasDePrenda(insforgeDb(), prendaEditando.id);
+        setTallasAsociadas(tallasIds);
+        setTallasSeleccionadas(tallasIds);
       } else {
         setTallasAsociadas([]);
         setTallasSeleccionadas([]);
@@ -343,29 +340,21 @@ export default function PrendasPage() {
       // Gestionar tallas: eliminar las que se quitaron y agregar las nuevas
       const tallasAEliminar = tallasAsociadas.filter(t => !tallasSeleccionadas.includes(t));
       const tallasAAgregar = tallasSeleccionadas.filter(t => !tallasAsociadas.includes(t));
-      
-      console.log('🔍 Debug tallas:', {
-        tallasAsociadas,
-        tallasSeleccionadas,
-        tallasAEliminar,
-        tallasAAgregar
-      });
-      
-      // Eliminar costos de tallas que se quitaron
+
+      // Eliminar costos de tallas quitadas en TODAS las sucursales
       if (tallasAEliminar.length > 0) {
-        const { data: costosExistentes } = await getCostosByPrenda(prendaEditando.id);
-        if (costosExistentes) {
-          const costosAEliminar = costosExistentes
-            .filter(c => tallasAEliminar.includes(c.talla_id))
-            .map(c => c.id);
-          
-          console.log('🗑️ Eliminando costos:', costosAEliminar);
-          
-          for (const costoId of costosAEliminar) {
-            const resultado = await deleteCosto(costoId);
-            if (resultado.error) {
-              console.error('❌ Error al eliminar costo:', resultado.error);
-            }
+        const costosAEliminar = await fetchCostosIdsParaEliminarTallas(
+          insforgeDb(),
+          prendaEditando.id,
+          tallasAEliminar
+        );
+
+        for (const costoId of costosAEliminar) {
+          const resultado = await deleteCosto(costoId);
+          if (resultado.error) {
+            setMensajeError(`❌ Error al quitar talla: ${resultado.error}`);
+            setModalErrorAbierto(true);
+            return;
           }
         }
       }
@@ -508,12 +497,11 @@ export default function PrendasPage() {
     setMensajeError('');
     
     // Cargar tallas asociadas ANTES de mostrar el formulario
-    const { data: costos } = await getCostosByPrenda(prenda.id);
-    if (costos && costos.length > 0) {
-      const tallasIds = [...new Set(costos.map((c) => c.talla_id))];
+    const tallasIds = await fetchTallasActivasDePrenda(insforgeDb(), prenda.id);
+    if (tallasIds.length > 0) {
       setTallasAsociadas(tallasIds);
       setTallasSeleccionadas(tallasIds);
-      
+
       // Forzar actualización después de un momento para asegurar que los checkboxes se rendericen
       setTimeout(() => {
         setTallasSeleccionadas([...tallasIds]);
