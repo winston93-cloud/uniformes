@@ -29,14 +29,14 @@ export function opcionesInventarioDesdeSesion(
     };
   }
 
-  // Solo cuenta winston @ SUC-WIN: inventario propio vacío + botones de alta.
+  // Solo cuenta winston @ SUC-WIN: inventario propio vacío hasta tener stock local.
   if (esCuentaWinston(sesion)) {
     return {
       sucursalId: sesion?.sucursal_id,
       esMatriz: false,
       catalogoCompleto: false,
       inventarioSoloSucursalWinston: true,
-      incluirStockCero: gestion,
+      incluirStockCero: false,
     };
   }
 

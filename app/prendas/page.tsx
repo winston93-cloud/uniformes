@@ -366,15 +366,15 @@ export default function PrendasPage() {
         }
       }
       
-      // Agregar costos para nuevas tallas en TODAS las sucursales
+      // Agregar costos para nuevas tallas (matriz: todas las sucursales; winston: solo SUC-WIN)
       if (tallasAAgregar.length > 0) {
-        // Obtener todas las sucursales activas
-        const { data: sucursales, error: sucursalesError } = await insforgeDb()
-          .from('sucursales')
-          .select('id')
-          .eq('activo', true);
+        const sucursales = esCuentaWinston(sesion) && sesion?.sucursal_id
+          ? [{ id: sesion.sucursal_id }]
+          : (
+              await insforgeDb().from('sucursales').select('id').eq('activo', true)
+            ).data;
         
-        if (sucursalesError || !sucursales || sucursales.length === 0) {
+        if (!sucursales || sucursales.length === 0) {
           setMensajeError('❌ Error: No se pudieron cargar las sucursales');
           setModalErrorAbierto(true);
           return;
@@ -435,15 +435,15 @@ export default function PrendasPage() {
         return;
       }
       
-      // Crear costos para cada talla seleccionada en TODAS las sucursales
+      // Crear costos por talla (matriz: todas las sucursales; winston: solo SUC-WIN)
       if (nuevaPrenda && tallasSeleccionadas.length > 0) {
-        // Obtener todas las sucursales
-        const { data: sucursales, error: sucursalesError } = await insforgeDb()
-          .from('sucursales')
-          .select('id')
-          .eq('activo', true);
+        const sucursales = esCuentaWinston(sesion) && sesion?.sucursal_id
+          ? [{ id: sesion.sucursal_id }]
+          : (
+              await insforgeDb().from('sucursales').select('id').eq('activo', true)
+            ).data;
         
-        if (sucursalesError || !sucursales || sucursales.length === 0) {
+        if (!sucursales || sucursales.length === 0) {
           setMensajeError('❌ Error: No se pudieron cargar las sucursales');
           setModalErrorAbierto(true);
           return;
