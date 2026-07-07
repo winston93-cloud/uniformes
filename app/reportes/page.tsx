@@ -10,11 +10,18 @@ import ModalFiltroInventario, { type FiltroInventarioSeleccion } from '@/compone
 import { mostrarPdfJsPDF, abrirVentanaPdfPlaceholder, cerrarVentanaPdf } from '@/lib/abrirPdfNavegador';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import {
+  esCuentaWinston,
+  OPCIONES_FILTRO_LINEA,
+  type FiltroLineaVenta,
+} from '@/lib/winstonLineaVenta';
 
 export const dynamic = 'force-dynamic';
 
 export default function ReportesPage() {
   const { sesion } = useAuth();
+  const esWinston = esCuentaWinston(sesion);
+  const [filtroLineaVenta, setFiltroLineaVenta] = useState<FiltroLineaVenta>('todos');
   const {
     loading,
     ventasPorPeriodo,
@@ -24,7 +31,11 @@ export default function ReportesPage() {
     clientesFrecuentes,
     resumenGeneral,
     ingresosYGanancias,
-  } = useReportes(sesion?.sucursal_id, sesion?.es_matriz);
+  } = useReportes(
+    sesion?.sucursal_id,
+    sesion?.es_matriz,
+    esWinston ? filtroLineaVenta : 'todos'
+  );
   
   const [modalReportesAbierto, setModalReportesAbierto] = useState(false);
   const [modalInventarioAbierto, setModalInventarioAbierto] = useState(false);
@@ -51,12 +62,12 @@ export default function ReportesPage() {
   useEffect(() => {
     void cargarResumen();
     refetchCategorias(false);
-  }, [sesion?.sucursal_id]);
+  }, [sesion?.sucursal_id, filtroLineaVenta]);
 
   const cargarResumen = useCallback(async () => {
     const datos = await resumenGeneral();
     setResumen(datos);
-  }, [resumenGeneral]);
+  }, [resumenGeneral, filtroLineaVenta]);
 
   const generarPDFVentas = (datos: any[]) => {
     const doc = new jsPDF();
@@ -425,6 +436,34 @@ export default function ReportesPage() {
           >
             Reportes de <strong style={{ color: '#1e40af' }}>{sesion.sucursal_nombre}</strong> únicamente
             (ventas, inventario y clientes de esta tienda).
+            {esWinston && (
+              <>
+                {' '}
+                Filtra por <strong>prendas (wu…)</strong> o <strong>tenis (wt…)</strong> con el selector de abajo.
+              </>
+            )}
+          </div>
+        )}
+
+        {esWinston && (
+          <div className="form-container" style={{ marginBottom: '1.5rem', padding: '1rem 1.25rem' }}>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              <label className="form-label" style={{ marginBottom: 0 }}>
+                Línea de reporte:
+              </label>
+              <select
+                className="form-input"
+                style={{ maxWidth: '180px', marginBottom: 0 }}
+                value={filtroLineaVenta}
+                onChange={(e) => setFiltroLineaVenta(e.target.value as FiltroLineaVenta)}
+              >
+                {OPCIONES_FILTRO_LINEA.map((op) => (
+                  <option key={op.value} value={op.value}>
+                    {op.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         )}
 
@@ -454,7 +493,13 @@ export default function ReportesPage() {
 
             <div style={{ textAlign: 'center', padding: '1.5rem', background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.1) 0%, rgba(245, 158, 11, 0.05) 100%)', borderRadius: '15px' }}>
               <div style={{ fontSize: '2.5rem', fontWeight: '700', color: '#fbbf24' }}>{resumen.prendasStock}</div>
-              <div style={{ color: 'var(--text-secondary)', marginTop: '0.5rem' }}>Prendas en Stock</div>
+              <div style={{ color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
+                {esWinston && filtroLineaVenta === 'tenis'
+                  ? 'Tenis en Stock'
+                  : esWinston && filtroLineaVenta === 'prendas'
+                    ? 'Prendas en Stock'
+                    : 'Prendas en Stock'}
+              </div>
             </div>
           </div>
         </div>

@@ -4,11 +4,18 @@ import { useState, useEffect, useCallback } from 'react';
 import { getSupabaseErrorMessage, usuarioIdParaRpc } from '@/lib/supabase';
 import { insforgeDb } from '@/lib/insforgeBrowser';
 import { REFETCH_PEDIDOS_EVENT } from '@/lib/refetchPedidosEvent';
+import {
+  dividirDetallesPorLinea,
+  esCuentaWinston,
+  type LineaVentaWinston,
+  type SesionLineaVenta,
+} from '@/lib/winstonLineaVenta';
 
 interface Pedido {
   id: string;
-  /** Folio de venta (ej. PED-YYYYMM-0001), p. ej. generado al cerrar cotización terminada */
+  /** Folio de venta (ej. PED-YYYYMM-0001, wu0001, wt0001) */
   folio?: string | null;
+  linea_venta?: LineaVentaWinston | null;
   cotizacion_id?: string | null;
   fecha: string;
   cliente_id: string;
@@ -27,6 +34,7 @@ interface DetallePedido {
   id?: string;
   pedido_id: string;
   prenda_id: string;
+  prenda_nombre?: string;
   talla_id: string;
   cantidad: number;
   precio_unitario: number;
@@ -35,6 +43,12 @@ interface DetallePedido {
   especificaciones?: string;
 }
 
+export type PedidoCreadoResumen = {
+  id: string;
+  folio?: string | null;
+  linea_venta?: LineaVentaWinston | null;
+};
+
 /** InsForge/SDK a veces devuelve camelCase; sucursal en datos viejos puede ser null y .eq excluye todo. */
 function normalizarFilaPedidoApi(p: Record<string, unknown>) {
   const created_at =
@@ -42,13 +56,23 @@ function normalizarFilaPedidoApi(p: Record<string, unknown>) {
   const tipo_cliente = (p.tipo_cliente ?? p.tipoCliente) as string | undefined;
   const sucursal_id = (p.sucursal_id ?? p.sucursalId) as string | null | undefined;
   const cliente_nombre = (p.cliente_nombre ?? p.clienteNombre) as string | undefined;
+  const linea_venta = (p.linea_venta ?? p.lineaVenta) as LineaVentaWinston | null | undefined;
   return {
     ...p,
     created_at,
     tipo_cliente,
     sucursal_id,
     cliente_nombre: cliente_nombre ?? p.cliente_nombre,
+    linea_venta,
   };
+}
+
+function totalDetalles(detalles: Array<{ subtotal?: number; total?: number; precio_unitario?: number; cantidad?: number }>) {
+  return detalles.reduce((sum, d) => {
+    if (d.subtotal != null) return sum + Number(d.subtotal);
+    if (d.total != null) return sum + Number(d.total);
+    return sum + Number(d.precio_unitario ?? 0) * Number(d.cantidad ?? 0);
+  }, 0);
 }
 
 export function usePedidos(sucursal_id?: string) {
@@ -114,92 +138,174 @@ export function usePedidos(sucursal_id?: string) {
     }
   }, [sucursal_id]);
 
-  const crearPedido = async (pedido: Omit<Pedido, 'id' | 'created_at' | 'updated_at'>, detalles: Omit<DetallePedido, 'id' | 'pedido_id'>[], pedido_sucursal_id?: string, usuario_id?: number | string) => {
+  const reconciliarUbicacionesVenta = async (
+    detallesJsonb: Array<Record<string, unknown>>,
+    sucId?: string
+  ) => {
     try {
-      console.log('📦 Creando pedido con función atómica...', pedido);
-      
-      // Preparar detalles en formato JSONB para la función
-      // CRÍTICO: Incluir cantidad_con_stock y cantidad_pendiente para división automática
-      const detallesJsonb = detalles.map(det => ({
-        prenda_id: det.prenda_id,
-        talla_id: det.talla_id,
-        cantidad: det.cantidad,
-        // IMPORTANTE: Usar !== undefined en vez de || porque 0 es un valor válido
-        cantidad_con_stock: (det as any).cantidad_con_stock !== undefined ? (det as any).cantidad_con_stock : det.cantidad,
-        cantidad_pendiente: (det as any).cantidad_pendiente !== undefined ? (det as any).cantidad_pendiente : 0,
-        tiene_stock: (det as any).tiene_stock !== false,
-        especificaciones: det.especificaciones || ''
-      }));
+      const vendidos = detallesJsonb.filter((d) => Number(d?.cantidad_con_stock ?? 0) > 0);
+      for (const d of vendidos) {
+        if (!sucId) continue;
+        const { data: costoRow, error: costoErr } = await insforgeDb()
+          .from('costos')
+          .select('id')
+          .eq('prenda_id', String(d.prenda_id))
+          .eq('talla_id', String(d.talla_id))
+          .eq('sucursal_id', String(sucId))
+          .maybeSingle();
+        if (costoErr || !costoRow?.id) continue;
+        await fetch('/api/costos/reconciliar-ubicaciones', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ costo_id: String(costoRow.id) }),
+        }).catch(() => null);
+      }
+    } catch {
+      // No bloquear la venta por esto.
+    }
+  };
 
-      // HOTFIX: en algunas BD legacy, pedidos.usuario_id sigue siendo SMALLINT.
-      // Si mandamos UUID revienta con: "column 'usuario_id' is of type smallint but expression is of type uuid".
-      // En esos entornos mandamos NULL para no bloquear creación de pedidos.
-      const usuario_uuid = null;
+  const crearPedidoAtomico = async (
+    pedido: Omit<Pedido, 'id' | 'created_at' | 'updated_at'>,
+    detalles: Omit<DetallePedido, 'id' | 'pedido_id'>[],
+    pedido_sucursal_id?: string,
+    linea_venta?: LineaVentaWinston | null
+  ) => {
+    const detallesJsonb = detalles.map((det) => ({
+      prenda_id: det.prenda_id,
+      talla_id: det.talla_id,
+      cantidad: det.cantidad,
+      cantidad_con_stock:
+        (det as { cantidad_con_stock?: number }).cantidad_con_stock !== undefined
+          ? (det as { cantidad_con_stock?: number }).cantidad_con_stock
+          : det.cantidad,
+      cantidad_pendiente:
+        (det as { cantidad_pendiente?: number }).cantidad_pendiente !== undefined
+          ? (det as { cantidad_pendiente?: number }).cantidad_pendiente
+          : 0,
+      tiene_stock: (det as { tiene_stock?: boolean }).tiene_stock !== false,
+      especificaciones: det.especificaciones || '',
+    }));
 
-      // LLAMAR A LA FUNCIÓN ATÓMICA que hace TODO en una transacción
-      const { data, error } = await insforgeDb().rpc('crear_pedido_atomico', {
-        p_tipo_cliente: pedido.cliente_tipo,
-        p_cliente_nombre: pedido.cliente_nombre,
-        p_sucursal_id: pedido_sucursal_id || sucursal_id,
-        p_usuario_id: usuario_uuid,
-        p_alumno_id: null,
-        p_externo_id: null,
-        p_estado: pedido.estado,
-        p_notas: pedido.observaciones || null,
-        p_detalles: detallesJsonb
-      });
+    const { data, error } = await insforgeDb().rpc('crear_pedido_atomico', {
+      p_tipo_cliente: pedido.cliente_tipo,
+      p_cliente_nombre: pedido.cliente_nombre,
+      p_sucursal_id: pedido_sucursal_id || sucursal_id,
+      p_usuario_id: null,
+      p_alumno_id: null,
+      p_externo_id: null,
+      p_estado: pedido.estado,
+      p_notas: pedido.observaciones || null,
+      p_detalles: detallesJsonb,
+      p_linea_venta: linea_venta ?? null,
+    });
 
-      if (error) {
-        console.error('❌ Error en función atómica:', error);
-        throw error;
+    if (error) throw error;
+    if (!data?.success) {
+      throw new Error(data.error || data.message || 'Error desconocido');
+    }
+
+    await reconciliarUbicacionesVenta(detallesJsonb, pedido_sucursal_id || sucursal_id);
+
+    return {
+      id: data.pedido_id as string,
+      folio: data.folio as string | undefined,
+      linea_venta: (data.linea_venta as LineaVentaWinston | null) ?? linea_venta ?? null,
+      message: data.message as string | undefined,
+    };
+  };
+
+  const crearPedido = async (
+    pedido: Omit<Pedido, 'id' | 'created_at' | 'updated_at'>,
+    detalles: Omit<DetallePedido, 'id' | 'pedido_id'>[],
+    pedido_sucursal_id?: string,
+    _usuario_id?: number | string,
+    linea_venta?: LineaVentaWinston | null
+  ) => {
+    try {
+      const creado = await crearPedidoAtomico(pedido, detalles, pedido_sucursal_id, linea_venta);
+      await fetchPedidos();
+      return {
+        success: true,
+        data: { id: creado.id, folio: creado.folio },
+        message: creado.message,
+      };
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error('❌ Error al crear pedido:', error);
+      return { success: false, error: msg };
+    }
+  };
+
+  /** Winston: divide carrito mixto en 2 pedidos (prendas primero, tenis después). */
+  const crearPedidosDesdeCarrito = async (
+    pedido: Omit<Pedido, 'id' | 'created_at' | 'updated_at'>,
+    detalles: Omit<DetallePedido, 'id' | 'pedido_id'>[],
+    pedido_sucursal_id?: string,
+    sesion?: SesionLineaVenta | null
+  ): Promise<{ success: boolean; pedidos: PedidoCreadoResumen[]; error?: string; message?: string }> => {
+    const sid = pedido_sucursal_id || sucursal_id;
+    const esWinston = esCuentaWinston(sesion);
+
+    if (!esWinston) {
+      const r = await crearPedido(pedido, detalles, sid);
+      if (!r.success) {
+        return { success: false, pedidos: [], error: String(r.error ?? 'Error al crear pedido') };
+      }
+      return {
+        success: true,
+        pedidos: [{ id: r.data!.id, folio: r.data!.folio, linea_venta: null }],
+        message: r.message,
+      };
+    }
+
+    const { prendas, tenis } = dividirDetallesPorLinea(detalles);
+    const creados: PedidoCreadoResumen[] = [];
+
+    try {
+      if (prendas.length > 0) {
+        const totalPrendas = totalDetalles(prendas);
+        const creado = await crearPedidoAtomico(
+          { ...pedido, total: totalPrendas },
+          prendas,
+          sid,
+          'prendas'
+        );
+        creados.push(creado);
       }
 
-      console.log('✅ Respuesta función atómica:', data);
-
-      // Verificar respuesta
-      if (!data.success) {
-        throw new Error(data.error || data.message || 'Error desconocido');
+      if (tenis.length > 0) {
+        const totalTenis = totalDetalles(tenis);
+        const creado = await crearPedidoAtomico(
+          { ...pedido, total: totalTenis },
+          tenis,
+          sid,
+          'tenis'
+        );
+        creados.push(creado);
       }
 
-      // Post-fix: en Supabase prod puede existir una versión vieja de crear_pedido_atomico
-      // que descuenta costos.stock pero no costo_ubicaciones. Para garantizar consistencia,
-      // reconciliamos ubicaciones vs stock por cada costo vendido (cantidad_con_stock > 0).
-      try {
-        const sucId = pedido_sucursal_id || sucursal_id;
-        const vendidos = detallesJsonb.filter((d: any) => Number(d?.cantidad_con_stock ?? 0) > 0);
-        for (const d of vendidos) {
-          if (!sucId) continue;
-          // eslint-disable-next-line no-await-in-loop
-          const { data: costoRow, error: costoErr } = await insforgeDb()
-            .from('costos')
-            .select('id')
-            .eq('prenda_id', String(d.prenda_id))
-            .eq('talla_id', String(d.talla_id))
-            .eq('sucursal_id', String(sucId))
-            .maybeSingle();
-          if (costoErr || !costoRow?.id) continue;
-          // eslint-disable-next-line no-await-in-loop
-          await fetch('/api/costos/reconciliar-ubicaciones', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ costo_id: String(costoRow.id) }),
-          }).catch(() => null);
-        }
-      } catch {
-        // No bloquear la venta por esto: es corrección de consistencia.
+      if (creados.length === 0) {
+        return { success: false, pedidos: [], error: 'No hay partidas válidas en el carrito.' };
       }
 
       await fetchPedidos();
-      return { 
-        success: true, 
-        data: { id: data.pedido_id },
-        message: data.message 
+
+      const folios = creados.map((p) => p.folio).filter(Boolean).join(' y ');
+      return {
+        success: true,
+        pedidos: creados,
+        message:
+          creados.length > 1
+            ? `Se generaron ${creados.length} recibos: ${folios}`
+            : `Pedido ${folios} creado correctamente`,
       };
-    } catch (error: any) {
-      console.error('❌ Error al crear pedido:', error);
-      return { 
-        success: false, 
-        error: error.message || error 
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      return {
+        success: false,
+        pedidos: creados,
+        error: msg,
       };
     }
   };
@@ -210,7 +316,6 @@ export function usePedidos(sucursal_id?: string) {
     usuario_id?: string | null
   ) => {
     try {
-      // COMPLETADO: debe descontar pendientes en BD de forma atómica
       if (nuevoEstado === 'COMPLETADO') {
         const { data, error } = await insforgeDb().rpc('completar_pedido_atomico', {
           p_pedido_id: id,
@@ -247,7 +352,6 @@ export function usePedidos(sucursal_id?: string) {
 
   const eliminarPedidoDefinitivo = async (pedidoId: string, motivo?: string) => {
     try {
-      // 1) Cancelar todo (reponer stock de entregado y borrar detalle_pedidos) de forma atómica.
       const { data, error } = await insforgeDb().rpc('cancelar_pedido_atomico', {
         p_pedido_id: pedidoId,
         p_usuario_id: null,
@@ -259,15 +363,15 @@ export function usePedidos(sucursal_id?: string) {
         throw new Error(data.error || 'Error al cancelar pedido antes de eliminar');
       }
 
-      // 2) Borrar el pedido (definitivo). Si quedara algún detalle, FK debe cascade.
       const { error: delErr } = await insforgeDb().from('pedidos').delete().eq('id', pedidoId);
       if (delErr) throw delErr;
 
       await fetchPedidos();
       return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
       console.error('Error al eliminar pedido definitivamente:', error);
-      return { success: false, error: error.message || error };
+      return { success: false, error: msg };
     }
   };
 
@@ -288,8 +392,8 @@ export function usePedidos(sucursal_id?: string) {
     loading,
     fetchPedidos,
     crearPedido,
+    crearPedidosDesdeCarrito,
     actualizarEstadoPedido,
     eliminarPedidoDefinitivo,
   };
 }
-

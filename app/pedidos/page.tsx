@@ -22,6 +22,12 @@ import { usePrendas } from '@/lib/hooks/usePrendas';
 import { useTallas } from '@/lib/hooks/useTallas';
 import { usePedidos } from '@/lib/hooks/usePedidos';
 import type { Prenda } from '@/lib/types';
+import {
+  esCuentaWinston,
+  OPCIONES_FILTRO_LINEA,
+  pedidoCoincideFiltroLinea,
+  type FiltroLineaVenta,
+} from '@/lib/winstonLineaVenta';
 
 // Interfaces de tipos
 interface Pedido {
@@ -99,8 +105,11 @@ function PedidosPageContent() {
   const { searchExternos } = useExternos();
   const { prendas, loading: prendasLoading, error: prendasError, refetch: refetchPrendas } = usePrendas(inventarioOpts);
   const { tallas } = useTallas();
-  const { pedidos: pedidosDB, loading: loadingPedidos, crearPedido, actualizarEstadoPedido, eliminarPedidoDefinitivo } =
+  const { pedidos: pedidosDB, loading: loadingPedidos, crearPedidosDesdeCarrito, actualizarEstadoPedido, eliminarPedidoDefinitivo } =
     usePedidos(sesion?.sucursal_id);
+
+  const esWinston = esCuentaWinston(sesion);
+  const [filtroLineaVenta, setFiltroLineaVenta] = useState<FiltroLineaVenta>('todos');
 
   // Estados para filtro de mes/año
   const fechaActual = new Date();
@@ -108,7 +117,11 @@ function PedidosPageContent() {
   const [añoSeleccionado, setAñoSeleccionado] = useState(fechaActual.getFullYear());
   
   // Filtrar pedidos por mes y año (fecha legible es es-MX; usar siempre timestamp ISO de API)
-  const pedidos = pedidosDB.filter((pedido: any) => {
+  const pedidos = pedidosDB
+    .filter((pedido) =>
+      esWinston ? pedidoCoincideFiltroLinea(pedido as unknown as Record<string, unknown>, filtroLineaVenta) : true
+    )
+    .filter((pedido: any) => {
     const raw =
       pedido.created_at ??
       pedido.createdAt ??
@@ -753,25 +766,27 @@ function PedidosPageContent() {
     enviandoPedidoRef.current = true;
     setGuardandoPedido(true);
     try {
-      const resultado = await crearPedido(
+      const resultado = await crearPedidosDesdeCarrito(
         pedidoParaDB,
         detallesParaDB,
         sesion?.sucursal_id,
-        sesion?.usuario_id
+        sesion
       );
       console.log('📦 Resultado:', resultado);
 
-      if (resultado.success && resultado.data) {
-        console.log('✅ Pedido creado exitosamente, ID:', resultado.data.id);
-        console.log('🔀 Navegando a /pedidos/' + resultado.data.id);
-        router.push(`/pedidos/${resultado.data.id}`);
+      if (resultado.success && resultado.pedidos.length > 0) {
+        const folios = resultado.pedidos.map((p) => p.folio).filter(Boolean).join(', ');
+        if (resultado.pedidos.length > 1) {
+          alert(`✅ Venta registrada en 2 recibos:\n\n${folios}\n\n(Prendas y tenis por separado)`);
+          router.push('/pedidos');
+        } else {
+          console.log('✅ Pedido creado exitosamente, ID:', resultado.pedidos[0].id);
+          router.push(`/pedidos/${resultado.pedidos[0].id}`);
+        }
       } else {
         console.error('❌ Error al crear pedido:', resultado.error);
 
-        const errorMsg =
-          typeof resultado.error === 'string'
-            ? resultado.error
-            : resultado.error?.message || 'Error desconocido al crear el pedido';
+        const errorMsg = resultado.error || 'Error desconocido al crear el pedido';
 
         alert(`❌ Error al crear el pedido\n\n${errorMsg}`);
         console.error('Error completo:', resultado.error);
@@ -892,7 +907,14 @@ function PedidosPageContent() {
             }}
           >
             Mostrando pedidos de <strong style={{ color: '#1e40af' }}>{sesion.sucursal_nombre}</strong> únicamente.
-            Cada tienda tiene su propio historial y folios (ej. PED-MAT-MAD-… / PED-SUC-WIN-…).
+            {esWinston ? (
+              <>
+                {' '}
+                Folios de prendas: <strong>wu0001…</strong> · Tenis: <strong>wt0001…</strong>. Una venta mixta genera 2 recibos.
+              </>
+            ) : (
+              <> Cada tienda tiene su propio historial y folios (ej. PED-MAT-MAD-…).</>
+            )}
           </div>
         )}
 
@@ -1800,6 +1822,29 @@ function PedidosPageContent() {
             }}>🎯 Filtrar por:</span>
           </div>
           
+          {esWinston && (
+            <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
+              <label style={{ fontSize: '0.95rem', fontWeight: '600', color: 'white' }}>Línea:</label>
+              <select
+                value={filtroLineaVenta}
+                onChange={(e) => setFiltroLineaVenta(e.target.value as FiltroLineaVenta)}
+                className="form-select"
+                style={{
+                  width: '130px',
+                  fontWeight: '600',
+                  border: '2px solid white',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
+                }}
+              >
+                {OPCIONES_FILTRO_LINEA.map((op) => (
+                  <option key={op.value} value={op.value}>
+                    {op.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
             <label style={{ fontSize: '0.95rem', fontWeight: '600', color: 'white' }}>Mes:</label>
             <select

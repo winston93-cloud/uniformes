@@ -5,19 +5,38 @@ import LayoutWrapper from '@/components/LayoutWrapper';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCortes } from '@/lib/hooks/useCortes';
 import type { Corte } from '@/lib/types';
+import {
+  esCuentaWinston,
+  OPCIONES_FILTRO_LINEA,
+  OPCIONES_LINEA_CORTE,
+  type FiltroLineaVenta,
+  type LineaVentaWinston,
+} from '@/lib/winstonLineaVenta';
 
 export const dynamic = 'force-dynamic';
 
+function etiquetaLineaCorte(corte: Corte): string {
+  if (corte.linea_venta === 'tenis') return 'Tenis';
+  if (corte.linea_venta === 'prendas') return 'Prendas';
+  return 'General';
+}
+
 export default function CortesPage() {
   const { sesion } = useAuth();
+  const esWinston = esCuentaWinston(sesion);
+  const [filtroLineaVenta, setFiltroLineaVenta] = useState<FiltroLineaVenta>('todos');
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [corteSeleccionado, setCorteSeleccionado] = useState<string | null>(null);
   const [detalleCorte, setDetalleCorte] = useState<any[] | null>(null);
-  const { cortes, loading, error, crearCorte, getDetalleCorte, cerrarCorte } = useCortes(sesion?.sucursal_id);
+  const { cortes, loading, error, crearCorte, getDetalleCorte, cerrarCorte } = useCortes(
+    sesion?.sucursal_id,
+    esWinston ? filtroLineaVenta : 'todos'
+  );
 
   const [formData, setFormData] = useState({
     fechaInicio: '',
     fechaFin: '',
+    lineaVenta: 'prendas' as LineaVentaWinston,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -28,15 +47,23 @@ export default function CortesPage() {
       return;
     }
 
-    const { error } = await crearCorte(formData.fechaInicio, formData.fechaFin);
+    const { error } = await crearCorte(
+      formData.fechaInicio,
+      formData.fechaFin,
+      esWinston ? formData.lineaVenta : null
+    );
     
     if (error) {
       alert(`Error al crear el corte: ${error}`);
       return;
     }
 
-    alert('Corte de caja creado exitosamente');
-    setFormData({ fechaInicio: '', fechaFin: '' });
+    alert(
+      esWinston
+        ? `Corte de ${formData.lineaVenta === 'tenis' ? 'tenis' : 'prendas'} creado exitosamente`
+        : 'Corte de caja creado exitosamente'
+    );
+    setFormData({ fechaInicio: '', fechaFin: '', lineaVenta: formData.lineaVenta });
     setMostrarFormulario(false);
   };
 
@@ -104,7 +131,14 @@ export default function CortesPage() {
             }}
           >
             Cortes de <strong style={{ color: '#1e40af' }}>{sesion.sucursal_nombre}</strong> únicamente.
-            Solo se incluyen pedidos <strong>COMPLETADOS</strong> (liquidados) de esta tienda en el rango de fechas.
+            {esWinston ? (
+              <>
+                {' '}
+                Genera cortes separados de <strong>prendas (wu…)</strong> y <strong>tenis (wt…)</strong>.
+              </>
+            ) : (
+              <> Solo se incluyen pedidos <strong>COMPLETADOS</strong> (liquidados) de esta tienda en el rango de fechas.</>
+            )}
           </div>
         )}
 
@@ -119,10 +153,31 @@ export default function CortesPage() {
             <h2 className="form-title">Generar Nuevo Corte de Caja</h2>
             <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', textAlign: 'center' }}>
               El corte incluirá los pedidos <strong>COMPLETADOS</strong> (liquidados) de{' '}
-              <strong>{sesion?.sucursal_nombre ?? 'tu tienda'}</strong> entre las fechas seleccionadas.
+              <strong>{sesion?.sucursal_nombre ?? 'tu tienda'}</strong> entre las fechas seleccionadas
+              {esWinston ? ' para la línea seleccionada.' : '.'}
             </p>
             
             <form onSubmit={handleSubmit}>
+              {esWinston && (
+                <div className="form-group">
+                  <label className="form-label">Línea de venta *</label>
+                  <select
+                    className="form-input"
+                    value={formData.lineaVenta}
+                    onChange={(e) =>
+                      setFormData({ ...formData, lineaVenta: e.target.value as LineaVentaWinston })
+                    }
+                    required
+                  >
+                    {OPCIONES_LINEA_CORTE.map((op) => (
+                      <option key={op.value} value={op.value}>
+                        {op.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div className="form-group">
                   <label className="form-label">Fecha Inicio *</label>
@@ -215,11 +270,34 @@ export default function CortesPage() {
           </div>
         )}
 
+        {esWinston && (
+          <div className="form-container" style={{ marginBottom: '1.5rem', padding: '1rem 1.25rem' }}>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              <label className="form-label" style={{ marginBottom: 0 }}>
+                Ver cortes:
+              </label>
+              <select
+                className="form-input"
+                style={{ maxWidth: '180px', marginBottom: 0 }}
+                value={filtroLineaVenta}
+                onChange={(e) => setFiltroLineaVenta(e.target.value as FiltroLineaVenta)}
+              >
+                {OPCIONES_FILTRO_LINEA.map((op) => (
+                  <option key={op.value} value={op.value}>
+                    {op.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
+
         <div className="table-container">
           <table className="table">
             <thead>
               <tr>
                 <th>ID</th>
+                {esWinston && <th>Línea</th>}
                 <th>Fecha Corte</th>
                 <th>Período</th>
                 <th>Total Pedidos</th>
@@ -231,7 +309,7 @@ export default function CortesPage() {
             <tbody>
               {cortes.length === 0 ? (
                 <tr>
-                  <td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                  <td colSpan={esWinston ? 8 : 7} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
                     No hay cortes registrados. Crea tu primer corte.
                   </td>
                 </tr>
@@ -239,6 +317,13 @@ export default function CortesPage() {
                 cortes.map((corte: Corte) => (
                   <tr key={corte.id}>
                     <td data-label="ID" style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>{corte.id.substring(0, 8)}...</td>
+                    {esWinston && (
+                      <td data-label="Línea">
+                        <span className={`badge ${corte.linea_venta === 'tenis' ? 'badge-warning' : 'badge-info'}`}>
+                          {etiquetaLineaCorte(corte)}
+                        </span>
+                      </td>
+                    )}
                     <td data-label="Fecha Creación">{new Date(corte.fecha).toLocaleDateString('es-MX')}</td>
                     <td data-label="Periodo">
                       <div style={{ fontSize: '0.9rem' }}>

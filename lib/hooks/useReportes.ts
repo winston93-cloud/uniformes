@@ -5,6 +5,12 @@ import { insforgeDb } from '@/lib/insforgeBrowser';
 import { compararTallas } from '../ordenTallas';
 import { filtrarCostosInventarioTienda } from '@/lib/inventarioSucursal';
 import { normalizarCamposCostoApi } from '@/lib/costoQueries';
+import {
+  esPrendaTenis,
+  pedidoCoincideFiltroLinea,
+  TENIS_PRENDA_ID,
+  type FiltroLineaVenta,
+} from '@/lib/winstonLineaVenta';
 
 export interface ReporteVentas {
   id: string;
@@ -45,7 +51,11 @@ export interface ReporteGanancias {
   }[];
 }
 
-export function useReportes(sucursal_id?: string, es_matriz?: boolean) {
+export function useReportes(
+  sucursal_id?: string,
+  es_matriz?: boolean,
+  filtroLinea: FiltroLineaVenta = 'todos'
+) {
   const [loading, setLoading] = useState(false);
 
   const sid = sucursal_id?.trim() || '';
@@ -53,6 +63,32 @@ export function useReportes(sucursal_id?: string, es_matriz?: boolean) {
 
   const filtrarCostosTienda = (rows: Record<string, unknown>[]) =>
     sid ? filtrarCostosInventarioTienda(rows, inventarioOpts) : rows;
+
+  const filtrarPedidosLinea = (pedidos: Record<string, unknown>[]) => {
+    if (filtroLinea === 'todos') return pedidos;
+    return pedidos.filter((p) => pedidoCoincideFiltroLinea(p, filtroLinea));
+  };
+
+  const filtrarCostosPorLinea = (rows: Record<string, unknown>[]) => {
+    if (filtroLinea === 'todos') return rows;
+    return rows.filter((row) => {
+      const r = row as Record<string, any>;
+      const prendaId = String(r.prenda_id ?? r.prendaId ?? r.prenda?.id ?? '');
+      const prendaNombre = r.prenda?.nombre as string | undefined;
+      const esTenis = esPrendaTenis(prendaId, prendaNombre);
+      return filtroLinea === 'tenis' ? esTenis : !esTenis;
+    });
+  };
+
+  const filtrarDetallesPorLinea = (detalles: any[]) => {
+    if (filtroLinea === 'todos') return detalles;
+    return detalles.filter((detalle) => {
+      const prendaId = String(detalle.prenda_id ?? detalle.prenda?.id ?? '');
+      const prendaNombre = detalle.prenda?.nombre as string | undefined;
+      const esTenis = esPrendaTenis(prendaId, prendaNombre);
+      return filtroLinea === 'tenis' ? esTenis : !esTenis;
+    });
+  };
 
   const rangoLocalAIso = (fechaInicio: string, fechaFin: string) => {
     const [y1, m1, d1] = fechaInicio.split('-').map(Number);
@@ -89,7 +125,7 @@ export function useReportes(sucursal_id?: string, es_matriz?: boolean) {
 
       // Filtrar por fecha en local (día completo) y mapear
       const pedidosDetalle =
-        data
+        filtrarPedidosLinea((data || []) as Record<string, unknown>[])
           ?.filter((pedido: any) => {
             const rawFecha = pedido.created_at ?? pedido.updated_at ?? pedido.fecha;
             const fechaPedido = rawFecha ? new Date(rawFecha) : null;
@@ -143,7 +179,10 @@ export function useReportes(sucursal_id?: string, es_matriz?: boolean) {
         const { data: pedidos } = await pedidosQuery;
 
         if (pedidos && pedidos.length > 0) {
-          const pedidoIds = pedidos.map(p => p.id);
+          const pedidoIds = filtrarPedidosLinea(pedidos as Record<string, unknown>[]).map((p) =>
+            String((p as { id: string }).id)
+          );
+          if (pedidoIds.length === 0) return [];
           query = query.in('pedido_id', pedidoIds);
         } else {
           return [];
@@ -155,7 +194,11 @@ export function useReportes(sucursal_id?: string, es_matriz?: boolean) {
           .in('estado', ['COMPLETADO'])
           .eq('sucursal_id', sid);
         if (pedidos?.length) {
-          query = query.in('pedido_id', pedidos.map((p) => p.id));
+          const pedidoIds = filtrarPedidosLinea(pedidos as Record<string, unknown>[]).map((p) =>
+            String((p as { id: string }).id)
+          );
+          if (pedidoIds.length === 0) return [];
+          query = query.in('pedido_id', pedidoIds);
         } else {
           return [];
         }
@@ -398,12 +441,26 @@ export function useReportes(sucursal_id?: string, es_matriz?: boolean) {
         insforgeDb().from('costos').select('stock').eq('activo', true),
       ]);
 
-      const costosTienda = filtrarCostosTienda((costosRaw || []) as Record<string, unknown>[]);
-      const ventasTotales = pedidosLiquidados?.reduce((sum, p) => sum + parseFloat(String(p.total ?? 0)), 0) || 0;
+      const costosTienda = filtrarCostosPorLinea(
+        filtrarCostosTienda((costosRaw || []) as Record<string, unknown>[])
+      );
+
+      const pedidosFiltrados = filtrarPedidosLinea((pedidosLiquidados || []) as Record<string, unknown>[]);
+      const ventasTotales =
+        pedidosFiltrados.reduce((sum, p) => sum + parseFloat(String(p.total ?? 0)), 0) || 0;
       const prendasStock = costosTienda.reduce((sum, c) => sum + Number(c.stock ?? 0), 0);
 
+      let totalPedidosCount = totalPedidos || 0;
+      if (filtroLinea !== 'todos' && sid) {
+        const { data: todosPedidos } = await insforgeDb()
+          .from('pedidos')
+          .select('id, folio, linea_venta')
+          .eq('sucursal_id', sid);
+        totalPedidosCount = filtrarPedidosLinea((todosPedidos || []) as Record<string, unknown>[]).length;
+      }
+
       return {
-        totalPedidos: totalPedidos || 0,
+        totalPedidos: totalPedidosCount,
         ventasTotales,
         totalAlumnos: totalAlumnos || 0,
         prendasStock,

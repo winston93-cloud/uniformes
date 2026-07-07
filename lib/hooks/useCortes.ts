@@ -3,13 +3,25 @@
 import { useState, useEffect, useCallback } from 'react';
 import { insforgeDb } from '@/lib/insforgeBrowser';
 import type { Corte } from '../types';
+import {
+  leerLineaVentaPedido,
+  pedidoCoincideFiltroLinea,
+  type FiltroLineaVenta,
+  type LineaVentaWinston,
+} from '@/lib/winstonLineaVenta';
 
 function readSucursalId(row: Record<string, unknown>): string {
   const v = row.sucursal_id ?? row.sucursalId;
   return v != null ? String(v).trim() : '';
 }
 
-export function useCortes(sucursal_id?: string) {
+function readLineaVenta(row: Record<string, unknown>): LineaVentaWinston | null {
+  const raw = row.linea_venta ?? row.lineaVenta;
+  if (raw === 'prendas' || raw === 'tenis') return raw;
+  return null;
+}
+
+export function useCortes(sucursal_id?: string, filtroLinea?: FiltroLineaVenta) {
   const [cortes, setCortes] = useState<Corte[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +42,13 @@ export function useCortes(sucursal_id?: string) {
         .order('fecha', { ascending: false });
 
       if (qErr) throw qErr;
-      setCortes((data || []) as Corte[]);
+
+      let rows = (data || []) as Corte[];
+      if (filtroLinea && filtroLinea !== 'todos') {
+        rows = rows.filter((c) => readLineaVenta(c as unknown as Record<string, unknown>) === filtroLinea);
+      }
+
+      setCortes(rows);
       setError(null);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -39,13 +57,17 @@ export function useCortes(sucursal_id?: string) {
     } finally {
       setLoading(false);
     }
-  }, [sucursal_id]);
+  }, [sucursal_id, filtroLinea]);
 
   useEffect(() => {
     void fetchCortes();
   }, [fetchCortes]);
 
-  const crearCorte = async (fechaInicio: string, fechaFin: string) => {
+  const crearCorte = async (
+    fechaInicio: string,
+    fechaFin: string,
+    linea_venta?: LineaVentaWinston | null
+  ) => {
     if (!sucursal_id?.trim()) {
       return { data: null, error: 'No hay sucursal activa en la sesión.' };
     }
@@ -57,7 +79,7 @@ export function useCortes(sucursal_id?: string) {
 
       const { data: pedidos, error: pedidosError } = await insforgeDb()
         .from('pedidos')
-        .select('id, total, estado, sucursal_id')
+        .select('id, total, estado, sucursal_id, folio, linea_venta')
         .eq('estado', 'COMPLETADO')
         .eq('sucursal_id', sid)
         .gte('created_at', fechaInicioObj.toISOString())
@@ -65,28 +87,35 @@ export function useCortes(sucursal_id?: string) {
 
       if (pedidosError) throw pedidosError;
 
-      const totalVentas = pedidos?.reduce((sum, p) => sum + parseFloat(String(p.total ?? 0)), 0) || 0;
-      const totalPedidos = pedidos?.length || 0;
+      const pedidosFiltrados = (pedidos || []).filter((p) => {
+        if (!linea_venta) return true;
+        return leerLineaVentaPedido(p as Record<string, unknown>) === linea_venta;
+      });
+
+      const totalVentas =
+        pedidosFiltrados.reduce((sum, p) => sum + parseFloat(String(p.total ?? 0)), 0) || 0;
+      const totalPedidos = pedidosFiltrados.length;
+
+      const insertRow: Record<string, unknown> = {
+        fecha_inicio: fechaInicio,
+        fecha_fin: fechaFin,
+        total_ventas: totalVentas,
+        total_pedidos: totalPedidos,
+        sucursal_id: sid,
+        activo: true,
+      };
+      if (linea_venta) insertRow.linea_venta = linea_venta;
 
       const { data, error: insErr } = await insforgeDb()
         .from('cortes')
-        .insert([
-          {
-            fecha_inicio: fechaInicio,
-            fecha_fin: fechaFin,
-            total_ventas: totalVentas,
-            total_pedidos: totalPedidos,
-            sucursal_id: sid,
-            activo: true,
-          },
-        ])
+        .insert([insertRow])
         .select()
         .single();
 
       if (insErr) throw insErr;
 
-      if (pedidos && pedidos.length > 0) {
-        const detalles = pedidos.map((pedido) => ({
+      if (pedidosFiltrados.length > 0) {
+        const detalles = pedidosFiltrados.map((pedido) => ({
           corte_id: data.id,
           pedido_id: pedido.id,
         }));
@@ -116,7 +145,7 @@ export function useCortes(sucursal_id?: string) {
     try {
       const { data: corteRow, error: corteErr } = await insforgeDb()
         .from('cortes')
-        .select('id, sucursal_id')
+        .select('id, sucursal_id, linea_venta')
         .eq('id', corteId)
         .maybeSingle();
 
@@ -143,22 +172,30 @@ export function useCortes(sucursal_id?: string) {
           .in('id', pedidoIds)
           .eq('sucursal_id', sucursal_id.trim());
         if (!pr.error && pr.data) {
-          pedidoPorId = new Map(pr.data.map((p) => [String((p as Record<string, unknown>).id), p as Record<string, unknown>]));
+          pedidoPorId = new Map(
+            pr.data.map((p) => [String((p as Record<string, unknown>).id), p as Record<string, unknown>])
+          );
         }
       }
 
-      const alumnoIds = [...new Set(
-        [...pedidoPorId.values()]
-          .map((p) => p.alumno_id ?? p.alumnoId)
-          .filter(Boolean)
-          .map(String)
-      )];
-      const externoIds = [...new Set(
-        [...pedidoPorId.values()]
-          .map((p) => p.externo_id ?? p.externoId)
-          .filter(Boolean)
-          .map(String)
-      )];
+      const lineaCorte = readLineaVenta(corteRow as Record<string, unknown>);
+
+      const alumnoIds = [
+        ...new Set(
+          [...pedidoPorId.values()]
+            .map((p) => p.alumno_id ?? p.alumnoId)
+            .filter(Boolean)
+            .map(String)
+        ),
+      ];
+      const externoIds = [
+        ...new Set(
+          [...pedidoPorId.values()]
+            .map((p) => p.externo_id ?? p.externoId)
+            .filter(Boolean)
+            .map(String)
+        ),
+      ];
 
       const alumnoPorId = new Map<string, Record<string, unknown>>();
       if (alumnoIds.length > 0) {
@@ -185,20 +222,23 @@ export function useCortes(sucursal_id?: string) {
         }
       }
 
-      const enriched = (detalles || []).map((det) => {
-        const pedido = pedidoPorId.get(String(det.pedido_id));
-        if (!pedido) return { ...det, pedido: null };
-        const alumnoId = pedido.alumno_id ?? pedido.alumnoId;
-        const externoId = pedido.externo_id ?? pedido.externoId;
-        return {
-          ...det,
-          pedido: {
-            ...pedido,
-            alumno: alumnoId ? alumnoPorId.get(String(alumnoId)) : undefined,
-            externo: externoId ? externoPorId.get(String(externoId)) : undefined,
-          },
-        };
-      });
+      const enriched = (detalles || [])
+        .map((det) => {
+          const pedido = pedidoPorId.get(String(det.pedido_id));
+          if (!pedido) return { ...det, pedido: null };
+          if (lineaCorte && leerLineaVentaPedido(pedido) !== lineaCorte) return null;
+          const alumnoId = pedido.alumno_id ?? pedido.alumnoId;
+          const externoId = pedido.externo_id ?? pedido.externoId;
+          return {
+            ...det,
+            pedido: {
+              ...pedido,
+              alumno: alumnoId ? alumnoPorId.get(String(alumnoId)) : undefined,
+              externo: externoId ? externoPorId.get(String(externoId)) : undefined,
+            },
+          };
+        })
+        .filter(Boolean);
 
       return { data: enriched, error: null };
     } catch (err: unknown) {
