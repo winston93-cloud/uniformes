@@ -17,6 +17,8 @@ import ModalInsumosTalla from '@/components/ModalInsumosTalla';
 import {
   parseEnteroFormateado,
   formatearEnteroMilesAlEscribir,
+  parseSignedEnteroFormateado,
+  formatearSignedEnteroAlEscribir,
 } from '@/lib/formatNumericInput';
 import { opcionesInventarioDesdeSesion, sucursalIdParaCostosSesion } from '@/lib/inventarioSucursal';
 import { esCuentaWinston } from '@/lib/winstonLineaVenta';
@@ -87,6 +89,8 @@ export default function PrendasPage() {
   const inputBusquedaRef = useRef<HTMLInputElement>(null);
   const inventarioOpts = opcionesInventarioDesdeSesion(sesion, 'gestion');
   const puedeEditarCatalogo = Boolean(sesion?.es_matriz) || esCuentaWinston(sesion);
+  const esWinston = esCuentaWinston(sesion);
+  const usarUbicacionesStock = !esWinston;
   const { prendas, loading, error, createPrenda, updatePrenda, deletePrenda } = usePrendas(inventarioOpts);
   const { categorias, loading: loadingCategorias, refetch: refetchCategorias } = useCategorias();
   const { tallas } = useTallas();
@@ -124,9 +128,12 @@ export default function PrendasPage() {
   const [partidasUbicacion, setPartidasUbicacion] = useState<
     Array<{ tempId: string; ubicacion_id: string; cantidad: string }>
   >([]);
-  const [ubicacionSelectStock, setUbicacionSelectStock] = useState('');
   const [mensajeExitoStock, setMensajeExitoStock] = useState<string>('');
   const [modalExitoStockAbierto, setModalExitoStockAbierto] = useState(false);
+  const [modalAjusteStockAbierto, setModalAjusteStockAbierto] = useState(false);
+  const [cantidadAjusteStock, setCantidadAjusteStock] = useState('');
+  const [ubicacionAjusteStock, setUbicacionAjusteStock] = useState('');
+  const [errorAjusteStock, setErrorAjusteStock] = useState('');
   
   useEffect(() => {
     const cargarTodasCategorias = async () => {
@@ -202,14 +209,12 @@ export default function PrendasPage() {
             } else {
               setPartidasUbicacion([]);
             }
-            setUbicacionSelectStock('');
           } else {
             setStockData({
               stock_inicial: '',
               stock_minimo: '',
             });
             setPartidasUbicacion([]);
-            setUbicacionSelectStock('');
           }
         } catch (err) {
           console.error('Error cargando stock:', err);
@@ -267,27 +272,110 @@ export default function PrendasPage() {
   const stockTotalModalNum = () => parseEnteroFormateado(stockData.stock_inicial);
   const sumPartidasDistribuidas = () =>
     partidasUbicacion.reduce((s, p) => s + parseEnteroFormateado(p.cantidad), 0);
-  const restanteStockModal = () =>
-    Math.max(0, stockTotalModalNum() - sumPartidasDistribuidas());
 
-  const agregarPartidaUbicacion = (ubicacionId: string) => {
-    if (!ubicacionId) return;
-    if (partidasUbicacion.some((p) => p.ubicacion_id === ubicacionId)) return;
-    const total = stockTotalModalNum();
-    const sumOtros = partidasUbicacion.reduce(
-      (s, p) => s + parseEnteroFormateado(p.cantidad),
-      0
-    );
-    const restante = Math.max(0, total - sumOtros);
-    setPartidasUbicacion((prev) => [
+  const cerrarModalAjusteStock = () => {
+    setModalAjusteStockAbierto(false);
+    setCantidadAjusteStock('');
+    setUbicacionAjusteStock('');
+    setErrorAjusteStock('');
+  };
+
+  const abrirModalAjusteStock = () => {
+    setCantidadAjusteStock('');
+    setUbicacionAjusteStock('');
+    setErrorAjusteStock('');
+    setModalAjusteStockAbierto(true);
+  };
+
+  const requiereUbicacionEnAjuste = (delta: number): boolean => {
+    if (!usarUbicacionesStock || delta === 0) return false;
+    if (partidasUbicacion.length === 1) return false;
+    if (delta > 0) return true;
+    return partidasUbicacion.length > 1;
+  };
+
+  const aplicarAjusteStock = () => {
+    const delta = parseSignedEnteroFormateado(cantidadAjusteStock);
+    if (delta === 0) {
+      setErrorAjusteStock('Indica una cantidad distinta de 0 (usa − para restar).');
+      return;
+    }
+
+    const actual = stockTotalModalNum();
+    const nuevo = actual + delta;
+    if (nuevo < 0) {
+      setErrorAjusteStock('El stock no puede quedar en negativo.');
+      return;
+    }
+
+    if (esWinston) {
+      setStockData((prev) => ({
+        ...prev,
+        stock_inicial: nuevo.toLocaleString('en-US'),
+      }));
+      cerrarModalAjusteStock();
+      return;
+    }
+
+    let partidas = [...partidasUbicacion];
+
+    if (delta < 0 && partidas.length === 0) {
+      setErrorAjusteStock('No hay stock que restar.');
+      return;
+    }
+
+    if (delta > 0) {
+      const ubId =
+        partidas.length === 1
+          ? partidas[0].ubicacion_id
+          : ubicacionAjusteStock.trim();
+      if (!ubId) {
+        setErrorAjusteStock('Selecciona la ubicación donde entra el stock.');
+        return;
+      }
+      const idx = partidas.findIndex((p) => p.ubicacion_id === ubId);
+      if (idx >= 0) {
+        const cant = parseEnteroFormateado(partidas[idx].cantidad) + delta;
+        partidas[idx] = { ...partidas[idx], cantidad: cant.toLocaleString('en-US') };
+      } else {
+        partidas.push({
+          tempId: crypto.randomUUID(),
+          ubicacion_id: ubId,
+          cantidad: delta.toLocaleString('en-US'),
+        });
+      }
+    } else {
+      const abs = Math.abs(delta);
+      const ubId =
+        partidas.length === 1 ? partidas[0].ubicacion_id : ubicacionAjusteStock.trim();
+      if (!ubId) {
+        setErrorAjusteStock('Selecciona la ubicación de donde se descuenta.');
+        return;
+      }
+      const idx = partidas.findIndex((p) => p.ubicacion_id === ubId);
+      if (idx < 0) {
+        setErrorAjusteStock('Ubicación no válida.');
+        return;
+      }
+      const disponible = parseEnteroFormateado(partidas[idx].cantidad);
+      if (abs > disponible) {
+        setErrorAjusteStock(`Solo hay ${disponible.toLocaleString('en-US')} en esa ubicación.`);
+        return;
+      }
+      const cant = disponible - abs;
+      if (cant === 0) {
+        partidas = partidas.filter((p) => p.ubicacion_id !== ubId);
+      } else {
+        partidas[idx] = { ...partidas[idx], cantidad: cant.toLocaleString('en-US') };
+      }
+    }
+
+    setPartidasUbicacion(partidas);
+    setStockData((prev) => ({
       ...prev,
-      {
-        tempId: crypto.randomUUID(),
-        ubicacion_id: ubicacionId,
-        cantidad: restante.toLocaleString('en-US'),
-      },
-    ]);
-    setUbicacionSelectStock('');
+      stock_inicial: nuevo.toLocaleString('en-US'),
+    }));
+    cerrarModalAjusteStock();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -1236,26 +1324,34 @@ export default function PrendasPage() {
                   0
                 );
 
-                if (total === 0 && partidasUbicacion.length > 0) {
-                  setMensajeError(
-                    '❌ Con stock en 0 no debe haber cantidades por ubicación. Quita las partidas o indica un stock mayor a 0.'
-                  );
+                if (total < 0) {
+                  setMensajeError('❌ El stock existente no puede ser negativo.');
                   setModalErrorAbierto(true);
                   return;
                 }
 
-                if (total > 0) {
-                  if (partidasUbicacion.length === 0) {
-                    setMensajeError('❌ Con stock mayor a 0, agrega al menos una ubicación y reparte la cantidad.');
-                    setModalErrorAbierto(true);
-                    return;
-                  }
-                  if (sumDistrib !== total) {
+                if (usarUbicacionesStock) {
+                  if (total === 0 && partidasUbicacion.length > 0) {
                     setMensajeError(
-                      `❌ La suma por ubicación (${sumDistrib}) debe ser igual al stock existente (${total}).`
+                      '❌ Con stock en 0 no debe haber cantidades por ubicación. Quita las partidas o indica un stock mayor a 0.'
                     );
                     setModalErrorAbierto(true);
                     return;
+                  }
+
+                  if (total > 0) {
+                    if (partidasUbicacion.length === 0) {
+                      setMensajeError('❌ Con stock mayor a 0, agrega stock con «Actualizar stock» y asigna ubicación.');
+                      setModalErrorAbierto(true);
+                      return;
+                    }
+                    if (sumDistrib !== total) {
+                      setMensajeError(
+                        `❌ La suma por ubicación (${sumDistrib}) debe ser igual al stock existente (${total}).`
+                      );
+                      setModalErrorAbierto(true);
+                      return;
+                    }
                   }
                 }
 
@@ -1274,6 +1370,7 @@ export default function PrendasPage() {
                     stock: total,
                     stock_minimo: stockMinimo,
                     partidas,
+                    omitir_ubicaciones: !usarUbicacionesStock,
                   }),
                 });
                 const json = await res.json().catch(() => null);
@@ -1294,7 +1391,6 @@ export default function PrendasPage() {
                     stock_minimo: '',
                   });
                   setPartidasUbicacion([]);
-                  setUbicacionSelectStock('');
                 }, 2000);
               } catch (err: any) {
                 setMensajeError(`❌ Error al configurar stock: ${err.message}`);
@@ -1311,30 +1407,49 @@ export default function PrendasPage() {
                 }}>
                   Stock Existente *
                 </label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  autoComplete="off"
-                  className="form-input"
-                  value={stockData.stock_inicial}
-                  onChange={(e) =>
-                    setStockData({
-                      ...stockData,
-                      stock_inicial: formatearEnteroMilesAlEscribir(e.target.value),
-                    })
-                  }
-                  placeholder="Ej: 1,000"
-                  required
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    border: '2px solid #e2e8f0',
-                    borderRadius: '8px',
-                    fontSize: '1rem'
-                  }}
-                />
+                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'stretch' }}>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    className="form-input"
+                    value={stockData.stock_inicial}
+                    readOnly
+                    placeholder="0"
+                    style={{
+                      flex: '1 1 140px',
+                      maxWidth: '200px',
+                      padding: '0.75rem',
+                      border: '2px solid #e2e8f0',
+                      borderRadius: '8px',
+                      fontSize: '1rem',
+                      backgroundColor: '#f8fafc',
+                      color: '#334155',
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={abrirModalAjusteStock}
+                    style={{
+                      flex: '1 1 auto',
+                      padding: '0.75rem 1rem',
+                      background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontWeight: '600',
+                      fontSize: '0.95rem',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    Actualizar stock
+                  </button>
+                </div>
                 <small style={{ color: '#64748b', fontSize: '0.85rem', display: 'block', marginTop: '0.25rem' }}>
-                  Total de unidades; debe coincidir con la suma repartida por ubicación abajo.
+                  {usarUbicacionesStock
+                    ? 'Usa «Actualizar stock» para sumar o restar unidades y asignar ubicación en matriz.'
+                    : 'Usa «Actualizar stock» para sumar o restar unidades (ej. 5 suma, −5 resta).'}
                 </small>
               </div>
 
@@ -1374,6 +1489,7 @@ export default function PrendasPage() {
                 </small>
               </div>
 
+              {usarUbicacionesStock && (
               <div style={{ marginBottom: '2rem' }}>
                 <label
                   className="form-label"
@@ -1384,57 +1500,8 @@ export default function PrendasPage() {
                     color: '#334155',
                   }}
                 >
-                  📍 Ubicaciones de almacenamiento
+                  📍 Distribución por ubicación
                 </label>
-                <select
-                  className="form-select"
-                  value={ubicacionSelectStock}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    if (v) agregarPartidaUbicacion(v);
-                    else setUbicacionSelectStock('');
-                  }}
-                  disabled={loadingUbicaciones}
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    border: '2px solid #e2e8f0',
-                    borderLeft: '4px solid #8b5cf6',
-                    borderRadius: '8px',
-                    fontSize: '1rem',
-                    backgroundColor: 'white',
-                  }}
-                >
-                  <option value="">+ Agregar ubicación…</option>
-                  {ubicaciones
-                    .filter(
-                      (u) =>
-                        u.activo &&
-                        !partidasUbicacion.some((p) => p.ubicacion_id === u.id)
-                    )
-                    .map((ubic) => (
-                      <option key={ubic.id} value={ubic.id}>
-                        {ubic.nombre}
-                      </option>
-                    ))}
-                </select>
-                <p
-                  style={{
-                    color: '#64748b',
-                    fontSize: '0.85rem',
-                    marginTop: '0.5rem',
-                    marginBottom: '0.75rem',
-                  }}
-                >
-                  Elige una ubicación para añadir una <strong>partida</strong>. La cantidad sugerida es el stock
-                  existente menos lo ya asignado.{' '}
-                  <a
-                    href="/insumos"
-                    style={{ color: '#007bff', textDecoration: 'underline' }}
-                  >
-                    Gestionar ubicaciones en Catálogo de Insumos
-                  </a>
-                </p>
                 {stockTotalModalNum() > 0 && (
                   <div
                     style={{
@@ -1446,14 +1513,15 @@ export default function PrendasPage() {
                       marginBottom: '0.75rem',
                     }}
                   >
-                    Distribuido:{' '}
-                    <strong>{sumPartidasDistribuidas().toLocaleString('en-US')}</strong> · Restante:{' '}
-                    <strong>{restanteStockModal().toLocaleString('en-US')}</strong> · Total stock:{' '}
+                    Total stock:{' '}
                     <strong>{stockTotalModalNum().toLocaleString('en-US')}</strong>
+                    {' · '}
+                    Distribuido:{' '}
+                    <strong>{sumPartidasDistribuidas().toLocaleString('en-US')}</strong>
                   </div>
                 )}
                 {partidasUbicacion.length > 0 ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                     {partidasUbicacion.map((p) => {
                       const nombreUb =
                         ubicaciones.find((u) => u.id === p.ubicacion_id)?.nombre || 'Ubicación';
@@ -1462,61 +1530,17 @@ export default function PrendasPage() {
                           key={p.tempId}
                           style={{
                             display: 'flex',
-                            flexWrap: 'wrap',
-                            alignItems: 'center',
-                            gap: '0.5rem',
+                            justifyContent: 'space-between',
                             padding: '0.65rem 0.75rem',
                             border: '1px solid #e2e8f0',
                             borderRadius: '8px',
                             background: '#fafafa',
                           }}
                         >
-                          <span style={{ fontWeight: 600, color: '#334155', minWidth: '120px' }}>
-                            {nombreUb}
+                          <span style={{ fontWeight: 600, color: '#334155' }}>{nombreUb}</span>
+                          <span style={{ color: '#0f766e', fontWeight: 600 }}>
+                            {parseEnteroFormateado(p.cantidad).toLocaleString('en-US')} uds.
                           </span>
-                          <label style={{ fontSize: '0.85rem', color: '#64748b', margin: 0 }}>
-                            Cantidad
-                          </label>
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            autoComplete="off"
-                            value={p.cantidad}
-                            onChange={(e) => {
-                              const val = formatearEnteroMilesAlEscribir(e.target.value);
-                              setPartidasUbicacion((prev) =>
-                                prev.map((row) =>
-                                  row.tempId === p.tempId ? { ...row, cantidad: val } : row
-                                )
-                              );
-                            }}
-                            style={{
-                              width: '100px',
-                              padding: '0.45rem 0.5rem',
-                              border: '1px solid #cbd5e1',
-                              borderRadius: '6px',
-                            }}
-                          />
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setPartidasUbicacion((prev) =>
-                                prev.filter((row) => row.tempId !== p.tempId)
-                              )
-                            }
-                            style={{
-                              marginLeft: 'auto',
-                              padding: '0.35rem 0.65rem',
-                              fontSize: '0.85rem',
-                              border: '1px solid #fecaca',
-                              background: '#fff1f2',
-                              color: '#b91c1c',
-                              borderRadius: '6px',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            Quitar
-                          </button>
                         </div>
                       );
                     })}
@@ -1524,24 +1548,25 @@ export default function PrendasPage() {
                 ) : (
                   <p style={{ color: '#94a3b8', fontSize: '0.9rem', fontStyle: 'italic' }}>
                     {stockTotalModalNum() > 0
-                      ? 'Aún no hay ubicaciones. Agrega al menos una con el selector de arriba.'
-                      : 'Con stock 0 no se requieren ubicaciones.'}
+                      ? 'Sin ubicaciones asignadas. Usa «Actualizar stock» para repartir.'
+                      : 'Con stock 0 no hay ubicaciones asignadas.'}
                   </p>
                 )}
               </div>
+              )}
 
               <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
                 <button
                   type="button"
                   onClick={() => {
                     setModalStockAbierto(false);
+                    cerrarModalAjusteStock();
                     setTallaSeleccionadaStock(null);
                     setStockData({
                       stock_inicial: '',
                       stock_minimo: '',
                     });
                     setPartidasUbicacion([]);
-                    setUbicacionSelectStock('');
                   }}
                   style={{
                     padding: '0.75rem 1.5rem',
@@ -1573,6 +1598,162 @@ export default function PrendasPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal ajustar stock (+ / −) */}
+      {modalAjusteStockAbierto && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.55)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 2100,
+            padding: '1rem',
+          }}
+          onClick={cerrarModalAjusteStock}
+        >
+          <div
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: '1.75rem',
+              maxWidth: '420px',
+              width: '100%',
+              boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ color: '#2563eb', marginBottom: '0.5rem', fontSize: '1.25rem', fontWeight: 700 }}>
+              Actualizar stock
+            </h3>
+            <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '1.25rem' }}>
+              Stock actual: <strong>{stockTotalModalNum().toLocaleString('en-US')}</strong>
+              {cantidadAjusteStock.trim() && (
+                <>
+                  {' → '}
+                  <strong>
+                    {Math.max(
+                      0,
+                      stockTotalModalNum() + parseSignedEnteroFormateado(cantidadAjusteStock)
+                    ).toLocaleString('en-US')}
+                  </strong>
+                </>
+              )}
+            </p>
+
+            <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem', color: '#334155' }}>
+              Cantidad a sumar o restar
+            </label>
+            <input
+              type="text"
+              inputMode="numeric"
+              autoComplete="off"
+              autoFocus
+              value={cantidadAjusteStock}
+              onChange={(e) => {
+                setCantidadAjusteStock(formatearSignedEnteroAlEscribir(e.target.value));
+                setErrorAjusteStock('');
+              }}
+              placeholder="Ej: 5 o -5"
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                border: '2px solid #e2e8f0',
+                borderRadius: '8px',
+                fontSize: '1rem',
+                marginBottom: '0.75rem',
+              }}
+            />
+            <small style={{ color: '#64748b', display: 'block', marginBottom: '1rem' }}>
+              Número positivo suma; con signo − resta (ej. tenías 10 y pones −5 → quedan 5).
+            </small>
+
+            {usarUbicacionesStock &&
+              requiereUbicacionEnAjuste(parseSignedEnteroFormateado(cantidadAjusteStock)) && (
+                <>
+                  <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem', color: '#334155' }}>
+                    Ubicación
+                  </label>
+                  <select
+                    value={ubicacionAjusteStock}
+                    onChange={(e) => {
+                      setUbicacionAjusteStock(e.target.value);
+                      setErrorAjusteStock('');
+                    }}
+                    disabled={loadingUbicaciones}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      border: '2px solid #e2e8f0',
+                      borderRadius: '8px',
+                      fontSize: '1rem',
+                      marginBottom: '0.75rem',
+                    }}
+                  >
+                    <option value="">Selecciona ubicación…</option>
+                    {parseSignedEnteroFormateado(cantidadAjusteStock) < 0
+                      ? partidasUbicacion
+                          .filter((p) => parseEnteroFormateado(p.cantidad) > 0)
+                          .map((p) => {
+                            const nombre =
+                              ubicaciones.find((u) => u.id === p.ubicacion_id)?.nombre || 'Ubicación';
+                            return (
+                              <option key={p.tempId} value={p.ubicacion_id}>
+                                {nombre} ({parseEnteroFormateado(p.cantidad).toLocaleString('en-US')} uds.)
+                              </option>
+                            );
+                          })
+                      : ubicaciones
+                          .filter((u) => u.activo)
+                          .map((u) => (
+                            <option key={u.id} value={u.id}>
+                              {u.nombre}
+                            </option>
+                          ))}
+                  </select>
+                </>
+              )}
+
+            {errorAjusteStock && (
+              <p style={{ color: '#dc2626', fontSize: '0.9rem', marginBottom: '1rem' }}>{errorAjusteStock}</p>
+            )}
+
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={cerrarModalAjusteStock}
+                style={{
+                  padding: '0.65rem 1.25rem',
+                  background: '#e2e8f0',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={aplicarAjusteStock}
+                style={{
+                  padding: '0.65rem 1.25rem',
+                  background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                }}
+              >
+                Aplicar
+              </button>
+            </div>
           </div>
         </div>
       )}

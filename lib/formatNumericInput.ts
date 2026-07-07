@@ -1,3 +1,25 @@
+/** Enteros con signo opcional (ej. -5, +10, 1,000). */
+export function parseSignedEnteroFormateado(value: string): number {
+  const trimmed = value.trim();
+  const neg = trimmed.startsWith('-');
+  const d = trimmed.replace(/[^\d]/g, '');
+  if (!d) return 0;
+  const n = parseInt(d, 10);
+  if (!Number.isFinite(n)) return 0;
+  return neg ? -n : n;
+}
+
+export function formatearSignedEnteroAlEscribir(value: string): string {
+  const trimmed = value.trim();
+  const neg = trimmed.startsWith('-');
+  const d = value.replace(/[^\d]/g, '');
+  if (!d) return neg ? '-' : '';
+  const n = parseInt(d, 10);
+  if (!Number.isFinite(n)) return neg ? '-' : '';
+  const fmt = n.toLocaleString('en-US');
+  return neg ? `-${fmt}` : fmt;
+}
+
 /** Solo dígitos → entero (inputs con separador de miles, sin decimales). */
 export function parseEnteroFormateado(value: string): number {
   const d = value.replace(/\D/g, '');

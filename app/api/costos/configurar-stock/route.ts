@@ -27,24 +27,27 @@ export async function POST(req: Request) {
       .filter((p: any) => p.ubicacion_almacenamiento_id && p.cantidad > 0);
 
     const sum = partidas.reduce((s: number, p: any) => s + p.cantidad, 0);
+    const omitirUbicaciones = body?.omitir_ubicaciones === true;
 
-    if (stock === 0 && partidas.length > 0) {
-      return NextResponse.json(
-        { success: false, error: 'Con stock en 0 no debe haber cantidades por ubicación.' },
-        { status: 400 }
-      );
-    }
-    if (stock > 0 && partidas.length === 0) {
-      return NextResponse.json(
-        { success: false, error: 'Con stock mayor a 0, agrega al menos una ubicación y reparte la cantidad.' },
-        { status: 400 }
-      );
-    }
-    if (stock > 0 && sum !== stock) {
-      return NextResponse.json(
-        { success: false, error: `La suma por ubicación (${sum}) debe ser igual al stock existente (${stock}).` },
-        { status: 400 }
-      );
+    if (!omitirUbicaciones) {
+      if (stock === 0 && partidas.length > 0) {
+        return NextResponse.json(
+          { success: false, error: 'Con stock en 0 no debe haber cantidades por ubicación.' },
+          { status: 400 }
+        );
+      }
+      if (stock > 0 && partidas.length === 0) {
+        return NextResponse.json(
+          { success: false, error: 'Con stock mayor a 0, agrega al menos una ubicación y reparte la cantidad.' },
+          { status: 400 }
+        );
+      }
+      if (stock > 0 && sum !== stock) {
+        return NextResponse.json(
+          { success: false, error: `La suma por ubicación (${sum}) debe ser igual al stock existente (${stock}).` },
+          { status: 400 }
+        );
+      }
     }
 
     const db = getInsforge().database;
