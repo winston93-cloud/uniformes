@@ -5,7 +5,7 @@ ALTER TABLE public.usuarios_uniformes
   ADD COLUMN IF NOT EXISTS usuario TEXT,
   ADD COLUMN IF NOT EXISTS password_hash TEXT;
 
-DELETE FROM public.usuarios_uniformes;
+-- NOTA: no borrar usuarios al reaplicar (producción). El DELETE original vaciaba la tabla por error.
 
 ALTER TABLE public.usuarios_uniformes
   ALTER COLUMN usuario SET NOT NULL;
