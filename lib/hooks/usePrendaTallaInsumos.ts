@@ -103,6 +103,21 @@ async function enrichPrendaTallaInsumosRows(
   });
 }
 
+/** Conteo de insumos por talla en una sola consulta (sin enrich). */
+export async function fetchConteoInsumosPorPrenda(prendaId: string): Promise<Record<string, number>> {
+  const { data, error } = await insforgeDb()
+    .from('prenda_talla_insumos')
+    .select('talla_id')
+    .eq('prenda_id', prendaId);
+  if (error) throw error;
+  const conteos: Record<string, number> = {};
+  for (const row of data || []) {
+    const tid = String((row as { talla_id?: string }).talla_id ?? '');
+    if (tid) conteos[tid] = (conteos[tid] ?? 0) + 1;
+  }
+  return conteos;
+}
+
 export function usePrendaTallaInsumos(prendaId?: string, tallaId?: string) {
   const [insumos, setInsumos] = useState<PrendaTallaInsumo[]>([]);
   const [loading, setLoading] = useState(false);

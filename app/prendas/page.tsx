@@ -1,15 +1,22 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePrendas } from '@/lib/hooks/usePrendas';
 import { useCategorias } from '@/lib/hooks/useCategorias';
 import { useTallas } from '@/lib/hooks/useTallas';
 import { useCostos } from '@/lib/hooks/useCostos';
-import { usePrendaTallaInsumos } from '@/lib/hooks/usePrendaTallaInsumos';
+import { fetchConteoInsumosPorPrenda } from '@/lib/hooks/usePrendaTallaInsumos';
 import { useUbicacionesAlmacenamiento } from '@/lib/hooks/useUbicacionesAlmacenamiento';
-import { fetchCostoStockModal, fetchCostosIdsParaEliminarTallas, fetchTallasActivasDePrenda, prendaTieneCostosEnOtraSucursal } from '@/lib/costoQueries';
+import {
+  fetchCostoStockModal,
+  fetchCostosIdsParaEliminarTallas,
+  fetchCostosPrendaSucursal,
+  extraerTallasActivasDeCostos,
+  costoPrendaTallaDesdeFilas,
+  prendaTieneCostosEnOtraSucursal,
+} from '@/lib/costoQueries';
 import { insforgeDb } from '@/lib/insforgeBrowser';
 import type { Prenda } from '@/lib/types';
 import { sortTallas } from '@/lib/ordenTallas';
@@ -114,7 +121,9 @@ export default function PrendasPage() {
   const [modalInsumosAbierto, setModalInsumosAbierto] = useState(false);
   const [tallaSeleccionadaModal, setTallaSeleccionadaModal] = useState<{ id: string; nombre: string } | null>(null);
   const [conteoInsumosPorTalla, setConteoInsumosPorTalla] = useState<Record<string, number>>({});
-  const { getInsumosByPrendaTalla } = usePrendaTallaInsumos();
+  const [costosEdicionCache, setCostosEdicionCache] = useState<Record<string, unknown>[]>([]);
+  const [cargandoEdicionPrenda, setCargandoEdicionPrenda] = useState(false);
+  const [cargandoModalStock, setCargandoModalStock] = useState(false);
   const { ubicaciones, loading: loadingUbicaciones } = useUbicacionesAlmacenamiento();
 
   // Estados para modal de stock
@@ -134,6 +143,34 @@ export default function PrendasPage() {
   const [cantidadAjusteStock, setCantidadAjusteStock] = useState('');
   const [ubicacionAjusteStock, setUbicacionAjusteStock] = useState('');
   const [errorAjusteStock, setErrorAjusteStock] = useState('');
+
+  const limpiarCacheEdicion = () => {
+    setCostosEdicionCache([]);
+    setConteoInsumosPorTalla({});
+    setTallasAsociadas([]);
+    setTallasSeleccionadas([]);
+    setCargandoEdicionPrenda(false);
+  };
+
+  const cargarDatosEdicionPrenda = useCallback(async (prendaId: string) => {
+    const sid = sucursalIdParaCostosSesion(sesion);
+    setCargandoEdicionPrenda(true);
+    try {
+      const [costosRows, conteos] = await Promise.all([
+        fetchCostosPrendaSucursal(insforgeDb(), prendaId, sid),
+        fetchConteoInsumosPorPrenda(prendaId),
+      ]);
+      setCostosEdicionCache(costosRows);
+      const tallasIds = extraerTallasActivasDeCostos(costosRows);
+      setTallasAsociadas(tallasIds);
+      setTallasSeleccionadas(tallasIds);
+      setConteoInsumosPorTalla(conteos);
+    } catch (err) {
+      console.error('Error cargando edición prenda:', err);
+    } finally {
+      setCargandoEdicionPrenda(false);
+    }
+  }, [sesion]);
   
   useEffect(() => {
     const cargarTodasCategorias = async () => {
@@ -152,12 +189,14 @@ export default function PrendasPage() {
   // Cargar valores de stock y partidas por ubicación cuando se abre el modal
   useEffect(() => {
     const cargarStockExistente = async () => {
-      if (modalStockAbierto && prendaEditando && tallaSeleccionadaStock) {
-        try {
+      if (!modalStockAbierto || !prendaEditando || !tallaSeleccionadaStock) return;
+      setCargandoModalStock(true);
+      try {
           const costoExistente = await fetchCostoStockModal(insforgeDb(), {
             prendaId: prendaEditando.id,
             tallaId: tallaSeleccionadaStock.id,
             sucursalId: sesion?.sucursal_id ?? null,
+            costosPrecargados: costosEdicionCache,
           });
 
           if (costoExistente) {
@@ -218,48 +257,13 @@ export default function PrendasPage() {
           }
         } catch (err) {
           console.error('Error cargando stock:', err);
+        } finally {
+          setCargandoModalStock(false);
         }
-      }
     };
 
     cargarStockExistente();
-  }, [modalStockAbierto, prendaEditando, tallaSeleccionadaStock, sesion?.sucursal_id]);
-
-  // Cargar conteo de insumos por talla cuando se edita una prenda
-  useEffect(() => {
-    const cargarConteoInsumos = async () => {
-      if (prendaEditando && tallasAsociadas.length > 0) {
-        const conteos: Record<string, number> = {};
-        for (const tallaId of tallasAsociadas) {
-          const insumos = await getInsumosByPrendaTalla(prendaEditando.id, tallaId);
-          conteos[tallaId] = insumos.length;
-        }
-        setConteoInsumosPorTalla(conteos);
-      }
-    };
-    cargarConteoInsumos();
-  }, [prendaEditando, tallasAsociadas, getInsumosByPrendaTalla]);
-
-  // Cargar tallas asociadas cuando se edita una prenda
-  useEffect(() => {
-    const cargarTallasAsociadas = async () => {
-      if (prendaEditando) {
-        const tallasIds = await fetchTallasActivasDePrenda(
-          insforgeDb(),
-          prendaEditando.id,
-          sucursalIdParaCostosSesion(sesion)
-        );
-        setTallasAsociadas(tallasIds);
-        setTallasSeleccionadas(tallasIds);
-      } else {
-        setTallasAsociadas([]);
-        setTallasSeleccionadas([]);
-      }
-    };
-    if (mostrarFormulario && prendaEditando) {
-      cargarTallasAsociadas();
-    }
-  }, [prendaEditando, mostrarFormulario]);
+  }, [modalStockAbierto, prendaEditando, tallaSeleccionadaStock, sesion?.sucursal_id, costosEdicionCache]);
 
   const [formData, setFormData] = useState({
     nombre: '',
@@ -581,7 +585,7 @@ export default function PrendasPage() {
     }
   };
 
-  const handleEditar = async (prenda: Prenda) => {
+  const handleEditar = (prenda: Prenda) => {
     setPrendaEditando(prenda);
     setFormData({
       nombre: prenda.nombre,
@@ -591,30 +595,11 @@ export default function PrendasPage() {
       activo: prenda.activo,
     });
     
-    // Resetear estados de UI
     setBotonEstado('normal');
     setMensajeError('');
-    
-    // Cargar tallas asociadas ANTES de mostrar el formulario
-    const tallasIds = await fetchTallasActivasDePrenda(
-      insforgeDb(),
-      prenda.id,
-      sucursalIdParaCostosSesion(sesion)
-    );
-    if (tallasIds.length > 0) {
-      setTallasAsociadas(tallasIds);
-      setTallasSeleccionadas(tallasIds);
-
-      // Forzar actualización después de un momento para asegurar que los checkboxes se rendericen
-      setTimeout(() => {
-        setTallasSeleccionadas([...tallasIds]);
-      }, 50);
-    } else {
-      setTallasAsociadas([]);
-      setTallasSeleccionadas([]);
-    }
-    
+    limpiarCacheEdicion();
     setMostrarFormulario(true);
+    void cargarDatosEdicionPrenda(prenda.id);
   };
 
   const handleEliminar = async (id: string) => {
@@ -884,6 +869,11 @@ export default function PrendasPage() {
                 </div>
                 
                 {/* Tabla de todas las tallas en 4 columnas (responsive) */}
+                {prendaEditando && cargandoEdicionPrenda && (
+                  <p style={{ margin: '0 0 0.75rem', color: '#64748b', fontSize: '0.9rem' }}>
+                    Cargando tallas y stock…
+                  </p>
+                )}
                 <div style={{ 
                   border: '1px solid #ddd', 
                   borderRadius: '8px', 
@@ -983,7 +973,23 @@ export default function PrendasPage() {
                                   </span>
                                 </label>
                                   {tallasSeleccionadas.includes(talla.id) && prendaEditando && (
-                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                      {!cargandoEdicionPrenda && costosEdicionCache.length > 0 && (
+                                        <span
+                                          title="Stock en esta sucursal"
+                                          style={{
+                                            fontSize: '0.7rem',
+                                            fontWeight: '600',
+                                            color: '#0891b2',
+                                            background: '#ecfeff',
+                                            padding: '0.15rem 0.4rem',
+                                            borderRadius: '4px',
+                                            whiteSpace: 'nowrap',
+                                          }}
+                                        >
+                                          {Number(costoPrendaTallaDesdeFilas(costosEdicionCache, talla.id)?.stock ?? 0)}
+                                        </span>
+                                      )}
                                       <button
                                         type="button"
                                         onClick={() => {
@@ -1235,18 +1241,9 @@ export default function PrendasPage() {
           onClose={() => {
             setModalInsumosAbierto(false);
             setTallaSeleccionadaModal(null);
-            // Recargar conteo de insumos
-            const recargarConteo = async () => {
-              if (prendaEditando && tallasAsociadas.length > 0) {
-                const conteos: Record<string, number> = {};
-                for (const tallaId of tallasAsociadas) {
-                  const insumos = await getInsumosByPrendaTalla(prendaEditando.id, tallaId);
-                  conteos[tallaId] = insumos.length;
-                }
-                setConteoInsumosPorTalla(conteos);
-              }
-            };
-            recargarConteo();
+            if (prendaEditando) {
+              void fetchConteoInsumosPorPrenda(prendaEditando.id).then(setConteoInsumosPorTalla);
+            }
           }}
           prendaId={prendaEditando.id}
           prendaNombre={prendaEditando.nombre}
@@ -1300,6 +1297,9 @@ export default function PrendasPage() {
               <strong>{prendaEditando.nombre}</strong> - Talla <strong>{tallaSeleccionadaStock.nombre}</strong>
             </p>
 
+            {cargandoModalStock ? (
+              <p style={{ color: '#64748b', marginBottom: '1.5rem' }}>Cargando stock…</p>
+            ) : (
             <form onSubmit={async (e) => {
               e.preventDefault();
               
@@ -1308,6 +1308,7 @@ export default function PrendasPage() {
                   prendaId: prendaEditando.id,
                   tallaId: tallaSeleccionadaStock.id,
                   sucursalId: sesion?.sucursal_id ?? null,
+                  costosPrecargados: costosEdicionCache,
                 });
 
                 if (!costoExistente) {
@@ -1380,6 +1381,7 @@ export default function PrendasPage() {
 
                 setMensajeExitoStock('✅ Stock configurado correctamente');
                 setModalExitoStockAbierto(true);
+                void cargarDatosEdicionPrenda(prendaEditando.id);
                 
                 setTimeout(() => {
                   setModalExitoStockAbierto(false);
@@ -1637,6 +1639,7 @@ export default function PrendasPage() {
                 </button>
               </div>
             </form>
+            )}
           </div>
         </div>
       )}

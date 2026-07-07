@@ -204,12 +204,24 @@ export function usePrendas(opts?: OpcionesInventarioTienda) {
 
       let resultado = mapped;
       if (inventarioSoloSucursal && sucursalId?.trim()) {
-        const { data: costosRaw, error: costosErr } = await insforgeDb().from('costos').select('*');
-        if (costosErr) throw costosErr;
-        const costosTienda = filtrarCostosInventarioTienda(
-          (costosRaw || []) as Record<string, unknown>[],
-          { sucursalId, esMatriz, incluirStockCero }
-        );
+        const cols = 'prenda_id, stock, sucursal_id, activo, talla_id';
+        let costosRaw: Record<string, unknown>[] = [];
+        const filtrado = await insforgeDb()
+          .from('costos')
+          .select(cols)
+          .eq('sucursal_id', sucursalId);
+        if (!filtrado.error) {
+          costosRaw = (filtrado.data || []) as Record<string, unknown>[];
+        } else {
+          const todos = await insforgeDb().from('costos').select(cols);
+          if (todos.error) throw todos.error;
+          costosRaw = (todos.data || []) as Record<string, unknown>[];
+        }
+        const costosTienda = filtrarCostosInventarioTienda(costosRaw, {
+          sucursalId,
+          esMatriz,
+          incluirStockCero,
+        });
         const idsInventario = new Set(
           costosTienda
             .map((c) => {

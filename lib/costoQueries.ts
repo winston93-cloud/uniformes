@@ -86,15 +86,20 @@ async function fetchCostosRawPrendaYTalla(
   return [];
 }
 
-/** Busca costo sin usar sucursal_id en la URL (columna puede no existir en InsForge). */
-export async function fetchCostoStockModal(
+/** True si la prenda tiene costos activos en otra sucursal distinta a la indicada. */
+export async function prendaTieneCostosEnOtraSucursal(
   db: CostoDbClient,
-  opts: { prendaId: string; tallaId: string; sucursalId?: string | null }
-): Promise<Record<string, unknown> | null> {
-  const { prendaId, tallaId, sucursalId } = opts;
-  const rows = await fetchCostosRawPrendaYTalla(db, prendaId, tallaId);
-  const picked = elegirCostoPrendaTalla(rows, sucursalId);
-  return picked ? normalizarCamposCostoApi(picked) : null;
+  prendaId: string,
+  sucursalId: string
+): Promise<boolean> {
+  const sid = sucursalId.trim().toLowerCase();
+  const rows = await fetchCostosRowsByPrenda(db, prendaId);
+  return rows.some((r) => {
+    const n = normalizarCamposCostoApi(r);
+    if (n.activo === false) return false;
+    const otra = String(n.sucursal_id ?? '').trim().toLowerCase();
+    return otra.length > 0 && otra !== sid;
+  });
 }
 
 /** Tallas con al menos un costo activo (cualquier sucursal). */
@@ -135,26 +140,50 @@ export async function fetchTallasActivasDePrenda(
   prendaId: string,
   sucursalId?: string | null
 ): Promise<string[]> {
-  const rows = await fetchCostosRowsByPrenda(db, prendaId);
-  const sid = sucursalId?.trim() || '';
-  const scoped = sid
-    ? rows.filter((r) => String(normalizarCamposCostoApi(r).sucursal_id ?? '') === sid)
-    : rows;
-  return extraerTallasActivasDeCostos(scoped);
+  const rows = await fetchCostosPrendaSucursal(db, prendaId, sucursalId);
+  return extraerTallasActivasDeCostos(rows);
 }
 
-/** True si la prenda tiene costos activos en otra sucursal distinta a la indicada. */
-export async function prendaTieneCostosEnOtraSucursal(
+/** Costos de una prenda en la sucursal indicada (una sola consulta por prenda). */
+export async function fetchCostosPrendaSucursal(
   db: CostoDbClient,
   prendaId: string,
-  sucursalId: string
-): Promise<boolean> {
-  const sid = sucursalId.trim().toLowerCase();
+  sucursalId?: string | null
+): Promise<Record<string, unknown>[]> {
   const rows = await fetchCostosRowsByPrenda(db, prendaId);
-  return rows.some((r) => {
-    const n = normalizarCamposCostoApi(r);
-    if (n.activo === false) return false;
-    const otra = String(n.sucursal_id ?? '').trim().toLowerCase();
-    return otra.length > 0 && otra !== sid;
-  });
+  const sid = sucursalId?.trim() || '';
+  if (!sid) return rows;
+  return rows.filter((r) => String(normalizarCamposCostoApi(r).sucursal_id ?? '') === sid);
+}
+
+export function costoPrendaTallaDesdeFilas(
+  rows: Record<string, unknown>[],
+  tallaId: string
+): Record<string, unknown> | null {
+  const tid = tallaId.trim();
+  const hit = rows.find((r) => String(normalizarCamposCostoApi(r).talla_id ?? '') === tid);
+  return hit ? normalizarCamposCostoApi(hit) : null;
+}
+
+/** Busca costo; si ya hay filas en memoria, no vuelve a consultar. */
+export async function fetchCostoStockModal(
+  db: CostoDbClient,
+  opts: {
+    prendaId: string;
+    tallaId: string;
+    sucursalId?: string | null;
+    costosPrecargados?: Record<string, unknown>[] | null;
+  }
+): Promise<Record<string, unknown> | null> {
+  const { prendaId, tallaId, sucursalId, costosPrecargados } = opts;
+  if (costosPrecargados?.length) {
+    const scoped = sucursalId?.trim()
+      ? filtrarFilasPorSucursalSiHayColumna(costosPrecargados, sucursalId)
+      : costosPrecargados;
+    const picked = costoPrendaTallaDesdeFilas(scoped, tallaId);
+    if (picked) return picked;
+  }
+  const rows = await fetchCostosRawPrendaYTalla(db, prendaId, tallaId);
+  const picked = elegirCostoPrendaTalla(rows, sucursalId);
+  return picked ? normalizarCamposCostoApi(picked) : null;
 }
