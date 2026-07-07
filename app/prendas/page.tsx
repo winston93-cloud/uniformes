@@ -93,7 +93,10 @@ export default function PrendasPage() {
   const { createMultipleCostos, deleteCosto } = useCostos(
     sesion?.sucursal_id,
     sesion?.es_matriz,
-    inventarioOpts.gestionaCatalogo
+    {
+      catalogoCompleto: inventarioOpts.catalogoCompleto,
+      incluirStockCero: inventarioOpts.incluirStockCero,
+    }
   );
   
   // Cargar todas las categorías (activas e inactivas) para el select

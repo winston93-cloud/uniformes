@@ -115,7 +115,8 @@ export function usePrendas(opts?: OpcionesInventarioTienda) {
   const [error, setError] = useState<string | null>(null);
   const sucursalId = opts?.sucursalId;
   const esMatriz = opts?.esMatriz;
-  const gestionaCatalogo = opts?.gestionaCatalogo;
+  const catalogoCompleto = opts?.catalogoCompleto;
+  const incluirStockCero = opts?.incluirStockCero;
 
   const fetchPrendas = async () => {
     try {
@@ -199,12 +200,12 @@ export function usePrendas(opts?: OpcionesInventarioTienda) {
       });
 
       let resultado = mapped;
-      if (esMatriz === false && !gestionaCatalogo && sucursalId?.trim()) {
+      if (!catalogoCompleto && sucursalId?.trim()) {
         const { data: costosRaw, error: costosErr } = await insforgeDb().from('costos').select('*');
         if (costosErr) throw costosErr;
         const costosTienda = filtrarCostosInventarioTienda(
           (costosRaw || []) as Record<string, unknown>[],
-          { sucursalId, esMatriz: false }
+          { sucursalId, esMatriz: false, incluirStockCero }
         );
         const idsInventario = new Set(
           costosTienda
@@ -229,7 +230,7 @@ export function usePrendas(opts?: OpcionesInventarioTienda) {
 
   useEffect(() => {
     fetchPrendas();
-  }, [sucursalId, esMatriz, gestionaCatalogo]);
+  }, [sucursalId, esMatriz, catalogoCompleto, incluirStockCero]);
 
   const createPrenda = async (prenda: Omit<Prenda, 'id' | 'created_at' | 'updated_at'>) => {
     try {

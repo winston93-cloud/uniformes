@@ -293,7 +293,7 @@ export default function Dashboard() {
               onToggle={handleTogglePrendas}
               sucursalId={sesion?.sucursal_id}
               esMatriz={sesion?.es_matriz}
-              gestionaCatalogo={puedeGestionarCatalogo(sesion)}
+              incluirStockCero={puedeGestionarCatalogo(sesion)}
             />
           </div>
         </div>

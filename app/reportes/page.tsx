@@ -36,7 +36,7 @@ export default function ReportesPage() {
     sesion?.sucursal_id,
     sesion?.es_matriz,
     esWinston ? filtroLineaVenta : 'todos',
-    opcionesInventarioDesdeSesion(sesion, 'gestion').gestionaCatalogo
+    opcionesInventarioDesdeSesion(sesion, 'gestion').incluirStockCero
   );
   
   const [modalReportesAbierto, setModalReportesAbierto] = useState(false);

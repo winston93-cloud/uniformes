@@ -102,7 +102,10 @@ export default function ModalDevolucion({ isOpen, onClose, pedido, onSuccess }: 
   const { costos } = useCostos(
     sesion?.sucursal_id,
     sesion?.es_matriz,
-    inventarioOpts.gestionaCatalogo
+    {
+      catalogoCompleto: inventarioOpts.catalogoCompleto,
+      incluirStockCero: inventarioOpts.incluirStockCero,
+    }
   );
 
   const [tipoDevolucion, setTipoDevolucion] = useState<'COMPLETA' | 'PARCIAL' | 'CAMBIO_TALLA' | 'CAMBIO_PRENDA'>('COMPLETA');

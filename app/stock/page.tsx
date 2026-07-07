@@ -19,7 +19,10 @@ export default function StockPage() {
   const { costos, loading: costosLoading, error, getCostosByPrenda, updateCosto } = useCostos(
     sesion?.sucursal_id,
     sesion?.es_matriz,
-    inventarioOpts.gestionaCatalogo
+    {
+      catalogoCompleto: inventarioOpts.catalogoCompleto,
+      incluirStockCero: inventarioOpts.incluirStockCero,
+    }
   );
   const { prendas } = usePrendas(inventarioOpts);
   const { tallas } = useTallas();

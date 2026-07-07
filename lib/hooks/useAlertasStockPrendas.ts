@@ -32,7 +32,7 @@ export interface AlertaStockPrenda {
 export function useAlertasStockPrendas(
   sucursal_id?: string,
   es_matriz?: boolean,
-  gestiona_catalogo?: boolean
+  incluir_stock_cero?: boolean
 ) {
   const [alertas, setAlertas] = useState<AlertaStockPrenda[]>([]);
   const [cargando, setCargando] = useState<boolean>(true);
@@ -50,7 +50,7 @@ export function useAlertasStockPrendas(
 
       let costosData = filtrarCostosInventarioTienda(
         (costosRaw || []) as Record<string, unknown>[],
-        { sucursalId: sucursal_id, esMatriz: es_matriz, gestionaCatalogo: gestiona_catalogo }
+        { sucursalId: sucursal_id, esMatriz: es_matriz, incluirStockCero: incluir_stock_cero }
       );
 
       costosData = costosData.filter((row) => {
@@ -156,7 +156,7 @@ export function useAlertasStockPrendas(
     } finally {
       setCargando(false);
     }
-  }, [sucursal_id, es_matriz, gestiona_catalogo]);
+  }, [sucursal_id, es_matriz, incluir_stock_cero]);
 
   useEffect(() => {
     cargarAlertas();

@@ -84,12 +84,13 @@ function aplicarFiltroTienda<T extends Record<string, unknown>>(
 export function useCostos(
   sucursal_id?: string,
   es_matriz?: boolean,
-  gestiona_catalogo?: boolean
+  inventarioExtra?: Pick<OpcionesInventarioTienda, 'catalogoCompleto' | 'incluirStockCero'>
 ) {
   const inventarioOpts: OpcionesInventarioTienda = {
     sucursalId: sucursal_id,
     esMatriz: es_matriz,
-    gestionaCatalogo: gestiona_catalogo,
+    catalogoCompleto: inventarioExtra?.catalogoCompleto,
+    incluirStockCero: inventarioExtra?.incluirStockCero,
   };
   const [costos, setCostos] = useState<Costo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -135,7 +136,7 @@ export function useCostos(
 
   useEffect(() => {
     fetchCostos();
-  }, [sucursal_id, es_matriz, gestiona_catalogo]);
+  }, [sucursal_id, es_matriz, inventarioExtra?.catalogoCompleto, inventarioExtra?.incluirStockCero]);
 
   const createCosto = async (costo: Omit<Costo, 'id' | 'created_at' | 'updated_at' | 'talla' | 'prenda'>) => {
     try {

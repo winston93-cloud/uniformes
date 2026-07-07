@@ -26,7 +26,10 @@ export default function InventarioPage() {
   const { costos } = useCostos(
     sesion?.sucursal_id,
     sesion?.es_matriz,
-    inventarioOpts.gestionaCatalogo
+    {
+      catalogoCompleto: inventarioOpts.catalogoCompleto,
+      incluirStockCero: inventarioOpts.incluirStockCero,
+    }
   );
   
   const [movimientos, setMovimientos] = useState<Movimiento[]>([

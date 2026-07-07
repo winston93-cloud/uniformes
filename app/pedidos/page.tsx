@@ -101,7 +101,10 @@ function PedidosPageContent() {
   const { costos, getCostosByPrenda, refetch: refetchCostos } = useCostos(
     sesion?.sucursal_id,
     sesion?.es_matriz,
-    inventarioOpts.gestionaCatalogo
+    {
+      catalogoCompleto: inventarioOpts.catalogoCompleto,
+      incluirStockCero: inventarioOpts.incluirStockCero,
+    }
   );
   const { alumnos, searchAlumnos } = useAlumnos(cicloEscolar);
   const { searchExternos } = useExternos();

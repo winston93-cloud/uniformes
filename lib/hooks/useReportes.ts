@@ -63,7 +63,7 @@ export function useReportes(
   const inventarioOpts = {
     sucursalId: sid || undefined,
     esMatriz: es_matriz,
-    gestionaCatalogo: gestiona_catalogo,
+    incluirStockCero: gestiona_catalogo,
   };
 
   const filtrarCostosTienda = (rows: Record<string, unknown>[]) =>

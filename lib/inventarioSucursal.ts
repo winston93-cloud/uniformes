@@ -5,19 +5,23 @@ import type { SesionUsuario } from '@/lib/types';
 export type OpcionesInventarioTienda = {
   sucursalId?: string | null;
   esMatriz?: boolean;
-  /** Winston en modo gestión: catálogo completo y costos de su tienda (incluye stock 0). */
-  gestionaCatalogo?: boolean;
+  /** Matriz en gestión: catálogo global de prendas. */
+  catalogoCompleto?: boolean;
+  /** Gestión en sucursal: costos de la tienda aunque stock sea 0. Ventas: solo stock > 0. */
+  incluirStockCero?: boolean;
 };
 
 export function opcionesInventarioDesdeSesion(
   sesion: SesionUsuario | null | undefined,
   modo: 'gestion' | 'venta' = 'gestion'
 ): OpcionesInventarioTienda {
-  const gestionaCatalogo = puedeGestionarCatalogo(sesion) && modo === 'gestion';
+  const enMatriz = Boolean(sesion?.es_matriz);
+  const gestion = modo === 'gestion';
   return {
     sucursalId: sesion?.sucursal_id,
-    esMatriz: sesion?.es_matriz,
-    gestionaCatalogo,
+    esMatriz: enMatriz,
+    catalogoCompleto: enMatriz && gestion,
+    incluirStockCero: gestion && puedeGestionarCatalogo(sesion),
   };
 }
 
@@ -27,13 +31,12 @@ function readPrendaId(row: Record<string, unknown>): string | null {
   return String(v).trim();
 }
 
-/** Matriz: costos de la tienda (incluye stock 0). Sucursal: solo filas con stock > 0 (transferido/recibido). */
 export function filtrarCostosInventarioTienda<T extends Record<string, unknown>>(
   rows: T[],
   opts?: OpcionesInventarioTienda
 ): T[] {
   const filtradas = filtrarFilasPorSucursalSiHayColumna(rows, opts?.sucursalId);
-  if (opts?.esMatriz === false && !opts?.gestionaCatalogo) {
+  if (opts?.esMatriz === false && !opts?.incluirStockCero) {
     return filtradas.filter((r) => Number(r.stock ?? 0) > 0);
   }
   return filtradas;
