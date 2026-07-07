@@ -1,13 +1,15 @@
 import { filtrarFilasPorSucursalSiHayColumna } from '@/lib/sucursalCliente';
-import { puedeGestionarCatalogo } from '@/lib/permisos';
+import { esCuentaWinston } from '@/lib/winstonLineaVenta';
 import type { SesionUsuario } from '@/lib/types';
 
 export type OpcionesInventarioTienda = {
   sucursalId?: string | null;
   esMatriz?: boolean;
-  /** Matriz en gestión: catálogo global de prendas. */
+  /** Matriz (uniformes/mario): catálogo global de prendas en gestión. */
   catalogoCompleto?: boolean;
-  /** Gestión en sucursal: costos de la tienda aunque stock sea 0. Ventas: solo stock > 0. */
+  /** Solo winston: listar solo prendas/costos de SUC-WIN (vacío hasta dar de alta). */
+  inventarioSoloSucursalWinston?: boolean;
+  /** Costos de la tienda aunque stock sea 0 (gestión). Ventas: solo stock > 0. */
   incluirStockCero?: boolean;
 };
 
@@ -15,13 +17,33 @@ export function opcionesInventarioDesdeSesion(
   sesion: SesionUsuario | null | undefined,
   modo: 'gestion' | 'venta' = 'gestion'
 ): OpcionesInventarioTienda {
-  const enMatriz = Boolean(sesion?.es_matriz);
   const gestion = modo === 'gestion';
+
+  // Matriz (uniformes / mario): comportamiento original, sin cambios.
+  if (sesion?.es_matriz) {
+    return {
+      sucursalId: sesion.sucursal_id,
+      esMatriz: true,
+      catalogoCompleto: gestion,
+      incluirStockCero: gestion,
+    };
+  }
+
+  // Solo cuenta winston @ SUC-WIN: inventario propio vacío + botones de alta.
+  if (esCuentaWinston(sesion)) {
+    return {
+      sucursalId: sesion?.sucursal_id,
+      esMatriz: false,
+      catalogoCompleto: false,
+      inventarioSoloSucursalWinston: true,
+      incluirStockCero: gestion,
+    };
+  }
+
   return {
     sucursalId: sesion?.sucursal_id,
-    esMatriz: enMatriz,
-    catalogoCompleto: enMatriz && gestion,
-    incluirStockCero: gestion && puedeGestionarCatalogo(sesion),
+    esMatriz: false,
+    incluirStockCero: false,
   };
 }
 

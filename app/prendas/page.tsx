@@ -19,7 +19,7 @@ import {
   formatearEnteroMilesAlEscribir,
 } from '@/lib/formatNumericInput';
 import { opcionesInventarioDesdeSesion } from '@/lib/inventarioSucursal';
-import { puedeGestionarCatalogo } from '@/lib/permisos';
+import { esCuentaWinston } from '@/lib/winstonLineaVenta';
 
 export const dynamic = 'force-dynamic';
 
@@ -86,7 +86,7 @@ export default function PrendasPage() {
   const [modalErrorAbierto, setModalErrorAbierto] = useState(false);
   const inputBusquedaRef = useRef<HTMLInputElement>(null);
   const inventarioOpts = opcionesInventarioDesdeSesion(sesion, 'gestion');
-  const gestionaCatalogo = puedeGestionarCatalogo(sesion);
+  const puedeEditarCatalogo = Boolean(sesion?.es_matriz) || esCuentaWinston(sesion);
   const { prendas, loading, error, createPrenda, updatePrenda, deletePrenda } = usePrendas(inventarioOpts);
   const { categorias, loading: loadingCategorias, refetch: refetchCategorias } = useCategorias();
   const { tallas } = useTallas();
@@ -1035,7 +1035,7 @@ export default function PrendasPage() {
 
         <div className="table-container">
           <div style={{ marginBottom: '1rem', textAlign: 'right', padding: '0 1rem', display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-            {gestionaCatalogo && (
+            {puedeEditarCatalogo && (
               <>
               <button 
                 className="btn btn-secondary" 
@@ -1077,7 +1077,7 @@ export default function PrendasPage() {
                   <td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
                     {busqueda
                       ? 'No se encontraron prendas con ese criterio.'
-                        : gestionaCatalogo
+                        : puedeEditarCatalogo
                           ? 'No hay prendas registradas. Crea tu primera prenda.'
                           : 'No hay prendas en el inventario de esta sucursal. Aparecerán cuando recibas transferencias desde matriz.'}
                   </td>
@@ -1086,7 +1086,7 @@ export default function PrendasPage() {
                 prendasFiltradas.map((prenda) => (
                   <tr key={prenda.id}>
                     <td className="table-col-eliminar" data-label="">
-                      {gestionaCatalogo ? (
+                      {puedeEditarCatalogo ? (
                         <button
                           type="button"
                           className="btn btn-danger btn-eliminar-fila"
@@ -1108,7 +1108,7 @@ export default function PrendasPage() {
                       </span>
                     </td>
                     <td data-label="Acciones">
-                      {gestionaCatalogo ? (
+                      {puedeEditarCatalogo ? (
                         <button
                           className="btn btn-secondary"
                           style={{ padding: '0.5rem 1rem' }}

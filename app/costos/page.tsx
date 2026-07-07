@@ -11,7 +11,7 @@ import { compararTallas } from '@/lib/ordenTallas';
 import { insforgeDb } from '@/lib/insforgeBrowser';
 import type { Costo } from '@/lib/types';
 import { opcionesInventarioDesdeSesion } from '@/lib/inventarioSucursal';
-import { puedeGestionarCatalogo } from '@/lib/permisos';
+import { esCuentaWinston } from '@/lib/winstonLineaVenta';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,7 +19,7 @@ export default function CostosPage() {
   const { sesion } = useAuth();
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const inventarioOpts = opcionesInventarioDesdeSesion(sesion, 'gestion');
-  const gestionaCatalogo = puedeGestionarCatalogo(sesion);
+  const puedeEditarCatalogo = Boolean(sesion?.es_matriz) || esCuentaWinston(sesion);
   const { costos, loading: costosLoading, error, createCosto, updateCosto, deleteCosto } = useCostos(
     sesion?.sucursal_id,
     sesion?.es_matriz,
@@ -680,7 +680,7 @@ export default function CostosPage() {
 
         <div className="table-container">
           <div style={{ marginBottom: '1rem', textAlign: 'right', padding: '0 1rem' }}>
-            {gestionaCatalogo && (
+            {puedeEditarCatalogo && (
             <button className="btn btn-primary" onClick={() => {
               setMostrarFormulario(!mostrarFormulario);
               setMensajeError('');
@@ -710,7 +710,7 @@ export default function CostosPage() {
                   <td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
                     {busquedaTabla
                       ? 'No se encontraron prendas con ese criterio.'
-                        : gestionaCatalogo
+                        : puedeEditarCatalogo
                           ? 'No hay costos registrados. Crea tu primer costo.'
                           : 'No hay costos en esta sucursal. Aparecerán cuando recibas transferencias desde matriz.'}
                   </td>

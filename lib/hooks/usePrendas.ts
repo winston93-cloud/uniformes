@@ -116,6 +116,7 @@ export function usePrendas(opts?: OpcionesInventarioTienda) {
   const sucursalId = opts?.sucursalId;
   const esMatriz = opts?.esMatriz;
   const catalogoCompleto = opts?.catalogoCompleto;
+  const inventarioSoloSucursalWinston = opts?.inventarioSoloSucursalWinston;
   const incluirStockCero = opts?.incluirStockCero;
 
   const fetchPrendas = async () => {
@@ -200,7 +201,7 @@ export function usePrendas(opts?: OpcionesInventarioTienda) {
       });
 
       let resultado = mapped;
-      if (!catalogoCompleto && sucursalId?.trim()) {
+      if (inventarioSoloSucursalWinston && sucursalId?.trim()) {
         const { data: costosRaw, error: costosErr } = await insforgeDb().from('costos').select('*');
         if (costosErr) throw costosErr;
         const costosTienda = filtrarCostosInventarioTienda(
@@ -230,7 +231,7 @@ export function usePrendas(opts?: OpcionesInventarioTienda) {
 
   useEffect(() => {
     fetchPrendas();
-  }, [sucursalId, esMatriz, catalogoCompleto, incluirStockCero]);
+  }, [sucursalId, esMatriz, catalogoCompleto, inventarioSoloSucursalWinston, incluirStockCero]);
 
   const createPrenda = async (prenda: Omit<Prenda, 'id' | 'created_at' | 'updated_at'>) => {
     try {

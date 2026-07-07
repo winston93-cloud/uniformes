@@ -20,9 +20,14 @@ export function normalizarUsuarioLogin(usuario: string): string {
   return usuario.trim().toLowerCase();
 }
 
-/** Matriz o cuenta Winston: alta de prendas, costos, stock e insumos en su tienda. */
+/** Matriz (uniformes/mario) o solo winston: botones de alta/edición en catálogo. */
 export function puedeGestionarCatalogo(sesion: SesionUsuario | null | undefined): boolean {
   if (!sesion) return false;
   if (sesion.es_matriz) return true;
+  return esCuentaWinston(sesion);
+}
+
+/** Alias explícito: permisos extra de catálogo solo para la cuenta winston. */
+export function puedeGestionarCatalogoWinston(sesion: SesionUsuario | null | undefined): boolean {
   return esCuentaWinston(sesion);
 }
