@@ -31,13 +31,13 @@ export function opcionesInventarioDesdeSesion(
     };
   }
 
-  // Solo cuenta winston @ SUC-WIN: inventario propio vacío hasta tener stock local.
+  // Solo cuenta winston @ SUC-WIN: inventario propio; en gestión ve catálogo con stock 0.
   if (esCuentaWinston(sesion)) {
     return {
       sucursalId: sesion?.sucursal_id,
       esMatriz: false,
       inventarioSoloSucursal: true,
-      incluirStockCero: false,
+      incluirStockCero: gestion,
     };
   }
 
