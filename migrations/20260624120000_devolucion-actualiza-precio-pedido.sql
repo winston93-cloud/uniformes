@@ -1,4 +1,6 @@
 
+DROP FUNCTION IF EXISTS public.procesar_devolucion_atomica(UUID);
+
 CREATE OR REPLACE FUNCTION public.procesar_devolucion_atomica(
   p_devolucion_id UUID
 )
