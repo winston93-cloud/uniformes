@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { exigirSesion } from '@/lib/auth-api';
 import { getInsforge } from '@/lib/insforge';
 import { normalizarCamposCostoApi } from '@/lib/costoQueries';
+import { puedeGestionarCatalogo } from '@/lib/permisos';
 
 function readStr(row: Record<string, unknown>, snake: string, camel: string): string {
   const v = row[snake] ?? row[camel];
@@ -39,7 +40,7 @@ export async function POST(req: Request) {
     const costo = normalizarCamposCostoApi(costoRaw as Record<string, unknown>);
     const sucursalCosto = readStr(costo, 'sucursal_id', 'sucursalId');
     if (sucursalCosto && sucursalCosto !== sesion.sucursal_id) {
-      const puedeCatalogo = alcanceCatalogo && sesion.es_matriz;
+      const puedeCatalogo = alcanceCatalogo && puedeGestionarCatalogo(sesion);
       if (!puedeCatalogo) {
         return NextResponse.json(
           { ok: false, message: 'Solo puedes eliminar precios de tu sucursal activa.' },

@@ -18,6 +18,8 @@ import {
   parseEnteroFormateado,
   formatearEnteroMilesAlEscribir,
 } from '@/lib/formatNumericInput';
+import { opcionesInventarioDesdeSesion } from '@/lib/inventarioSucursal';
+import { puedeGestionarCatalogo } from '@/lib/permisos';
 
 export const dynamic = 'force-dynamic';
 
@@ -83,13 +85,15 @@ export default function PrendasPage() {
   const [mensajeError, setMensajeError] = useState<string>('');
   const [modalErrorAbierto, setModalErrorAbierto] = useState(false);
   const inputBusquedaRef = useRef<HTMLInputElement>(null);
-  const inventarioOpts = { sucursalId: sesion?.sucursal_id, esMatriz: sesion?.es_matriz };
+  const inventarioOpts = opcionesInventarioDesdeSesion(sesion, 'gestion');
+  const gestionaCatalogo = puedeGestionarCatalogo(sesion);
   const { prendas, loading, error, createPrenda, updatePrenda, deletePrenda } = usePrendas(inventarioOpts);
   const { categorias, loading: loadingCategorias, refetch: refetchCategorias } = useCategorias();
   const { tallas } = useTallas();
   const { createMultipleCostos, deleteCosto } = useCostos(
     sesion?.sucursal_id,
-    sesion?.es_matriz
+    sesion?.es_matriz,
+    inventarioOpts.gestionaCatalogo
   );
   
   // Cargar todas las categorías (activas e inactivas) para el select
@@ -1028,7 +1032,7 @@ export default function PrendasPage() {
 
         <div className="table-container">
           <div style={{ marginBottom: '1rem', textAlign: 'right', padding: '0 1rem', display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-            {sesion?.es_matriz && (
+            {gestionaCatalogo && (
               <>
               <button 
                 className="btn btn-secondary" 
@@ -1070,16 +1074,16 @@ export default function PrendasPage() {
                   <td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
                     {busqueda
                       ? 'No se encontraron prendas con ese criterio.'
-                      : sesion?.es_matriz
-                        ? 'No hay prendas registradas. Crea tu primera prenda.'
-                        : 'No hay prendas en el inventario de esta sucursal. Aparecerán cuando recibas transferencias desde matriz.'}
+                        : gestionaCatalogo
+                          ? 'No hay prendas registradas. Crea tu primera prenda.'
+                          : 'No hay prendas en el inventario de esta sucursal. Aparecerán cuando recibas transferencias desde matriz.'}
                   </td>
                 </tr>
               ) : (
                 prendasFiltradas.map((prenda) => (
                   <tr key={prenda.id}>
                     <td className="table-col-eliminar" data-label="">
-                      {sesion?.es_matriz ? (
+                      {gestionaCatalogo ? (
                         <button
                           type="button"
                           className="btn btn-danger btn-eliminar-fila"
@@ -1101,7 +1105,7 @@ export default function PrendasPage() {
                       </span>
                     </td>
                     <td data-label="Acciones">
-                      {sesion?.es_matriz ? (
+                      {gestionaCatalogo ? (
                         <button
                           className="btn btn-secondary"
                           style={{ padding: '0.5rem 1rem' }}

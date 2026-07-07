@@ -8,16 +8,18 @@ import { usePrendas } from '@/lib/hooks/usePrendas';
 import { useTallas } from '@/lib/hooks/useTallas';
 import { insforgeDb } from '@/lib/insforgeBrowser';
 import type { Costo } from '@/lib/types';
+import { opcionesInventarioDesdeSesion } from '@/lib/inventarioSucursal';
 
 export const dynamic = 'force-dynamic';
 
 export default function StockPage() {
   const { sesion } = useAuth();
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
-  const inventarioOpts = { sucursalId: sesion?.sucursal_id, esMatriz: sesion?.es_matriz };
+  const inventarioOpts = opcionesInventarioDesdeSesion(sesion, 'gestion');
   const { costos, loading: costosLoading, error, getCostosByPrenda, updateCosto } = useCostos(
     sesion?.sucursal_id,
-    sesion?.es_matriz
+    sesion?.es_matriz,
+    inventarioOpts.gestionaCatalogo
   );
   const { prendas } = usePrendas(inventarioOpts);
   const { tallas } = useTallas();
@@ -173,6 +175,7 @@ export default function StockPage() {
           .insert([{
             prenda_id: formData.prenda_id,
             talla_id: talla_id,
+            sucursal_id: sesion?.sucursal_id ?? null,
             precio_venta: 0,
             stock_inicial: stockValue,
             stock: stockValue,

@@ -115,6 +115,7 @@ export function usePrendas(opts?: OpcionesInventarioTienda) {
   const [error, setError] = useState<string | null>(null);
   const sucursalId = opts?.sucursalId;
   const esMatriz = opts?.esMatriz;
+  const gestionaCatalogo = opts?.gestionaCatalogo;
 
   const fetchPrendas = async () => {
     try {
@@ -198,7 +199,7 @@ export function usePrendas(opts?: OpcionesInventarioTienda) {
       });
 
       let resultado = mapped;
-      if (esMatriz === false && sucursalId?.trim()) {
+      if (esMatriz === false && !gestionaCatalogo && sucursalId?.trim()) {
         const { data: costosRaw, error: costosErr } = await insforgeDb().from('costos').select('*');
         if (costosErr) throw costosErr;
         const costosTienda = filtrarCostosInventarioTienda(
@@ -228,7 +229,7 @@ export function usePrendas(opts?: OpcionesInventarioTienda) {
 
   useEffect(() => {
     fetchPrendas();
-  }, [sucursalId, esMatriz]);
+  }, [sucursalId, esMatriz, gestionaCatalogo]);
 
   const createPrenda = async (prenda: Omit<Prenda, 'id' | 'created_at' | 'updated_at'>) => {
     try {

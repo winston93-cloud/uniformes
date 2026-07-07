@@ -28,6 +28,7 @@ import {
   pedidoCoincideFiltroLinea,
   type FiltroLineaVenta,
 } from '@/lib/winstonLineaVenta';
+import { opcionesInventarioDesdeSesion } from '@/lib/inventarioSucursal';
 
 // Interfaces de tipos
 interface Pedido {
@@ -96,10 +97,11 @@ function PedidosPageContent() {
   const [mensajeExitoStock, setMensajeExitoStock] = useState('');
   const [guardandoPedido, setGuardandoPedido] = useState(false);
   const enviandoPedidoRef = useRef(false);
-  const inventarioOpts = { sucursalId: sesion?.sucursal_id, esMatriz: sesion?.es_matriz };
+  const inventarioOpts = opcionesInventarioDesdeSesion(sesion, 'venta');
   const { costos, getCostosByPrenda, refetch: refetchCostos } = useCostos(
     sesion?.sucursal_id,
-    sesion?.es_matriz
+    sesion?.es_matriz,
+    inventarioOpts.gestionaCatalogo
   );
   const { alumnos, searchAlumnos } = useAlumnos(cicloEscolar);
   const { searchExternos } = useExternos();

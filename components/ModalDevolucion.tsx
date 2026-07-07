@@ -7,6 +7,7 @@ import { useDevoluciones, type CrearDevolucionData } from '@/lib/hooks/useDevolu
 import { usePrendas } from '@/lib/hooks/usePrendas';
 import { useCostos } from '@/lib/hooks/useCostos';
 import { useTallas } from '@/lib/hooks/useTallas';
+import { opcionesInventarioDesdeSesion } from '@/lib/inventarioSucursal';
 
 interface ModalDevolucionProps {
   isOpen: boolean;
@@ -95,10 +96,14 @@ const inputBase: CSSProperties = {
 export default function ModalDevolucion({ isOpen, onClose, pedido, onSuccess }: ModalDevolucionProps) {
   const { sesion } = useAuth();
   const { crearDevolucion } = useDevoluciones(sesion?.sucursal_id);
-  const inventarioOpts = { sucursalId: sesion?.sucursal_id, esMatriz: sesion?.es_matriz };
+  const inventarioOpts = opcionesInventarioDesdeSesion(sesion, 'venta');
   const { prendas } = usePrendas(inventarioOpts);
   const { tallas } = useTallas();
-  const { costos } = useCostos(sesion?.sucursal_id, sesion?.es_matriz);
+  const { costos } = useCostos(
+    sesion?.sucursal_id,
+    sesion?.es_matriz,
+    inventarioOpts.gestionaCatalogo
+  );
 
   const [tipoDevolucion, setTipoDevolucion] = useState<'COMPLETA' | 'PARCIAL' | 'CAMBIO_TALLA' | 'CAMBIO_PRENDA'>('COMPLETA');
   const [motivo, setMotivo] = useState('');

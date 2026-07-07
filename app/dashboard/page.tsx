@@ -9,7 +9,7 @@ import TarjetaAlertasStock from '@/components/TarjetaAlertasStock';
 import TarjetaAlertasStockPrendas from '@/components/TarjetaAlertasStockPrendas';
 import UserCard from '@/components/UserCard';
 import ModalActualizarBaseDatos from '@/components/ModalActualizarBaseDatos';
-import { esAdministrador } from '@/lib/permisos';
+import { esAdministrador, puedeGestionarCatalogo } from '@/lib/permisos';
 
 function AlumnoSyncModal() {
   const [abierta, setAbierta] = useState(false);
@@ -293,6 +293,7 @@ export default function Dashboard() {
               onToggle={handleTogglePrendas}
               sucursalId={sesion?.sucursal_id}
               esMatriz={sesion?.es_matriz}
+              gestionaCatalogo={puedeGestionarCatalogo(sesion)}
             />
           </div>
         </div>

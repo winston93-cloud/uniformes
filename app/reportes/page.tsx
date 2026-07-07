@@ -15,6 +15,7 @@ import {
   OPCIONES_FILTRO_LINEA,
   type FiltroLineaVenta,
 } from '@/lib/winstonLineaVenta';
+import { opcionesInventarioDesdeSesion } from '@/lib/inventarioSucursal';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,7 +35,8 @@ export default function ReportesPage() {
   } = useReportes(
     sesion?.sucursal_id,
     sesion?.es_matriz,
-    esWinston ? filtroLineaVenta : 'todos'
+    esWinston ? filtroLineaVenta : 'todos',
+    opcionesInventarioDesdeSesion(sesion, 'gestion').gestionaCatalogo
   );
   
   const [modalReportesAbierto, setModalReportesAbierto] = useState(false);

@@ -81,8 +81,16 @@ function aplicarFiltroTienda<T extends Record<string, unknown>>(
   return filtrarCostosInventarioTienda(rows, opts);
 }
 
-export function useCostos(sucursal_id?: string, es_matriz?: boolean) {
-  const inventarioOpts: OpcionesInventarioTienda = { sucursalId: sucursal_id, esMatriz: es_matriz };
+export function useCostos(
+  sucursal_id?: string,
+  es_matriz?: boolean,
+  gestiona_catalogo?: boolean
+) {
+  const inventarioOpts: OpcionesInventarioTienda = {
+    sucursalId: sucursal_id,
+    esMatriz: es_matriz,
+    gestionaCatalogo: gestiona_catalogo,
+  };
   const [costos, setCostos] = useState<Costo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -127,7 +135,7 @@ export function useCostos(sucursal_id?: string, es_matriz?: boolean) {
 
   useEffect(() => {
     fetchCostos();
-  }, [sucursal_id, es_matriz]);
+  }, [sucursal_id, es_matriz, gestiona_catalogo]);
 
   const createCosto = async (costo: Omit<Costo, 'id' | 'created_at' | 'updated_at' | 'talla' | 'prenda'>) => {
     try {

@@ -1,4 +1,5 @@
 import type { SesionUsuario } from '@/lib/types';
+import { esCuentaWinston } from '@/lib/winstonLineaVenta';
 
 export function esAdministrador(sesion: SesionUsuario | null | undefined): boolean {
   if (!sesion) return false;
@@ -17,4 +18,11 @@ export function puedeAccederRuta(sesion: SesionUsuario | null | undefined, pathn
 
 export function normalizarUsuarioLogin(usuario: string): string {
   return usuario.trim().toLowerCase();
+}
+
+/** Matriz o cuenta Winston: alta de prendas, costos, stock e insumos en su tienda. */
+export function puedeGestionarCatalogo(sesion: SesionUsuario | null | undefined): boolean {
+  if (!sesion) return false;
+  if (sesion.es_matriz) return true;
+  return esCuentaWinston(sesion);
 }

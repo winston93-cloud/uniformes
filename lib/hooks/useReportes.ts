@@ -54,12 +54,17 @@ export interface ReporteGanancias {
 export function useReportes(
   sucursal_id?: string,
   es_matriz?: boolean,
-  filtroLinea: FiltroLineaVenta = 'todos'
+  filtroLinea: FiltroLineaVenta = 'todos',
+  gestiona_catalogo?: boolean
 ) {
   const [loading, setLoading] = useState(false);
 
   const sid = sucursal_id?.trim() || '';
-  const inventarioOpts = { sucursalId: sid || undefined, esMatriz: es_matriz };
+  const inventarioOpts = {
+    sucursalId: sid || undefined,
+    esMatriz: es_matriz,
+    gestionaCatalogo: gestiona_catalogo,
+  };
 
   const filtrarCostosTienda = (rows: Record<string, unknown>[]) =>
     sid ? filtrarCostosInventarioTienda(rows, inventarioOpts) : rows;
