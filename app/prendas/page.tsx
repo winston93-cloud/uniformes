@@ -9,7 +9,7 @@ import { useTallas } from '@/lib/hooks/useTallas';
 import { useCostos } from '@/lib/hooks/useCostos';
 import { usePrendaTallaInsumos } from '@/lib/hooks/usePrendaTallaInsumos';
 import { useUbicacionesAlmacenamiento } from '@/lib/hooks/useUbicacionesAlmacenamiento';
-import { fetchCostoStockModal, fetchCostosIdsParaEliminarTallas, fetchTallasActivasDePrenda } from '@/lib/costoQueries';
+import { fetchCostoStockModal, fetchCostosIdsParaEliminarTallas, fetchTallasActivasDePrenda, prendaTieneCostosEnOtraSucursal } from '@/lib/costoQueries';
 import { insforgeDb } from '@/lib/insforgeBrowser';
 import type { Prenda } from '@/lib/types';
 import { sortTallas } from '@/lib/ordenTallas';
@@ -239,7 +239,11 @@ export default function PrendasPage() {
   useEffect(() => {
     const cargarTallasAsociadas = async () => {
       if (prendaEditando) {
-        const tallasIds = await fetchTallasActivasDePrenda(insforgeDb(), prendaEditando.id);
+        const tallasIds = await fetchTallasActivasDePrenda(
+          insforgeDb(),
+          prendaEditando.id,
+          sucursalIdParaCostosSesion(sesion)
+        );
         setTallasAsociadas(tallasIds);
         setTallasSeleccionadas(tallasIds);
       } else {
@@ -333,15 +337,22 @@ export default function PrendasPage() {
     }
 
     if (prendaEditando) {
-      const { error } = await updatePrenda(prendaEditando.id, prendaData);
-      if (error) {
-        if (error.includes('duplicate') || error.includes('unique')) {
-          setMensajeError(`❌ Ya existe una prenda con ese nombre o código`);
-        } else {
-          setMensajeError(`❌ Error al actualizar: ${error}`);
+      const sucursalSesion = sucursalIdParaCostosSesion(sesion);
+      const compartidaEnOtraTienda =
+        Boolean(sucursalSesion) &&
+        (await prendaTieneCostosEnOtraSucursal(insforgeDb(), prendaEditando.id, sucursalSesion!));
+
+      if (!compartidaEnOtraTienda) {
+        const { error } = await updatePrenda(prendaEditando.id, prendaData);
+        if (error) {
+          if (error.includes('duplicate') || error.includes('unique')) {
+            setMensajeError(`❌ Ya existe una prenda con ese nombre o código`);
+          } else {
+            setMensajeError(`❌ Error al actualizar: ${error}`);
+          }
+          setModalErrorAbierto(true);
+          return;
         }
-        setModalErrorAbierto(true);
-        return;
       }
       
       // Gestionar tallas: eliminar las que se quitaron y agregar las nuevas
@@ -497,7 +508,11 @@ export default function PrendasPage() {
     setMensajeError('');
     
     // Cargar tallas asociadas ANTES de mostrar el formulario
-    const tallasIds = await fetchTallasActivasDePrenda(insforgeDb(), prenda.id);
+    const tallasIds = await fetchTallasActivasDePrenda(
+      insforgeDb(),
+      prenda.id,
+      sucursalIdParaCostosSesion(sesion)
+    );
     if (tallasIds.length > 0) {
       setTallasAsociadas(tallasIds);
       setTallasSeleccionadas(tallasIds);
@@ -515,7 +530,11 @@ export default function PrendasPage() {
   };
 
   const handleEliminar = async (id: string) => {
-    if (confirm('⚠️ ¿Estás seguro de eliminar esta prenda? Se eliminará TODA su información incluyendo historial de pedidos. Esta acción NO se puede deshacer.')) {
+    const soloTienda = inventarioOpts.inventarioSoloSucursal;
+    const msg = soloTienda
+      ? '⚠️ ¿Eliminar esta prenda de tu tienda? Si también existe en otra sucursal, solo se quitará de tu inventario local.'
+      : '⚠️ ¿Estás seguro de eliminar esta prenda? Se eliminará TODA su información incluyendo historial de pedidos. Esta acción NO se puede deshacer.';
+    if (confirm(msg)) {
       const { error } = await deletePrenda(id);
       if (error) {
         console.error('Error al eliminar prenda:', error);

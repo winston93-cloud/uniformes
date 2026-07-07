@@ -132,8 +132,29 @@ export async function fetchCostosIdsParaEliminarTallas(
 
 export async function fetchTallasActivasDePrenda(
   db: CostoDbClient,
-  prendaId: string
+  prendaId: string,
+  sucursalId?: string | null
 ): Promise<string[]> {
   const rows = await fetchCostosRowsByPrenda(db, prendaId);
-  return extraerTallasActivasDeCostos(rows);
+  const sid = sucursalId?.trim() || '';
+  const scoped = sid
+    ? rows.filter((r) => String(normalizarCamposCostoApi(r).sucursal_id ?? '') === sid)
+    : rows;
+  return extraerTallasActivasDeCostos(scoped);
+}
+
+/** True si la prenda tiene costos activos en otra sucursal distinta a la indicada. */
+export async function prendaTieneCostosEnOtraSucursal(
+  db: CostoDbClient,
+  prendaId: string,
+  sucursalId: string
+): Promise<boolean> {
+  const sid = sucursalId.trim().toLowerCase();
+  const rows = await fetchCostosRowsByPrenda(db, prendaId);
+  return rows.some((r) => {
+    const n = normalizarCamposCostoApi(r);
+    if (n.activo === false) return false;
+    const otra = String(n.sucursal_id ?? '').trim().toLowerCase();
+    return otra.length > 0 && otra !== sid;
+  });
 }

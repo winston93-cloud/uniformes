@@ -5,9 +5,11 @@ import type { SesionUsuario } from '@/lib/types';
 export type OpcionesInventarioTienda = {
   sucursalId?: string | null;
   esMatriz?: boolean;
-  /** Matriz (uniformes/mario): catálogo global de prendas en gestión. */
+  /** @deprecated Usar inventarioSoloSucursal. */
   catalogoCompleto?: boolean;
-  /** Solo winston: listar solo prendas/costos de SUC-WIN (vacío hasta dar de alta). */
+  /** Listar solo prendas con costos en la sucursal de sesión (matriz ≠ winston). */
+  inventarioSoloSucursal?: boolean;
+  /** @deprecated Alias de inventarioSoloSucursal (winston). */
   inventarioSoloSucursalWinston?: boolean;
   /** Costos de la tienda aunque stock sea 0 (gestión). Ventas: solo stock > 0. */
   incluirStockCero?: boolean;
@@ -19,12 +21,12 @@ export function opcionesInventarioDesdeSesion(
 ): OpcionesInventarioTienda {
   const gestion = modo === 'gestion';
 
-  // Matriz (uniformes / mario): comportamiento original, sin cambios.
+  // Matriz (uniformes / mario): inventario propio en MAT-MAD (no hereda altas de Winston).
   if (sesion?.es_matriz) {
     return {
       sucursalId: sesion.sucursal_id,
       esMatriz: true,
-      catalogoCompleto: gestion,
+      inventarioSoloSucursal: true,
       incluirStockCero: gestion,
     };
   }
@@ -34,8 +36,7 @@ export function opcionesInventarioDesdeSesion(
     return {
       sucursalId: sesion?.sucursal_id,
       esMatriz: false,
-      catalogoCompleto: false,
-      inventarioSoloSucursalWinston: true,
+      inventarioSoloSucursal: true,
       incluirStockCero: false,
     };
   }

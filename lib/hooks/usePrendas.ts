@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { fetchCostosRowsByPrenda, normalizarCamposCostoApi } from '@/lib/costoQueries';
+import { filtrarFilasPorSucursalSiHayColumna } from '@/lib/sucursalCliente';
 import { filtrarCostosInventarioTienda, normalizarPrendaIdKey, type OpcionesInventarioTienda } from '@/lib/inventarioSucursal';
 import { normalizarCamposPrendaApi } from '@/lib/insforgeNormalize';
 import { insforgeDb } from '@/lib/insforgeBrowser';
@@ -116,7 +117,8 @@ export function usePrendas(opts?: OpcionesInventarioTienda) {
   const sucursalId = opts?.sucursalId;
   const esMatriz = opts?.esMatriz;
   const catalogoCompleto = opts?.catalogoCompleto;
-  const inventarioSoloSucursalWinston = opts?.inventarioSoloSucursalWinston;
+  const inventarioSoloSucursal =
+    opts?.inventarioSoloSucursal ?? opts?.inventarioSoloSucursalWinston;
   const incluirStockCero = opts?.incluirStockCero;
 
   const fetchPrendas = async () => {
@@ -201,12 +203,12 @@ export function usePrendas(opts?: OpcionesInventarioTienda) {
       });
 
       let resultado = mapped;
-      if (inventarioSoloSucursalWinston && sucursalId?.trim()) {
+      if (inventarioSoloSucursal && sucursalId?.trim()) {
         const { data: costosRaw, error: costosErr } = await insforgeDb().from('costos').select('*');
         if (costosErr) throw costosErr;
         const costosTienda = filtrarCostosInventarioTienda(
           (costosRaw || []) as Record<string, unknown>[],
-          { sucursalId, esMatriz: false, incluirStockCero }
+          { sucursalId, esMatriz, incluirStockCero }
         );
         const idsInventario = new Set(
           costosTienda
@@ -231,7 +233,7 @@ export function usePrendas(opts?: OpcionesInventarioTienda) {
 
   useEffect(() => {
     fetchPrendas();
-  }, [sucursalId, esMatriz, catalogoCompleto, inventarioSoloSucursalWinston, incluirStockCero]);
+  }, [sucursalId, esMatriz, catalogoCompleto, inventarioSoloSucursal, incluirStockCero]);
 
   const createPrenda = async (prenda: Omit<Prenda, 'id' | 'created_at' | 'updated_at'>) => {
     try {
@@ -268,64 +270,71 @@ export function usePrendas(opts?: OpcionesInventarioTienda) {
 
   const deletePrenda = async (id: string) => {
     try {
-      // 1. Eliminar detalle_pedidos por prenda_id (relación directa)
-      const { error: detallePrendaError } = await insforgeDb()
-        .from('detalle_pedidos')
-        .delete()
-        .eq('prenda_id', id);
-
-      if (detallePrendaError) throw detallePrendaError;
-
-      // 2. Obtener todos los costos de la prenda (InsForge: columna prenda_id o prendaId)
       const costosRows = await fetchCostosRowsByPrenda(insforgeDb(), id);
-      const costosIds = costosRows
+      const sid = sucursalId?.trim() || '';
+      const soloTienda = inventarioSoloSucursal && sid;
+
+      let costosObjetivo = costosRows;
+      let eliminarPrendaGlobal = true;
+
+      if (soloTienda) {
+        costosObjetivo = filtrarFilasPorSucursalSiHayColumna(
+          costosRows as Record<string, unknown>[],
+          sid
+        );
+        const hayEnOtraTienda = costosRows.some((c) => {
+          const n = normalizarCamposCostoApi(c as Record<string, unknown>);
+          const otra = String(n.sucursal_id ?? '').trim().toLowerCase();
+          return otra.length > 0 && otra !== sid.toLowerCase();
+        });
+        if (hayEnOtraTienda) eliminarPrendaGlobal = false;
+      }
+
+      const costosIds = costosObjetivo
         .map((c) => {
           const n = normalizarCamposCostoApi(c as Record<string, unknown>);
           return n.id != null ? String(n.id) : '';
         })
         .filter(Boolean);
 
-      // 3. Si hay costos, eliminar registros relacionados por costo_id
+      if (eliminarPrendaGlobal) {
+        const { error: detallePrendaError } = await insforgeDb()
+          .from('detalle_pedidos')
+          .delete()
+          .eq('prenda_id', id);
+        if (detallePrendaError) throw detallePrendaError;
+      }
+
       if (costosIds.length > 0) {
-        
-        // Eliminar detalle_pedidos asociados por costo_id
         const { error: detalleCostoError } = await insforgeDb()
           .from('detalle_pedidos')
           .delete()
           .in('costo_id', costosIds);
-
         if (detalleCostoError) throw detalleCostoError;
 
-        // Eliminar movimientos asociados
         const { error: movimientosError } = await insforgeDb()
           .from('movimientos')
           .delete()
           .in('costo_id', costosIds);
-
         if (movimientosError) throw movimientosError;
-      }
 
-      // 4. Eliminar los costos de la prenda
-      if (costosIds.length > 0) {
         const { error: costosDelError } = await insforgeDb().from('costos').delete().in('id', costosIds);
         if (costosDelError) throw costosDelError;
-      } else {
+      } else if (eliminarPrendaGlobal) {
         let d = await insforgeDb().from('costos').delete().eq('prenda_id', id);
         if (d.error) d = await insforgeDb().from('costos').delete().eq('prendaId', id);
         if (d.error) throw d.error;
       }
 
-      // 5. Finalmente eliminar la prenda
-      const { error } = await insforgeDb()
-        .from('prendas')
-        .delete()
-        .eq('id', id);
+      if (eliminarPrendaGlobal) {
+        const { error } = await insforgeDb().from('prendas').delete().eq('id', id);
+        if (error) throw error;
+      }
 
-      if (error) throw error;
       await fetchPrendas();
-      return { error: null };
+      return { error: null, soloTienda: soloTienda && !eliminarPrendaGlobal };
     } catch (err: any) {
-      return { error: err.message };
+      return { error: err.message, soloTienda: false };
     }
   };
 
