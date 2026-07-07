@@ -76,3 +76,9 @@ export function prendaIdsDesdeCostos(rows: Record<string, unknown>[]): string[] 
 export function normalizarPrendaIdKey(id: string): string {
   return id.trim().toLowerCase();
 }
+
+/** Costos nuevos o quitados solo en la tienda de la sesión (matriz ≠ winston). */
+export function sucursalIdParaCostosSesion(sesion: SesionUsuario | null | undefined): string | null {
+  const id = sesion?.sucursal_id?.trim();
+  return id || null;
+}

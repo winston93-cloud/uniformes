@@ -18,7 +18,7 @@ import {
   parseEnteroFormateado,
   formatearEnteroMilesAlEscribir,
 } from '@/lib/formatNumericInput';
-import { opcionesInventarioDesdeSesion } from '@/lib/inventarioSucursal';
+import { opcionesInventarioDesdeSesion, sucursalIdParaCostosSesion } from '@/lib/inventarioSucursal';
 import { esCuentaWinston } from '@/lib/winstonLineaVenta';
 
 export const dynamic = 'force-dynamic';
@@ -348,16 +348,17 @@ export default function PrendasPage() {
       const tallasAEliminar = tallasAsociadas.filter(t => !tallasSeleccionadas.includes(t));
       const tallasAAgregar = tallasSeleccionadas.filter(t => !tallasAsociadas.includes(t));
 
-      // Eliminar costos de tallas quitadas en TODAS las sucursales
+      // Eliminar costos de tallas quitadas solo en la tienda de la sesión
       if (tallasAEliminar.length > 0) {
         const costosAEliminar = await fetchCostosIdsParaEliminarTallas(
           insforgeDb(),
           prendaEditando.id,
-          tallasAEliminar
+          tallasAEliminar,
+          sucursalIdParaCostosSesion(sesion)
         );
 
         for (const costoId of costosAEliminar) {
-          const resultado = await deleteCosto(costoId, { alcanceCatalogo: true });
+          const resultado = await deleteCosto(costoId);
           if (resultado.error) {
             setMensajeError(`❌ Error al quitar talla: ${resultado.error}`);
             setModalErrorAbierto(true);
@@ -366,19 +367,15 @@ export default function PrendasPage() {
         }
       }
       
-      // Agregar costos para nuevas tallas (matriz: todas las sucursales; winston: solo SUC-WIN)
+      // Agregar costos para nuevas tallas solo en la tienda de la sesión
       if (tallasAAgregar.length > 0) {
-        const sucursales = esCuentaWinston(sesion) && sesion?.sucursal_id
-          ? [{ id: sesion.sucursal_id }]
-          : (
-              await insforgeDb().from('sucursales').select('id').eq('activo', true)
-            ).data;
-        
-        if (!sucursales || sucursales.length === 0) {
-          setMensajeError('❌ Error: No se pudieron cargar las sucursales');
+        const sucursalActiva = sucursalIdParaCostosSesion(sesion);
+        if (!sucursalActiva) {
+          setMensajeError('❌ Error: No hay sucursal activa en la sesión');
           setModalErrorAbierto(true);
           return;
         }
+        const sucursales = [{ id: sucursalActiva }];
         
         // Crear costos para cada combinación de talla x sucursal
         const costosData = [];
@@ -435,19 +432,15 @@ export default function PrendasPage() {
         return;
       }
       
-      // Crear costos por talla (matriz: todas las sucursales; winston: solo SUC-WIN)
+      // Crear costos por talla solo en la tienda de la sesión
       if (nuevaPrenda && tallasSeleccionadas.length > 0) {
-        const sucursales = esCuentaWinston(sesion) && sesion?.sucursal_id
-          ? [{ id: sesion.sucursal_id }]
-          : (
-              await insforgeDb().from('sucursales').select('id').eq('activo', true)
-            ).data;
-        
-        if (!sucursales || sucursales.length === 0) {
-          setMensajeError('❌ Error: No se pudieron cargar las sucursales');
+        const sucursalActiva = sucursalIdParaCostosSesion(sesion);
+        if (!sucursalActiva) {
+          setMensajeError('❌ Error: No hay sucursal activa en la sesión');
           setModalErrorAbierto(true);
           return;
         }
+        const sucursales = [{ id: sucursalActiva }];
         
         // Crear costos para cada combinación de talla x sucursal
         const costosData = [];
