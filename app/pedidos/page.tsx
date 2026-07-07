@@ -98,17 +98,19 @@ function PedidosPageContent() {
   const [guardandoPedido, setGuardandoPedido] = useState(false);
   const enviandoPedidoRef = useRef(false);
   const inventarioOpts = opcionesInventarioDesdeSesion(sesion, 'venta');
+  /** En pedidos el catálogo incluye stock 0; la partida queda pendiente al agregar. */
+  const inventarioOptsPedidos = { ...inventarioOpts, incluirStockCero: true };
   const { costos, getCostosByPrenda, refetch: refetchCostos } = useCostos(
     sesion?.sucursal_id,
     sesion?.es_matriz,
     {
-      catalogoCompleto: inventarioOpts.catalogoCompleto,
-      incluirStockCero: inventarioOpts.incluirStockCero,
+      catalogoCompleto: inventarioOptsPedidos.catalogoCompleto,
+      incluirStockCero: inventarioOptsPedidos.incluirStockCero,
     }
   );
   const { alumnos, searchAlumnos } = useAlumnos(cicloEscolar);
   const { searchExternos } = useExternos();
-  const { prendas, loading: prendasLoading, error: prendasError, refetch: refetchPrendas } = usePrendas(inventarioOpts);
+  const { prendas, loading: prendasLoading, error: prendasError, refetch: refetchPrendas } = usePrendas(inventarioOptsPedidos);
   const { tallas } = useTallas();
   const { pedidos: pedidosDB, loading: loadingPedidos, crearPedidosDesdeCarrito, actualizarEstadoPedido, eliminarPedidoDefinitivo } =
     usePedidos(sesion?.sucursal_id);

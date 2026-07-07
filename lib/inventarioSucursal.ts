@@ -11,7 +11,7 @@ export type OpcionesInventarioTienda = {
   inventarioSoloSucursal?: boolean;
   /** @deprecated Alias de inventarioSoloSucursal (winston). */
   inventarioSoloSucursalWinston?: boolean;
-  /** Costos de la tienda aunque stock sea 0 (gestión). Ventas: solo stock > 0. */
+  /** Costos de la tienda aunque stock sea 0 (gestión y pedidos). */
   incluirStockCero?: boolean;
 };
 
