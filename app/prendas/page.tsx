@@ -1407,7 +1407,14 @@ export default function PrendasPage() {
                 }}>
                   Stock Existente *
                 </label>
-                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'stretch' }}>
+                <div
+                  style={{
+                    display: 'inline-flex',
+                    gap: '0.5rem',
+                    alignItems: 'center',
+                    maxWidth: '100%',
+                  }}
+                >
                   <input
                     type="text"
                     inputMode="numeric"
@@ -1417,39 +1424,71 @@ export default function PrendasPage() {
                     readOnly
                     placeholder="0"
                     style={{
-                      flex: '1 1 140px',
-                      maxWidth: '200px',
-                      padding: '0.75rem',
+                      width: '7.5rem',
+                      flexShrink: 0,
+                      padding: '0.55rem 0.65rem',
                       border: '2px solid #e2e8f0',
                       borderRadius: '8px',
-                      fontSize: '1rem',
+                      fontSize: '1.05rem',
+                      fontWeight: 700,
+                      textAlign: 'center',
                       backgroundColor: '#f8fafc',
-                      color: '#334155',
+                      color: '#0f172a',
                     }}
                   />
                   <button
                     type="button"
                     onClick={abrirModalAjusteStock}
+                    title="Sumar o restar unidades al stock"
                     style={{
-                      flex: '1 1 auto',
-                      padding: '0.75rem 1rem',
-                      background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                      flexShrink: 0,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      padding: '0.45rem 0.75rem',
+                      background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
                       color: 'white',
                       border: 'none',
-                      borderRadius: '8px',
+                      borderRadius: '999px',
                       cursor: 'pointer',
-                      fontWeight: '600',
-                      fontSize: '0.95rem',
-                      whiteSpace: 'nowrap',
+                      fontWeight: 600,
+                      fontSize: '0.8rem',
+                      lineHeight: 1.2,
+                      boxShadow: '0 2px 8px rgba(2, 132, 199, 0.35)',
+                      transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-1px)';
+                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(2, 132, 199, 0.4)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 2px 8px rgba(2, 132, 199, 0.35)';
                     }}
                   >
-                    Actualizar stock
+                    <span
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '1.15rem',
+                        height: '1.15rem',
+                        borderRadius: '50%',
+                        background: 'rgba(255,255,255,0.25)',
+                        fontSize: '0.7rem',
+                        fontWeight: 700,
+                      }}
+                      aria-hidden
+                    >
+                      ±
+                    </span>
+                    Ajustar
                   </button>
                 </div>
                 <small style={{ color: '#64748b', fontSize: '0.85rem', display: 'block', marginTop: '0.25rem' }}>
                   {usarUbicacionesStock
-                    ? 'Usa «Actualizar stock» para sumar o restar unidades y asignar ubicación en matriz.'
-                    : 'Usa «Actualizar stock» para sumar o restar unidades (ej. 5 suma, −5 resta).'}
+                    ? 'Pulsa «Ajustar» para sumar o restar unidades y asignar ubicación en matriz.'
+                    : 'Pulsa «Ajustar» para sumar o restar (ej. 5 suma, −5 resta).'}
                 </small>
               </div>
 
