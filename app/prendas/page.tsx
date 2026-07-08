@@ -747,7 +747,7 @@ export default function PrendasPage() {
             <div
               className="form-container"
               style={{
-                maxWidth: '900px',
+                maxWidth: '980px',
                 width: '100%',
                 maxHeight: '90vh',
                 overflowY: 'auto',
