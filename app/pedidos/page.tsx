@@ -108,7 +108,7 @@ function PedidosPageContent() {
       incluirStockCero: inventarioOptsPedidos.incluirStockCero,
     }
   );
-  const { alumnos, searchAlumnos } = useAlumnos(cicloEscolar);
+  const { searchAlumnos } = useAlumnos(cicloEscolar, { lazy: true });
   const { searchExternos } = useExternos();
   const { prendas, loading: prendasLoading, error: prendasError, refetch: refetchPrendas } = usePrendas(inventarioOptsPedidos);
   const { tallas } = useTallas();
@@ -237,37 +237,42 @@ function PedidosPageContent() {
       }> = [];
 
       try {
-        // Buscar en alumnos
-        const alumnosEncontrados = await searchAlumnos(query);
-        if (isMounted && alumnosEncontrados) {
-          alumnosEncontrados.slice(0, 10).forEach(alumno => {
-            resultados.push({
-              id: alumno.id,
-              nombre: alumno.nombre,
-              tipo: 'alumno',
-              datos: alumno,
-            });
+        // Alumnos (Winston Servicios) + externos (Uniformes) en paralelo
+        const [alumnosEncontrados, externosEncontrados] = await Promise.all([
+          searchAlumnos(query).catch((err) => {
+            console.error('Error buscando alumnos:', err);
+            return [] as Awaited<ReturnType<typeof searchAlumnos>>;
+          }),
+          searchExternos(query).catch((err) => {
+            console.error('Error buscando externos:', err);
+            return [] as Awaited<ReturnType<typeof searchExternos>>;
+          }),
+        ]);
+
+        if (!isMounted) return;
+
+        for (const alumno of (alumnosEncontrados || []).slice(0, 10)) {
+          resultados.push({
+            id: alumno.id,
+            nombre: alumno.nombre,
+            tipo: 'alumno',
+            datos: alumno,
           });
         }
 
-        // Buscar en externos (servidor; la tabla puede no tener columna `activo`)
-        const externosEncontrados = await searchExternos(query);
-        if (isMounted && externosEncontrados?.length) {
-          externosEncontrados.slice(0, 10 - resultados.length).forEach((externo) => {
-            if (externo.activo === false) return;
-            resultados.push({
-              id: externo.id,
-              nombre: externo.nombre,
-              tipo: 'externo',
-              datos: externo,
-            });
+        for (const externo of externosEncontrados || []) {
+          if (resultados.length >= 10) break;
+          if (externo.activo === false) continue;
+          resultados.push({
+            id: externo.id,
+            nombre: externo.nombre,
+            tipo: 'externo',
+            datos: externo,
           });
         }
 
-        if (isMounted) {
-          setResultadosBusqueda(resultados.slice(0, 10));
-          setMostrarResultados(resultados.length > 0);
-        }
+        setResultadosBusqueda(resultados.slice(0, 10));
+        setMostrarResultados(resultados.length > 0);
       } catch (error) {
         console.error('Error buscando clientes:', error);
         if (isMounted) {

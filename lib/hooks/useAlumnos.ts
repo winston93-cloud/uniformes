@@ -9,9 +9,9 @@ import { insforgeDb } from '@/lib/insforgeBrowser';
 export type { Alumno, AlumnoFromDB } from '../alumnoMappers';
 export { mapAlumnoFromDB, mapAlumnoPublic, mapAlumnoRow } from '../alumnoMappers';
 
-export function useAlumnos(cicloEscolar?: number) {
+export function useAlumnos(cicloEscolar?: number, opts?: { lazy?: boolean }) {
   const [alumnos, setAlumnos] = useState<Alumno[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!(opts?.lazy));
   const [error, setError] = useState<string | null>(null);
 
   const fetchAlumnos = async () => {
@@ -47,8 +47,13 @@ export function useAlumnos(cicloEscolar?: number) {
   };
 
   useEffect(() => {
+    if (opts?.lazy) {
+      setLoading(false);
+      return;
+    }
     fetchAlumnos();
-  }, [cicloEscolar]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cicloEscolar, opts?.lazy]);
 
   const searchAlumnos = useCallback(
     async (query: string) => {

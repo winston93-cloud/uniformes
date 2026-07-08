@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { buscarAlumnosEnDb } from '@/lib/alumnoSearch';
-import { getInsforge } from '@/lib/insforge';
 
 export async function GET(req: Request) {
   try {
@@ -15,7 +14,8 @@ export async function GET(req: Request) {
         ? Number(cicloRaw)
         : undefined;
 
-    const data = await buscarAlumnosEnDb(getInsforge().database, q, cicloEscolar);
+    // null → buscarAlumnosEnDb usa Winston Servicios (o fallback Uniformes)
+    const data = await buscarAlumnosEnDb(null, q, cicloEscolar);
     return NextResponse.json({ success: true, data });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e);

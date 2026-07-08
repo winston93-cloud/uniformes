@@ -246,7 +246,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
   } = useCotizaciones({ autoCargar: false });
   const [actualizandoEstadoId, setActualizandoEstadoId] = useState<string | null>(null);
   const [eliminandoCotizacionId, setEliminandoCotizacionId] = useState<string | null>(null);
-  const { searchAlumnos } = useAlumnos(cicloEscolar);
+  const { searchAlumnos } = useAlumnos(cicloEscolar, { lazy: true });
   const { searchExternos } = useExternos();
   const { prendas } = usePrendas();
   const { tallas: tallasCatalogo } = useTallas();

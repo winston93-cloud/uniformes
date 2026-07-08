@@ -82,22 +82,59 @@ export function useExternos() {
 
   const searchExternos = async (query: string) => {
     try {
-      const consulta = escaparWildcards(query.trim());
-      if (!consulta) return [];
+      const limpia = query.replace(/\s+/g, ' ').trim();
+      if (limpia.length < 2) return [];
 
-      const { data, error } = await insforgeDb()
-        .from('externos')
-        .select('*')
-        .or(`nombre.ilike.%${consulta}%,email.ilike.%${consulta}%,telefono.ilike.%${consulta}%`)
-        .order('nombre', { ascending: true })
-        .limit(20);
+      const tokens = limpia
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .split(/\s+/)
+        .filter((t) => t.length >= 2);
 
-      if (error) {
-        console.error('Error en searchExternos:', error);
-        throw error;
+      const terminos = tokens.length > 0 ? tokens : [limpia];
+      const porId = new Map<string, Externo>();
+
+      const lotes = await Promise.all(
+        terminos.map(async (termino) => {
+          const esc = escaparWildcards(termino);
+          const { data, error } = await insforgeDb()
+            .from('externos')
+            .select('*')
+            .or(`nombre.ilike.%${esc}%,email.ilike.%${esc}%,telefono.ilike.%${esc}%`)
+            .limit(20);
+          if (error) throw error;
+          return (data || []) as Externo[];
+        })
+      );
+
+      for (const filas of lotes) {
+        for (const row of filas) {
+          if (row?.id) porId.set(String(row.id), row);
+        }
       }
 
-      return data || [];
+      const blob = (e: Externo) =>
+        `${e.nombre || ''} ${e.email || ''} ${e.telefono || ''}`
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '');
+
+      const tokCheck = terminos.map((t) =>
+        t
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+      );
+
+      return [...porId.values()]
+        .filter((e) => {
+          if (e.activo === false) return false;
+          const b = blob(e);
+          return tokCheck.every((t) => b.includes(t));
+        })
+        .sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '', 'es'))
+        .slice(0, 20);
     } catch (err: any) {
       console.error('Error searching externos:', err.message || err);
       return [];
