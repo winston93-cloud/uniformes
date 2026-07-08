@@ -8,6 +8,12 @@ import { insforgeDb } from '@/lib/insforgeBrowser';
 import { useAuth } from '@/contexts/AuthContext';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import ReciboPedidoTicket, { etiquetaLineaRecibo, type PedidoRecibo } from '@/components/ReciboPedidoTicket';
+import {
+  defaultTicketPrintCal,
+  loadTicketPrintCal,
+  saveTicketPrintCal,
+  type TicketPrintCal,
+} from '@/lib/ticketPrintCal';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
@@ -81,13 +87,7 @@ function PedidoDetalleContent({ params }: { params: Promise<{ id: string }> }) {
   const [showPrintCal, setShowPrintCal] = useState(false);
   const [generandoPdf, setGenerandoPdf] = useState(false);
 
-  const [printCal, setPrintCal] = useState({
-    leftMm: 40,
-    topMm: 0,
-    widthPct: 82,
-    scale: 0.98,
-    paddingTopMm: 2.5,
-  });
+  const [printCal, setPrintCal] = useState<TicketPrintCal>(() => defaultTicketPrintCal(sesion));
 
   const siguienteId = searchParams.get('siguiente')?.trim() || '';
   const esDobleRecibo = pedidos.length > 1;
@@ -128,16 +128,8 @@ function PedidoDetalleContent({ params }: { params: Promise<{ id: string }> }) {
 
   useEffect(() => {
     if (!isMounted) return;
-    try {
-      const raw = localStorage.getItem('ticketPrintCal_v1');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        setPrintCal((prev) => ({ ...prev, ...parsed }));
-      }
-    } catch {
-      // ignore
-    }
-  }, [isMounted]);
+    setPrintCal(loadTicketPrintCal(sesion));
+  }, [isMounted, sesion?.sucursal_codigo, sesion?.es_matriz]);
 
   useEffect(() => {
     if (!isMounted) return;
@@ -148,12 +140,8 @@ function PedidoDetalleContent({ params }: { params: Promise<{ id: string }> }) {
     root.style.setProperty('--ticket-print-scale', `${printCal.scale}`);
     root.style.setProperty('--ticket-print-padding-top', `${printCal.paddingTopMm}mm`);
 
-    try {
-      localStorage.setItem('ticketPrintCal_v1', JSON.stringify(printCal));
-    } catch {
-      // ignore
-    }
-  }, [isMounted, printCal]);
+    saveTicketPrintCal(sesion, printCal);
+  }, [isMounted, printCal, sesion?.sucursal_codigo, sesion?.es_matriz]);
 
   const esIOS = () => {
     if (typeof navigator === 'undefined') return false;
