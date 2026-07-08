@@ -804,10 +804,9 @@ function PedidosPageContent() {
       console.log('📦 Resultado:', resultado);
 
       if (resultado.success && resultado.pedidos.length > 0) {
-        const folios = resultado.pedidos.map((p) => p.folio).filter(Boolean).join(', ');
         if (resultado.pedidos.length > 1) {
-          alert(`✅ Venta registrada en 2 recibos:\n\n${folios}\n\n(Prendas y tenis por separado)`);
-          router.push('/pedidos');
+          const [prendas, tenis] = resultado.pedidos;
+          router.push(`/pedidos/${prendas.id}?siguiente=${tenis.id}`);
         } else {
           console.log('✅ Pedido creado exitosamente, ID:', resultado.pedidos[0].id);
           router.push(`/pedidos/${resultado.pedidos[0].id}`);
