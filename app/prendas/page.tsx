@@ -291,11 +291,11 @@ export default function PrendasPage() {
     setModalAjusteStockAbierto(true);
   };
 
+  /** Matriz: al sumar siempre pedir ubicación (permite agregar a otra bodega aunque ya exista solo 1). Al restar, pedir si hay 2+ ubicaciones con stock. */
   const requiereUbicacionEnAjuste = (delta: number): boolean => {
     if (!usarUbicacionesStock || delta === 0) return false;
-    if (partidasUbicacion.length === 1) return false;
     if (delta > 0) return true;
-    return partidasUbicacion.length > 1;
+    return partidasUbicacion.filter((p) => parseEnteroFormateado(p.cantidad) > 0).length > 1;
   };
 
   const aplicarAjusteStock = () => {
@@ -329,10 +329,7 @@ export default function PrendasPage() {
     }
 
     if (delta > 0) {
-      const ubId =
-        partidas.length === 1
-          ? partidas[0].ubicacion_id
-          : ubicacionAjusteStock.trim();
+      const ubId = ubicacionAjusteStock.trim();
       if (!ubId) {
         setErrorAjusteStock('Selecciona la ubicación donde entra el stock.');
         return;
@@ -350,8 +347,9 @@ export default function PrendasPage() {
       }
     } else {
       const abs = Math.abs(delta);
+      const conStock = partidas.filter((p) => parseEnteroFormateado(p.cantidad) > 0);
       const ubId =
-        partidas.length === 1 ? partidas[0].ubicacion_id : ubicacionAjusteStock.trim();
+        conStock.length === 1 ? conStock[0].ubicacion_id : ubicacionAjusteStock.trim();
       if (!ubId) {
         setErrorAjusteStock('Selecciona la ubicación de donde se descuenta.');
         return;
