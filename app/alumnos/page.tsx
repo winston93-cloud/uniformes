@@ -43,7 +43,7 @@ export default function AlumnosPage() {
       <div className="main-container">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
           <h1 style={{ fontSize: '2.5rem', fontWeight: '700', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.2)' }}>
-            👨‍🎓 Gestión de Alumnos
+            👨‍🎓 Alumnos (Winston Servicios)
           </h1>
         </div>
 
@@ -62,7 +62,7 @@ export default function AlumnosPage() {
               className="form-input"
               value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)}
-              placeholder="Buscar por referencia, nombre, apellido..."
+              placeholder="Nombre y apellidos (en cualquier orden) o referencia..."
             />
           </div>
           {searchQuery && (
@@ -116,7 +116,7 @@ export default function AlumnosPage() {
           
           {!searchQuery && alumnos.length > 0 && (
             <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-              Mostrando {alumnos.length} de {alumnos.length} alumnos (máximo 1000)
+              Mostrando {alumnos.length} alumnos (fuente: Winston Servicios)
             </div>
           )}
         </div>

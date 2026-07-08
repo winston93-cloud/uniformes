@@ -37,7 +37,7 @@ export function textoBusquedaAlumno(row: {
     .toLowerCase();
 }
 
-/** Ciclos que sincronizamos desde MySQL (debe alinearse con sync-mysql). */
+/** Ciclos escolares activos para búsqueda de alumnos (Winston Servicios). */
 export const CICLOS_ALUMNO_SYNC = [22, 23] as const;
 
 export function ciclosAlumnoParaBusqueda(cicloSesion?: number): number[] {

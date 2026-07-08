@@ -3,7 +3,7 @@
 import { useEffect, useState, use } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
-import { mapAlumnoRow } from '@/lib/hooks/useAlumnos';
+import { fetchAlumnosByIds } from '@/lib/alumnoClientApi';
 import { insforgeDb } from '@/lib/insforgeBrowser';
 import { useAuth } from '@/contexts/AuthContext';
 import LayoutWrapper from '@/components/LayoutWrapper';
@@ -132,18 +132,12 @@ export default function PedidoDetallePage({ params }: { params: Promise<{ id: st
         return;
       }
 
-      // Si hay alumno_id, obtener sus datos
+      // Alumno vive en Winston Servicios (via API)
       let alumnoData = null;
       if (pedidoData.alumno_id) {
-        const { data: row } = await insforgeDb()
-          .from('alumno')
-          .select('*')
-          .eq('alumno_id', pedidoData.alumno_id)
-          .maybeSingle();
-        if (row) {
-          const m = mapAlumnoRow(row as Record<string, unknown>);
-          alumnoData = { nivel: m.nivel, grado: m.grado };
-        }
+        const map = await fetchAlumnosByIds([String(pedidoData.alumno_id)]);
+        const m = map.get(String(pedidoData.alumno_id));
+        if (m) alumnoData = { nivel: m.nivel, grado: m.grado };
       }
 
       // Obtener detalles con nombres de prendas y tallas

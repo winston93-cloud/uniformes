@@ -9,7 +9,7 @@ export type ModuloNavegacion = {
   rutasActivas?: string[];
 };
 
-/** Orden alineado con las tarjetas del dashboard (sin «Actualizar base de datos», acción aparte). */
+/** Orden alineado con las tarjetas del dashboard. */
 export const MODULOS_MENU_LATERAL: ModuloNavegacion[] = [
   { href: '/pedidos', label: 'Pedidos', icon: '🛒', adminOnly: true },
   { href: '/tallas', label: 'Tallas', icon: '📏', adminOnly: true },

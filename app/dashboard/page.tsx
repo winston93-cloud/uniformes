@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import Link from 'next/link';
@@ -8,136 +8,12 @@ import TarjetaInsumosFaltantes from '@/components/TarjetaInsumosFaltantes';
 import TarjetaAlertasStock from '@/components/TarjetaAlertasStock';
 import TarjetaAlertasStockPrendas from '@/components/TarjetaAlertasStockPrendas';
 import UserCard from '@/components/UserCard';
-import ModalActualizarBaseDatos from '@/components/ModalActualizarBaseDatos';
 import { esAdministrador, puedeGestionarCatalogo } from '@/lib/permisos';
-
-function AlumnoSyncModal() {
-  const [abierta, setAbierta] = useState(false);
-  const [modalState, setModalState] = useState<null | {
-    kind: 'ok' | 'error';
-    title: string;
-    detail: string;
-  }>(null);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const sp = new URLSearchParams(window.location.search);
-    const sync = sp.get('sync');
-    if (!sync) return;
-    if (sync === 'ok') {
-      const ms = sp.get('ms');
-      const fetched = sp.get('fetched');
-      const mapped = sp.get('mapped');
-      const upserted = sp.get('upserted');
-      const partes = [
-        ms ? `Duración: ${(Number(ms) / 1000).toFixed(1)}s` : null,
-        fetched ? `Leídos: ${fetched}` : null,
-        mapped ? `Mapeados: ${mapped}` : null,
-        upserted ? `Transferidos: ${upserted}` : null,
-      ].filter(Boolean);
-      setModalState({
-        kind: 'ok',
-        title: 'Actualización de alumno exitosa',
-        detail: partes.length ? partes.join(' · ') : 'Éxito',
-      });
-      setAbierta(true);
-      return;
-    }
-    if (sync === 'error') {
-      const msg = sp.get('msg');
-      setModalState({
-        kind: 'error',
-        title: 'Falló actualización de alumno',
-        detail: msg ? decodeURIComponent(msg).slice(0, 140) : 'Error',
-      });
-      setAbierta(true);
-    }
-  }, []);
-
-  const aceptar = () => {
-    setAbierta(false);
-    try {
-      const url = new URL(window.location.href);
-      url.searchParams.delete('sync');
-      url.searchParams.delete('ms');
-      url.searchParams.delete('msg');
-      url.searchParams.delete('fetched');
-      url.searchParams.delete('mapped');
-      url.searchParams.delete('upserted');
-      window.history.replaceState(null, '', url.pathname + (url.search ? url.search : ''));
-    } catch {
-      // ignore
-    }
-  };
-
-  // Auto-cierre a los 2s, aunque no den Aceptar.
-  useEffect(() => {
-    if (!abierta) return;
-    const t = window.setTimeout(() => {
-      aceptar();
-    }, 1000);
-    return () => window.clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [abierta]);
-
-  if (!modalState || !abierta) return null;
-  return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={modalState.title}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(0,0,0,0.55)',
-        zIndex: 6000,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '1rem',
-      }}
-    >
-      <div
-        style={{
-          width: 'min(520px, 100%)',
-          background: 'white',
-          borderRadius: 12,
-          padding: '1.1rem 1.1rem 1rem',
-          boxShadow: '0 18px 50px rgba(0,0,0,0.35)',
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div style={{ fontSize: '1.05rem', fontWeight: 900, color: '#0f172a' }}>{modalState.title}</div>
-        <div style={{ marginTop: 8, fontSize: '0.95rem', color: '#334155', lineHeight: 1.45 }}>
-          {modalState.detail}
-        </div>
-        <div style={{ marginTop: 14, display: 'flex', justifyContent: 'flex-end' }}>
-          <button type="button" className="btn btn-primary" onClick={aceptar}>
-            Aceptar
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export default function Dashboard() {
   const { sesion, loading, sesionError, recargarSesion } = useAuth();
   const esAdmin = esAdministrador(sesion);
   const [tarjetaExpandida, setTarjetaExpandida] = useState<'insumos' | 'alertas' | 'prendas' | null>(null);
-  const [actualizarBDAbierto, setActualizarBDAbierto] = useState(false);
-  // Respaldo MySQL → Supabase desactivado temporalmente (cambio de servidor).
-  // const [syncDisparado, setSyncDisparado] = useState(false);
-  // useEffect(() => {
-  //   if (typeof window === 'undefined') return;
-  //   if (syncDisparado) return;
-  //   const sp = new URLSearchParams(window.location.search);
-  //   const sync = sp.get('sync');
-  //   if (!sync) {
-  //     setSyncDisparado(true);
-  //     window.location.replace('/api/alumno/refresh-full?redirect=/dashboard');
-  //   }
-  // }, [syncDisparado]);
 
   const handleToggleInsumos = () => {
     setTarjetaExpandida(prev => prev === 'insumos' ? null : 'insumos');
@@ -216,8 +92,6 @@ export default function Dashboard() {
   return (
     <LayoutWrapper>
       <div className="main-container">
-        <AlumnoSyncModal />
-
         <h1 className="page-title">
           Sistema de Uniformes Winston Churchill
           <span className="title-icon">✨</span>
@@ -523,54 +397,9 @@ export default function Dashboard() {
               fontSize: '0.95rem',
               color: 'rgba(255, 255, 255, 0.9)',
             }}>
-              Registro y gestión de estudiantes del instituto
+              Catálogo de alumnos (Winston Servicios)
             </p>
           </Link>
-
-          {/* Actualizar base de datos (alumnos MySQL → Supabase) */}
-          <button
-            type="button"
-            className="card"
-            onClick={() => setActualizarBDAbierto(true)}
-            style={{
-              background: 'linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%)',
-              border: '2px solid rgba(14, 165, 233, 0.35)',
-              cursor: 'pointer',
-              textAlign: 'left',
-            }}
-            title="Sincronizar alumnos desde phpMyAdmin/MySQL hacia Supabase"
-          >
-            <div 
-              style={{
-                fontSize: '2.5rem',
-                background: 'rgba(255, 255, 255, 0.25)',
-                borderRadius: '12px',
-                width: '60px',
-                height: '60px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto 1rem',
-              }}
-            >
-              🔄
-            </div>
-            <h3 style={{ 
-              margin: '0 0 0.5rem 0',
-              fontSize: '1.3rem',
-              fontWeight: '600',
-              color: 'white',
-            }}>
-              Actualizar base de datos
-            </h3>
-            <p style={{ 
-              margin: 0,
-              fontSize: '0.95rem',
-              color: 'rgba(255, 255, 255, 0.9)',
-            }}>
-              Traer alumnos nuevos/actualizados desde phpMyAdmin a Supabase
-            </p>
-          </button>
 
           {/* Clientes Externos - Módulo de Clientes */}
           <Link 
@@ -609,7 +438,7 @@ export default function Dashboard() {
               fontSize: '0.95rem',
               color: 'rgba(255, 255, 255, 0.9)',
             }}>
-              Gestión de clientes externos y público general
+              Catálogo de clientes externos (Uniformes)
             </p>
           </Link>
 
@@ -924,10 +753,6 @@ export default function Dashboard() {
           </>
         )}
       </div>
-
-      {esAdmin && (
-      <ModalActualizarBaseDatos abierto={actualizarBDAbierto} onClose={() => setActualizarBDAbierto(false)} />
-      )}
     </LayoutWrapper>
   );
 }

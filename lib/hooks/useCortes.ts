@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { insforgeDb } from '@/lib/insforgeBrowser';
+import { fetchAlumnosByIds } from '@/lib/alumnoClientApi';
 import type { Corte } from '../types';
 import {
   leerLineaVentaPedido,
@@ -197,19 +198,7 @@ export function useCortes(sucursal_id?: string, filtroLinea?: FiltroLineaVenta) 
         ),
       ];
 
-      const alumnoPorId = new Map<string, Record<string, unknown>>();
-      if (alumnoIds.length > 0) {
-        const ar = await insforgeDb()
-          .from('alumno')
-          .select('alumno_ref, alumno_nombre_completo, id')
-          .in('id', alumnoIds);
-        if (!ar.error && ar.data) {
-          for (const a of ar.data) {
-            const row = a as Record<string, unknown>;
-            alumnoPorId.set(String(row.id), row);
-          }
-        }
-      }
+      const alumnoPorId = alumnoIds.length > 0 ? await fetchAlumnosByIds(alumnoIds) : new Map();
 
       const externoPorId = new Map<string, Record<string, unknown>>();
       if (externoIds.length > 0) {
@@ -229,11 +218,18 @@ export function useCortes(sucursal_id?: string, filtroLinea?: FiltroLineaVenta) 
           if (lineaCorte && leerLineaVentaPedido(pedido) !== lineaCorte) return null;
           const alumnoId = pedido.alumno_id ?? pedido.alumnoId;
           const externoId = pedido.externo_id ?? pedido.externoId;
+          const alum = alumnoId ? alumnoPorId.get(String(alumnoId)) : undefined;
           return {
             ...det,
             pedido: {
               ...pedido,
-              alumno: alumnoId ? alumnoPorId.get(String(alumnoId)) : undefined,
+              alumno: alum
+                ? {
+                    id: alum.id,
+                    alumno_ref: alum.referencia,
+                    alumno_nombre_completo: alum.nombre,
+                  }
+                : undefined,
               externo: externoId ? externoPorId.get(String(externoId)) : undefined,
             },
           };

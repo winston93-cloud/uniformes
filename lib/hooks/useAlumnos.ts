@@ -1,14 +1,16 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { ciclosAlumnoParaBusqueda } from '../alumnoDisplay';
-import { mapAlumnoRow, type Alumno, type AlumnoFromDB } from '../alumnoMappers';
+import type { Alumno, AlumnoFromDB } from '../alumnoMappers';
 import { getSupabaseErrorMessage } from '../supabase';
-import { insforgeDb } from '@/lib/insforgeBrowser';
 
 export type { Alumno, AlumnoFromDB } from '../alumnoMappers';
 export { mapAlumnoFromDB, mapAlumnoPublic, mapAlumnoRow } from '../alumnoMappers';
 
+/**
+ * Alumnos desde InsForge Winston Servicios (vía API server).
+ * Externos siguen en proyecto Uniformes.
+ */
 export function useAlumnos(cicloEscolar?: number, opts?: { lazy?: boolean }) {
   const [alumnos, setAlumnos] = useState<Alumno[]>([]);
   const [loading, setLoading] = useState(!(opts?.lazy));
@@ -17,26 +19,14 @@ export function useAlumnos(cicloEscolar?: number, opts?: { lazy?: boolean }) {
   const fetchAlumnos = async () => {
     try {
       setLoading(true);
-      const { data, error: err } = await insforgeDb()
-        .from('alumno')
-        .select('*')
-        .eq('alumno_status', 1)
-        .limit(5000);
-
-      if (err) throw err;
-
-      let rawRows = data || [];
-      const ciclosPermitidos = new Set(ciclosAlumnoParaBusqueda(cicloEscolar));
-      rawRows = rawRows.filter((raw) => {
-        const r = raw as Record<string, unknown>;
-        const c = r.alumno_ciclo_escolar ?? r.ciclo_escolar ?? r.cicloEscolar;
-        if (c === undefined || c === null) return true;
-        return ciclosPermitidos.has(Number(c));
-      });
-
-      const rows = rawRows.map((r) => mapAlumnoRow(r as Record<string, unknown>));
-      rows.sort((a, b) => a.referencia.localeCompare(b.referencia, 'es'));
-      setAlumnos(rows);
+      const params = new URLSearchParams({ limit: '500' });
+      if (cicloEscolar !== undefined) params.set('ciclo', String(cicloEscolar));
+      const res = await fetch(`/api/alumno/list?${params.toString()}`);
+      const json = await res.json().catch(() => null);
+      if (!json?.success) {
+        throw new Error(String(json?.error || `Lista de alumnos falló (HTTP ${res.status})`));
+      }
+      setAlumnos((json.data || []) as Alumno[]);
       setError(null);
     } catch (err: unknown) {
       setError(getSupabaseErrorMessage(err));

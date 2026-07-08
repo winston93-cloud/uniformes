@@ -8,7 +8,7 @@ import { compareCotizacionesPorFechaCotizacionDesc } from '@/lib/cotizacionesSor
 import { calcularMontosImpuestosCotizacion } from '@/lib/cotizacionesImpuestos';
 import { transicionEstadoCotizacionValida, ESTADO_COTIZACION_BORRADOR } from '@/lib/cotizacionesEstados';
 import { isUuid, resolverAlumnoUuidParaCotizacion } from '@/lib/resolverAlumnoCotizacion';
-import { mapAlumnoRow } from '@/lib/hooks/useAlumnos';
+import { fetchAlumnosByIds } from '@/lib/alumnoClientApi';
 import { REFETCH_PEDIDOS_EVENT } from '@/lib/refetchPedidosEvent';
 
 export interface PartidaCotizacion {
@@ -28,7 +28,7 @@ export interface PartidaCotizacion {
   ui_key?: string;
 }
 
-/** Evita embed PostgREST `alumno(*)` cuando el FK no coincide (ej. alumno_id UUID vs tabla `alumno` con bigint). */
+/** Evita embed PostgREST `alumno(*)`: alumnos viven en Winston Servicios. */
 async function relacionarClienteParaCotizaciones(
   cotRows: Record<string, unknown>[]
 ): Promise<Cotizacion[]> {
@@ -39,23 +39,7 @@ async function relacionarClienteParaCotizaciones(
     ...new Set(cotRows.map((r) => r.externo_id).filter((x) => x != null && x !== '')),
   ].map(String);
 
-  const alumnoPorId = new Map<string, Alumno>();
-  if (alumnoIds.length > 0) {
-    const batch = await insforgeDb().from('alumno').select('*').in('alumno_id', alumnoIds);
-    if (!batch.error && batch.data) {
-      for (const row of batch.data) {
-        const m = mapAlumnoRow(row as Record<string, unknown>);
-        alumnoPorId.set(String((row as { alumno_id: unknown }).alumno_id), m);
-      }
-    }
-    for (const id of alumnoIds) {
-      if (alumnoPorId.has(id)) continue;
-      const one = await insforgeDb().from('alumno').select('*').eq('alumno_id', id).maybeSingle();
-      if (!one.error && one.data) {
-        alumnoPorId.set(id, mapAlumnoRow(one.data as Record<string, unknown>));
-      }
-    }
-  }
+  const alumnoPorId = await fetchAlumnosByIds(alumnoIds);
 
   const externoPorId = new Map<string, Externo>();
   if (externoIds.length > 0) {

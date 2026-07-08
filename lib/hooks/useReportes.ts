@@ -442,7 +442,10 @@ export function useReportes(
       ] = await Promise.all([
         countPedidos,
         liquidadosQuery,
-        insforgeDb().from('alumno').select('*', { count: 'exact', head: true }),
+        fetch('/api/alumno/count')
+          .then((r) => r.json())
+          .then((j) => ({ count: j?.success ? Number(j.count) || 0 : 0 }))
+          .catch(() => ({ count: 0 })),
         insforgeDb().from('costos').select('stock').eq('activo', true),
       ]);
 
