@@ -229,6 +229,15 @@ function PedidosPageContent() {
       }
 
       const query = busquedaCliente.trim().toLowerCase();
+      const nombreClienteConfirmado = String(clienteSeleccionado?.nombre ?? '').trim().toLowerCase();
+      if (clienteSeleccionado && query === nombreClienteConfirmado) {
+        if (isMounted) {
+          setResultadosBusqueda([]);
+          setMostrarResultados(false);
+        }
+        return;
+      }
+
       const resultados: Array<{
         id: string;
         nombre: string;
@@ -251,6 +260,12 @@ function PedidosPageContent() {
 
         if (!isMounted) return;
 
+        if (clienteSeleccionado && query === nombreClienteConfirmado) {
+          setResultadosBusqueda([]);
+          setMostrarResultados(false);
+          return;
+        }
+
         for (const alumno of (alumnosEncontrados || []).slice(0, 10)) {
           resultados.push({
             id: alumno.id,
@@ -272,7 +287,7 @@ function PedidosPageContent() {
         }
 
         setResultadosBusqueda(resultados.slice(0, 10));
-        setMostrarResultados(resultados.length > 0);
+        setMostrarResultados(resultados.length > 0 && !clienteSeleccionado);
       } catch (error) {
         console.error('Error buscando clientes:', error);
         if (isMounted) {
@@ -291,7 +306,7 @@ function PedidosPageContent() {
       clearTimeout(timeoutId);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [busquedaCliente]);
+  }, [busquedaCliente, clienteSeleccionado]);
 
   const seleccionarCliente = (cliente: typeof resultadosBusqueda[0]) => {
     setFormData({
@@ -301,7 +316,9 @@ function PedidosPageContent() {
       cliente_nombre: cliente.nombre,
     });
     setClienteSeleccionado(cliente.datos);
-    setBusquedaCliente(cliente.nombre); // Dejar el nombre del cliente en el input
+    setBusquedaCliente(cliente.nombre);
+    setResultadosBusqueda([]);
+    setIndiceClienteSeleccionado(-1);
     setMostrarResultados(false);
     
     // Mover foco al input de prenda
@@ -1036,9 +1053,17 @@ function PedidosPageContent() {
                     className="form-input"
                     value={busquedaCliente}
                     onChange={(e) => {
-                      setBusquedaCliente(e.target.value);
+                      const val = e.target.value;
+                      setBusquedaCliente(val);
                       setIndiceClienteSeleccionado(-1);
-                      if (e.target.value === '') {
+                      if (val === '') {
+                        setFormData({ ...formData, cliente_id: '', cliente_tipo: '', cliente_nombre: '' });
+                        setClienteSeleccionado(null);
+                      } else if (
+                        clienteSeleccionado &&
+                        val.trim().toLowerCase() !==
+                          String(clienteSeleccionado.nombre ?? '').trim().toLowerCase()
+                      ) {
                         setFormData({ ...formData, cliente_id: '', cliente_tipo: '', cliente_nombre: '' });
                         setClienteSeleccionado(null);
                       }
@@ -1054,6 +1079,20 @@ function PedidosPageContent() {
                       }
                     }}
                     onKeyDown={(e) => {
+                      if (e.key === 'Enter' && mostrarResultados && resultadosBusqueda.length > 0) {
+                        e.preventDefault();
+                        const idx =
+                          indiceClienteSeleccionado >= 0
+                            ? indiceClienteSeleccionado
+                            : resultadosBusqueda.length === 1
+                              ? 0
+                              : -1;
+                        if (idx >= 0) {
+                          seleccionarCliente(resultadosBusqueda[idx]);
+                        }
+                        return;
+                      }
+
                       if (!mostrarResultados || resultadosBusqueda.length === 0) return;
                       
                       if (e.key === 'ArrowDown') {
@@ -1064,9 +1103,6 @@ function PedidosPageContent() {
                       } else if (e.key === 'ArrowUp') {
                         e.preventDefault();
                         setIndiceClienteSeleccionado(prev => prev > 0 ? prev - 1 : -1);
-                      } else if (e.key === 'Enter' && indiceClienteSeleccionado >= 0) {
-                        e.preventDefault();
-                        seleccionarCliente(resultadosBusqueda[indiceClienteSeleccionado]);
                       } else if (e.key === 'Escape') {
                         setMostrarResultados(false);
                         setIndiceClienteSeleccionado(-1);
@@ -2629,6 +2665,7 @@ function PedidosPageContent() {
     {portalMounted &&
       mostrarFormulario &&
       mostrarResultados &&
+      !clienteSeleccionado &&
       posDropdownCliente &&
       resultadosBusqueda.length > 0 &&
       createPortal(

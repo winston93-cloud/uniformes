@@ -2462,8 +2462,14 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
                     setIndiceSeleccionadoCliente(prev => prev > 0 ? prev - 1 : -1);
                   } else if (e.key === 'Enter') {
                     e.preventDefault();
-                    if (indiceSeleccionadoCliente >= 0 && resultadosBusqueda[indiceSeleccionadoCliente]) {
-                      seleccionarClienteDesdeBusqueda(resultadosBusqueda[indiceSeleccionadoCliente]);
+                    const idx =
+                      indiceSeleccionadoCliente >= 0
+                        ? indiceSeleccionadoCliente
+                        : resultadosBusqueda.length === 1
+                          ? 0
+                          : -1;
+                    if (idx >= 0 && resultadosBusqueda[idx]) {
+                      seleccionarClienteDesdeBusqueda(resultadosBusqueda[idx]);
                     }
                   } else if (e.key === 'Escape') {
                     e.preventDefault();
