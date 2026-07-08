@@ -245,3 +245,6 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.crear_pedido_atomico(VARCHAR, VARCHAR, UUID, UUID, TEXT, UUID, VARCHAR, TEXT, JSONB, VARCHAR) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.crear_pedido_atomico(VARCHAR, VARCHAR, UUID, UUID, TEXT, UUID, VARCHAR, TEXT, JSONB, VARCHAR) TO anon;
+
+-- PostgREST no expone RPCs nuevas/cambiadas hasta recargar el esquema.
+NOTIFY pgrst, 'reload schema';

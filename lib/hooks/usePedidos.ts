@@ -231,7 +231,7 @@ export function usePedidos(sucursal_id?: string) {
         message: creado.message,
       };
     } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : String(error);
+      const msg = getSupabaseErrorMessage(error);
       console.error('❌ Error al crear pedido:', error);
       return { success: false, error: msg };
     }
@@ -301,7 +301,7 @@ export function usePedidos(sucursal_id?: string) {
             : `Pedido ${folios} creado correctamente`,
       };
     } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : String(error);
+      const msg = getSupabaseErrorMessage(error);
       return {
         success: false,
         pedidos: creados,
