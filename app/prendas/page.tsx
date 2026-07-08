@@ -872,202 +872,187 @@ export default function PrendasPage() {
                     Cargando tallas y stock…
                   </p>
                 )}
-                <div style={{ 
-                  border: '1px solid #ddd', 
-                  borderRadius: '8px', 
-                  overflow: 'hidden',
-                  maxHeight: '400px',
-                  overflowY: 'auto'
-                }} className="tallas-grid-container">
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <tbody>
-                      {(() => {
-                        // Filtrar tallas según los filtros
-                        let tallasFiltradas = tallas.filter(t => t.activo);
-                        
-                        // Filtrar por tipo (letras o números)
-                        if (filtroTipo === 'letras') {
-                          tallasFiltradas = tallasFiltradas.filter(t => isNaN(Number(t.nombre)));
-                        } else if (filtroTipo === 'numeros') {
-                          tallasFiltradas = tallasFiltradas.filter(t => !isNaN(Number(t.nombre)));
-                          
-                          // Filtrar por pares/nones/combinados
-                          if (filtroNumeros === 'pares') {
-                            tallasFiltradas = tallasFiltradas.filter(t => {
-                              const num = Number(t.nombre);
-                              return num % 2 === 0;
-                            });
-                          } else if (filtroNumeros === 'nones') {
-                            tallasFiltradas = tallasFiltradas.filter(t => {
-                              const num = Number(t.nombre);
-                              return num % 2 !== 0;
-                            });
-                          } else if (filtroNumeros === 'combinados') {
-                            // Combinados: números que no son pares ni nones puros (ej: 6-8, 10-12)
-                            // Por ahora, mostrar todos los números si es combinados
-                            // O puedes definir tu propia lógica aquí
-                          }
-                        }
-                        
-                        const tallasOrdenadas = sortTallas(tallasFiltradas);
-                        
-                        // Dividir en filas de 4 columnas
-                        const filas = [];
-                        for (let i = 0; i < tallasOrdenadas.length; i += 4) {
-                          filas.push(tallasOrdenadas.slice(i, i + 4));
-                        }
-                        
-                        if (filas.length === 0) {
-                          return (
-                            <tr>
-                              <td colSpan={4} style={{ padding: '2rem', textAlign: 'center', color: '#999' }}>
-                                No hay tallas que coincidan con los filtros seleccionados
-                              </td>
-                            </tr>
-                          );
-                        }
-                        
-                        return filas.map((fila, filaIndex) => (
-                          <tr key={filaIndex} style={{ borderBottom: filaIndex < filas.length - 1 ? '1px solid #f0f0f0' : 'none' }}>
-                            {fila.map(talla => (
-                              <td 
-                                key={talla.id} 
-                                style={{ 
-                                  padding: '0.75rem',
-                                  width: '25%',
-                                  borderRight: fila.indexOf(talla) < fila.length - 1 ? '1px solid #f0f0f0' : 'none'
+                <div
+                  style={{
+                    border: '1px solid #ddd',
+                    borderRadius: '8px',
+                    maxHeight: '400px',
+                    overflowX: 'auto',
+                    overflowY: 'auto',
+                    WebkitOverflowScrolling: 'touch',
+                  }}
+                  className="tallas-grid-container"
+                >
+                  {(() => {
+                    let tallasFiltradas = tallas.filter((t) => t.activo);
+
+                    if (filtroTipo === 'letras') {
+                      tallasFiltradas = tallasFiltradas.filter((t) => isNaN(Number(t.nombre)));
+                    } else if (filtroTipo === 'numeros') {
+                      tallasFiltradas = tallasFiltradas.filter((t) => !isNaN(Number(t.nombre)));
+                      if (filtroNumeros === 'pares') {
+                        tallasFiltradas = tallasFiltradas.filter((t) => Number(t.nombre) % 2 === 0);
+                      } else if (filtroNumeros === 'nones') {
+                        tallasFiltradas = tallasFiltradas.filter((t) => Number(t.nombre) % 2 !== 0);
+                      }
+                    }
+
+                    const tallasOrdenadas = sortTallas(tallasFiltradas);
+
+                    if (tallasOrdenadas.length === 0) {
+                      return (
+                        <div style={{ padding: '2rem', textAlign: 'center', color: '#999' }}>
+                          No hay tallas que coincidan con los filtros seleccionados
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+                          gap: '0.5rem',
+                          padding: '0.75rem',
+                          minWidth: 'min(100%, 480px)',
+                        }}
+                      >
+                        {tallasOrdenadas.map((talla) => (
+                          <div
+                            key={talla.id}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.4rem',
+                              justifyContent: 'space-between',
+                              padding: '0.5rem 0.6rem',
+                              border: '1px solid #f0f0f0',
+                              borderRadius: '8px',
+                              background: tallasSeleccionadas.includes(talla.id) ? '#f8fbff' : 'white',
+                              minWidth: 0,
+                            }}
+                          >
+                            <label
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.45rem',
+                                cursor: 'pointer',
+                                userSelect: 'none',
+                                minWidth: 0,
+                                flex: '1 1 auto',
+                              }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={tallasSeleccionadas.includes(talla.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setTallasSeleccionadas([...tallasSeleccionadas, talla.id]);
+                                  } else {
+                                    setTallasSeleccionadas(
+                                      tallasSeleccionadas.filter((id) => id !== talla.id)
+                                    );
+                                  }
+                                }}
+                                style={{
+                                  width: '18px',
+                                  height: '18px',
+                                  cursor: 'pointer',
+                                  flexShrink: 0,
+                                }}
+                              />
+                              <span
+                                style={{
+                                  fontWeight: tallasSeleccionadas.includes(talla.id) ? '600' : '400',
+                                  color: tallasSeleccionadas.includes(talla.id) ? '#007bff' : 'inherit',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
                                 }}
                               >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'space-between' }}>
-                                <label style={{ 
-                                  display: 'flex', 
-                                  alignItems: 'center', 
-                                  gap: '0.5rem',
-                                  cursor: 'pointer',
-                                    userSelect: 'none',
-                                    flex: 1
-                                }}>
-                                  <input
-                                    type="checkbox"
-                                    checked={tallasSeleccionadas.includes(talla.id)}
-                                    onChange={(e) => {
-                                      if (e.target.checked) {
-                                        setTallasSeleccionadas([...tallasSeleccionadas, talla.id]);
-                                      } else {
-                                        setTallasSeleccionadas(tallasSeleccionadas.filter(id => id !== talla.id));
-                                      }
+                                {talla.nombre}
+                              </span>
+                            </label>
+                            {tallasSeleccionadas.includes(talla.id) && prendaEditando && (
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  gap: '0.35rem',
+                                  alignItems: 'center',
+                                  flexShrink: 0,
+                                }}
+                              >
+                                {!cargandoEdicionPrenda && costosEdicionCache.length > 0 && (
+                                  <span
+                                    title="Stock en esta sucursal"
+                                    style={{
+                                      fontSize: '0.7rem',
+                                      fontWeight: '600',
+                                      color: '#0891b2',
+                                      background: '#ecfeff',
+                                      padding: '0.15rem 0.4rem',
+                                      borderRadius: '4px',
+                                      whiteSpace: 'nowrap',
                                     }}
-                                    style={{ 
-                                      width: '18px', 
-                                      height: '18px', 
-                                      cursor: 'pointer' 
-                                    }}
-                                  />
-                                  <span style={{ 
-                                    fontWeight: tallasSeleccionadas.includes(talla.id) ? '600' : '400',
-                                    color: tallasSeleccionadas.includes(talla.id) ? '#007bff' : 'inherit'
-                                  }}>
-                                    {talla.nombre}
+                                  >
+                                    {Number(
+                                      costoPrendaTallaDesdeFilas(costosEdicionCache, talla.id)?.stock ?? 0
+                                    )}
                                   </span>
-                                </label>
-                                  {tallasSeleccionadas.includes(talla.id) && prendaEditando && (
-                                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                                      {!cargandoEdicionPrenda && costosEdicionCache.length > 0 && (
-                                        <span
-                                          title="Stock en esta sucursal"
-                                          style={{
-                                            fontSize: '0.7rem',
-                                            fontWeight: '600',
-                                            color: '#0891b2',
-                                            background: '#ecfeff',
-                                            padding: '0.15rem 0.4rem',
-                                            borderRadius: '4px',
-                                            whiteSpace: 'nowrap',
-                                          }}
-                                        >
-                                          {Number(costoPrendaTallaDesdeFilas(costosEdicionCache, talla.id)?.stock ?? 0)}
-                                        </span>
-                                      )}
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setTallaSeleccionadaStock({ id: talla.id, nombre: talla.nombre });
-                                          setModalStockAbierto(true);
-                                        }}
-                                        title="Configurar stock de esta talla"
-                                        style={{
-                                          padding: '0.25rem 0.5rem',
-                                          background: 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)',
-                                          color: 'white',
-                                          border: 'none',
-                                          borderRadius: '6px',
-                                          cursor: 'pointer',
-                                          fontSize: '0.75rem',
-                                          fontWeight: '600',
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          gap: '0.25rem',
-                                          transition: 'all 0.2s',
-                                          whiteSpace: 'nowrap'
-                                        }}
-                                        onMouseOver={(e) => {
-                                          e.currentTarget.style.transform = 'scale(1.05)';
-                                          e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
-                                        }}
-                                        onMouseOut={(e) => {
-                                          e.currentTarget.style.transform = 'scale(1)';
-                                          e.currentTarget.style.boxShadow = 'none';
-                                        }}
-                                      >
-                                        📦 Stock
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setTallaSeleccionadaModal({ id: talla.id, nombre: talla.nombre });
-                                          setModalInsumosAbierto(true);
-                                        }}
-                                        title="Gestionar insumos de esta talla"
-                                        style={{
-                                          padding: '0.25rem 0.5rem',
-                                          background: conteoInsumosPorTalla[talla.id] > 0 ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#e2e8f0',
-                                          color: conteoInsumosPorTalla[talla.id] > 0 ? 'white' : '#64748b',
-                                          border: 'none',
-                                          borderRadius: '6px',
-                                          cursor: 'pointer',
-                                          fontSize: '0.75rem',
-                                          fontWeight: '600',
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          gap: '0.25rem',
-                                          transition: 'all 0.2s',
-                                          whiteSpace: 'nowrap'
-                                        }}
-                                        onMouseOver={(e) => {
-                                          e.currentTarget.style.transform = 'scale(1.05)';
-                                          e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
-                                        }}
-                                        onMouseOut={(e) => {
-                                          e.currentTarget.style.transform = 'scale(1)';
-                                          e.currentTarget.style.boxShadow = 'none';
-                                        }}
-                                      >
-                                        🧵 {conteoInsumosPorTalla[talla.id] || 0}
-                                      </button>
-                                    </div>
-                                  )}
-                                </div>
-                              </td>
-                            ))}
-                            {/* Rellenar celdas vacías si la última fila no tiene 4 elementos */}
-                            {Array.from({ length: 4 - fila.length }).map((_, index) => (
-                              <td key={`empty-${index}`} style={{ padding: '0.75rem', width: '25%' }}></td>
-                            ))}
-                          </tr>
-                        ));
-                      })()}
-                    </tbody>
-                  </table>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setTallaSeleccionadaStock({ id: talla.id, nombre: talla.nombre });
+                                    setModalStockAbierto(true);
+                                  }}
+                                  title="Configurar stock de esta talla"
+                                  style={{
+                                    padding: '0.25rem 0.45rem',
+                                    background: 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    fontSize: '0.72rem',
+                                    fontWeight: '600',
+                                    whiteSpace: 'nowrap',
+                                  }}
+                                >
+                                  📦 Stock
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setTallaSeleccionadaModal({ id: talla.id, nombre: talla.nombre });
+                                    setModalInsumosAbierto(true);
+                                  }}
+                                  title="Gestionar insumos de esta talla"
+                                  style={{
+                                    padding: '0.25rem 0.45rem',
+                                    background:
+                                      conteoInsumosPorTalla[talla.id] > 0
+                                        ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                                        : '#e2e8f0',
+                                    color: conteoInsumosPorTalla[talla.id] > 0 ? 'white' : '#64748b',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    fontSize: '0.72rem',
+                                    fontWeight: '600',
+                                    whiteSpace: 'nowrap',
+                                  }}
+                                >
+                                  🧵 {conteoInsumosPorTalla[talla.id] || 0}
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </div>
                 
                 <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.5rem', display: 'block' }}>
