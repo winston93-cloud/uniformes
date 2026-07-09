@@ -52,13 +52,20 @@ export default function ReportesPage() {
     prendasStock: 0,
   });
 
-  // Inicializar fechas: primer día del mes actual hasta hoy
-  const hoy = new Date();
-  const primerDiaMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-  
-  const [periodo, setPeriodo] = useState({
-    fechaInicio: primerDiaMes.toISOString().split('T')[0],
-    fechaFin: hoy.toISOString().split('T')[0],
+  const fechaLocalIso = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  const [periodo, setPeriodo] = useState(() => {
+    const hoy = new Date();
+    const primerDiaMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    return {
+      fechaInicio: fechaLocalIso(primerDiaMes),
+      fechaFin: fechaLocalIso(hoy),
+    };
   });
 
   useEffect(() => {

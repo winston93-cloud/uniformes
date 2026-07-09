@@ -103,20 +103,29 @@ export function useReportes(
     return { startLocal, endLocal, startIso: startLocal.toISOString(), endIso: endLocal.toISOString() };
   };
 
+  const fechaEfectivaPedido = (pedido: Record<string, unknown>): Date | null => {
+    const raw = pedido.created_at ?? pedido.updated_at;
+    if (!raw) return null;
+    const d = new Date(String(raw));
+    return Number.isNaN(d.getTime()) ? null : d;
+  };
+
   const ventasPorPeriodo = async (fechaInicio: string, fechaFin: string): Promise<ReporteVentas[]> => {
     try {
       setLoading(true);
-      const { startLocal, endLocal } = rangoLocalAIso(fechaInicio, fechaFin);
+      const { startLocal, endLocal, startIso, endIso } = rangoLocalAIso(fechaInicio, fechaFin);
 
-      // En este proyecto los estados son PENDIENTE/COMPLETADO/CANCELADO...
-      // Para ventas por periodo incluimos ingresos de pedidos PENDIENTE + COMPLETADO (excluye cancelados).
+      // PENDIENTE + COMPLETADO (excluye cancelados). Sin columna `fecha` (eliminada en InsForge).
       let query = insforgeDb()
         .from('pedidos')
-        .select('id, created_at, updated_at, fecha, total, tipo_cliente, cliente_nombre, estado, sucursal_id')
+        .select(
+          'id, created_at, updated_at, total, tipo_cliente, cliente_nombre, estado, sucursal_id, folio, linea_venta'
+        )
         .in('estado', ['PENDIENTE', 'COMPLETADO'])
+        .gte('created_at', startIso)
+        .lte('created_at', endIso)
         .order('created_at', { ascending: true });
 
-      // Filtrar por sucursal de la sesión (obligatorio en multi-tienda)
       if (sid) {
         query = query.eq('sucursal_id', sid);
       }
@@ -128,26 +137,22 @@ export function useReportes(
         throw error;
       }
 
-      // Filtrar por fecha en local (día completo) y mapear
-      const pedidosDetalle =
-        filtrarPedidosLinea((data || []) as Record<string, unknown>[])
-          ?.filter((pedido: any) => {
-            const rawFecha = pedido.created_at ?? pedido.updated_at ?? pedido.fecha;
-            const fechaPedido = rawFecha ? new Date(rawFecha) : null;
-            if (!fechaPedido || Number.isNaN(fechaPedido.getTime())) return false;
-            return fechaPedido >= startLocal && fechaPedido <= endLocal;
-          })
-          .map((pedido: any) => {
-            const rawFecha = pedido.created_at ?? pedido.updated_at ?? pedido.fecha;
-            const fechaPedido = rawFecha ? new Date(rawFecha) : new Date();
-            return {
-              id: pedido.id,
-              fecha: fechaPedido.toISOString(),
-              cliente: pedido.cliente_nombre || 'Sin cliente',
-              tipo_cliente: pedido.tipo_cliente,
-              total: parseFloat(pedido.total?.toString?.() ?? String(pedido.total ?? 0)),
-            };
-          }) || [];
+      const pedidosDetalle = filtrarPedidosLinea((data || []) as Record<string, unknown>[])
+        .filter((pedido) => {
+          const fechaPedido = fechaEfectivaPedido(pedido);
+          if (!fechaPedido) return false;
+          return fechaPedido >= startLocal && fechaPedido <= endLocal;
+        })
+        .map((pedido) => {
+          const fechaPedido = fechaEfectivaPedido(pedido) ?? new Date();
+          return {
+            id: String(pedido.id),
+            fecha: fechaPedido.toISOString(),
+            cliente: String(pedido.cliente_nombre ?? 'Sin cliente'),
+            tipo_cliente: String(pedido.tipo_cliente ?? ''),
+            total: parseFloat(String(pedido.total ?? 0)),
+          };
+        });
 
       return pedidosDetalle;
     } catch (err: any) {
@@ -490,23 +495,25 @@ export function useReportes(
     try {
       setLoading(true);
       
-      const { startLocal, endLocal } = rangoLocalAIso(fechaInicio, fechaFin);
+      const { startLocal, endLocal, startIso, endIso } = rangoLocalAIso(fechaInicio, fechaFin);
 
-      // Obtener pedidos liquidados en el periodo
       let pedidosQuery = insforgeDb()
         .from('pedidos')
-        .select('id, created_at')
-        .in('estado', ['COMPLETADO']);
+        .select('id, created_at, folio, linea_venta')
+        .in('estado', ['COMPLETADO'])
+        .gte('created_at', startIso)
+        .lte('created_at', endIso);
       if (sid) pedidosQuery = pedidosQuery.eq('sucursal_id', sid);
       const { data: pedidos, error: pedidosError } = await pedidosQuery;
 
       if (pedidosError) throw pedidosError;
 
-      // Filtrar por fecha
-      const pedidosEnPeriodo = pedidos?.filter((pedido: any) => {
-        const fechaPedido = new Date(pedido.created_at);
-        return fechaPedido >= startLocal && fechaPedido <= endLocal;
-      }) || [];
+      const pedidosEnPeriodo =
+        filtrarPedidosLinea((pedidos || []) as Record<string, unknown>[]).filter((pedido) => {
+          const fechaPedido = fechaEfectivaPedido(pedido);
+          if (!fechaPedido) return false;
+          return fechaPedido >= startLocal && fechaPedido <= endLocal;
+        }) || [];
 
       if (pedidosEnPeriodo.length === 0) {
         return {
