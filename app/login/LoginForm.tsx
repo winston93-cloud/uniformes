@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { GraduationCap } from 'lucide-react';
+import { Eye, EyeOff, GraduationCap } from 'lucide-react';
 
 export default function LoginForm() {
   const router = useRouter();
@@ -13,6 +13,7 @@ export default function LoginForm() {
   const [needsSetup, setNeedsSetup] = useState<boolean | null>(null);
   const [usuario, setUsuario] = useState('');
   const [password, setPassword] = useState('');
+  const [mostrarPassword, setMostrarPassword] = useState(false);
   const [nombre, setNombre] = useState('');
   const [correo, setCorreo] = useState('');
   const [enviando, setEnviando] = useState(false);
@@ -116,7 +117,26 @@ export default function LoginForm() {
               </label>
               <label>
                 Contraseña
-                <input type="password" className="form-input" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} autoComplete="new-password" />
+                <div className="login-password-wrap">
+                  <input
+                    type={mostrarPassword ? 'text' : 'password'}
+                    className="form-input login-password-input"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    minLength={6}
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    className="login-password-toggle"
+                    onClick={() => setMostrarPassword((v) => !v)}
+                    aria-label={mostrarPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                    title={mostrarPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  >
+                    {mostrarPassword ? <EyeOff size={18} strokeWidth={2} /> : <Eye size={18} strokeWidth={2} />}
+                  </button>
+                </div>
               </label>
               {error && <p className="login-error">{error}</p>}
               <button type="submit" className="btn btn-primary login-submit" disabled={enviando}>
@@ -134,7 +154,25 @@ export default function LoginForm() {
               </label>
               <label>
                 Contraseña
-                <input type="password" className="form-input" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" />
+                <div className="login-password-wrap">
+                  <input
+                    type={mostrarPassword ? 'text' : 'password'}
+                    className="form-input login-password-input"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    autoComplete="current-password"
+                  />
+                  <button
+                    type="button"
+                    className="login-password-toggle"
+                    onClick={() => setMostrarPassword((v) => !v)}
+                    aria-label={mostrarPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                    title={mostrarPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  >
+                    {mostrarPassword ? <EyeOff size={18} strokeWidth={2} /> : <Eye size={18} strokeWidth={2} />}
+                  </button>
+                </div>
               </label>
               {error && <p className="login-error">{error}</p>}
               <button type="submit" className="btn btn-primary login-submit" disabled={enviando}>
@@ -207,6 +245,34 @@ export default function LoginForm() {
           font-size: 0.875rem;
           font-weight: 600;
           color: #334155;
+        }
+        .login-password-wrap {
+          position: relative;
+          display: flex;
+          align-items: center;
+        }
+        .login-password-input {
+          width: 100%;
+          padding-right: 2.75rem;
+        }
+        .login-password-toggle {
+          position: absolute;
+          right: 0.5rem;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 2rem;
+          height: 2rem;
+          padding: 0;
+          border: none;
+          border-radius: 6px;
+          background: transparent;
+          color: #64748b;
+          cursor: pointer;
+        }
+        .login-password-toggle:hover {
+          color: #4338ca;
+          background: #eef2ff;
         }
         .login-error {
           margin: 0;
