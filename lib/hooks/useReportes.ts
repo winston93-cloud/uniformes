@@ -325,10 +325,12 @@ export function useReportes(
       if (prendaIds.size === 0) return [];
 
       const ids = Array.from(prendaIds);
-      const { data: costosRaw, error } = await insforgeDb()
+      // Incluir sucursal_id: sin ella el filtro de tienda no aplica y el PDF mezcla matriz + Winston.
+      let costosQuery = insforgeDb()
         .from('costos')
         .select(`
           id,
+          sucursal_id,
           stock,
           stock_inicial,
           stock_minimo,
@@ -337,6 +339,9 @@ export function useReportes(
         `)
         .eq('activo', true)
         .in('prenda_id', ids);
+      if (sid) costosQuery = costosQuery.eq('sucursal_id', sid);
+
+      const { data: costosRaw, error } = await costosQuery;
 
       if (error) throw error;
 
@@ -451,7 +456,11 @@ export function useReportes(
           .then((r) => r.json())
           .then((j) => ({ count: j?.success ? Number(j.count) || 0 : 0 }))
           .catch(() => ({ count: 0 })),
-        insforgeDb().from('costos').select('stock').eq('activo', true),
+        (() => {
+          let q = insforgeDb().from('costos').select('stock, sucursal_id').eq('activo', true);
+          if (sid) q = q.eq('sucursal_id', sid);
+          return q;
+        })(),
       ]);
 
       const costosTienda = filtrarCostosPorLinea(
