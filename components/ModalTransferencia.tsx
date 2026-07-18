@@ -7,9 +7,12 @@ import { insforgeDb } from '@/lib/insforgeBrowser';
 import SelectorPrendasTransferencia, {
   type LineaTransferenciaSeleccionada,
 } from '@/components/transferencias/SelectorPrendasTransferencia';
+import type { Transferencia } from '@/lib/types';
 
 interface ModalTransferenciaProps {
   onClose: () => void;
+  /** Si viene, el modal edita una transferencia en tránsito. */
+  transferenciaEditar?: Transferencia | null;
 }
 
 type SucursalOption = { id: string; nombre: string; es_matriz?: boolean };
@@ -20,25 +23,30 @@ function destinoAutomatico(origenId: string, sucursales: SucursalOption[]): stri
   return otra?.id ?? '';
 }
 
-export default function ModalTransferencia({ onClose }: ModalTransferenciaProps) {
+export default function ModalTransferencia({ onClose, transferenciaEditar }: ModalTransferenciaProps) {
   const { sesion } = useAuth();
+  const esEdicion = Boolean(transferenciaEditar?.id);
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [cargandoDetalle, setCargandoDetalle] = useState(esEdicion);
   const [error, setError] = useState<string | null>(null);
 
   const [sucursales, setSucursales] = useState<SucursalOption[]>([]);
   const [sucursalOrigenId, setSucursalOrigenId] = useState('');
+  const [sucursalDestinoFijoId, setSucursalDestinoFijoId] = useState('');
   const [observaciones, setObservaciones] = useState('');
   const [lineas, setLineas] = useState<LineaTransferenciaSeleccionada[]>([]);
+  const [cantidadesIniciales, setCantidadesIniciales] = useState<Record<string, number>>({});
+  const [detalleListo, setDetalleListo] = useState(!esEdicion);
 
   const handleSeleccionChange = useCallback((nuevas: LineaTransferenciaSeleccionada[]) => {
     setLineas(nuevas);
   }, []);
 
-  const sucursalDestinoId = useMemo(
-    () => destinoAutomatico(sucursalOrigenId, sucursales),
-    [sucursalOrigenId, sucursales]
-  );
+  const sucursalDestinoId = useMemo(() => {
+    if (esEdicion && sucursalDestinoFijoId) return sucursalDestinoFijoId;
+    return destinoAutomatico(sucursalOrigenId, sucursales);
+  }, [esEdicion, sucursalDestinoFijoId, sucursalOrigenId, sucursales]);
 
   const sucursalOrigen = sucursales.find((s) => s.id === sucursalOrigenId);
   const sucursalDestino = sucursales.find((s) => s.id === sucursalDestinoId);
@@ -60,22 +68,52 @@ export default function ModalTransferencia({ onClose }: ModalTransferenciaProps)
         const lista = (sucursalesData || []) as SucursalOption[];
         setSucursales(lista);
 
-        const origenInicial =
-          sesion?.sucursal_id && lista.some((s) => s.id === sesion.sucursal_id)
-            ? sesion.sucursal_id
-            : lista[0]?.id ?? '';
-        setSucursalOrigenId(origenInicial);
+        if (transferenciaEditar) {
+          setSucursalOrigenId(String(transferenciaEditar.sucursal_origen_id));
+          setSucursalDestinoFijoId(String(transferenciaEditar.sucursal_destino_id));
+          setObservaciones(transferenciaEditar.observaciones ?? '');
+
+          setCargandoDetalle(true);
+          const { data: filas, error: errDet } = await insforgeDb()
+            .from('detalle_transferencias')
+            .select('costo_id, cantidad')
+            .eq('transferencia_id', transferenciaEditar.id);
+          if (errDet) throw errDet;
+
+          const iniciales: Record<string, number> = {};
+          for (const f of filas || []) {
+            const cid = f.costo_id ? String(f.costo_id) : '';
+            const qty = Math.trunc(Number(f.cantidad ?? 0));
+            if (cid && qty > 0) iniciales[cid] = (iniciales[cid] ?? 0) + qty;
+          }
+          setCantidadesIniciales(iniciales);
+          setDetalleListo(true);
+        } else {
+          const origenInicial =
+            sesion?.sucursal_id && lista.some((s) => s.id === sesion.sucursal_id)
+              ? sesion.sucursal_id
+              : lista[0]?.id ?? '';
+          setSucursalOrigenId(origenInicial);
+          setDetalleListo(true);
+        }
       } catch (err) {
         console.error(err);
-        setError('No se pudieron cargar las sucursales.');
+        setError(
+          esEdicion
+            ? 'No se pudo cargar la transferencia a modificar.'
+            : 'No se pudieron cargar las sucursales.'
+        );
+        setDetalleListo(true);
+      } finally {
+        setCargandoDetalle(false);
       }
     };
     void init();
-  }, [sesion?.sucursal_id]);
+  }, [sesion?.sucursal_id, transferenciaEditar, esEdicion]);
 
   useEffect(() => {
-    setLineas([]);
-  }, [sucursalOrigenId]);
+    if (!esEdicion) setLineas([]);
+  }, [sucursalOrigenId, esEdicion]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,7 +122,7 @@ export default function ModalTransferencia({ onClose }: ModalTransferenciaProps)
 
     try {
       if (!puedeEnviarDesdeOrigen) {
-        setError(`Solo puedes enviar mercancía desde ${sesion?.sucursal_nombre}.`);
+        setError(`Solo puedes ${esEdicion ? 'modificar' : 'enviar'} mercancía desde ${sesion?.sucursal_nombre}.`);
         setLoading(false);
         return;
       }
@@ -99,31 +137,46 @@ export default function ModalTransferencia({ onClose }: ModalTransferenciaProps)
         return;
       }
 
-      const res = await fetch('/api/transferencias/crear', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sucursal_origen_id: sucursalOrigenId,
-          sucursal_destino_id: sucursalDestinoId,
-          observaciones,
-          detalles: lineas.map((d) => ({
-            prenda_id: d.prenda_id,
-            talla_id: d.talla_id,
-            cantidad: d.cantidad,
-            costo_id: d.costo_id,
-          })),
-        }),
-      });
+      const payloadDetalles = lineas.map((d) => ({
+        prenda_id: d.prenda_id,
+        talla_id: d.talla_id,
+        cantidad: d.cantidad,
+        costo_id: d.costo_id,
+      }));
+
+      const res = await fetch(
+        esEdicion ? '/api/transferencias/modificar' : '/api/transferencias/crear',
+        {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(
+            esEdicion
+              ? {
+                  transferencia_id: transferenciaEditar!.id,
+                  observaciones,
+                  detalles: payloadDetalles,
+                }
+              : {
+                  sucursal_origen_id: sucursalOrigenId,
+                  sucursal_destino_id: sucursalDestinoId,
+                  observaciones,
+                  detalles: payloadDetalles,
+                }
+          ),
+        }
+      );
 
       const json = (await res.json()) as { ok?: boolean; message?: string };
       if (!res.ok || !json.ok) {
-        throw new Error(json.message ?? 'No se pudo crear la transferencia.');
+        throw new Error(
+          json.message ?? (esEdicion ? 'No se pudo modificar la transferencia.' : 'No se pudo crear la transferencia.')
+        );
       }
 
       onClose();
     } catch (err) {
-      console.error('Error creando transferencia:', err);
+      console.error(esEdicion ? 'Error modificando transferencia:' : 'Error creando transferencia:', err);
       setError(err instanceof Error ? err.message : 'Error desconocido');
     } finally {
       setLoading(false);
@@ -140,7 +193,11 @@ export default function ModalTransferencia({ onClose }: ModalTransferenciaProps)
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-header">
-          <h2>🚚 Nueva Transferencia de Mercancía</h2>
+          <h2>
+            {esEdicion
+              ? `✏️ Modificar transferencia ${transferenciaEditar?.folio ?? ''}`
+              : '🚚 Nueva Transferencia de Mercancía'}
+          </h2>
           <button className="modal-close" onClick={onClose} type="button">
             ✕
           </button>
@@ -175,19 +232,42 @@ export default function ModalTransferencia({ onClose }: ModalTransferenciaProps)
                 <label className="form-label">
                   Origen <span style={{ color: 'red' }}>*</span>
                 </label>
-                <select
-                  className="form-input"
-                  value={sucursalOrigenId}
-                  onChange={(e) => setSucursalOrigenId(e.target.value)}
-                  required
-                >
-                  <option value="">Selecciona origen…</option>
-                  {sucursales.map((suc) => (
-                    <option key={suc.id} value={suc.id}>
-                      {suc.es_matriz ? '🏛️' : '📍'} {suc.nombre}
-                    </option>
-                  ))}
-                </select>
+                {esEdicion ? (
+                  <div
+                    className="form-input"
+                    style={{
+                      background: '#f8fafc',
+                      color: '#334155',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      minHeight: '2.75rem',
+                    }}
+                  >
+                    {sucursalOrigen ? (
+                      <>
+                        {sucursalOrigen.es_matriz ? '🏛️' : '📍'} {sucursalOrigen.nombre}
+                      </>
+                    ) : (
+                      '—'
+                    )}
+                  </div>
+                ) : (
+                  <select
+                    className="form-input"
+                    value={sucursalOrigenId}
+                    onChange={(e) => setSucursalOrigenId(e.target.value)}
+                    required
+                  >
+                    <option value="">Selecciona origen…</option>
+                    {sucursales.map((suc) => (
+                      <option key={suc.id} value={suc.id}>
+                        {suc.es_matriz ? '🏛️' : '📍'} {suc.nombre}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               <div className="form-group" style={{ margin: 0 }}>
@@ -216,8 +296,17 @@ export default function ModalTransferencia({ onClose }: ModalTransferenciaProps)
             </div>
 
             <p style={{ fontSize: '0.88rem', color: '#64748b', margin: '0 0 1rem' }}>
-              Al enviar se descuenta stock del origen. Solo puedes enviar desde{' '}
-              <strong>{sesion?.sucursal_nombre}</strong>.
+              {esEdicion ? (
+                <>
+                  Al guardar se ajusta el stock del origen según las nuevas cantidades. Solo puedes modificar desde{' '}
+                  <strong>{sesion?.sucursal_nombre}</strong>.
+                </>
+              ) : (
+                <>
+                  Al enviar se descuenta stock del origen. Solo puedes enviar desde{' '}
+                  <strong>{sesion?.sucursal_nombre}</strong>.
+                </>
+              )}
             </p>
 
             {!puedeEnviarDesdeOrigen && sucursalOrigenId && (
@@ -232,7 +321,8 @@ export default function ModalTransferencia({ onClose }: ModalTransferenciaProps)
                   fontSize: '0.92rem',
                 }}
               >
-                Cambia el origen a <strong>{sesion?.sucursal_nombre}</strong> para seleccionar prendas y enviar.
+                Cambia el origen a <strong>{sesion?.sucursal_nombre}</strong> para seleccionar prendas y{' '}
+                {esEdicion ? 'guardar' : 'enviar'}.
               </div>
             )}
 
@@ -265,12 +355,17 @@ export default function ModalTransferencia({ onClose }: ModalTransferenciaProps)
                 ) : null}
               </h3>
 
-              <SelectorPrendasTransferencia
-                origenId={sucursalOrigenId}
-                origenNombre={sucursalOrigen?.nombre}
-                habilitado={puedeEnviarDesdeOrigen}
-                onSeleccionChange={handleSeleccionChange}
-              />
+              {cargandoDetalle || !detalleListo ? (
+                <p style={{ color: '#64748b' }}>Cargando partidas…</p>
+              ) : (
+                <SelectorPrendasTransferencia
+                  origenId={sucursalOrigenId}
+                  origenNombre={sucursalOrigen?.nombre}
+                  habilitado={puedeEnviarDesdeOrigen}
+                  onSeleccionChange={handleSeleccionChange}
+                  cantidadesIniciales={esEdicion ? cantidadesIniciales : undefined}
+                />
+              )}
             </div>
           </div>
 
@@ -283,6 +378,7 @@ export default function ModalTransferencia({ onClose }: ModalTransferenciaProps)
               className="btn btn-primary"
               disabled={
                 loading ||
+                cargandoDetalle ||
                 !sucursalOrigenId ||
                 !sucursalDestinoId ||
                 !puedeEnviarDesdeOrigen ||
@@ -290,10 +386,16 @@ export default function ModalTransferencia({ onClose }: ModalTransferenciaProps)
               }
             >
               {loading
-                ? '⏳ Enviando…'
-                : lineas.length > 0
-                  ? `🚚 Enviar ${lineas.reduce((s, l) => s + l.cantidad, 0)} piezas`
-                  : '🚚 Enviar transferencia'}
+                ? esEdicion
+                  ? '⏳ Guardando…'
+                  : '⏳ Enviando…'
+                : esEdicion
+                  ? lineas.length > 0
+                    ? `💾 Guardar cambios (${lineas.reduce((s, l) => s + l.cantidad, 0)} piezas)`
+                    : '💾 Guardar cambios'
+                  : lineas.length > 0
+                    ? `🚚 Enviar ${lineas.reduce((s, l) => s + l.cantidad, 0)} piezas`
+                    : '🚚 Enviar transferencia'}
             </button>
           </div>
         </form>

@@ -128,6 +128,8 @@ type Props = {
   origenNombre?: string;
   habilitado: boolean;
   onSeleccionChange: (lineas: LineaTransferenciaSeleccionada[]) => void;
+  /** Cantidades ya en la transferencia (edición). Se suman al stock visible. */
+  cantidadesIniciales?: Record<string, number>;
 };
 
 export default function SelectorPrendasTransferencia({
@@ -135,6 +137,7 @@ export default function SelectorPrendasTransferencia({
   origenNombre,
   habilitado,
   onSeleccionChange,
+  cantidadesIniciales,
 }: Props) {
   const [cargando, setCargando] = useState(false);
   const [grupos, setGrupos] = useState<GrupoPrenda[]>([]);
@@ -148,6 +151,9 @@ export default function SelectorPrendasTransferencia({
   const inputRef = useRef<HTMLInputElement>(null);
   const listaRef = useRef<HTMLDivElement>(null);
   const panelActivoRef = useRef<HTMLDivElement>(null);
+  const inicialesRef = useRef<Record<string, number>>(cantidadesIniciales ?? {});
+  inicialesRef.current = cantidadesIniciales ?? {};
+  const inicialesKey = JSON.stringify(cantidadesIniciales ?? {});
 
   const cargarInventario = useCallback(async (oid: string) => {
     if (!oid) {
@@ -159,24 +165,32 @@ export default function SelectorPrendasTransferencia({
       const { data: costosRaw, error } = await insforgeDb().from('costos').select('*');
       if (error) throw error;
 
+      const reservado = inicialesRef.current;
       const origenKey = oid.trim().toLowerCase();
       const filas: FilaCosto[] = (costosRaw || [])
         .map((r) => normalizarCamposCostoApi(r as Record<string, unknown>))
         .filter((c) => {
           const sid = String(c.sucursal_id ?? '').trim().toLowerCase();
-          return sid === origenKey && Number(c.stock ?? 0) > 0;
+          const id = String(c.id ?? '');
+          const stockBase = Number(c.stock ?? 0);
+          const extra = Number(reservado[id] ?? 0);
+          return sid === origenKey && (stockBase > 0 || extra > 0);
         })
-        .map((c) => ({
-          costo_id: String(c.id),
-          prenda_id: String(c.prenda_id ?? ''),
-          talla_id: String(c.talla_id ?? ''),
-          prenda_nombre: '',
-          prenda_codigo: '',
-          talla_nombre: '',
-          stock: Number(c.stock ?? 0),
-          precio_menudeo: Number(c.precio_menudeo ?? 0),
-          precio_mayoreo: Number(c.precio_mayoreo ?? 0),
-        }));
+        .map((c) => {
+          const id = String(c.id);
+          const extra = Number(reservado[id] ?? 0);
+          return {
+            costo_id: id,
+            prenda_id: String(c.prenda_id ?? ''),
+            talla_id: String(c.talla_id ?? ''),
+            prenda_nombre: '',
+            prenda_codigo: '',
+            talla_nombre: '',
+            stock: Number(c.stock ?? 0) + extra,
+            precio_menudeo: Number(c.precio_menudeo ?? 0),
+            precio_mayoreo: Number(c.precio_mayoreo ?? 0),
+          };
+        });
 
       const prendaIds = [...new Set(filas.map((f) => f.prenda_id).filter(Boolean))];
       const tallaIds = [...new Set(filas.map((f) => f.talla_id).filter(Boolean))];
@@ -234,8 +248,9 @@ export default function SelectorPrendasTransferencia({
         };
       });
 
-      agrupados.sort((a,  b) => a.nombre.localeCompare(b.nombre, 'es'));
+      agrupados.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
       setGrupos(agrupados);
+      setCantidades({ ...reservado });
     } catch (e) {
       console.error(e);
       setGrupos([]);
@@ -249,7 +264,7 @@ export default function SelectorPrendasTransferencia({
     setBusqueda('');
     setPrendaEnfocada(null);
     void cargarInventario(origenId);
-  }, [origenId, cargarInventario]);
+  }, [origenId, cargarInventario, inicialesKey]);
 
   const lineasSeleccionadas = useMemo((): LineaTransferenciaSeleccionada[] => {
     const out: LineaTransferenciaSeleccionada[] = [];

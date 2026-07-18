@@ -12,14 +12,17 @@ export default function TransferenciasPage() {
   const { sesion } = useAuth();
   const { transferencias, loading, recargar } = useTransferencias(sesion?.sucursal_id);
   const [modalAbierto, setModalAbierto] = useState(false);
+  const [transferenciaEditar, setTransferenciaEditar] = useState<Transferencia | null>(null);
   const [transferenciaDetalle, setTransferenciaDetalle] = useState<Transferencia | null>(null);
 
   const handleNuevaTransferencia = () => {
+    setTransferenciaEditar(null);
     setModalAbierto(true);
   };
 
   const handleCerrarModal = () => {
     setModalAbierto(false);
+    setTransferenciaEditar(null);
     recargar();
   };
 
@@ -36,6 +39,9 @@ export default function TransferenciasPage() {
   const esDestinoPendiente = (t: Transferencia) =>
     String(t.sucursal_destino_id) === sesion?.sucursal_id &&
     (t.estado === 'EN_TRANSITO' || t.estado === 'PENDIENTE');
+
+  const puedeModificar = (t: Transferencia) =>
+    t.estado === 'EN_TRANSITO' && String(t.sucursal_origen_id) === sesion?.sucursal_id;
 
   return (
     <LayoutWrapper>
@@ -157,6 +163,18 @@ export default function TransferenciasPage() {
                           >
                             👁️ Ver
                           </button>
+                          {puedeModificar(transferencia) && (
+                            <button
+                              className="btn btn-secondary"
+                              style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}
+                              onClick={() => {
+                                setTransferenciaEditar(transferencia);
+                                setModalAbierto(true);
+                              }}
+                            >
+                              ✏️ Modificar
+                            </button>
+                          )}
                           {esDestinoPendiente(transferencia) && (
                             <button
                               className="btn btn-primary"
@@ -178,7 +196,10 @@ export default function TransferenciasPage() {
       </div>
 
       {modalAbierto && (
-        <ModalTransferencia onClose={handleCerrarModal} />
+        <ModalTransferencia
+          onClose={handleCerrarModal}
+          transferenciaEditar={transferenciaEditar}
+        />
       )}
 
       {transferenciaDetalle && (

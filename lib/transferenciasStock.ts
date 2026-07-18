@@ -83,6 +83,39 @@ export async function descontarStockOrigenTransferencia(
   await descontarUbicacionesSiExisten(db, costoId, cantidad);
 }
 
+/** Repone stock en origen (p. ej. al modificar/cancelar una transferencia en tránsito). */
+export async function reponerStockOrigenTransferencia(
+  db: DbClient,
+  costoId: string,
+  cantidad: number,
+  sucursalOrigenId: string
+) {
+  if (cantidad <= 0) return;
+
+  const res = await db.from('costos').select('*').eq('id', costoId).single();
+  const row = res.data as Record<string, unknown> | null;
+  if (res.error || !row) throw new Error('Costo de origen no encontrado');
+
+  const norm = normalizarCamposCostoApi(row);
+  const sid = normalizarIdKey(readStr(norm, 'sucursal_id', 'sucursalId'));
+  if (sid !== normalizarIdKey(sucursalOrigenId)) {
+    throw new Error('El costo no pertenece a la sucursal origen');
+  }
+
+  const stock = readStock(norm);
+  const nuevo = stock + cantidad;
+  const up = await db.from('costos').update({ stock: nuevo, stock_inicial: nuevo }).eq('id', costoId);
+  if ((up as { error?: unknown }).error) {
+    throw new Error(String((up as { error?: { message?: string } }).error?.message ?? 'No se pudo reponer stock origen'));
+  }
+
+  try {
+    await sumarUbicacionesSiExisten(db, costoId, cantidad);
+  } catch {
+    /* Origen puede no tener filas de ubicación; el stock agregado basta */
+  }
+}
+
 /** Suma stock en la sucursal destino al recibir la transferencia. */
 export async function abonarStockDestinoTransferencia(
   db: DbClient,
