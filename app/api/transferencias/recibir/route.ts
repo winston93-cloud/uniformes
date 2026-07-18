@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import { exigirSesion } from '@/lib/auth-api';
 import { getInsforge } from '@/lib/insforge';
-import { abonarStockDestinoTransferencia } from '@/lib/transferenciasStock';
+import {
+  abonarStockDestinoTransferencia,
+  reponerStockOrigenTransferencia,
+} from '@/lib/transferenciasStock';
 
 export async function POST(req: Request) {
   const sesion = await exigirSesion();
@@ -10,7 +13,11 @@ export async function POST(req: Request) {
   }
 
   try {
-    const body = (await req.json()) as { transferencia_id?: string };
+    const body = (await req.json()) as {
+      transferencia_id?: string;
+      /** IDs de detalle_transferencias a recibir. Si no viene, se reciben todas. */
+      detalle_ids?: string[];
+    };
     const transferenciaId = String(body.transferencia_id ?? '').trim();
     if (!transferenciaId) {
       return NextResponse.json({ ok: false, message: 'Falta transferencia_id.' }, { status: 400 });
@@ -53,7 +60,29 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, message: 'La transferencia no tiene detalle.' }, { status: 400 });
     }
 
-    for (const det of detalles) {
+    const idsSolicitados =
+      Array.isArray(body.detalle_ids) && body.detalle_ids.length > 0
+        ? new Set(body.detalle_ids.map((id) => String(id).trim()).filter(Boolean))
+        : null;
+
+    const aRecibir = idsSolicitados
+      ? detalles.filter((d) => idsSolicitados.has(String(d.id)))
+      : detalles;
+    const aRechazar = idsSolicitados
+      ? detalles.filter((d) => !idsSolicitados.has(String(d.id)))
+      : [];
+
+    if (aRecibir.length === 0) {
+      return NextResponse.json(
+        { ok: false, message: 'Selecciona al menos una prenda para recibir.' },
+        { status: 400 }
+      );
+    }
+
+    const sucursalOrigenId = String(transferencia.sucursal_origen_id ?? '');
+    const sucursalDestinoId = String(transferencia.sucursal_destino_id);
+
+    for (const det of aRecibir) {
       const cantidad = Math.trunc(Number(det.cantidad ?? 0));
       if (cantidad <= 0) continue;
 
@@ -70,9 +99,20 @@ export async function POST(req: Request) {
       await abonarStockDestinoTransferencia(
         db,
         costoOrigen as Record<string, unknown>,
-        String(transferencia.sucursal_destino_id),
+        sucursalDestinoId,
         cantidad
       );
+    }
+
+    // No recibidas: reponer stock en origen y quitar del detalle
+    for (const det of aRechazar) {
+      const cantidad = Math.trunc(Number(det.cantidad ?? 0));
+      const costoId = det.costo_id ? String(det.costo_id) : '';
+      if (costoId && cantidad > 0 && sucursalOrigenId) {
+        await reponerStockOrigenTransferencia(db, costoId, cantidad, sucursalOrigenId);
+      }
+      const { error: errDel } = await db.from('detalle_transferencias').delete().eq('id', String(det.id));
+      if (errDel) throw new Error(errDel.message);
     }
 
     const { data: actualizada, error: errUp } = await db
@@ -87,7 +127,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, message: 'No se pudo marcar como recibida (¿ya procesada?).' }, { status: 409 });
     }
 
-    return NextResponse.json({ ok: true, transferencia: actualizada });
+    return NextResponse.json({
+      ok: true,
+      transferencia: actualizada,
+      recibidas: aRecibir.length,
+      noRecibidas: aRechazar.length,
+    });
   } catch (e) {
     console.error('POST /api/transferencias/recibir', e);
     const message = e instanceof Error ? e.message : 'Error al recibir transferencia.';
