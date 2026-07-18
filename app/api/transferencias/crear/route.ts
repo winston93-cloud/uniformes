@@ -115,8 +115,17 @@ export async function POST(req: Request) {
         estado: 'EN_TRANSITO',
       }));
 
-      const { error: errDet } = await db.from('detalle_transferencias').insert(filasDetalle);
-      if (errDet) throw new Error(errDet.message);
+      let { error: errDet } = await db.from('detalle_transferencias').insert(filasDetalle);
+      // Compat: si aún no existe columna estado, insertar sin ella
+      if (errDet && String(errDet.message || '').toLowerCase().includes('estado')) {
+        const sinEstado = filasDetalle.map(({ estado: _e, ...rest }) => rest);
+        const retry = await db.from('detalle_transferencias').insert(sinEstado);
+        errDet = retry.error;
+      }
+      if (errDet) {
+        await db.from('transferencias').delete().eq('id', transferenciaId);
+        throw new Error(errDet.message);
+      }
 
       return NextResponse.json({ ok: true, transferencia });
     } catch (e) {

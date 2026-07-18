@@ -51,7 +51,7 @@ export default function ModalDetalleTransferencia({
   const [loading, setLoading] = useState(true);
   const [recibiendo, setRecibiendo] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [partidaReenviar, setPartidaReenviar] = useState<PartidaComplementaria | null>(null);
+  const [eliminando, setEliminando] = useState(false);
   const [estadoLocal, setEstadoLocal] = useState(transferencia.estado);
 
   const esOrigen = String(transferencia.sucursal_origen_id) === sesion?.sucursal_id;
@@ -195,6 +195,27 @@ export default function ModalDetalleTransferencia({
     }
   };
 
+  const handleEliminarHuerfana = async () => {
+    setEliminando(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/transferencias/eliminar-huerfana', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transferencia_id: transferencia.id }),
+      });
+      const json = (await res.json()) as { ok?: boolean; message?: string };
+      if (!res.ok || !json.ok) throw new Error(json.message ?? 'No se pudo eliminar.');
+      onRecibida?.();
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error al eliminar.');
+    } finally {
+      setEliminando(false);
+    }
+  };
+
   const trasReenvio = async () => {
     await cargarDetalle();
     // Refrescar cabecera desde BD
@@ -265,7 +286,31 @@ export default function ModalDetalleTransferencia({
           {loading ? (
             <p>Cargando…</p>
           ) : detalles.length === 0 ? (
-            <p style={{ color: '#64748b' }}>Sin partidas.</p>
+            <div
+              style={{
+                background: '#fff7ed',
+                border: '1px solid #fed7aa',
+                color: '#9a3412',
+                padding: '0.85rem 1rem',
+                borderRadius: 8,
+              }}
+            >
+              <strong>Sin partidas.</strong> Esta transferencia quedó sin detalle (falló al guardar las prendas). No se
+              puede recibir.
+              {esOrigen && (
+                <div style={{ marginTop: '0.75rem' }}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    style={{ padding: '0.4rem 0.85rem', fontSize: '0.85rem' }}
+                    disabled={eliminando}
+                    onClick={() => void handleEliminarHuerfana()}
+                  >
+                    {eliminando ? '⏳ Eliminando…' : '🗑 Eliminar folio huérfano'}
+                  </button>
+                </div>
+              )}
+            </div>
           ) : (
             <table className="table">
               <thead>
