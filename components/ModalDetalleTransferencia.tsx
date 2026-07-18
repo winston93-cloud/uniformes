@@ -51,7 +51,7 @@ export default function ModalDetalleTransferencia({
   const [loading, setLoading] = useState(true);
   const [recibiendo, setRecibiendo] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [eliminando, setEliminando] = useState(false);
+  const [partidaReenviar, setPartidaReenviar] = useState<PartidaComplementaria | null>(null);
   const [estadoLocal, setEstadoLocal] = useState(transferencia.estado);
 
   const esOrigen = String(transferencia.sucursal_origen_id) === sesion?.sucursal_id;
@@ -195,27 +195,6 @@ export default function ModalDetalleTransferencia({
     }
   };
 
-  const handleEliminarHuerfana = async () => {
-    setEliminando(true);
-    setError(null);
-    try {
-      const res = await fetch('/api/transferencias/eliminar-huerfana', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transferencia_id: transferencia.id }),
-      });
-      const json = (await res.json()) as { ok?: boolean; message?: string };
-      if (!res.ok || !json.ok) throw new Error(json.message ?? 'No se pudo eliminar.');
-      onRecibida?.();
-      onClose();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error al eliminar.');
-    } finally {
-      setEliminando(false);
-    }
-  };
-
   const trasReenvio = async () => {
     await cargarDetalle();
     // Refrescar cabecera desde BD
@@ -295,20 +274,38 @@ export default function ModalDetalleTransferencia({
                 borderRadius: 8,
               }}
             >
-              <strong>Sin partidas.</strong> Esta transferencia quedó sin detalle (falló al guardar las prendas). No se
-              puede recibir.
-              {esOrigen && (
+              <strong>Sin partidas.</strong> Esta transferencia quedó sin detalle (error al guardarla).
+              {esOrigen ? (
                 <div style={{ marginTop: '0.75rem' }}>
                   <button
                     type="button"
                     className="btn btn-secondary"
                     style={{ padding: '0.4rem 0.85rem', fontSize: '0.85rem' }}
-                    disabled={eliminando}
-                    onClick={() => void handleEliminarHuerfana()}
+                    onClick={async () => {
+                      setError(null);
+                      try {
+                        const res = await fetch('/api/transferencias/limpiar-sin-partidas', {
+                          method: 'POST',
+                          credentials: 'include',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ transferencia_id: transferencia.id }),
+                        });
+                        const json = (await res.json()) as { ok?: boolean; message?: string };
+                        if (!res.ok || !json.ok) throw new Error(json.message ?? 'No se pudo cancelar.');
+                        onRecibida?.();
+                        onClose();
+                      } catch (e) {
+                        setError(e instanceof Error ? e.message : 'Error al cancelar.');
+                      }
+                    }}
                   >
-                    {eliminando ? '⏳ Eliminando…' : '🗑 Eliminar folio huérfano'}
+                    Cancelar esta transferencia vacía
                   </button>
                 </div>
+              ) : (
+                <p style={{ margin: '0.5rem 0 0', fontSize: '0.88rem' }}>
+                  Pide a la sucursal origen que la cancele y cree una nueva.
+                </p>
               )}
             </div>
           ) : (

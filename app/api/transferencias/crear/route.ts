@@ -78,6 +78,7 @@ export async function POST(req: Request) {
     }
 
     const descontados: LineaTransferencia[] = [];
+    let transferenciaIdCreada: string | null = null;
 
     try {
       for (const d of detalles) {
@@ -106,29 +107,40 @@ export async function POST(req: Request) {
       }
 
       const transferenciaId = String(transferencia.id);
-      const filasDetalle = detalles.map((d) => ({
+      transferenciaIdCreada = transferenciaId;
+
+      const baseFilas = detalles.map((d) => ({
         transferencia_id: transferenciaId,
         prenda_id: d.prenda_id,
         talla_id: d.talla_id,
         cantidad: Math.trunc(Number(d.cantidad)),
         costo_id: d.costo_id,
-        estado: 'EN_TRANSITO',
       }));
 
-      let { error: errDet } = await db.from('detalle_transferencias').insert(filasDetalle);
-      // Compat: si aún no existe columna estado, insertar sin ella
+      let { error: errDet } = await db
+        .from('detalle_transferencias')
+        .insert(baseFilas.map((f) => ({ ...f, estado: 'EN_TRANSITO' })));
+
+      // Compat: si la columna estado aún no existe, insertar sin ella
       if (errDet && String(errDet.message || '').toLowerCase().includes('estado')) {
-        const sinEstado = filasDetalle.map(({ estado: _e, ...rest }) => rest);
-        const retry = await db.from('detalle_transferencias').insert(sinEstado);
-        errDet = retry.error;
+        const fb = await db.from('detalle_transferencias').insert(baseFilas);
+        errDet = fb.error;
       }
-      if (errDet) {
-        await db.from('transferencias').delete().eq('id', transferenciaId);
-        throw new Error(errDet.message);
-      }
+
+      if (errDet) throw new Error(errDet.message || 'No se pudo guardar el detalle de la transferencia.');
 
       return NextResponse.json({ ok: true, transferencia });
     } catch (e) {
+      // Si ya se creó la cabecera pero falló el detalle, eliminarla (evita "Sin partidas")
+      if (transferenciaIdCreada) {
+        try {
+          await db.from('detalle_transferencias').delete().eq('transferencia_id', transferenciaIdCreada);
+          await db.from('transferencias').delete().eq('id', transferenciaIdCreada);
+        } catch (delErr) {
+          console.error('No se pudo limpiar transferencia huérfana', transferenciaIdCreada, delErr);
+        }
+      }
+
       for (const d of descontados.reverse()) {
         try {
           const { data: costoOrigen } = await db.from('costos').select('*').eq('id', d.costo_id).single();

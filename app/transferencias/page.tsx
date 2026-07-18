@@ -44,6 +44,26 @@ export default function TransferenciasPage() {
   const puedeModificar = (t: Transferencia) =>
     t.estado === 'EN_TRANSITO' && String(t.sucursal_origen_id) === sesion?.sucursal_id;
 
+  const limpiarVacias = async () => {
+    try {
+      const res = await fetch('/api/transferencias/limpiar-sin-partidas', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+      });
+      const json = (await res.json()) as { ok?: boolean; message?: string; canceladas?: string[] };
+      if (!res.ok || !json.ok) {
+        window.alert(json.message ?? 'No se pudieron limpiar.');
+        return;
+      }
+      window.alert(json.message ?? 'Listo.');
+      recargar();
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : 'Error al limpiar.');
+    }
+  };
+
   return (
     <LayoutWrapper>
       <div className="main-container">
@@ -56,12 +76,19 @@ export default function TransferenciasPage() {
           <h1 className="page-title">
             🚚 Transferencias de Mercancía
           </h1>
-          <button 
-              className="btn btn-primary"
-              onClick={handleNuevaTransferencia}
-            >
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <button className="btn btn-primary" type="button" onClick={handleNuevaTransferencia}>
               ➕ Nueva Transferencia
             </button>
+            <button
+              className="btn btn-secondary"
+              type="button"
+              onClick={() => void limpiarVacias()}
+              title="Cancela transferencias EN_TRANSITO que no tengan partidas"
+            >
+              🧹 Limpiar vacías
+            </button>
+          </div>
         </div>
 
         <div
