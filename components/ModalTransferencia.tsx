@@ -364,6 +364,7 @@ export default function ModalTransferencia({ onClose, transferenciaEditar }: Mod
                   habilitado={puedeEnviarDesdeOrigen}
                   onSeleccionChange={handleSeleccionChange}
                   cantidadesIniciales={esEdicion ? cantidadesIniciales : undefined}
+                  soloSeleccionadasInicial={esEdicion}
                 />
               )}
             </div>

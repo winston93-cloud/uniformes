@@ -130,6 +130,8 @@ type Props = {
   onSeleccionChange: (lineas: LineaTransferenciaSeleccionada[]) => void;
   /** Cantidades ya en la transferencia (edición). Se suman al stock visible. */
   cantidadesIniciales?: Record<string, number>;
+  /** En edición: arranca mostrando solo las prendas de la transferencia. */
+  soloSeleccionadasInicial?: boolean;
 };
 
 export default function SelectorPrendasTransferencia({
@@ -138,6 +140,7 @@ export default function SelectorPrendasTransferencia({
   habilitado,
   onSeleccionChange,
   cantidadesIniciales,
+  soloSeleccionadasInicial = false,
 }: Props) {
   const [cargando, setCargando] = useState(false);
   const [grupos, setGrupos] = useState<GrupoPrenda[]>([]);
@@ -145,7 +148,7 @@ export default function SelectorPrendasTransferencia({
   const [busqueda, setBusqueda] = useState('');
   const [sugerenciaIdx, setSugerenciaIdx] = useState(-1);
   const [dropdownAbierto, setDropdownAbierto] = useState(false);
-  const [soloSeleccionadas, setSoloSeleccionadas] = useState(false);
+  const [soloSeleccionadas, setSoloSeleccionadas] = useState(soloSeleccionadasInicial);
   const [prendaEnfocada, setPrendaEnfocada] = useState<string | null>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -302,13 +305,15 @@ export default function SelectorPrendasTransferencia({
     let lista = grupos;
     const q = normalizarBusqueda(busqueda);
     if (q) {
+      // Con búsqueda se muestran coincidencias del catálogo (para poder agregar).
       lista = lista.filter((g) => g.nombre.toLowerCase().includes(q) || g.codigo.toLowerCase().includes(q));
-    }
-    if (soloSeleccionadas) {
+    } else if (soloSeleccionadas) {
       lista = lista.filter((g) => g.filas.some((f) => (cantidades[f.costo_id] ?? 0) > 0));
     }
     return lista;
   }, [grupos, busqueda, soloSeleccionadas, cantidades]);
+
+  const modoListaExpandida = soloSeleccionadas && !normalizarBusqueda(busqueda) && !prendaEnfocada;
 
   const grupoActivo = useMemo(
     () => (prendaEnfocada ? grupos.find((g) => g.prenda_id === prendaEnfocada) ?? null : null),
@@ -518,21 +523,100 @@ export default function SelectorPrendasTransferencia({
           type="button"
           className="btn btn-secondary"
           style={{ padding: '0.35rem 0.85rem', fontSize: '0.85rem', background: soloSeleccionadas ? '#6366f1' : undefined, color: soloSeleccionadas ? '#fff' : undefined }}
-          onClick={() => setSoloSeleccionadas((v) => !v)}
+          onClick={() => {
+            setSoloSeleccionadas((v) => !v);
+            setPrendaEnfocada(null);
+          }}
         >
-          {soloSeleccionadas ? '✓ Solo seleccionadas' : 'Ver solo seleccionadas'}
+          {soloSeleccionadas ? '✓ Solo en transferencia' : 'Ver solo en transferencia'}
         </button>
+        {!soloSeleccionadas && (
+          <button
+            type="button"
+            className="btn btn-secondary"
+            style={{ padding: '0.35rem 0.85rem', fontSize: '0.85rem' }}
+            onClick={() => {
+              setSoloSeleccionadas(true);
+              setPrendaEnfocada(null);
+              setBusqueda('');
+            }}
+          >
+            Volver a seleccionadas
+          </button>
+        )}
         {prendaEnfocada && (
           <button type="button" className="btn btn-secondary" style={{ padding: '0.35rem 0.85rem', fontSize: '0.85rem' }} onClick={() => setPrendaEnfocada(null)}>
-            ← Ver catálogo completo ({grupos.length})
+            ← Ver lista ({soloSeleccionadas ? 'seleccionadas' : `catálogo ${grupos.length}`})
           </button>
         )}
         <span style={{ marginLeft: 'auto', fontSize: '0.85rem', color: '#64748b' }}>
-          {prendaEnfocada ? '1 prenda activa' : `Mostrando ${gruposVisibles.length} de ${grupos.length}`}
+          {prendaEnfocada
+            ? '1 prenda activa'
+            : soloSeleccionadas && !normalizarBusqueda(busqueda)
+              ? `${gruposVisibles.length} prenda${gruposVisibles.length === 1 ? '' : 's'} en transferencia`
+              : `Mostrando ${gruposVisibles.length} de ${grupos.length}`}
         </span>
       </div>
 
-      {grupoActivo && (
+      {modoListaExpandida && gruposVisibles.length === 0 && (
+        <p style={{ margin: 0, fontSize: '0.9rem', color: '#64748b' }}>
+          No hay prendas en esta transferencia. Busca arriba para agregar.
+        </p>
+      )}
+
+      {modoListaExpandida && gruposVisibles.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <p style={{ margin: 0, fontSize: '0.88rem', color: '#64748b' }}>
+            Solo las prendas de esta transferencia. Cambia cantidades, quita tallas (a 0) o busca arriba para agregar más.
+          </p>
+          {gruposVisibles.map((g) => (
+            <div
+              key={g.prenda_id}
+              style={{
+                borderRadius: '16px',
+                border: '2px solid #c7d2fe',
+                background: '#fff',
+                padding: '1rem',
+                boxShadow: '0 2px 10px rgba(15,23,42,0.06)',
+              }}
+            >
+              <div style={{ marginBottom: '0.85rem', display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#1e293b' }}>{g.nombre}</div>
+                  <div style={{ fontSize: '0.82rem', color: '#64748b', marginTop: '0.2rem' }}>
+                    {g.codigo && (
+                      <code style={{ background: '#f1f5f9', padding: '0.1rem 0.45rem', borderRadius: 4, marginRight: '0.5rem' }}>
+                        {g.codigo}
+                      </code>
+                    )}
+                    {piezasEnPrenda(g)} piezas seleccionadas
+                  </div>
+                </div>
+                {habilitado && (
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', color: '#b91c1c', borderColor: '#fecaca' }}
+                    onClick={() => limpiarPrenda(g)}
+                  >
+                    Quitar prenda
+                  </button>
+                )}
+              </div>
+              <GridTallasGrupo
+                g={g}
+                habilitado={habilitado}
+                cantidades={cantidades}
+                setCantidad={setCantidad}
+                onLlenarTodo={() => llenarPrendaCompleta(g)}
+                onLimpiar={() => limpiarPrenda(g)}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {grupoActivo && !modoListaExpandida && (
         <div
           ref={panelActivoRef}
           style={{
@@ -566,13 +650,13 @@ export default function SelectorPrendasTransferencia({
         </div>
       )}
 
-      {!grupoActivo && !normalizarBusqueda(busqueda) && (
+      {!grupoActivo && !modoListaExpandida && !normalizarBusqueda(busqueda) && (
         <p style={{ margin: 0, fontSize: '0.9rem', color: '#64748b' }}>
           Busca una prenda arriba o elige una del catálogo para ver tallas, stock y precios.
         </p>
       )}
 
-      {!prendaEnfocada && (
+      {!prendaEnfocada && !modoListaExpandida && (
         <div
           ref={listaRef}
           style={{
