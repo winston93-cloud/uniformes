@@ -6,6 +6,10 @@ import {
   reponerStockOrigenTransferencia,
 } from '@/lib/transferenciasStock';
 
+function estadoLinea(raw: unknown) {
+  return String(raw ?? 'EN_TRANSITO').toUpperCase();
+}
+
 export async function POST(req: Request) {
   const sesion = await exigirSesion();
   if (!sesion) {
@@ -15,7 +19,6 @@ export async function POST(req: Request) {
   try {
     const body = (await req.json()) as {
       transferencia_id?: string;
-      /** IDs de detalle_transferencias a recibir. Si no viene, se reciben todas. */
       detalle_ids?: string[];
     };
     const transferenciaId = String(body.transferencia_id ?? '').trim();
@@ -42,11 +45,15 @@ export async function POST(req: Request) {
       );
     }
 
-    if (transferencia.estado === 'RECIBIDA' || transferencia.estado === 'RECIBIDA_PARCIAL') {
-      return NextResponse.json({ ok: false, message: 'Esta transferencia ya fue procesada.' }, { status: 409 });
+    if (transferencia.estado === 'RECIBIDA' || transferencia.estado === 'CANCELADA') {
+      return NextResponse.json({ ok: false, message: 'Esta transferencia ya no admite recepción.' }, { status: 409 });
     }
 
-    if (transferencia.estado !== 'EN_TRANSITO' && transferencia.estado !== 'PENDIENTE') {
+    if (
+      transferencia.estado !== 'EN_TRANSITO' &&
+      transferencia.estado !== 'PENDIENTE' &&
+      transferencia.estado !== 'RECIBIDA_PARCIAL'
+    ) {
       return NextResponse.json({ ok: false, message: `Estado no válido: ${transferencia.estado}` }, { status: 400 });
     }
 
@@ -60,9 +67,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, message: 'La transferencia no tiene detalle.' }, { status: 400 });
     }
 
-    // Solo partidas aún en tránsito (no las complementarias previas)
     const pendientes = detalles.filter((d) => {
-      const est = String(d.estado ?? 'EN_TRANSITO').toUpperCase();
+      const est = estadoLinea(d.estado);
       return est === 'EN_TRANSITO' || est === 'PENDIENTE' || !d.estado;
     });
 
@@ -91,7 +97,6 @@ export async function POST(req: Request) {
 
     const sucursalOrigenId = String(transferencia.sucursal_origen_id ?? '');
     const sucursalDestinoId = String(transferencia.sucursal_destino_id);
-    const esParcial = aNoRecibir.length > 0;
 
     for (const det of aRecibir) {
       const cantidad = Math.trunc(Number(det.cantidad ?? 0));
@@ -118,16 +123,9 @@ export async function POST(req: Request) {
         .from('detalle_transferencias')
         .update({ estado: 'RECIBIDA' })
         .eq('id', String(det.id));
-      if (errUpDet) {
-        throw new Error(
-          errUpDet.message?.includes('estado')
-            ? 'Falta columna estado en detalle_transferencias. Ejecuta /api/migracion/apply-transferencias-parcial'
-            : errUpDet.message
-        );
-      }
+      if (errUpDet) throw new Error(errUpDet.message);
     }
 
-    // No recibidas: reponer stock en Matriz y marcar EN_TRANSITO_COMPLEMENTARIO (siguen visibles)
     for (const det of aNoRecibir) {
       const cantidad = Math.trunc(Number(det.cantidad ?? 0));
       const costoId = det.costo_id ? String(det.costo_id) : '';
@@ -141,25 +139,32 @@ export async function POST(req: Request) {
       if (errUpDet) throw new Error(errUpDet.message);
     }
 
-    const nuevoEstado = esParcial ? 'RECIBIDA_PARCIAL' : 'RECIBIDA';
+    // Recalcular cabecera con el estado actual de todas las partidas
+    const { data: detallesFinal, error: errFinal } = await db
+      .from('detalle_transferencias')
+      .select('estado')
+      .eq('transferencia_id', transferenciaId);
+    if (errFinal) throw errFinal;
+
+    const estados = (detallesFinal || []).map((d) => estadoLinea(d.estado));
+    let nuevoEstado: string = 'EN_TRANSITO';
+    if (estados.length > 0 && estados.every((e) => e === 'RECIBIDA')) {
+      nuevoEstado = 'RECIBIDA';
+    } else if (estados.some((e) => e === 'EN_TRANSITO' || e === 'PENDIENTE')) {
+      nuevoEstado = 'EN_TRANSITO';
+    } else if (estados.some((e) => e === 'EN_TRANSITO_COMPLEMENTARIO')) {
+      nuevoEstado = 'RECIBIDA_PARCIAL';
+    }
+
     const { data: actualizada, error: errUp } = await db
       .from('transferencias')
       .update({ estado: nuevoEstado })
       .eq('id', transferenciaId)
-      .eq('estado', transferencia.estado)
       .select('*')
       .single();
 
     if (errUp || !actualizada) {
-      return NextResponse.json(
-        {
-          ok: false,
-          message: errUp?.message?.includes('check')
-            ? 'Falta permitir RECIBIDA_PARCIAL en transferencias.estado. Ejecuta /api/migracion/apply-transferencias-parcial'
-            : 'No se pudo actualizar el estado (¿ya procesada?).',
-        },
-        { status: 409 }
-      );
+      return NextResponse.json({ ok: false, message: 'No se pudo actualizar el estado.' }, { status: 409 });
     }
 
     return NextResponse.json({

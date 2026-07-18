@@ -39,7 +39,7 @@ export default function TransferenciasPage() {
 
   const esDestinoPendiente = (t: Transferencia) =>
     String(t.sucursal_destino_id) === sesion?.sucursal_id &&
-    (t.estado === 'EN_TRANSITO' || t.estado === 'PENDIENTE');
+    (t.estado === 'EN_TRANSITO' || t.estado === 'PENDIENTE' || t.estado === 'RECIBIDA_PARCIAL');
 
   const puedeModificar = (t: Transferencia) =>
     t.estado === 'EN_TRANSITO' && String(t.sucursal_origen_id) === sesion?.sucursal_id;

@@ -5,6 +5,9 @@ import { createPortal } from 'react-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { insforgeDb } from '@/lib/insforgeBrowser';
 import type { Transferencia } from '@/lib/types';
+import ModalReenviarComplementario, {
+  type PartidaComplementaria,
+} from '@/components/ModalReenviarComplementario';
 
 interface ModalDetalleTransferenciaProps {
   transferencia: Transferencia;
@@ -15,6 +18,9 @@ interface ModalDetalleTransferenciaProps {
 type DetalleRow = {
   id: string;
   cantidad: number;
+  prenda_id: string;
+  talla_id: string;
+  costo_id: string;
   prenda_nombre: string;
   talla_nombre: string;
   estado: string;
@@ -45,30 +51,48 @@ export default function ModalDetalleTransferencia({
   const [loading, setLoading] = useState(true);
   const [recibiendo, setRecibiendo] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [partidaReenviar, setPartidaReenviar] = useState<PartidaComplementaria | null>(null);
+  const [estadoLocal, setEstadoLocal] = useState(transferencia.estado);
+
+  const esOrigen = String(transferencia.sucursal_origen_id) === sesion?.sucursal_id;
+  const esDestino = String(transferencia.sucursal_destino_id) === sesion?.sucursal_id;
+
+  const pendientesRecibir = useMemo(
+    () =>
+      detalles.filter((d) => {
+        const e = d.estado.toUpperCase();
+        return e === 'EN_TRANSITO' || e === 'PENDIENTE';
+      }),
+    [detalles]
+  );
 
   const puedeRecibir =
-    String(transferencia.sucursal_destino_id) === sesion?.sucursal_id &&
-    (transferencia.estado === 'EN_TRANSITO' || transferencia.estado === 'PENDIENTE');
+    esDestino &&
+    pendientesRecibir.length > 0 &&
+    (estadoLocal === 'EN_TRANSITO' ||
+      estadoLocal === 'PENDIENTE' ||
+      estadoLocal === 'RECIBIDA_PARCIAL');
 
   const mostrarChecks = puedeRecibir;
 
   useEffect(() => {
     setMounted(true);
+    setEstadoLocal(transferencia.estado);
     void cargarDetalle();
-  }, [transferencia.id]);
+  }, [transferencia.id, transferencia.estado]);
 
   const cargarDetalle = async () => {
     setLoading(true);
     try {
       let { data: filas, error: err } = await insforgeDb()
         .from('detalle_transferencias')
-        .select('id, cantidad, prenda_id, talla_id, estado')
+        .select('id, cantidad, prenda_id, talla_id, costo_id, estado')
         .eq('transferencia_id', transferencia.id);
 
       if (err && String(err.message || '').toLowerCase().includes('estado')) {
         const fb = await insforgeDb()
           .from('detalle_transferencias')
-          .select('id, cantidad, prenda_id, talla_id')
+          .select('id, cantidad, prenda_id, talla_id, costo_id')
           .eq('transferencia_id', transferencia.id);
         filas = (fb.data || []).map((f) => ({ ...f, estado: 'EN_TRANSITO' }));
         err = fb.error;
@@ -95,9 +119,12 @@ export default function ModalDetalleTransferencia({
         (taRes.data || []).map((t) => [String((t as { id: string }).id).toLowerCase(), (t as { nombre?: string }).nombre ?? ''])
       );
 
-      const rows = (filas || []).map((f) => ({
+      const rows: DetalleRow[] = (filas || []).map((f) => ({
         id: String(f.id),
         cantidad: Number(f.cantidad ?? 0),
+        prenda_id: String(f.prenda_id ?? ''),
+        talla_id: String(f.talla_id ?? ''),
+        costo_id: f.costo_id ? String(f.costo_id) : '',
         prenda_nombre: preMap.get(String(f.prenda_id).toLowerCase()) ?? 'Prenda',
         talla_nombre: taMap.get(String(f.talla_id).toLowerCase()) ?? 'Talla',
         estado: String(f.estado ?? 'EN_TRANSITO'),
@@ -108,9 +135,7 @@ export default function ModalDetalleTransferencia({
       const checks: Record<string, boolean> = {};
       for (const r of rows) {
         const est = r.estado.toUpperCase();
-        // Solo partidas pendientes de recibir se palomean; las complementarias no
-        if (est === 'EN_TRANSITO' || est === 'PENDIENTE') checks[r.id] = true;
-        else checks[r.id] = false;
+        checks[r.id] = est === 'EN_TRANSITO' || est === 'PENDIENTE';
       }
       setSeleccionados(checks);
     } catch (e) {
@@ -119,15 +144,6 @@ export default function ModalDetalleTransferencia({
       setLoading(false);
     }
   };
-
-  const pendientesRecibir = useMemo(
-    () =>
-      detalles.filter((d) => {
-        const e = d.estado.toUpperCase();
-        return e === 'EN_TRANSITO' || e === 'PENDIENTE';
-      }),
-    [detalles]
-  );
 
   const idsMarcados = useMemo(
     () => pendientesRecibir.filter((d) => seleccionados[d.id]).map((d) => d.id),
@@ -166,7 +182,7 @@ export default function ModalDetalleTransferencia({
           detalle_ids: idsMarcados,
         }),
       });
-      const json = (await res.json()) as { ok?: boolean; message?: string };
+      const json = (await res.json()) as { ok?: boolean; message?: string; estado?: string };
       if (!res.ok || !json.ok) {
         throw new Error(json.message ?? 'No se pudo recibir la transferencia.');
       }
@@ -179,11 +195,23 @@ export default function ModalDetalleTransferencia({
     }
   };
 
+  const trasReenvio = async () => {
+    await cargarDetalle();
+    // Refrescar cabecera desde BD
+    const { data } = await insforgeDb()
+      .from('transferencias')
+      .select('estado')
+      .eq('id', transferencia.id)
+      .maybeSingle();
+    if (data?.estado) setEstadoLocal(String(data.estado));
+    onRecibida?.();
+  };
+
   if (!mounted) return null;
 
   return createPortal(
     <div className="modal-overlay">
-      <div className="modal-content" style={{ maxWidth: '760px' }} onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content" style={{ maxWidth: '860px' }} onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2>📦 Transferencia {transferencia.folio}</h2>
           <button className="modal-close" onClick={onClose} type="button">
@@ -203,10 +231,10 @@ export default function ModalDetalleTransferencia({
             <span
               style={{
                 fontWeight: 700,
-                color: transferencia.estado === 'RECIBIDA_PARCIAL' ? '#c2410c' : undefined,
+                color: estadoLocal === 'RECIBIDA_PARCIAL' ? '#c2410c' : undefined,
               }}
             >
-              {labelEstadoCabecera(transferencia.estado)}
+              {labelEstadoCabecera(estadoLocal)}
             </span>
           </p>
           <p>
@@ -222,9 +250,14 @@ export default function ModalDetalleTransferencia({
           <h3 style={{ marginTop: '1.25rem', marginBottom: '0.5rem' }}>Detalle</h3>
           {mostrarChecks && (
             <p style={{ fontSize: '0.88rem', color: '#64748b', marginBottom: '0.75rem' }}>
-              Desmarca las prendas que <strong>no</strong> recibiste: quedarán como{' '}
-              <strong style={{ color: '#dc2626' }}>en tránsito complementario</strong> (el stock vuelve a origen) y la
-              transferencia como <strong>recibido parcial</strong>.
+              Desmarca las prendas que <strong>no</strong> recibiste: quedarán en rojo. El origen podrá corregirlas y
+              reenviarlas.
+            </p>
+          )}
+          {esOrigen && estadoLocal === 'RECIBIDA_PARCIAL' && (
+            <p style={{ fontSize: '0.88rem', color: '#64748b', marginBottom: '0.75rem' }}>
+              Las partidas en rojo se pueden <strong>modificar / reenviar</strong>. Al reenviar vuelven a tránsito para
+              que el destino las reciba.
             </p>
           )}
           {loading ? (
@@ -242,7 +275,6 @@ export default function ModalDetalleTransferencia({
                         checked={todosMarcados}
                         onChange={toggleTodos}
                         aria-label="Seleccionar todas"
-                        title="Seleccionar todas"
                       />
                     </th>
                   )}
@@ -250,6 +282,7 @@ export default function ModalDetalleTransferencia({
                   <th>Talla</th>
                   <th>Cantidad</th>
                   <th>Estatus</th>
+                  {esOrigen && <th>Acciones</th>}
                 </tr>
               </thead>
               <tbody>
@@ -298,6 +331,32 @@ export default function ModalDetalleTransferencia({
                       <td>
                         <span style={{ color: lab.color, fontWeight: 700, fontSize: '0.85rem' }}>{lab.text}</span>
                       </td>
+                      {esOrigen && (
+                        <td>
+                          {esComplementario ? (
+                            <button
+                              type="button"
+                              className="btn btn-secondary"
+                              style={{ padding: '0.35rem 0.7rem', fontSize: '0.82rem' }}
+                              onClick={() =>
+                                setPartidaReenviar({
+                                  id: d.id,
+                                  cantidad: d.cantidad,
+                                  prenda_id: d.prenda_id,
+                                  talla_id: d.talla_id,
+                                  costo_id: d.costo_id,
+                                  prenda_nombre: d.prenda_nombre,
+                                  talla_nombre: d.talla_nombre,
+                                })
+                              }
+                            >
+                              ✏️ Modificar
+                            </button>
+                          ) : (
+                            <span style={{ color: '#94a3b8' }}>—</span>
+                          )}
+                        </td>
+                      )}
                     </tr>
                   );
                 })}
@@ -316,7 +375,7 @@ export default function ModalDetalleTransferencia({
               }}
             >
               Se recibirán <strong>{idsMarcados.length}</strong> de <strong>{pendientesRecibir.length}</strong> partidas
-              pendientes en <strong>{sesion?.sucursal_nombre}</strong>. Las desmarcadas quedan en tránsito complementario.
+              pendientes en <strong>{sesion?.sucursal_nombre}</strong>.
             </div>
           )}
         </div>
@@ -341,6 +400,16 @@ export default function ModalDetalleTransferencia({
           )}
         </div>
       </div>
+
+      {partidaReenviar && (
+        <ModalReenviarComplementario
+          transferenciaId={transferencia.id}
+          folio={transferencia.folio}
+          partida={partidaReenviar}
+          onClose={() => setPartidaReenviar(null)}
+          onOk={() => void trasReenvio()}
+        />
+      )}
     </div>,
     document.body
   );
