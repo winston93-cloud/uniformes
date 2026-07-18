@@ -42,8 +42,8 @@ export async function POST(req: Request) {
       );
     }
 
-    if (transferencia.estado === 'RECIBIDA') {
-      return NextResponse.json({ ok: false, message: 'Esta transferencia ya fue recibida.' }, { status: 409 });
+    if (transferencia.estado === 'RECIBIDA' || transferencia.estado === 'RECIBIDA_PARCIAL') {
+      return NextResponse.json({ ok: false, message: 'Esta transferencia ya fue procesada.' }, { status: 409 });
     }
 
     if (transferencia.estado !== 'EN_TRANSITO' && transferencia.estado !== 'PENDIENTE') {
@@ -60,16 +60,26 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, message: 'La transferencia no tiene detalle.' }, { status: 400 });
     }
 
+    // Solo partidas aún en tránsito (no las complementarias previas)
+    const pendientes = detalles.filter((d) => {
+      const est = String(d.estado ?? 'EN_TRANSITO').toUpperCase();
+      return est === 'EN_TRANSITO' || est === 'PENDIENTE' || !d.estado;
+    });
+
+    if (pendientes.length === 0) {
+      return NextResponse.json({ ok: false, message: 'No hay partidas pendientes por recibir.' }, { status: 400 });
+    }
+
     const idsSolicitados =
       Array.isArray(body.detalle_ids) && body.detalle_ids.length > 0
         ? new Set(body.detalle_ids.map((id) => String(id).trim()).filter(Boolean))
         : null;
 
     const aRecibir = idsSolicitados
-      ? detalles.filter((d) => idsSolicitados.has(String(d.id)))
-      : detalles;
-    const aRechazar = idsSolicitados
-      ? detalles.filter((d) => !idsSolicitados.has(String(d.id)))
+      ? pendientes.filter((d) => idsSolicitados.has(String(d.id)))
+      : pendientes;
+    const aNoRecibir = idsSolicitados
+      ? pendientes.filter((d) => !idsSolicitados.has(String(d.id)))
       : [];
 
     if (aRecibir.length === 0) {
@@ -81,6 +91,7 @@ export async function POST(req: Request) {
 
     const sucursalOrigenId = String(transferencia.sucursal_origen_id ?? '');
     const sucursalDestinoId = String(transferencia.sucursal_destino_id);
+    const esParcial = aNoRecibir.length > 0;
 
     for (const det of aRecibir) {
       const cantidad = Math.trunc(Number(det.cantidad ?? 0));
@@ -102,36 +113,61 @@ export async function POST(req: Request) {
         sucursalDestinoId,
         cantidad
       );
+
+      const { error: errUpDet } = await db
+        .from('detalle_transferencias')
+        .update({ estado: 'RECIBIDA' })
+        .eq('id', String(det.id));
+      if (errUpDet) {
+        throw new Error(
+          errUpDet.message?.includes('estado')
+            ? 'Falta columna estado en detalle_transferencias. Ejecuta /api/migracion/apply-transferencias-parcial'
+            : errUpDet.message
+        );
+      }
     }
 
-    // No recibidas: reponer stock en origen y quitar del detalle
-    for (const det of aRechazar) {
+    // No recibidas: reponer stock en Matriz y marcar EN_TRANSITO_COMPLEMENTARIO (siguen visibles)
+    for (const det of aNoRecibir) {
       const cantidad = Math.trunc(Number(det.cantidad ?? 0));
       const costoId = det.costo_id ? String(det.costo_id) : '';
       if (costoId && cantidad > 0 && sucursalOrigenId) {
         await reponerStockOrigenTransferencia(db, costoId, cantidad, sucursalOrigenId);
       }
-      const { error: errDel } = await db.from('detalle_transferencias').delete().eq('id', String(det.id));
-      if (errDel) throw new Error(errDel.message);
+      const { error: errUpDet } = await db
+        .from('detalle_transferencias')
+        .update({ estado: 'EN_TRANSITO_COMPLEMENTARIO' })
+        .eq('id', String(det.id));
+      if (errUpDet) throw new Error(errUpDet.message);
     }
 
+    const nuevoEstado = esParcial ? 'RECIBIDA_PARCIAL' : 'RECIBIDA';
     const { data: actualizada, error: errUp } = await db
       .from('transferencias')
-      .update({ estado: 'RECIBIDA' })
+      .update({ estado: nuevoEstado })
       .eq('id', transferenciaId)
       .eq('estado', transferencia.estado)
       .select('*')
       .single();
 
     if (errUp || !actualizada) {
-      return NextResponse.json({ ok: false, message: 'No se pudo marcar como recibida (¿ya procesada?).' }, { status: 409 });
+      return NextResponse.json(
+        {
+          ok: false,
+          message: errUp?.message?.includes('check')
+            ? 'Falta permitir RECIBIDA_PARCIAL en transferencias.estado. Ejecuta /api/migracion/apply-transferencias-parcial'
+            : 'No se pudo actualizar el estado (¿ya procesada?).',
+        },
+        { status: 409 }
+      );
     }
 
     return NextResponse.json({
       ok: true,
       transferencia: actualizada,
       recibidas: aRecibir.length,
-      noRecibidas: aRechazar.length,
+      noRecibidas: aNoRecibir.length,
+      estado: nuevoEstado,
     });
   } catch (e) {
     console.error('POST /api/transferencias/recibir', e);

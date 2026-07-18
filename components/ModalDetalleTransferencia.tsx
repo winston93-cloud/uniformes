@@ -17,7 +17,21 @@ type DetalleRow = {
   cantidad: number;
   prenda_nombre: string;
   talla_nombre: string;
+  estado: string;
 };
+
+function labelEstadoDetalle(estado: string) {
+  const e = estado.toUpperCase();
+  if (e === 'RECIBIDA') return { text: 'recibida', color: '#065f46' };
+  if (e === 'EN_TRANSITO_COMPLEMENTARIO') return { text: 'en tránsito complementario', color: '#dc2626' };
+  if (e === 'EN_TRANSITO' || e === 'PENDIENTE') return { text: 'en tránsito', color: '#1d4ed8' };
+  return { text: e.toLowerCase(), color: '#64748b' };
+}
+
+function labelEstadoCabecera(estado: string) {
+  if (estado === 'RECIBIDA_PARCIAL') return 'RECIBIDO PARCIAL';
+  return estado;
+}
 
 export default function ModalDetalleTransferencia({
   transferencia,
@@ -36,6 +50,8 @@ export default function ModalDetalleTransferencia({
     String(transferencia.sucursal_destino_id) === sesion?.sucursal_id &&
     (transferencia.estado === 'EN_TRANSITO' || transferencia.estado === 'PENDIENTE');
 
+  const mostrarChecks = puedeRecibir;
+
   useEffect(() => {
     setMounted(true);
     void cargarDetalle();
@@ -44,10 +60,19 @@ export default function ModalDetalleTransferencia({
   const cargarDetalle = async () => {
     setLoading(true);
     try {
-      const { data: filas, error: err } = await insforgeDb()
+      let { data: filas, error: err } = await insforgeDb()
         .from('detalle_transferencias')
-        .select('id, cantidad, prenda_id, talla_id')
+        .select('id, cantidad, prenda_id, talla_id, estado')
         .eq('transferencia_id', transferencia.id);
+
+      if (err && String(err.message || '').toLowerCase().includes('estado')) {
+        const fb = await insforgeDb()
+          .from('detalle_transferencias')
+          .select('id, cantidad, prenda_id, talla_id')
+          .eq('transferencia_id', transferencia.id);
+        filas = (fb.data || []).map((f) => ({ ...f, estado: 'EN_TRANSITO' }));
+        err = fb.error;
+      }
 
       if (err) throw err;
 
@@ -75,12 +100,18 @@ export default function ModalDetalleTransferencia({
         cantidad: Number(f.cantidad ?? 0),
         prenda_nombre: preMap.get(String(f.prenda_id).toLowerCase()) ?? 'Prenda',
         talla_nombre: taMap.get(String(f.talla_id).toLowerCase()) ?? 'Talla',
+        estado: String(f.estado ?? 'EN_TRANSITO'),
       }));
 
       setDetalles(rows);
-      // Todas palomeadas por defecto al recibir
+
       const checks: Record<string, boolean> = {};
-      for (const r of rows) checks[r.id] = true;
+      for (const r of rows) {
+        const est = r.estado.toUpperCase();
+        // Solo partidas pendientes de recibir se palomean; las complementarias no
+        if (est === 'EN_TRANSITO' || est === 'PENDIENTE') checks[r.id] = true;
+        else checks[r.id] = false;
+      }
       setSeleccionados(checks);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudo cargar el detalle.');
@@ -89,12 +120,22 @@ export default function ModalDetalleTransferencia({
     }
   };
 
-  const idsMarcados = useMemo(
-    () => detalles.filter((d) => seleccionados[d.id]).map((d) => d.id),
-    [detalles, seleccionados]
+  const pendientesRecibir = useMemo(
+    () =>
+      detalles.filter((d) => {
+        const e = d.estado.toUpperCase();
+        return e === 'EN_TRANSITO' || e === 'PENDIENTE';
+      }),
+    [detalles]
   );
 
-  const todosMarcados = detalles.length > 0 && idsMarcados.length === detalles.length;
+  const idsMarcados = useMemo(
+    () => pendientesRecibir.filter((d) => seleccionados[d.id]).map((d) => d.id),
+    [pendientesRecibir, seleccionados]
+  );
+
+  const todosMarcados =
+    pendientesRecibir.length > 0 && idsMarcados.length === pendientesRecibir.length;
   const ningunoMarcado = idsMarcados.length === 0;
 
   const toggleUno = (id: string) => {
@@ -103,8 +144,8 @@ export default function ModalDetalleTransferencia({
 
   const toggleTodos = () => {
     const next = !todosMarcados;
-    const checks: Record<string, boolean> = {};
-    for (const d of detalles) checks[d.id] = next;
+    const checks = { ...seleccionados };
+    for (const d of pendientesRecibir) checks[d.id] = next;
     setSeleccionados(checks);
   };
 
@@ -142,7 +183,7 @@ export default function ModalDetalleTransferencia({
 
   return createPortal(
     <div className="modal-overlay">
-      <div className="modal-content" style={{ maxWidth: '720px' }} onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content" style={{ maxWidth: '760px' }} onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2>📦 Transferencia {transferencia.folio}</h2>
           <button className="modal-close" onClick={onClose} type="button">
@@ -158,7 +199,15 @@ export default function ModalDetalleTransferencia({
           )}
 
           <p>
-            <strong>Estado:</strong> {transferencia.estado}
+            <strong>Estado:</strong>{' '}
+            <span
+              style={{
+                fontWeight: 700,
+                color: transferencia.estado === 'RECIBIDA_PARCIAL' ? '#c2410c' : undefined,
+              }}
+            >
+              {labelEstadoCabecera(transferencia.estado)}
+            </span>
           </p>
           <p>
             <strong>Origen:</strong> {transferencia.sucursal_origen?.nombre ?? '—'} →{' '}
@@ -171,9 +220,11 @@ export default function ModalDetalleTransferencia({
           )}
 
           <h3 style={{ marginTop: '1.25rem', marginBottom: '0.5rem' }}>Detalle</h3>
-          {puedeRecibir && (
+          {mostrarChecks && (
             <p style={{ fontSize: '0.88rem', color: '#64748b', marginBottom: '0.75rem' }}>
-              Desmarca las prendas que <strong>no</strong> recibiste: no entrarán a tu inventario y el stock vuelve a origen.
+              Desmarca las prendas que <strong>no</strong> recibiste: quedarán como{' '}
+              <strong style={{ color: '#dc2626' }}>en tránsito complementario</strong> (el stock vuelve a origen) y la
+              transferencia como <strong>recibido parcial</strong>.
             </p>
           )}
           {loading ? (
@@ -184,7 +235,7 @@ export default function ModalDetalleTransferencia({
             <table className="table">
               <thead>
                 <tr>
-                  {puedeRecibir && (
+                  {mostrarChecks && (
                     <th style={{ width: 48 }}>
                       <input
                         type="checkbox"
@@ -198,33 +249,55 @@ export default function ModalDetalleTransferencia({
                   <th>Prenda</th>
                   <th>Talla</th>
                   <th>Cantidad</th>
+                  <th>Estatus</th>
                 </tr>
               </thead>
               <tbody>
                 {detalles.map((d) => {
+                  const est = d.estado.toUpperCase();
+                  const esComplementario = est === 'EN_TRANSITO_COMPLEMENTARIO';
+                  const esPendiente = est === 'EN_TRANSITO' || est === 'PENDIENTE';
                   const marcado = Boolean(seleccionados[d.id]);
+                  const lab = labelEstadoDetalle(d.estado);
                   return (
                     <tr
                       key={d.id}
                       style={
-                        puedeRecibir && !marcado
-                          ? { opacity: 0.55, background: '#f8fafc' }
-                          : undefined
+                        esComplementario
+                          ? { background: '#fef2f2' }
+                          : mostrarChecks && esPendiente && !marcado
+                            ? { opacity: 0.55, background: '#f8fafc' }
+                            : undefined
                       }
                     >
-                      {puedeRecibir && (
+                      {mostrarChecks && (
                         <td>
-                          <input
-                            type="checkbox"
-                            checked={marcado}
-                            onChange={() => toggleUno(d.id)}
-                            aria-label={`Recibir ${d.prenda_nombre} talla ${d.talla_nombre}`}
-                          />
+                          {esPendiente ? (
+                            <input
+                              type="checkbox"
+                              checked={marcado}
+                              onChange={() => toggleUno(d.id)}
+                              aria-label={`Recibir ${d.prenda_nombre} talla ${d.talla_nombre}`}
+                            />
+                          ) : (
+                            <span aria-hidden style={{ color: '#94a3b8' }}>
+                              —
+                            </span>
+                          )}
                         </td>
                       )}
-                      <td>{d.prenda_nombre}</td>
-                      <td>{d.talla_nombre}</td>
-                      <td>{d.cantidad}</td>
+                      <td style={esComplementario ? { color: '#dc2626', fontWeight: 700 } : undefined}>
+                        {d.prenda_nombre}
+                      </td>
+                      <td style={esComplementario ? { color: '#dc2626', fontWeight: 600 } : undefined}>
+                        {d.talla_nombre}
+                      </td>
+                      <td style={esComplementario ? { color: '#dc2626', fontWeight: 600 } : undefined}>
+                        {d.cantidad}
+                      </td>
+                      <td>
+                        <span style={{ color: lab.color, fontWeight: 700, fontSize: '0.85rem' }}>{lab.text}</span>
+                      </td>
                     </tr>
                   );
                 })}
@@ -232,7 +305,7 @@ export default function ModalDetalleTransferencia({
             </table>
           )}
 
-          {puedeRecibir && (
+          {mostrarChecks && (
             <div
               style={{
                 marginTop: '1.25rem',
@@ -242,8 +315,8 @@ export default function ModalDetalleTransferencia({
                 color: '#1e40af',
               }}
             >
-              Se recibirán <strong>{idsMarcados.length}</strong> de <strong>{detalles.length}</strong> partidas en{' '}
-              <strong>{sesion?.sucursal_nombre}</strong>. Las desmarcadas no se reciben.
+              Se recibirán <strong>{idsMarcados.length}</strong> de <strong>{pendientesRecibir.length}</strong> partidas
+              pendientes en <strong>{sesion?.sucursal_nombre}</strong>. Las desmarcadas quedan en tránsito complementario.
             </div>
           )}
         </div>
@@ -252,7 +325,7 @@ export default function ModalDetalleTransferencia({
           <button type="button" className="btn btn-secondary" onClick={onClose}>
             Cerrar
           </button>
-          {puedeRecibir && (
+          {mostrarChecks && (
             <button
               type="button"
               className="btn btn-primary"
@@ -261,7 +334,7 @@ export default function ModalDetalleTransferencia({
             >
               {recibiendo
                 ? '⏳ Recibiendo…'
-                : idsMarcados.length === detalles.length
+                : idsMarcados.length === pendientesRecibir.length
                   ? '✅ Confirmar recepción'
                   : `✅ Recibir ${idsMarcados.length} partida${idsMarcados.length === 1 ? '' : 's'}`}
             </button>

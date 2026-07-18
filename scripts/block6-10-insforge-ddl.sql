@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS public.transferencias (
   sucursal_destino_id UUID NOT NULL REFERENCES public.sucursales(id),
   usuario_id SMALLINT REFERENCES public.usuario(usuario_id),
   fecha_transferencia TIMESTAMPTZ DEFAULT NOW(),
-  estado VARCHAR(20) DEFAULT 'PENDIENTE' CHECK (estado IN ('PENDIENTE', 'EN_TRANSITO', 'RECIBIDA', 'CANCELADA')),
+  estado VARCHAR(40) DEFAULT 'PENDIENTE' CHECK (estado IN ('PENDIENTE', 'EN_TRANSITO', 'RECIBIDA', 'RECIBIDA_PARCIAL', 'CANCELADA')),
   observaciones TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
@@ -70,6 +70,7 @@ CREATE TABLE IF NOT EXISTS public.detalle_transferencias (
   talla_id UUID NOT NULL REFERENCES public.tallas(id),
   cantidad INTEGER NOT NULL CHECK (cantidad > 0),
   costo_id UUID REFERENCES public.costos(id),
+  estado VARCHAR(40) DEFAULT 'EN_TRANSITO',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

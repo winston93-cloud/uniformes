@@ -109,6 +109,7 @@ export async function POST(req: Request) {
         talla_id: d.talla_id,
         cantidad: d.cantidad,
         costo_id: d.costo_id,
+        estado: 'EN_TRANSITO',
       }));
 
       const { error: errIns } = await db.from('detalle_transferencias').insert(filasDetalle);

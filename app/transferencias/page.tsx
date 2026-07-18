@@ -28,10 +28,11 @@ export default function TransferenciasPage() {
 
   const getBadgeEstado = (estado: string) => {
     const badges = {
-      PENDIENTE: { bg: '#fef3c7', color: '#92400e', emoji: '⏳' },
-      EN_TRANSITO: { bg: '#dbeafe', color: '#1e40af', emoji: '🚚' },
-      RECIBIDA: { bg: '#d1fae5', color: '#065f46', emoji: '✅' },
-      CANCELADA: { bg: '#fee2e2', color: '#991b1b', emoji: '❌' },
+      PENDIENTE: { bg: '#fef3c7', color: '#92400e', emoji: '⏳', label: 'PENDIENTE' },
+      EN_TRANSITO: { bg: '#dbeafe', color: '#1e40af', emoji: '🚚', label: 'EN_TRANSITO' },
+      RECIBIDA: { bg: '#d1fae5', color: '#065f46', emoji: '✅', label: 'RECIBIDA' },
+      RECIBIDA_PARCIAL: { bg: '#ffedd5', color: '#c2410c', emoji: '◐', label: 'RECIBIDO PARCIAL' },
+      CANCELADA: { bg: '#fee2e2', color: '#991b1b', emoji: '❌', label: 'CANCELADA' },
     };
     return badges[estado as keyof typeof badges] || badges.PENDIENTE;
   };
@@ -151,7 +152,7 @@ export default function TransferenciasPage() {
                           fontSize: '0.85rem',
                           fontWeight: 'bold',
                         }}>
-                          {badge.emoji} {transferencia.estado}
+                          {badge.emoji} {badge.label ?? transferencia.estado}
                         </span>
                       </td>
                       <td>

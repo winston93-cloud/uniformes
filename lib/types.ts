@@ -320,7 +320,7 @@ export interface Transferencia {
   sucursal_destino_id: string;
   usuario_id: number | null;
   fecha_transferencia: string;
-  estado: 'PENDIENTE' | 'EN_TRANSITO' | 'RECIBIDA' | 'CANCELADA';
+  estado: 'PENDIENTE' | 'EN_TRANSITO' | 'RECIBIDA' | 'RECIBIDA_PARCIAL' | 'CANCELADA';
   observaciones: string | null;
   created_at?: string;
   updated_at?: string;
@@ -330,6 +330,8 @@ export interface Transferencia {
   detalles?: DetalleTransferencia[];
 }
 
+export type EstadoDetalleTransferencia = 'EN_TRANSITO' | 'RECIBIDA' | 'EN_TRANSITO_COMPLEMENTARIO';
+
 export interface DetalleTransferencia {
   id: string;
   transferencia_id: string;
@@ -337,6 +339,8 @@ export interface DetalleTransferencia {
   talla_id: string;
   cantidad: number;
   costo_id: string | null;
+  /** Estado de la partida; EN_TRANSITO_COMPLEMENTARIO = no recibida (rojo). */
+  estado?: EstadoDetalleTransferencia | string | null;
   created_at?: string;
   prenda?: Prenda;
   talla?: Talla;
