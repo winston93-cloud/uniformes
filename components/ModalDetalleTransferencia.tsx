@@ -203,7 +203,9 @@ export default function ModalDetalleTransferencia({
       .select('estado')
       .eq('id', transferencia.id)
       .maybeSingle();
-    if (data?.estado) setEstadoLocal(String(data.estado));
+    if (data?.estado) {
+      setEstadoLocal(String(data.estado) as Transferencia['estado']);
+    }
     onRecibida?.();
   };
 
