@@ -484,8 +484,21 @@ export default function ModalDetalleTransferencia({
           )}
         </div>
 
-        <div className="modal-footer">
-          <button type="button" className="btn btn-secondary" onClick={onClose}>
+        <div className="modal-footer" style={{ flexShrink: 0 }}>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={onClose}
+            style={{
+              padding: '0.8rem 1.5rem',
+              fontSize: '1rem',
+              fontWeight: 600,
+              minHeight: '2.75rem',
+              minWidth: '7rem',
+              borderRadius: '10px',
+              lineHeight: 1.2,
+            }}
+          >
             Cerrar
           </button>
           {mostrarChecks && (
@@ -494,6 +507,14 @@ export default function ModalDetalleTransferencia({
               className="btn btn-primary"
               onClick={handleRecibir}
               disabled={recibiendo || loading || ningunoMarcado}
+              style={{
+                padding: '0.8rem 1.5rem',
+                fontSize: '1rem',
+                fontWeight: 600,
+                minHeight: '2.75rem',
+                borderRadius: '10px',
+                lineHeight: 1.2,
+              }}
             >
               {recibiendo
                 ? '⏳ Recibiendo…'
