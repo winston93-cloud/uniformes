@@ -52,7 +52,15 @@ export default function PrendasPage() {
   const puedeEditarCatalogo = Boolean(sesion?.es_matriz) || esCuentaWinston(sesion);
   const esWinston = esCuentaWinston(sesion);
   const usarUbicacionesStock = !esWinston;
-  const { prendas, loading, error, createPrenda, updatePrenda, deletePrenda } = usePrendas(inventarioOpts);
+  const {
+    prendas,
+    loading,
+    error,
+    createPrenda,
+    updatePrenda,
+    deletePrenda,
+    refetch: refetchPrendas,
+  } = usePrendas(inventarioOpts);
   const { categorias, loading: loadingCategorias, refetch: refetchCategorias } = useCategorias();
   const { tallas } = useTallas();
   const { createMultipleCostos, deleteCosto } = useCostos(
@@ -485,13 +493,15 @@ export default function PrendasPage() {
           return;
         }
       }
+
+      await refetchPrendas();
       
       setBotonEstado('exito');
       
       // Actualizar tallasAsociadas con las tallas actuales después del guardado
       setTallasAsociadas([...tallasSeleccionadas]);
       
-      await refetchCategorias(); // Recargar lista de prendas
+      await refetchCategorias();
       setTimeout(() => {
         setFormData({ nombre: '', codigo: '', descripcion: '', categoria_id: '', activo: true });
         setTallasSeleccionadas([]);
@@ -564,11 +574,22 @@ export default function PrendasPage() {
           }
         }
         
-        await createMultipleCostos(costosData);
+        const resultadoCostos = await createMultipleCostos(costosData);
+        if (resultadoCostos.error) {
+          setMensajeError(
+            `❌ La prenda se creó, pero falló al registrar tallas en tu tienda: ${resultadoCostos.error}`
+          );
+          setModalErrorAbierto(true);
+          await refetchPrendas();
+          return;
+        }
       }
+
+      // Recargar DESPUÉS de costos: si no, Winston no ve la prenda (filtra por inventario local)
+      await refetchPrendas();
       
       setBotonEstado('exito');
-      await refetchCategorias(); // Recargar categorías
+      await refetchCategorias();
       setTimeout(() => {
         setFormData({ nombre: '', codigo: '', descripcion: '', categoria_id: '', activo: true });
         setTallasSeleccionadas([]);

@@ -256,7 +256,11 @@ export function usePrendas(opts?: OpcionesInventarioTienda) {
         .single();
 
       if (error) throw error;
-      await fetchPrendas();
+      // No refetch aquí si el inventario es por sucursal: aún no hay costos y la prenda
+      // quedaría filtrada fuera. El caller debe refetch tras crear costos.
+      if (!inventarioSoloSucursal) {
+        await fetchPrendas();
+      }
       return { data, error: null };
     } catch (err: any) {
       return { data: null, error: err.message };
