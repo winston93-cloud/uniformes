@@ -29,61 +29,15 @@ import {
 } from '@/lib/formatNumericInput';
 import { opcionesInventarioDesdeSesion, sucursalIdParaCostosSesion } from '@/lib/inventarioSucursal';
 import { esCuentaWinston } from '@/lib/winstonLineaVenta';
+import {
+  asignarSiguienteCodigoGlobal,
+  buscarPrendaPorCodigo,
+  prefijoCodigoDesdeNombre,
+} from '@/lib/prendasCodigo';
 
 export const dynamic = 'force-dynamic';
 
-// Función para generar código automático basado en el nombre
-const generarCodigo = (nombre: string): string => {
-  if (!nombre || nombre.trim() === '') return '';
-  
-  // Remover acentos y caracteres especiales
-  const sinAcentos = nombre
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toUpperCase();
-  
-  // Extraer palabras clave comunes
-  const palabras = sinAcentos.split(/\s+/);
-  let codigo = '';
-  
-  // Buscar palabras clave conocidas
-  const palabrasClave: { [key: string]: string } = {
-    'CAMISA': 'CAM',
-    'PANTALON': 'PAN',
-    'PANTALÓN': 'PAN',
-    'PANTS': 'PAN',
-    'SUETER': 'SUE',
-    'SUÉTER': 'SUE',
-    'FALDA': 'FAL',
-    'DEPORTIVO': 'DEP',
-    'DEPORTIVA': 'DEP',
-    'ACCESORIO': 'ACC',
-    'BLUSA': 'BLU',
-    'PLAYERA': 'PLA',
-    'POLO': 'POL',
-    'CHALECO': 'CHA',
-    'SACO': 'SAC',
-    'ABRIGO': 'ABR',
-  };
-  
-  // Buscar palabra clave
-  for (const palabra of palabras) {
-    const clave = Object.keys(palabrasClave).find(k => palabra.includes(k));
-    if (clave) {
-      codigo = palabrasClave[clave];
-      break;
-    }
-  }
-  
-  // Si no se encontró palabra clave, usar primeras 3 letras
-  if (!codigo) {
-    codigo = palabras[0].substring(0, 3).toUpperCase();
-  }
-  
-  // Agregar número secuencial (por ahora solo el código base)
-  // En producción, podrías buscar el último número usado
-  return codigo;
-};
+const generarCodigo = (nombre: string): string => prefijoCodigoDesdeNombre(nombre);
 
 export default function PrendasPage() {
   const { sesion } = useAuth();
@@ -400,7 +354,7 @@ export default function PrendasPage() {
       activo: formData.activo,
     };
 
-    // Validar duplicados por nombre
+    // Validar duplicados por nombre (inventario visible de esta tienda)
     const nombreExiste = prendas.some(p => 
       p.nombre.toLowerCase() === prendaData.nombre.toLowerCase() && 
       (!prendaEditando || p.id !== prendaEditando.id)
@@ -412,15 +366,40 @@ export default function PrendasPage() {
       return;
     }
 
-    // Validar duplicados por código (si hay código)
-    if (prendaData.codigo) {
-      const codigoExiste = prendas.some(p => 
-        p.codigo?.toLowerCase() === prendaData.codigo?.toLowerCase() && 
-        (!prendaEditando || p.id !== prendaEditando.id)
+    // Código único global (otras tiendas pueden tener el mismo prefijo aunque no aparezcan aquí)
+    if (prendaData.codigo && !prendaEditando) {
+      const conflicto = await buscarPrendaPorCodigo(prendaData.codigo);
+      if (conflicto) {
+        const prefijo = generarCodigo(prendaData.nombre) || prendaData.codigo.split('-')[0];
+        const codigoLibre = prefijo ? await asignarSiguienteCodigoGlobal(prefijo) : '';
+        if (codigoLibre && codigoLibre.toLowerCase() !== prendaData.codigo.toLowerCase()) {
+          prendaData.codigo = codigoLibre;
+          setFormData((prev) => ({ ...prev, codigo: codigoLibre }));
+        } else {
+          setMensajeError(
+            `❌ El código "${conflicto.codigo}" ya existe en el catálogo (${conflicto.nombre}). ` +
+              `No aparece en tu lista porque está en otra tienda o ya no tiene stock aquí. Elige otro código.`
+          );
+          setModalErrorAbierto(true);
+          return;
+        }
+      }
+    } else if (prendaData.codigo && prendaEditando) {
+      const codigoExisteLocal = prendas.some(
+        (p) =>
+          p.codigo?.toLowerCase() === prendaData.codigo?.toLowerCase() &&
+          p.id !== prendaEditando.id
       );
-
-      if (codigoExiste) {
+      if (codigoExisteLocal) {
         setMensajeError(`❌ Ya existe una prenda con el código "${prendaData.codigo}"`);
+        setModalErrorAbierto(true);
+        return;
+      }
+      const conflicto = await buscarPrendaPorCodigo(prendaData.codigo);
+      if (conflicto && conflicto.id !== prendaEditando.id) {
+        setMensajeError(
+          `❌ El código "${conflicto.codigo}" ya lo usa "${conflicto.nombre}" en el catálogo.`
+        );
         setModalErrorAbierto(true);
         return;
       }
@@ -526,9 +505,30 @@ export default function PrendasPage() {
         }, 100);
       }, 1500);
     } else {
-      const { data: nuevaPrenda, error } = await createPrenda(prendaData);
+      let { data: nuevaPrenda, error } = await createPrenda(prendaData);
+      if (error && (error.includes('duplicate') || error.includes('unique') || error.includes('prendas_codigo'))) {
+        const prefijo = generarCodigo(prendaData.nombre || '') || (prendaData.codigo || '').split('-')[0];
+        if (prefijo) {
+          const codigoLibre = await asignarSiguienteCodigoGlobal(prefijo);
+          if (codigoLibre) {
+            prendaData.codigo = codigoLibre;
+            ({ data: nuevaPrenda, error } = await createPrenda(prendaData));
+          }
+        }
+      }
       if (error) {
-        setMensajeError(`❌ Error al crear prenda: ${error}`);
+        if (error.includes('duplicate') || error.includes('unique') || error.includes('prendas_codigo')) {
+          const existente = prendaData.codigo
+            ? await buscarPrendaPorCodigo(prendaData.codigo)
+            : null;
+          setMensajeError(
+            existente
+              ? `❌ El código "${existente.codigo}" ya existe (${existente.nombre}). Está en otra tienda o quedó en el catálogo; no se puede repetir. Usa otro código.`
+              : `❌ Ya existe una prenda con ese código o nombre en el catálogo (puede estar en otra tienda).`
+          );
+        } else {
+          setMensajeError(`❌ Error al crear prenda: ${error}`);
+        }
         setModalErrorAbierto(true);
         return;
       }
@@ -628,28 +628,20 @@ export default function PrendasPage() {
     }
   }, [loading]);
 
-  // Manejar cambio en el nombre para generar código automático
+  // Código automático: siguiente libre en el catálogo global (no solo esta tienda)
   const handleNombreChange = (nombre: string) => {
     if (!prendaEditando && nombre) {
-      const codigoGenerado = generarCodigo(nombre);
-      if (codigoGenerado) {
-        // Buscar el siguiente número secuencial
-        const codigosSimilares = prendas
-          .filter(p => p.codigo && p.codigo.startsWith(codigoGenerado))
-          .map(p => {
-            const match = p.codigo?.match(/\d+$/);
-            return match ? parseInt(match[0]) : 0;
-          });
-        const siguienteNumero = codigosSimilares.length > 0 
-          ? Math.max(...codigosSimilares) + 1 
-          : 1;
-        const codigoFinal = `${codigoGenerado}-${String(siguienteNumero).padStart(3, '0')}`;
-        setFormData({ ...formData, nombre, codigo: codigoFinal });
-      } else {
-        setFormData({ ...formData, nombre });
+      const prefijo = generarCodigo(nombre);
+      setFormData((prev) => ({ ...prev, nombre }));
+      if (prefijo) {
+        void asignarSiguienteCodigoGlobal(prefijo).then((codigoFinal) => {
+          setFormData((prev) =>
+            prev.nombre === nombre ? { ...prev, codigo: codigoFinal } : prev
+          );
+        });
       }
     } else {
-      setFormData({ ...formData, nombre });
+      setFormData((prev) => ({ ...prev, nombre }));
     }
   };
 
