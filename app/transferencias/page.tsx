@@ -44,6 +44,31 @@ export default function TransferenciasPage() {
   const puedeModificar = (t: Transferencia) =>
     t.estado === 'EN_TRANSITO' && String(t.sucursal_origen_id) === sesion?.sucursal_id;
 
+  const puedeCancelar = (t: Transferencia) =>
+    String(t.sucursal_origen_id) === sesion?.sucursal_id &&
+    (t.estado === 'EN_TRANSITO' || t.estado === 'PENDIENTE' || t.estado === 'RECIBIDA_PARCIAL');
+
+  const cancelarTransferencia = async (t: Transferencia) => {
+    const ok = confirm(
+      `¿Cancelar ${t.folio}?\n\nLas partidas en tránsito regresarán al inventario de origen. Esta acción no se puede deshacer.`
+    );
+    if (!ok) return;
+    try {
+      const res = await fetch('/api/transferencias/cancelar', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transferencia_id: t.id }),
+      });
+      const json = (await res.json()) as { ok?: boolean; message?: string };
+      if (!res.ok || !json.ok) throw new Error(json.message ?? 'No se pudo cancelar.');
+      alert(json.message ?? 'Transferencia cancelada.');
+      recargar();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Error al cancelar.');
+    }
+  };
+
   const limpiarVacias = async () => {
     try {
       const res = await fetch('/api/transferencias/limpiar-sin-partidas', {
@@ -201,6 +226,21 @@ export default function TransferenciasPage() {
                               }}
                             >
                               ✏️ Modificar
+                            </button>
+                          )}
+                          {puedeCancelar(transferencia) && (
+                            <button
+                              className="btn"
+                              style={{
+                                padding: '0.5rem 1rem',
+                                fontSize: '0.9rem',
+                                background: '#fee2e2',
+                                color: '#991b1b',
+                                border: '1px solid #fecaca',
+                              }}
+                              onClick={() => void cancelarTransferencia(transferencia)}
+                            >
+                              ❌ Cancelar
                             </button>
                           )}
                           {esDestinoPendiente(transferencia) && (

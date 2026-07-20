@@ -54,9 +54,16 @@ export default function ModalDetalleTransferencia({
   const [partidaReenviar, setPartidaReenviar] = useState<PartidaComplementaria | null>(null);
   const [estadoLocal, setEstadoLocal] = useState(transferencia.estado);
   const [recibiendoPartidaId, setRecibiendoPartidaId] = useState<string | null>(null);
+  const [cancelando, setCancelando] = useState(false);
 
   const esOrigen = String(transferencia.sucursal_origen_id) === sesion?.sucursal_id;
   const esDestino = String(transferencia.sucursal_destino_id) === sesion?.sucursal_id;
+
+  const puedeCancelar =
+    esOrigen &&
+    (estadoLocal === 'EN_TRANSITO' ||
+      estadoLocal === 'PENDIENTE' ||
+      estadoLocal === 'RECIBIDA_PARCIAL');
 
   const pendientesRecibir = useMemo(
     () =>
@@ -249,6 +256,32 @@ export default function ModalDetalleTransferencia({
       setEstadoLocal(String(data.estado) as Transferencia['estado']);
     }
     onRecibida?.();
+  };
+
+  const handleCancelar = async () => {
+    const ok = confirm(
+      `¿Cancelar ${transferencia.folio}?\n\nLas partidas en tránsito regresarán al inventario de origen.`
+    );
+    if (!ok) return;
+    setCancelando(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/transferencias/cancelar', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transferencia_id: transferencia.id }),
+      });
+      const json = (await res.json()) as { ok?: boolean; message?: string };
+      if (!res.ok || !json.ok) throw new Error(json.message ?? 'No se pudo cancelar.');
+      setEstadoLocal('CANCELADA');
+      onRecibida?.();
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error al cancelar.');
+    } finally {
+      setCancelando(false);
+    }
   };
 
   if (!mounted) return null;
@@ -484,7 +517,7 @@ export default function ModalDetalleTransferencia({
           )}
         </div>
 
-        <div className="modal-footer" style={{ flexShrink: 0 }}>
+        <div className="modal-footer" style={{ flexShrink: 0, display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
           <button
             type="button"
             className="btn btn-secondary"
@@ -501,12 +534,33 @@ export default function ModalDetalleTransferencia({
           >
             Cerrar
           </button>
+          {puedeCancelar && (
+            <button
+              type="button"
+              className="btn"
+              onClick={() => void handleCancelar()}
+              disabled={cancelando || recibiendo}
+              style={{
+                padding: '0.8rem 1.5rem',
+                fontSize: '1rem',
+                fontWeight: 600,
+                minHeight: '2.75rem',
+                borderRadius: '10px',
+                lineHeight: 1.2,
+                background: '#fee2e2',
+                color: '#991b1b',
+                border: '1px solid #fecaca',
+              }}
+            >
+              {cancelando ? '⏳ Cancelando…' : '❌ Cancelar transferencia'}
+            </button>
+          )}
           {mostrarChecks && (
             <button
               type="button"
               className="btn btn-primary"
               onClick={handleRecibir}
-              disabled={recibiendo || loading || ningunoMarcado}
+              disabled={recibiendo || loading || ningunoMarcado || cancelando}
               style={{
                 padding: '0.8rem 1.5rem',
                 fontSize: '1rem',
