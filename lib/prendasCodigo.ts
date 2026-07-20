@@ -91,6 +91,61 @@ export async function buscarPrendaPorCodigo(codigo: string): Promise<{
   return { id: String(row.id), codigo: String(row.codigo), nombre: String(row.nombre) };
 }
 
+export type PrendaCatalogoResumen = {
+  id: string;
+  codigo: string | null;
+  nombre: string;
+  descripcion: string | null;
+  activo: boolean;
+  categoria_id: string | null;
+  categoriaNombre: string | null;
+};
+
+/** Busca en el catálogo global por nombre (sin distinguir mayúsculas). */
+export async function buscarPrendaPorNombreExacto(
+  nombre: string
+): Promise<PrendaCatalogoResumen | null> {
+  const n = nombre.trim();
+  if (!n) return null;
+
+  const { data, error } = await insforgeDb()
+    .from('prendas')
+    .select('id, codigo, nombre, descripcion, activo, categoria_id')
+    .ilike('nombre', n)
+    .limit(5);
+
+  if (error || !data?.length) return null;
+
+  const exact = (data as Record<string, unknown>[]).find(
+    (r) => String(r.nombre ?? '').trim().toLowerCase() === n.toLowerCase()
+  );
+  if (!exact) return null;
+
+  let categoriaNombre: string | null = null;
+  const catId = exact.categoria_id != null ? String(exact.categoria_id).trim() : '';
+  if (catId) {
+    const { data: cat } = await insforgeDb()
+      .from('categorias_prendas')
+      .select('nombre')
+      .eq('id', catId)
+      .limit(1);
+    if (cat?.[0]) {
+      categoriaNombre = String((cat[0] as { nombre?: string }).nombre ?? '') || null;
+    }
+  }
+
+  const activoRaw = exact.activo;
+  return {
+    id: String(exact.id),
+    codigo: exact.codigo != null ? String(exact.codigo) : null,
+    nombre: String(exact.nombre ?? ''),
+    descripcion: exact.descripcion != null ? String(exact.descripcion) : null,
+    activo: activoRaw === undefined || activoRaw === null ? true : Boolean(activoRaw),
+    categoria_id: catId || null,
+    categoriaNombre,
+  };
+}
+
 /** Asigna el siguiente código libre en el catálogo global para un prefijo. */
 export async function asignarSiguienteCodigoGlobal(prefijo: string): Promise<string> {
   const p = prefijo.trim().toUpperCase();

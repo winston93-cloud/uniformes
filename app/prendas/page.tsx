@@ -16,6 +16,7 @@ import {
   extraerTallasActivasDeCostos,
   costoPrendaTallaDesdeFilas,
   prendaTieneCostosEnOtraSucursal,
+  normalizarCamposCostoApi,
 } from '@/lib/costoQueries';
 import { insforgeDb } from '@/lib/insforgeBrowser';
 import type { Prenda } from '@/lib/types';
@@ -32,7 +33,9 @@ import { esCuentaWinston } from '@/lib/winstonLineaVenta';
 import {
   asignarSiguienteCodigoGlobal,
   buscarPrendaPorCodigo,
+  buscarPrendaPorNombreExacto,
   prefijoCodigoDesdeNombre,
+  type PrendaCatalogoResumen,
 } from '@/lib/prendasCodigo';
 
 export const dynamic = 'force-dynamic';
@@ -47,6 +50,13 @@ export default function PrendasPage() {
   const [botonEstado, setBotonEstado] = useState<'normal' | 'exito' | 'error'>('normal');
   const [mensajeError, setMensajeError] = useState<string>('');
   const [modalErrorAbierto, setModalErrorAbierto] = useState(false);
+  const [modalConfirmDuplicado, setModalConfirmDuplicado] = useState(false);
+  const [prendaExistenteCatalogo, setPrendaExistenteCatalogo] = useState<PrendaCatalogoResumen | null>(
+    null
+  );
+  const [existenteYaEnTienda, setExistenteYaEnTienda] = useState(false);
+  const [tallasExistentesEnTienda, setTallasExistentesEnTienda] = useState<string[]>([]);
+  const reutilizarPrendaIdRef = useRef<string | null>(null);
   const inputBusquedaRef = useRef<HTMLInputElement>(null);
   const inventarioOpts = opcionesInventarioDesdeSesion(sesion, 'gestion');
   const puedeEditarCatalogo = Boolean(sesion?.es_matriz) || esCuentaWinston(sesion);
@@ -342,6 +352,68 @@ export default function PrendasPage() {
     cerrarModalAjusteStock();
   };
 
+  const cerrarFormularioTrasExito = () => {
+    setTimeout(() => {
+      setFormData({ nombre: '', codigo: '', descripcion: '', categoria_id: '', activo: true });
+      setTallasSeleccionadas([]);
+      setTallasAsociadas([]);
+      setMostrarFormulario(false);
+      setPrendaEditando(null);
+      setBotonEstado('normal');
+      setMensajeError('');
+      reutilizarPrendaIdRef.current = null;
+      setPrendaExistenteCatalogo(null);
+      setModalConfirmDuplicado(false);
+      setTimeout(() => {
+        inputBusquedaRef.current?.focus();
+      }, 100);
+    }, 1500);
+  };
+
+  const crearCostosSeleccionadosParaPrenda = async (prendaId: string) => {
+    const sucursalActiva = sucursalIdParaCostosSesion(sesion);
+    if (!sucursalActiva) {
+      return { error: 'No hay sucursal activa en la sesión' };
+    }
+
+    const costosActuales = await fetchCostosPrendaSucursal(
+      insforgeDb(),
+      prendaId,
+      sucursalActiva
+    );
+    const tallasYa = new Set(
+      costosActuales
+        .map((c) => String(normalizarCamposCostoApi(c).talla_id ?? '').trim())
+        .filter(Boolean)
+    );
+    const tallasAAgregar = tallasSeleccionadas.filter((t) => !tallasYa.has(t));
+
+    if (tallasAAgregar.length === 0) {
+      return { error: null, agregadas: 0, yaEstaban: tallasSeleccionadas.length };
+    }
+
+    const costosData = tallasAAgregar.map((talla_id) => ({
+      prenda_id: prendaId,
+      talla_id,
+      sucursal_id: sucursalActiva,
+      precio_venta: 0,
+      precio_compra: 0,
+      precio_mayoreo: 0,
+      precio_menudeo: 0,
+      stock_inicial: 0,
+      stock: 0,
+      cantidad_venta: 0,
+      stock_minimo: 0,
+      activo: true,
+    }));
+
+    const resultado = await createMultipleCostos(costosData);
+    if (resultado.error) {
+      return { error: resultado.error, agregadas: 0, yaEstaban: tallasYa.size };
+    }
+    return { error: null, agregadas: tallasAAgregar.length, yaEstaban: tallasYa.size };
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setBotonEstado('normal');
@@ -362,22 +434,46 @@ export default function PrendasPage() {
       activo: formData.activo,
     };
 
-    // Validar duplicados por nombre (inventario visible de esta tienda)
-    const nombreExiste = prendas.some(p => 
-      p.nombre.toLowerCase() === prendaData.nombre.toLowerCase() && 
-      (!prendaEditando || p.id !== prendaEditando.id)
-    );
+    // Winston: si ya existe en catálogo (mismo nombre), pedir confirmación clara antes de reutilizar
+    if (!prendaEditando && esWinston && !reutilizarPrendaIdRef.current) {
+      const existente = await buscarPrendaPorNombreExacto(prendaData.nombre);
 
-    if (nombreExiste) {
-      setMensajeError(`❌ Ya existe una prenda con el nombre "${prendaData.nombre}"`);
-      setModalErrorAbierto(true);
-      return;
+      if (existente) {
+        const sid = sucursalIdParaCostosSesion(sesion);
+        const costosTienda = sid
+          ? await fetchCostosPrendaSucursal(insforgeDb(), existente.id, sid)
+          : [];
+        const tallasYa = costosTienda
+          .map((c) => String(normalizarCamposCostoApi(c).talla_id ?? '').trim())
+          .filter(Boolean);
+        setPrendaExistenteCatalogo(existente);
+        setExistenteYaEnTienda(costosTienda.length > 0);
+        setTallasExistentesEnTienda(tallasYa);
+        setModalConfirmDuplicado(true);
+        return;
+      }
     }
 
-    // Código único global (otras tiendas pueden tener el mismo prefijo aunque no aparezcan aquí)
-    if (prendaData.codigo && !prendaEditando) {
+    // Matriz (u otras): bloquear duplicado local por nombre
+    if (!esWinston || prendaEditando) {
+      const nombreExiste = prendas.some(
+        (p) =>
+          p.nombre.toLowerCase() === prendaData.nombre.toLowerCase() &&
+          (!prendaEditando || p.id !== prendaEditando.id)
+      );
+
+      if (nombreExiste) {
+        setMensajeError(`❌ Ya existe una prenda con el nombre "${prendaData.nombre}"`);
+        setModalErrorAbierto(true);
+        return;
+      }
+    }
+
+    // Código único global al crear (solo si no estamos reutilizando)
+    if (prendaData.codigo && !prendaEditando && !reutilizarPrendaIdRef.current) {
       const conflicto = await buscarPrendaPorCodigo(prendaData.codigo);
       if (conflicto) {
+        // Mismo nombre → ya debió salir el modal; si llega aquí es otro nombre con mismo código
         const prefijo = generarCodigo(prendaData.nombre) || prendaData.codigo.split('-')[0];
         const codigoLibre = prefijo ? await asignarSiguienteCodigoGlobal(prefijo) : '';
         if (codigoLibre && codigoLibre.toLowerCase() !== prendaData.codigo.toLowerCase()) {
@@ -385,8 +481,7 @@ export default function PrendasPage() {
           setFormData((prev) => ({ ...prev, codigo: codigoLibre }));
         } else {
           setMensajeError(
-            `❌ El código "${conflicto.codigo}" ya existe en el catálogo (${conflicto.nombre}). ` +
-              `No aparece en tu lista porque está en otra tienda o ya no tiene stock aquí. Elige otro código.`
+            `❌ El código "${conflicto.codigo}" ya existe en el catálogo (${conflicto.nombre}). Elige otro código.`
           );
           setModalErrorAbierto(true);
           return;
@@ -502,19 +597,34 @@ export default function PrendasPage() {
       setTallasAsociadas([...tallasSeleccionadas]);
       
       await refetchCategorias();
-      setTimeout(() => {
-        setFormData({ nombre: '', codigo: '', descripcion: '', categoria_id: '', activo: true });
-        setTallasSeleccionadas([]);
-        setTallasAsociadas([]);
-        setMostrarFormulario(false);
-        setPrendaEditando(null);
-        setBotonEstado('normal');
-        setMensajeError('');
-        setTimeout(() => {
-          inputBusquedaRef.current?.focus();
-        }, 100);
-      }, 1500);
+      cerrarFormularioTrasExito();
     } else {
+      const reutilizarId = reutilizarPrendaIdRef.current;
+
+      if (reutilizarId) {
+        const resultado = await crearCostosSeleccionadosParaPrenda(reutilizarId);
+        if (resultado.error) {
+          setMensajeError(`❌ Error al dar de alta en tu tienda: ${resultado.error}`);
+          setModalErrorAbierto(true);
+          reutilizarPrendaIdRef.current = null;
+          return;
+        }
+        if (resultado.agregadas === 0) {
+          setMensajeError(
+            'ℹ️ Esta prenda ya estaba en tu tienda con las tallas seleccionadas. No se creó nada nuevo.'
+          );
+          setModalErrorAbierto(true);
+          reutilizarPrendaIdRef.current = null;
+          await refetchPrendas();
+          return;
+        }
+        await refetchPrendas();
+        setBotonEstado('exito');
+        await refetchCategorias();
+        cerrarFormularioTrasExito();
+        return;
+      }
+
       let { data: nuevaPrenda, error } = await createPrenda(prendaData);
       if (error && (error.includes('duplicate') || error.includes('unique') || error.includes('prendas_codigo'))) {
         const prefijo = generarCodigo(prendaData.nombre || '') || (prendaData.codigo || '').split('-')[0];
@@ -543,38 +653,8 @@ export default function PrendasPage() {
         return;
       }
       
-      // Crear costos por talla solo en la tienda de la sesión
       if (nuevaPrenda && tallasSeleccionadas.length > 0) {
-        const sucursalActiva = sucursalIdParaCostosSesion(sesion);
-        if (!sucursalActiva) {
-          setMensajeError('❌ Error: No hay sucursal activa en la sesión');
-          setModalErrorAbierto(true);
-          return;
-        }
-        const sucursales = [{ id: sucursalActiva }];
-        
-        // Crear costos para cada combinación de talla x sucursal
-        const costosData = [];
-        for (const sucursal of sucursales) {
-          for (const talla_id of tallasSeleccionadas) {
-            costosData.push({
-              prenda_id: nuevaPrenda.id,
-              talla_id: talla_id,
-              sucursal_id: sucursal.id,
-              precio_venta: 0,
-              precio_compra: 0,
-              precio_mayoreo: 0,
-              precio_menudeo: 0,
-              stock_inicial: 0,
-              stock: 0,
-              cantidad_venta: 0,
-              stock_minimo: 0,
-              activo: true,
-            });
-          }
-        }
-        
-        const resultadoCostos = await createMultipleCostos(costosData);
+        const resultadoCostos = await crearCostosSeleccionadosParaPrenda(nuevaPrenda.id);
         if (resultadoCostos.error) {
           setMensajeError(
             `❌ La prenda se creó, pero falló al registrar tallas en tu tienda: ${resultadoCostos.error}`
@@ -585,22 +665,11 @@ export default function PrendasPage() {
         }
       }
 
-      // Recargar DESPUÉS de costos: si no, Winston no ve la prenda (filtra por inventario local)
       await refetchPrendas();
       
       setBotonEstado('exito');
       await refetchCategorias();
-      setTimeout(() => {
-        setFormData({ nombre: '', codigo: '', descripcion: '', categoria_id: '', activo: true });
-        setTallasSeleccionadas([]);
-        setMostrarFormulario(false);
-        setPrendaEditando(null);
-        setBotonEstado('normal');
-        setMensajeError('');
-        setTimeout(() => {
-          inputBusquedaRef.current?.focus();
-        }, 100);
-      }, 1500);
+      cerrarFormularioTrasExito();
     }
   };
 
@@ -1796,6 +1865,138 @@ export default function PrendasPage() {
         </div>
       )}
 
+      {/* Confirmación: prenda ya existe (Winston) */}
+      {modalConfirmDuplicado && prendaExistenteCatalogo && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 2000,
+            padding: '1rem',
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: '2rem',
+              maxWidth: '560px',
+              width: '100%',
+              boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3
+              style={{
+                color: '#b45309',
+                marginBottom: '0.75rem',
+                fontSize: '1.4rem',
+                fontWeight: '700',
+              }}
+            >
+              Esta prenda ya existe
+            </h3>
+            <p style={{ color: '#333', marginBottom: '1.25rem', fontSize: '1.05rem', lineHeight: 1.5 }}>
+              En el catálogo ya hay una prenda con el mismo nombre. Revisa sus datos y confirma si
+              deseas darla de alta en <strong>Sucursal Winston</strong> (se usará la existente; no se
+              creará un duplicado).
+            </p>
+            <div
+              style={{
+                background: '#fff7ed',
+                border: '1px solid #fdba74',
+                borderRadius: '10px',
+                padding: '1rem 1.15rem',
+                marginBottom: '1.25rem',
+                fontSize: '0.98rem',
+                lineHeight: 1.55,
+                color: '#1f2937',
+              }}
+            >
+              <div>
+                <strong>Código:</strong> {prendaExistenteCatalogo.codigo || '—'}
+              </div>
+              <div>
+                <strong>Nombre:</strong> {prendaExistenteCatalogo.nombre}
+              </div>
+              <div>
+                <strong>Categoría:</strong> {prendaExistenteCatalogo.categoriaNombre || 'Sin categoría'}
+              </div>
+              <div>
+                <strong>Descripción:</strong>{' '}
+                {prendaExistenteCatalogo.descripcion?.trim() || 'Sin descripción'}
+              </div>
+              <div>
+                <strong>Estado:</strong>{' '}
+                {prendaExistenteCatalogo.activo ? 'Activa' : 'Inactiva'}
+              </div>
+              <div style={{ marginTop: '0.5rem' }}>
+                <strong>En tu tienda ahora:</strong>{' '}
+                {existenteYaEnTienda
+                  ? `Sí (${tallasExistentesEnTienda.length} talla${tallasExistentesEnTienda.length === 1 ? '' : 's'} registrada${tallasExistentesEnTienda.length === 1 ? '' : 's'})`
+                  : 'No — aún no está en el inventario de Winston'}
+              </div>
+              {tallasExistentesEnTienda.length > 0 && (
+                <div style={{ marginTop: '0.35rem', color: '#4b5563' }}>
+                  Tallas ya en Winston:{' '}
+                  {tallasExistentesEnTienda
+                    .map((id) => tallas.find((t) => t.id === id)?.nombre || id)
+                    .join(', ')}
+                </div>
+              )}
+            </div>
+            <p style={{ color: '#4b5563', fontSize: '0.95rem', marginBottom: '1.5rem' }}>
+              Al confirmar se agregarán solo las tallas seleccionadas que aún no existan en tu tienda.
+            </p>
+            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => {
+                  reutilizarPrendaIdRef.current = prendaExistenteCatalogo.id;
+                  setModalConfirmDuplicado(false);
+                  void handleSubmit({ preventDefault() {} } as React.FormEvent);
+                }}
+                style={{
+                  flex: '1 1 200px',
+                  padding: '0.75rem 1rem',
+                  fontSize: '1rem',
+                  fontWeight: '600',
+                }}
+              >
+                Sí, dar de alta en mi tienda
+              </button>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  reutilizarPrendaIdRef.current = null;
+                  setModalConfirmDuplicado(false);
+                  setPrendaExistenteCatalogo(null);
+                }}
+                style={{
+                  flex: '1 1 140px',
+                  padding: '0.75rem 1rem',
+                  fontSize: '1rem',
+                  fontWeight: '600',
+                  background: '#e5e7eb',
+                  color: '#111827',
+                }}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal de Error */}
       {modalErrorAbierto && (
         <div
@@ -1825,12 +2026,12 @@ export default function PrendasPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <h3 style={{ 
-              color: '#dc3545', 
+              color: mensajeError.startsWith('ℹ️') ? '#b45309' : '#dc3545', 
               marginBottom: '1rem',
               fontSize: '1.5rem',
               fontWeight: '700'
             }}>
-              Error
+              {mensajeError.startsWith('ℹ️') ? 'Aviso' : 'Error'}
             </h3>
             <p style={{ 
               color: '#333', 
