@@ -53,6 +53,7 @@ export default function ModalDetalleTransferencia({
   const [error, setError] = useState<string | null>(null);
   const [partidaReenviar, setPartidaReenviar] = useState<PartidaComplementaria | null>(null);
   const [estadoLocal, setEstadoLocal] = useState(transferencia.estado);
+  const [recibiendoPartidaId, setRecibiendoPartidaId] = useState<string | null>(null);
 
   const esOrigen = String(transferencia.sucursal_origen_id) === sesion?.sucursal_id;
   const esDestino = String(transferencia.sucursal_destino_id) === sesion?.sucursal_id;
@@ -165,6 +166,47 @@ export default function ModalDetalleTransferencia({
     setSeleccionados(checks);
   };
 
+  const hayComplementarias = useMemo(
+    () => detalles.some((d) => d.estado.toUpperCase() === 'EN_TRANSITO_COMPLEMENTARIO'),
+    [detalles]
+  );
+
+  const hayPendientesTrasParcial =
+    estadoLocal === 'RECIBIDA_PARCIAL' &&
+    detalles.some((d) => {
+      const e = d.estado.toUpperCase();
+      return e === 'EN_TRANSITO' || e === 'PENDIENTE' || e === 'EN_TRANSITO_COMPLEMENTARIO';
+    });
+
+  const mostrarColAcciones = esOrigen || (esDestino && (hayComplementarias || hayPendientesTrasParcial));
+
+  const handleRecibirPartidaComplementaria = async (detalleId: string) => {
+    setRecibiendoPartidaId(detalleId);
+    setError(null);
+    try {
+      const res = await fetch('/api/transferencias/recibir-partida', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          transferencia_id: transferencia.id,
+          detalle_id: detalleId,
+        }),
+      });
+      const json = (await res.json()) as { ok?: boolean; message?: string; estado?: string };
+      if (!res.ok || !json.ok) {
+        throw new Error(json.message ?? 'No se pudo recibir la partida.');
+      }
+      if (json.estado) setEstadoLocal(json.estado as Transferencia['estado']);
+      await cargarDetalle();
+      onRecibida?.();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error al recibir la partida.');
+    } finally {
+      setRecibiendoPartidaId(null);
+    }
+  };
+
   const handleRecibir = async () => {
     if (ningunoMarcado) {
       setError('Selecciona al menos una prenda para recibir.');
@@ -256,6 +298,12 @@ export default function ModalDetalleTransferencia({
               reenviarlas.
             </p>
           )}
+          {esDestino && hayComplementarias && (
+            <p style={{ fontSize: '0.88rem', color: '#64748b', marginBottom: '0.75rem' }}>
+              En las partidas en rojo usa <strong>✅ Recibir</strong> para sumarlas a tu stock (reenvío o cambio desde
+              origen). Cuando todas estén recibidas, la transferencia queda <strong>RECIBIDA</strong>.
+            </p>
+          )}
           {esOrigen && estadoLocal === 'RECIBIDA_PARCIAL' && (
             <p style={{ fontSize: '0.88rem', color: '#64748b', marginBottom: '0.75rem' }}>
               Las partidas en rojo se pueden <strong>modificar / reenviar</strong>. Al reenviar vuelven a tránsito para
@@ -326,7 +374,7 @@ export default function ModalDetalleTransferencia({
                   <th>Talla</th>
                   <th>Cantidad</th>
                   <th>Estatus</th>
-                  {esOrigen && <th>Acciones</th>}
+                  {mostrarColAcciones && <th>Acciones</th>}
                 </tr>
               </thead>
               <tbody>
@@ -375,9 +423,9 @@ export default function ModalDetalleTransferencia({
                       <td>
                         <span style={{ color: lab.color, fontWeight: 700, fontSize: '0.85rem' }}>{lab.text}</span>
                       </td>
-                      {esOrigen && (
+                      {mostrarColAcciones && (
                         <td>
-                          {esComplementario ? (
+                          {esOrigen && esComplementario ? (
                             <button
                               type="button"
                               className="btn btn-secondary"
@@ -395,6 +443,18 @@ export default function ModalDetalleTransferencia({
                               }
                             >
                               ✏️ Modificar
+                            </button>
+                          ) : esDestino &&
+                            (esComplementario ||
+                              (esPendiente && estadoLocal === 'RECIBIDA_PARCIAL')) ? (
+                            <button
+                              type="button"
+                              className="btn btn-primary"
+                              style={{ padding: '0.35rem 0.7rem', fontSize: '0.82rem' }}
+                              disabled={recibiendoPartidaId === d.id || recibiendo}
+                              onClick={() => void handleRecibirPartidaComplementaria(d.id)}
+                            >
+                              {recibiendoPartidaId === d.id ? '⏳…' : '✅ Recibir'}
                             </button>
                           ) : (
                             <span style={{ color: '#94a3b8' }}>—</span>
