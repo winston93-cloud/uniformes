@@ -2006,16 +2006,22 @@ function PedidosPageContent() {
                               alert('PIN incorrecto. Cancelado.');
                               return;
                             }
-                            const devolver = confirm(
-                              '¿Deseas devolver al stock las prendas descontadas por esta venta? (Recomendado: Sí)'
-                            );
-                            if (!devolver) {
-                              alert('Cancelado. No se eliminó el pedido.');
-                              return;
-                            }
                             const folio = pedido.folio || `#${String(pedido.id).slice(0, 8)}…`;
+                            const esPendiente = pedido.estado === 'PENDIENTE';
+                            // PENDIENTE: lo no entregado nunca descontó stock; no preguntar devolver.
+                            if (!esPendiente) {
+                              const devolver = confirm(
+                                'Este pedido ya descontó mercancía.\n\n¿Deseas devolver al stock las prendas entregadas al eliminar?\n\nAceptar = sí, reponer stock\nCancelar = no eliminar el pedido'
+                              );
+                              if (!devolver) {
+                                alert('Cancelado. No se eliminó el pedido.');
+                                return;
+                              }
+                            }
                             const ok = confirm(
-                              `⚠️ ELIMINACIÓN DEFINITIVA\n\nSe eliminará el pedido ${folio} y sus partidas.\nSe repondrá el stock entregado.\n\n¿Continuar?`
+                              esPendiente
+                                ? `⚠️ ELIMINACIÓN DEFINITIVA\n\nSe eliminará el pedido ${folio} (PENDIENTE).\nNo se toca el stock porque aún no se había descontado.\n\n¿Continuar?`
+                                : `⚠️ ELIMINACIÓN DEFINITIVA\n\nSe eliminará el pedido ${folio} y sus partidas.\nSe repondrá el stock entregado.\n\n¿Continuar?`
                             );
                             if (!ok) return;
 
