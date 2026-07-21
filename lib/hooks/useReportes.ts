@@ -373,19 +373,154 @@ export function useReportes(
     }
   };
 
-  const pedidosPendientes = async () => {
+  const pedidosPendientes = async (): Promise<
+    Array<{
+      folio: string;
+      cliente_nombre: string;
+      created_at: string;
+      total: number;
+      prenda: string;
+      talla: string;
+      observacion: string;
+    }>
+  > => {
     try {
       setLoading(true);
+
+      type Fila = {
+        folio: string;
+        cliente_nombre: string;
+        created_at: string;
+        total: number;
+        prenda: string;
+        talla: string;
+        observacion: string;
+      };
+
       let query = insforgeDb()
         .from('pedidos')
-        .select('*')
+        .select(
+          `
+          id,
+          folio,
+          cliente_nombre,
+          created_at,
+          total,
+          estado,
+          linea_venta,
+          detalle_pedidos (
+            pendiente,
+            especificaciones,
+            precio_unitario,
+            prenda_id,
+            prenda:prendas ( nombre ),
+            talla:tallas ( nombre )
+          )
+        `
+        )
         .in('estado', ['PENDIENTE'])
         .order('created_at', { ascending: false });
       if (sid) query = query.eq('sucursal_id', sid);
-      const { data, error } = await query;
+      let { data, error } = await query;
+
+      // Fallback sin embeds si el join falla
+      if (error) {
+        let q2 = insforgeDb()
+          .from('pedidos')
+          .select('id, folio, cliente_nombre, created_at, total, estado, linea_venta')
+          .in('estado', ['PENDIENTE'])
+          .order('created_at', { ascending: false });
+        if (sid) q2 = q2.eq('sucursal_id', sid);
+        const plain = await q2;
+        if (plain.error) throw plain.error;
+        data = [];
+        for (const p of plain.data || []) {
+          const det = await insforgeDb()
+            .from('detalle_pedidos')
+            .select('pendiente, especificaciones, precio_unitario, prenda_id, talla_id')
+            .eq('pedido_id', p.id);
+          const rows = (det.data || []) as Record<string, unknown>[];
+          const prendaIds = [...new Set(rows.map((r) => String(r.prenda_id || '')).filter(Boolean))];
+          const tallaIds = [...new Set(rows.map((r) => String(r.talla_id || '')).filter(Boolean))];
+          const prendasMap = new Map<string, string>();
+          const tallasMap = new Map<string, string>();
+          if (prendaIds.length) {
+            const { data: prs } = await insforgeDb().from('prendas').select('id, nombre').in('id', prendaIds);
+            for (const pr of prs || []) prendasMap.set(String(pr.id), String(pr.nombre));
+          }
+          if (tallaIds.length) {
+            const { data: ts } = await insforgeDb().from('tallas').select('id, nombre').in('id', tallaIds);
+            for (const t of ts || []) tallasMap.set(String(t.id), String(t.nombre));
+          }
+          (data as any[]).push({
+            ...p,
+            detalle_pedidos: rows.map((r) => ({
+              ...r,
+              prenda: r.prenda_id ? { nombre: prendasMap.get(String(r.prenda_id)) } : null,
+              talla: r.talla_id ? { nombre: tallasMap.get(String(r.talla_id)) } : null,
+            })),
+          });
+        }
+        error = null;
+      }
 
       if (error) throw error;
-      return data || [];
+
+      const pedidos = (data || []).filter((p) =>
+        pedidoCoincideFiltroLinea(p as unknown as Record<string, unknown>, filtroLinea)
+      );
+
+      const filas: Fila[] = [];
+
+      for (const p of pedidos as any[]) {
+        const folio =
+          (p.folio && String(p.folio).trim()) ||
+          `#${String(p.id).substring(0, 8)}`;
+        const detalles = Array.isArray(p.detalle_pedidos) ? p.detalle_pedidos : [];
+        const pendientes = detalles.filter((d: Record<string, unknown>) => {
+          const pend = Number(d.pendiente ?? 0);
+          if (pend <= 0) return false;
+          if (d.prenda_id == null || Number(d.precio_unitario) < 0) return false;
+          return true;
+        });
+
+        const lineas =
+          pendientes.length > 0
+            ? pendientes
+            : detalles.filter((d: Record<string, unknown>) => {
+                if (d.prenda_id == null || Number(d.precio_unitario) < 0) return false;
+                return true;
+              });
+
+        if (lineas.length === 0) {
+          filas.push({
+            folio,
+            cliente_nombre: p.cliente_nombre || 'Sin cliente',
+            created_at: p.created_at,
+            total: Number(p.total) || 0,
+            prenda: '—',
+            talla: '—',
+            observacion: '—',
+          });
+          continue;
+        }
+
+        for (const d of lineas) {
+          const prendaObj = d.prenda as { nombre?: string } | null;
+          const tallaObj = d.talla as { nombre?: string } | null;
+          filas.push({
+            folio,
+            cliente_nombre: p.cliente_nombre || 'Sin cliente',
+            created_at: p.created_at,
+            total: Number(p.total) || 0,
+            prenda: prendaObj?.nombre || '—',
+            talla: tallaObj?.nombre || '—',
+            observacion: String(d.especificaciones || '').trim() || '—',
+          });
+        }
+      }
+
+      return filas;
     } catch (err: any) {
       console.error('Error en pedidosPendientes:', err);
       return [];

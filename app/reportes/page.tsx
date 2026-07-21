@@ -248,14 +248,27 @@ export default function ReportesPage() {
     
     autoTable(doc, {
       startY: 35,
-      head: [['ID Pedido', 'Cliente', 'Fecha', 'Total', 'Estado']],
-      body: datos.map(p => [
-        `#${p.id.substring(0, 8)}`,
+      head: [['Folio', 'Cliente', 'Fecha', 'Total', 'Prenda', 'Talla', 'Observación']],
+      body: datos.map((p) => [
+        p.folio || '—',
         p.cliente_nombre || 'Sin cliente',
-        new Date(p.created_at).toLocaleDateString('es-MX'),
-        `$${p.total.toFixed(2)}`,
-        p.estado
+        p.created_at ? new Date(p.created_at).toLocaleDateString('es-MX') : '—',
+        `$${Number(p.total || 0).toFixed(2)}`,
+        p.prenda || '—',
+        p.talla || '—',
+        p.observacion || '—',
       ]),
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [37, 99, 235], fontSize: 8 },
+      columnStyles: {
+        0: { cellWidth: 22 },
+        1: { cellWidth: 38 },
+        2: { cellWidth: 20 },
+        3: { cellWidth: 20, halign: 'right' },
+        4: { cellWidth: 32 },
+        5: { cellWidth: 16 },
+        6: { cellWidth: 'auto' },
+      },
     });
     
     // Mostrar PDF en nueva pestaña en lugar de descargar
