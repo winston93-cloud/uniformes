@@ -458,11 +458,14 @@ export function ResumenMovimientoPrenda({
   totalUnidades: number;
 }) {
   const texto = lineas
-    .map((l) => `talla ${l.tallaNombre} × ${l.cantidad}`)
+    .map((l) => {
+      const u = l.cantidad === 1 ? 'pieza' : 'piezas';
+      return `Talla ${l.tallaNombre}: ${l.cantidad} ${u}`;
+    })
     .join(' · ');
   return (
     <div style={{ marginTop: '0.35rem', fontSize: '0.8rem', color: '#475569', lineHeight: 1.35 }}>
-      Movido: {texto}
+      {texto}
       {lineas.length > 1 ? (
         <span style={{ color: '#94a3b8' }}> (total {totalUnidades})</span>
       ) : null}
