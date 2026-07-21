@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { insforgeDb } from '@/lib/insforgeBrowser';
 import type { Transferencia } from '@/lib/types';
 
@@ -93,6 +93,10 @@ export default function BusquedaPrendaTransferencias({
   const [index, setIndex] = useState<DetalleIndex[]>([]);
   const [cargandoIndex, setCargandoIndex] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+  const opcionesRef = useRef<OpcionBusquedaPrenda[]>([]);
+  const indiceRef = useRef(0);
+  const abiertoRef = useRef(false);
   const onResultadosRef = useRef(onResultados);
   onResultadosRef.current = onResultados;
 
@@ -227,6 +231,24 @@ export default function BusquedaPrendaTransferencias({
     return scored.slice(0, 15).map((s) => s.o);
   }, [index, texto]);
 
+  useEffect(() => {
+    opcionesRef.current = opciones;
+  }, [opciones]);
+
+  useEffect(() => {
+    indiceRef.current = indice;
+  }, [indice]);
+
+  useEffect(() => {
+    abiertoRef.current = abierto;
+  }, [abierto]);
+
+  useEffect(() => {
+    if (!abierto || !listRef.current) return;
+    const item = listRef.current.querySelector<HTMLElement>(`[data-opcion-idx="${indice}"]`);
+    item?.scrollIntoView({ block: 'nearest' });
+  }, [indice, abierto, opciones.length]);
+
   const aplicarFiltro = useCallback(
     (sel: OpcionBusquedaPrenda | null) => {
       if (!sel) {
@@ -293,7 +315,48 @@ export default function BusquedaPrendaTransferencias({
     setSeleccion(null);
     setTexto('');
     setAbierto(false);
+    setIndice(0);
     onResultadosRef.current(null);
+  };
+
+  const onKeyDownBusqueda = (e: KeyboardEvent<HTMLInputElement>) => {
+    const ops = opcionesRef.current;
+    const key = e.key;
+
+    if (key === 'ArrowDown') {
+      e.preventDefault();
+      if (ops.length === 0) return;
+      setAbierto(true);
+      setIndice((i) => {
+        const next = abiertoRef.current ? Math.min(i + 1, ops.length - 1) : 0;
+        return next;
+      });
+      return;
+    }
+
+    if (key === 'ArrowUp') {
+      e.preventDefault();
+      if (ops.length === 0) return;
+      setAbierto(true);
+      setIndice((i) => Math.max(i - 1, 0));
+      return;
+    }
+
+    if (key === 'Enter') {
+      // type=search a veces envía/limpia; siempre interceptamos si hay opciones
+      if (ops.length === 0) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const unica = ops.length === 1 ? ops[0] : null;
+      const elegida = unica ?? ops[indiceRef.current] ?? ops[0];
+      if (elegida) elegir(elegida);
+      return;
+    }
+
+    if (key === 'Escape') {
+      e.preventDefault();
+      setAbierto(false);
+    }
   };
 
   return (
@@ -324,7 +387,14 @@ export default function BusquedaPrendaTransferencias({
         <div style={{ flex: 1, position: 'relative' }}>
           <input
             id="busqueda-prenda-transf"
-            type="search"
+            type="text"
+            role="combobox"
+            aria-expanded={abierto}
+            aria-controls="lista-prendas-transf"
+            aria-autocomplete="list"
+            aria-activedescendant={
+              abierto && opciones[indice] ? `opcion-prenda-transf-${indice}` : undefined
+            }
             value={texto}
             autoComplete="off"
             placeholder={
@@ -341,22 +411,7 @@ export default function BusquedaPrendaTransferencias({
               onResultadosRef.current(null);
             }}
             onFocus={() => setAbierto(true)}
-            onKeyDown={(e) => {
-              if (!abierto || opciones.length === 0) return;
-              if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                setIndice((i) => Math.min(i + 1, opciones.length - 1));
-              } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                setIndice((i) => Math.max(i - 1, 0));
-              } else if (e.key === 'Enter') {
-                e.preventDefault();
-                const op = opciones[indice] ?? opciones[0];
-                if (op) elegir(op);
-              } else if (e.key === 'Escape') {
-                setAbierto(false);
-              }
-            }}
+            onKeyDown={onKeyDownBusqueda}
             style={{
               width: '100%',
               padding: '0.7rem 0.9rem',
@@ -367,6 +422,8 @@ export default function BusquedaPrendaTransferencias({
           />
           {abierto && opciones.length > 0 && (
             <ul
+              id="lista-prendas-transf"
+              ref={listRef}
               role="listbox"
               style={{
                 position: 'absolute',
@@ -385,28 +442,38 @@ export default function BusquedaPrendaTransferencias({
                 zIndex: 20,
               }}
             >
-              {opciones.map((op, i) => (
-                <li key={op.key}>
-                  <button
-                    type="button"
-                    role="option"
-                    aria-selected={i === indice}
-                    onMouseEnter={() => setIndice(i)}
-                    onClick={() => elegir(op)}
-                    style={{
-                      width: '100%',
-                      textAlign: 'left',
-                      border: 'none',
-                      background: i === indice ? '#eff6ff' : 'transparent',
-                      padding: '0.65rem 0.9rem',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <div style={{ fontWeight: 600, color: '#0f172a' }}>{op.label}</div>
-                    <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{op.sublabel}</div>
-                  </button>
-                </li>
-              ))}
+              {opciones.map((op, i) => {
+                const activa = i === indice;
+                return (
+                  <li key={op.key} role="presentation">
+                    <button
+                      type="button"
+                      id={`opcion-prenda-transf-${i}`}
+                      data-opcion-idx={i}
+                      role="option"
+                      aria-selected={activa}
+                      onMouseEnter={() => setIndice(i)}
+                      onMouseDown={(ev) => {
+                        // Evita que el input pierda foco antes del click
+                        ev.preventDefault();
+                      }}
+                      onClick={() => elegir(op)}
+                      style={{
+                        width: '100%',
+                        textAlign: 'left',
+                        border: 'none',
+                        borderLeft: activa ? '3px solid #2563eb' : '3px solid transparent',
+                        background: activa ? '#dbeafe' : 'transparent',
+                        padding: '0.65rem 0.9rem',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <div style={{ fontWeight: 600, color: '#0f172a' }}>{op.label}</div>
+                      <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{op.sublabel}</div>
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           )}
           {abierto && texto.trim() && opciones.length === 0 && !cargandoIndex && (
