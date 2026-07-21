@@ -101,12 +101,14 @@ SET precio_mayoreo = EXCLUDED.precio_mayoreo,
     precio_venta = EXCLUDED.precio_venta,
     updated_at = now();
 
--- Precios Educativo (lista impresa)
+-- Precios Educativo (lista impresa: 1=3→800, 5→820, 7=9→880, ESPECIAL→1040)
 INSERT INTO public.conjunto_precios (conjunto_id, talla_id, precio_mayoreo, precio_menudeo, precio_venta)
 VALUES
   ('a1111111-1111-4111-8111-111111111102', '316ae4ad-01c0-4fc6-ad19-607d03988141', 800, 800, 800), -- 1
+  ('a1111111-1111-4111-8111-111111111102', '380fb295-478a-405d-9e48-b201b1e14b36', 800, 800, 800), -- 3
   ('a1111111-1111-4111-8111-111111111102', 'b33cf977-def7-4c9f-b40b-baa1ea41a05d', 820, 820, 820), -- 5
   ('a1111111-1111-4111-8111-111111111102', '86b7e9a0-fab7-4a33-8ed2-6e009d802b1a', 880, 880, 880), -- 7
+  ('a1111111-1111-4111-8111-111111111102', '111a772b-004e-421c-8df1-dc1c6fe2baf7', 880, 880, 880), -- 9
   ('a1111111-1111-4111-8111-111111111102', '0677d1d0-e7f7-4920-8769-cfffa3b7586c', 1040, 1040, 1040) -- ESPECIAL
 ON CONFLICT (conjunto_id, talla_id) DO UPDATE
 SET precio_mayoreo = EXCLUDED.precio_mayoreo,
