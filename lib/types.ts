@@ -151,7 +151,7 @@ export interface Corte {
   total_ventas: number;
   total_pedidos: number;
   sucursal_id?: string | null;
-  linea_venta?: 'prendas' | 'tenis' | null;
+  linea_venta?: 'prendas' | 'tenis' | 'remate_tenis' | null;
   usuario_id: string | null;
   activo: boolean;
   created_at?: string;

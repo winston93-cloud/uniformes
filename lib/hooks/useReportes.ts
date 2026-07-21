@@ -7,6 +7,7 @@ import { filtrarCostosInventarioTienda } from '@/lib/inventarioSucursal';
 import { normalizarCamposCostoApi } from '@/lib/costoQueries';
 import {
   esPrendaTenis,
+  esPrendaRemateTenis,
   pedidoCoincideFiltroLinea,
   TENIS_PRENDA_ID,
   type FiltroLineaVenta,
@@ -81,7 +82,10 @@ export function useReportes(
       const prendaId = String(r.prenda_id ?? r.prendaId ?? r.prenda?.id ?? '');
       const prendaNombre = r.prenda?.nombre as string | undefined;
       const esTenis = esPrendaTenis(prendaId, prendaNombre);
-      return filtroLinea === 'tenis' ? esTenis : !esTenis;
+      const esRemate = esPrendaRemateTenis(prendaId, prendaNombre);
+      if (filtroLinea === 'tenis') return esTenis;
+      if (filtroLinea === 'remate_tenis') return esRemate;
+      return !esTenis && !esRemate;
     });
   };
 
@@ -91,7 +95,10 @@ export function useReportes(
       const prendaId = String(detalle.prenda_id ?? detalle.prenda?.id ?? '');
       const prendaNombre = detalle.prenda?.nombre as string | undefined;
       const esTenis = esPrendaTenis(prendaId, prendaNombre);
-      return filtroLinea === 'tenis' ? esTenis : !esTenis;
+      const esRemate = esPrendaRemateTenis(prendaId, prendaNombre);
+      if (filtroLinea === 'tenis') return esTenis;
+      if (filtroLinea === 'remate_tenis') return esRemate;
+      return !esTenis && !esRemate;
     });
   };
 

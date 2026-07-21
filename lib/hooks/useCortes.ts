@@ -18,7 +18,7 @@ function readSucursalId(row: Record<string, unknown>): string {
 
 function readLineaVenta(row: Record<string, unknown>): LineaVentaWinston | null {
   const raw = row.linea_venta ?? row.lineaVenta;
-  if (raw === 'prendas' || raw === 'tenis') return raw;
+  if (raw === 'prendas' || raw === 'tenis' || raw === 'remate_tenis') return raw;
   return null;
 }
 

@@ -448,7 +448,8 @@ export default function ReportesPage() {
             {esWinston && (
               <>
                 {' '}
-                Filtra por <strong>prendas (wu…)</strong> o <strong>tenis (wt…)</strong> con el selector de abajo.
+                Filtra por <strong>prendas (wu…)</strong>, <strong>tenis (wt…)</strong> o{' '}
+                <strong>remate tenis (rt…)</strong> con el selector de abajo.
               </>
             )}
           </div>
@@ -505,9 +506,11 @@ export default function ReportesPage() {
               <div style={{ color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
                 {esWinston && filtroLineaVenta === 'tenis'
                   ? 'Tenis en Stock'
-                  : esWinston && filtroLineaVenta === 'prendas'
-                    ? 'Prendas en Stock'
-                    : 'Prendas en Stock'}
+                  : esWinston && filtroLineaVenta === 'remate_tenis'
+                    ? 'Remate tenis en Stock'
+                    : esWinston && filtroLineaVenta === 'prendas'
+                      ? 'Prendas en Stock'
+                      : 'Prendas en Stock'}
               </div>
             </div>
           </div>

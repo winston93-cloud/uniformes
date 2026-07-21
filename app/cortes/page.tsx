@@ -17,6 +17,7 @@ export const dynamic = 'force-dynamic';
 
 function etiquetaLineaCorte(corte: Corte): string {
   if (corte.linea_venta === 'tenis') return 'Tenis';
+  if (corte.linea_venta === 'remate_tenis') return 'Remate tenis';
   if (corte.linea_venta === 'prendas') return 'Prendas';
   return 'General';
 }
@@ -60,7 +61,13 @@ export default function CortesPage() {
 
     alert(
       esWinston
-        ? `Corte de ${formData.lineaVenta === 'tenis' ? 'tenis' : 'prendas'} creado exitosamente`
+        ? `Corte de ${
+            formData.lineaVenta === 'tenis'
+              ? 'tenis'
+              : formData.lineaVenta === 'remate_tenis'
+                ? 'remate tenis'
+                : 'prendas'
+          } creado exitosamente`
         : 'Corte de caja creado exitosamente'
     );
     setFormData({ fechaInicio: '', fechaFin: '', lineaVenta: formData.lineaVenta });
@@ -134,7 +141,8 @@ export default function CortesPage() {
             {esWinston ? (
               <>
                 {' '}
-                Genera cortes separados de <strong>prendas (wu…)</strong> y <strong>tenis (wt…)</strong>.
+                Genera cortes separados de <strong>prendas (wu…)</strong>, <strong>tenis (wt…)</strong> y{' '}
+                <strong>remate tenis (rt…)</strong>.
               </>
             ) : (
               <> Solo se incluyen pedidos <strong>COMPLETADOS</strong> (liquidados) de esta tienda en el rango de fechas.</>
@@ -319,7 +327,13 @@ export default function CortesPage() {
                     <td data-label="ID" style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>{corte.id.substring(0, 8)}...</td>
                     {esWinston && (
                       <td data-label="Línea">
-                        <span className={`badge ${corte.linea_venta === 'tenis' ? 'badge-warning' : 'badge-info'}`}>
+                        <span
+                          className={`badge ${
+                            corte.linea_venta === 'tenis' || corte.linea_venta === 'remate_tenis'
+                              ? 'badge-warning'
+                              : 'badge-info'
+                          }`}
+                        >
                           {etiquetaLineaCorte(corte)}
                         </span>
                       </td>

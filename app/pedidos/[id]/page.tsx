@@ -89,14 +89,13 @@ function PedidoDetalleContent({ params }: { params: Promise<{ id: string }> }) {
 
   const [printCal, setPrintCal] = useState<TicketPrintCal>(() => defaultTicketPrintCal(sesion));
 
-  const siguienteId = searchParams.get('siguiente')?.trim() || '';
+  const siguientesIds = searchParams.getAll('siguiente').map((s) => s.trim()).filter(Boolean);
   const esDobleRecibo = pedidos.length > 1;
 
   const cargarPedidos = useCallback(async () => {
     try {
       setLoading(true);
-      const ids = [resolvedParams.id];
-      if (siguienteId) ids.push(siguienteId);
+      const ids = [resolvedParams.id, ...siguientesIds];
 
       const cargados: PedidoRecibo[] = [];
       for (const id of ids) {
@@ -116,7 +115,7 @@ function PedidoDetalleContent({ params }: { params: Promise<{ id: string }> }) {
     } finally {
       setLoading(false);
     }
-  }, [resolvedParams.id, siguienteId, sesion?.sucursal_id, router]);
+  }, [resolvedParams.id, siguientesIds.join(','), sesion?.sucursal_id, router]);
 
   useEffect(() => {
     void cargarPedidos();
@@ -365,7 +364,7 @@ function PedidoDetalleContent({ params }: { params: Promise<{ id: string }> }) {
             {generandoPdf
               ? 'Generando PDF…'
               : esDobleRecibo
-                ? '🖨️ Imprimir 2 recibos (prendas y tenis)'
+                ? `🖨️ Imprimir ${pedidos.length} recibos`
                 : '🖨️ Imprimir Recibo'}
           </button>
           <button
@@ -397,8 +396,14 @@ function PedidoDetalleContent({ params }: { params: Promise<{ id: string }> }) {
               fontSize: '0.95rem',
             }}
           >
-            Venta mixta: <strong>2 recibos</strong> — primero <strong>prendas</strong> ({pedidos[0]?.folio}), luego{' '}
-            <strong>tenis</strong> ({pedidos[1]?.folio}). Al imprimir salen en ese orden.
+            Venta mixta: <strong>{pedidos.length} recibos</strong> —{' '}
+            {pedidos.map((p, i) => (
+              <span key={p.id}>
+                {i > 0 ? ', ' : ''}
+                <strong>{etiquetaLineaRecibo(p)}</strong> ({p.folio})
+              </span>
+            ))}
+            . Al imprimir salen en ese orden.
           </div>
         )}
 

@@ -805,8 +805,9 @@ function PedidosPageContent() {
 
       if (resultado.success && resultado.pedidos.length > 0) {
         if (resultado.pedidos.length > 1) {
-          const [prendas, tenis] = resultado.pedidos;
-          router.push(`/pedidos/${prendas.id}?siguiente=${tenis.id}`);
+          const [primero, ...resto] = resultado.pedidos;
+          const qs = resto.map((p) => `siguiente=${encodeURIComponent(p.id)}`).join('&');
+          router.push(`/pedidos/${primero.id}?${qs}`);
         } else {
           console.log('✅ Pedido creado exitosamente, ID:', resultado.pedidos[0].id);
           router.push(`/pedidos/${resultado.pedidos[0].id}`);
@@ -938,7 +939,8 @@ function PedidosPageContent() {
             {esWinston ? (
               <>
                 {' '}
-                Folios de prendas: <strong>wu0001…</strong> · Tenis: <strong>wt0001…</strong>. Una venta mixta genera 2 recibos.
+                Folios: <strong>wu…</strong> prendas · <strong>wt…</strong> tenis · <strong>rt…</strong> remate tenis.
+                Una venta mixta genera un recibo por cada línea.
               </>
             ) : (
               <> Cada tienda tiene su propio historial y folios (ej. PED-MAT-MAD-…).</>

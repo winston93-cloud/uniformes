@@ -43,6 +43,7 @@ export interface PedidoRecibo {
 export function etiquetaLineaRecibo(pedido: PedidoRecibo): string {
   const linea = leerLineaVentaPedido(pedido as unknown as Record<string, unknown>);
   if (linea === 'tenis') return 'Tenis';
+  if (linea === 'remate_tenis') return 'Remate tenis';
   if (linea === 'prendas') return 'Prendas';
   return '';
 }

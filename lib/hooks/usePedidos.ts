@@ -237,7 +237,7 @@ export function usePedidos(sucursal_id?: string) {
     }
   };
 
-  /** Winston: divide carrito mixto en 2 pedidos (prendas primero, tenis después). */
+  /** Winston: divide carrito mixto (prendas → tenis → remate tenis). */
   const crearPedidosDesdeCarrito = async (
     pedido: Omit<Pedido, 'id' | 'created_at' | 'updated_at'>,
     detalles: Omit<DetallePedido, 'id' | 'pedido_id'>[],
@@ -259,7 +259,7 @@ export function usePedidos(sucursal_id?: string) {
       };
     }
 
-    const { prendas, tenis } = dividirDetallesPorLinea(detalles);
+    const { prendas, tenis, remate_tenis } = dividirDetallesPorLinea(detalles);
     const creados: PedidoCreadoResumen[] = [];
 
     try {
@@ -281,6 +281,17 @@ export function usePedidos(sucursal_id?: string) {
           tenis,
           sid,
           'tenis'
+        );
+        creados.push(creado);
+      }
+
+      if (remate_tenis.length > 0) {
+        const totalRemate = totalDetalles(remate_tenis);
+        const creado = await crearPedidoAtomico(
+          { ...pedido, total: totalRemate },
+          remate_tenis,
+          sid,
+          'remate_tenis'
         );
         creados.push(creado);
       }
