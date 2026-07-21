@@ -86,26 +86,48 @@ export default function ModalCostosPrenda({
     );
   };
 
-  const aplicarBulk = (campo: 'mayoreo' | 'menudeo') => {
-    const valor = campo === 'mayoreo' ? bulkMayoreo : bulkMenudeo;
-    if (valor === '') {
-      setMensaje({ tipo: 'err', text: 'Escribe un precio antes de aplicar.' });
-      return;
-    }
+  /** Vacío o 0 → no sobrescribe ese campo. */
+  const precioBulkAplicable = (raw: string): string | null => {
+    const t = raw.trim();
+    if (t === '') return null;
+    const n = parseFloat(t);
+    if (!Number.isFinite(n) || n <= 0) return null;
+    return t;
+  };
+
+  const aplicarBulk = () => {
     if (seleccionadas.length === 0) {
       setMensaje({ tipo: 'err', text: 'Selecciona al menos una talla.' });
+      return;
+    }
+    const mayoreo = precioBulkAplicable(bulkMayoreo);
+    const menudeo = precioBulkAplicable(bulkMenudeo);
+    if (!mayoreo && !menudeo) {
+      setMensaje({
+        tipo: 'err',
+        text: 'Escribe mayoreo y/o menudeo (vacío o 0 deja ese precio igual).',
+      });
       return;
     }
     const ids = new Set(seleccionadas.map((s) => s.costoId));
     const n = seleccionadas.length;
     setFilas((prev) =>
-      prev.map((f) =>
-        ids.has(f.costoId) ? { ...f, [campo]: valor, selected: false } : f
-      )
+      prev.map((f) => {
+        if (!ids.has(f.costoId)) return f;
+        return {
+          ...f,
+          ...(mayoreo ? { mayoreo } : {}),
+          ...(menudeo ? { menudeo } : {}),
+          selected: false,
+        };
+      })
     );
+    const partes: string[] = [];
+    if (mayoreo) partes.push('Mayoreo');
+    if (menudeo) partes.push('menudeo');
     setMensaje({
       tipo: 'ok',
-      text: `${campo === 'mayoreo' ? 'Mayoreo' : 'Menudeo'} aplicado a ${n} talla(s).`,
+      text: `${partes.join(' y ')} aplicado a ${n} talla(s).`,
     });
   };
 
@@ -224,61 +246,55 @@ export default function ModalCostosPrenda({
               ⚡ Aplicar precio a varias tallas
             </div>
             <p style={{ margin: '0 0 0.75rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-              Marca las tallas abajo, escribe el precio y pulsa aplicar. Ideal cuando varias tallas comparten el mismo
-              mayoreo o menudeo.
+              Marca tallas, escribe mayoreo y/o menudeo y pulsa Aplicar. Vacío o 0 en un campo deja ese precio igual.
             </p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.75rem' }}>
-              <div>
+            <div
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'flex-end',
+                gap: '0.75rem',
+              }}
+            >
+              <div style={{ flex: '1 1 120px', minWidth: 120 }}>
                 <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#2563eb' }}>📦 Mayoreo</label>
-                <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.25rem' }}>
-                  <input
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    className="form-input"
-                    value={bulkMayoreo}
-                    onChange={(e) => setBulkMayoreo(e.target.value)}
-                    placeholder="0.00"
-                    style={{ flex: 1, padding: '0.5rem' }}
-                  />
-                  <button
-                    type="button"
-                    className="btn btn-primary"
-                    style={{ padding: '0.5rem 0.75rem', whiteSpace: 'nowrap', fontSize: '0.85rem' }}
-                    onClick={() => aplicarBulk('mayoreo')}
-                  >
-                    Aplicar
-                  </button>
-                </div>
+                <input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  className="form-input"
+                  value={bulkMayoreo}
+                  onChange={(e) => setBulkMayoreo(e.target.value)}
+                  placeholder="0.00"
+                  style={{ width: '100%', marginTop: '0.25rem', padding: '0.5rem' }}
+                />
               </div>
-              <div>
+              <div style={{ flex: '1 1 120px', minWidth: 120 }}>
                 <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#059669' }}>🛍️ Menudeo</label>
-                <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.25rem' }}>
-                  <input
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    className="form-input"
-                    value={bulkMenudeo}
-                    onChange={(e) => setBulkMenudeo(e.target.value)}
-                    placeholder="0.00"
-                    style={{ flex: 1, padding: '0.5rem' }}
-                  />
-                  <button
-                    type="button"
-                    className="btn btn-primary"
-                    style={{
-                      padding: '0.5rem 0.75rem',
-                      whiteSpace: 'nowrap',
-                      fontSize: '0.85rem',
-                      background: 'linear-gradient(135deg, #10b981, #059669)',
-                    }}
-                    onClick={() => aplicarBulk('menudeo')}
-                  >
-                    Aplicar
-                  </button>
-                </div>
+                <input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  className="form-input"
+                  value={bulkMenudeo}
+                  onChange={(e) => setBulkMenudeo(e.target.value)}
+                  placeholder="0.00"
+                  style={{ width: '100%', marginTop: '0.25rem', padding: '0.5rem' }}
+                />
               </div>
+              <button
+                type="button"
+                className="btn btn-primary"
+                style={{
+                  padding: '0.5rem 1rem',
+                  whiteSpace: 'nowrap',
+                  fontSize: '0.85rem',
+                  alignSelf: 'flex-end',
+                }}
+                onClick={aplicarBulk}
+              >
+                Aplicar
+              </button>
             </div>
             <div style={{ marginTop: '0.65rem', fontSize: '0.82rem', color: '#64748b' }}>
               {seleccionadas.length > 0
