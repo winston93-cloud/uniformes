@@ -40,6 +40,34 @@ export interface CostoUbicacion {
   ubicacion?: UbicacionAlmacenamiento | null;
 }
 
+/** Par de prendas que al venderse misma talla usan precio de conjunto. */
+export interface Conjunto {
+  id: string;
+  nombre: string;
+  codigo: string | null;
+  prenda_a_id: string;
+  prenda_b_id: string;
+  activo: boolean;
+  notas?: string | null;
+  created_at?: string;
+  updated_at?: string;
+  prenda_a?: Prenda | null;
+  prenda_b?: Prenda | null;
+  precios?: ConjuntoPrecio[];
+}
+
+export interface ConjuntoPrecio {
+  id: string;
+  conjunto_id: string;
+  talla_id: string;
+  precio_mayoreo: number;
+  precio_menudeo: number;
+  precio_venta: number;
+  created_at?: string;
+  updated_at?: string;
+  talla?: Talla | null;
+}
+
 export interface Costo {
   id: string;
   talla_id: string;

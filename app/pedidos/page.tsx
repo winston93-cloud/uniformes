@@ -21,7 +21,9 @@ import { useExternos } from '@/lib/hooks/useExternos';
 import { usePrendas } from '@/lib/hooks/usePrendas';
 import { useTallas } from '@/lib/hooks/useTallas';
 import { usePedidos } from '@/lib/hooks/usePedidos';
+import { useConjuntos } from '@/lib/hooks/useConjuntos';
 import type { Prenda } from '@/lib/types';
+import { aplicarPreciosConjuntoALineas } from '@/lib/conjuntosPrecios';
 import {
   esCuentaWinston,
   OPCIONES_FILTRO_LINEA,
@@ -57,11 +59,16 @@ interface DetallePedido {
   cantidad: number;
   pendiente: number;
   precio: number;
+  /** Precio unitario individual (antes de aplicar conjunto). */
+  precio_lista?: number;
   total: number;
   costoId?: string;
   tiene_stock?: boolean; // Flag para indicar si tiene stock disponible
   cantidad_con_stock?: number; // Cantidad que sí tiene stock
   cantidad_pendiente?: number; // Cantidad pendiente por falta de stock
+  conjunto_id?: string | null;
+  conjunto_nombre?: string | null;
+  unidades_en_conjunto?: number;
 }
 
 export const dynamic = 'force-dynamic';
@@ -114,6 +121,7 @@ function PedidosPageContent() {
   const { tallas } = useTallas();
   const { pedidos: pedidosDB, loading: loadingPedidos, crearPedidosDesdeCarrito, actualizarEstadoPedido, eliminarPedidoDefinitivo } =
     usePedidos(sesion?.sucursal_id);
+  const { conjuntos } = useConjuntos();
 
   const esWinston = esCuentaWinston(sesion);
   const [filtroLineaVenta, setFiltroLineaVenta] = useState<FiltroLineaVenta>('todos');
@@ -563,6 +571,7 @@ function PedidosPageContent() {
       cantidad: cantidad,
       pendiente: cantidadPendiente, // Solo lo que no tiene stock
       precio: precio,
+      precio_lista: precio,
       total: total,
       costoId: costo.id,
       tiene_stock: cantidadConStock > 0,
@@ -572,10 +581,15 @@ function PedidosPageContent() {
 
     console.log('✅ Agregando detalle:', nuevoDetalle);
     console.log('📋 Detalles actuales:', formData.detalles);
+
+    const conConjunto = aplicarPreciosConjuntoALineas(
+      [...formData.detalles, nuevoDetalle],
+      conjuntos
+    );
     
     setFormData({ 
       ...formData, 
-      detalles: [...formData.detalles, nuevoDetalle] 
+      detalles: conConjunto 
     });
     
     console.log('🧹 Limpiando campos de entrada');
@@ -615,9 +629,10 @@ function PedidosPageContent() {
   };
 
   const eliminarDetalle = (index: number) => {
+    const restantes = formData.detalles.filter((_, i) => i !== index);
     setFormData({
       ...formData,
-      detalles: formData.detalles.filter((_, i) => i !== index)
+      detalles: aplicarPreciosConjuntoALineas(restantes, conjuntos),
     });
   };
 
@@ -1522,6 +1537,23 @@ function PedidosPageContent() {
                               </span>
                             )}
                             {detalle.prenda}
+                            {detalle.conjunto_nombre ? (
+                              <span
+                                style={{
+                                  display: 'inline-block',
+                                  marginLeft: '0.5rem',
+                                  backgroundColor: '#ecfdf5',
+                                  color: '#065f46',
+                                  padding: '0.15rem 0.45rem',
+                                  borderRadius: 4,
+                                  fontSize: '0.68rem',
+                                  fontWeight: 700,
+                                }}
+                                title={detalle.conjunto_nombre}
+                              >
+                                🧩 Conjunto
+                              </span>
+                            ) : null}
                           </td>
                           <td style={{ padding: '0.75rem' }}>
                             <span className="badge badge-info">{detalle.talla}</span>

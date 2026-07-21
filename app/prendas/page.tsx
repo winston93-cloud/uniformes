@@ -22,6 +22,7 @@ import { insforgeDb } from '@/lib/insforgeBrowser';
 import type { Prenda } from '@/lib/types';
 import { sortTallas } from '@/lib/ordenTallas';
 import ModalInsumosTalla from '@/components/ModalInsumosTalla';
+import ModalConjuntos from '@/components/ModalConjuntos';
 import {
   parseEnteroFormateado,
   formatearEnteroMilesAlEscribir,
@@ -91,6 +92,7 @@ export default function PrendasPage() {
   
   // Estados para modal de insumos
   const [modalInsumosAbierto, setModalInsumosAbierto] = useState(false);
+  const [modalConjuntosAbierto, setModalConjuntosAbierto] = useState(false);
   const [tallaSeleccionadaModal, setTallaSeleccionadaModal] = useState<{ id: string; nombre: string } | null>(null);
   const [conteoInsumosPorTalla, setConteoInsumosPorTalla] = useState<Record<string, number>>({});
   const [costosEdicionCache, setCostosEdicionCache] = useState<Record<string, unknown>[]>([]);
@@ -1208,6 +1210,13 @@ export default function PrendasPage() {
           <div style={{ marginBottom: '1rem', textAlign: 'right', padding: '0 1rem', display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
             {puedeEditarCatalogo && (
               <>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setModalConjuntosAbierto(true)}
+                style={{ backgroundColor: '#0f766e', borderColor: '#0f766e', minWidth: '200px', color: '#fff' }}
+              >
+                🧩 Conjuntos
+              </button>
               <button 
                 className="btn btn-secondary" 
                 onClick={() => window.location.href = '/categorias-prendas'}
@@ -1316,6 +1325,13 @@ export default function PrendasPage() {
           tallaNombre={tallaSeleccionadaModal.nombre}
         />
       )}
+
+      <ModalConjuntos
+        abierto={modalConjuntosAbierto}
+        onClose={() => setModalConjuntosAbierto(false)}
+        prendas={prendas}
+        tallas={tallas}
+      />
 
       {/* Modal de Stock */}
       {modalStockAbierto && prendaEditando && tallaSeleccionadaStock && (
