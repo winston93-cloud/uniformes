@@ -4,13 +4,23 @@ export type LineaCarritoConjunto = {
   prenda_id: string;
   talla_id: string;
   cantidad: number;
-  /** Precio unitario de lista (individual), antes de descuento conjunto. */
+  /** Precio unitario de lista (individual). */
   precio_lista?: number;
   precio: number;
   total: number;
   conjunto_id?: string | null;
   conjunto_nombre?: string | null;
   unidades_en_conjunto?: number;
+  es_descuento_conjunto?: boolean;
+  /** Campos de UI / carrito de pedidos */
+  prenda?: string;
+  talla?: string;
+  especificaciones?: string;
+  pendiente?: number;
+  cantidad_con_stock?: number;
+  cantidad_pendiente?: number;
+  tiene_stock?: boolean;
+  costoId?: string;
 };
 
 function precioConjuntoTalla(precios: ConjuntoPrecio[] | undefined, tallaId: string): number | null {
@@ -28,48 +38,46 @@ function listaDe(l: LineaCarritoConjunto): number {
   return Number.isFinite(l.precio_lista) ? Number(l.precio_lista) : Number(l.precio) || 0;
 }
 
+export function esLineaDescuentoConjunto(l: { es_descuento_conjunto?: boolean; prenda_id?: string }): boolean {
+  if (l.es_descuento_conjunto) return true;
+  const id = String(l.prenda_id ?? '').trim();
+  return id === '' || id === 'descuento-conjunto';
+}
+
 /**
- * Recalcula precios del carrito: si hay pantalón + chamarra de un conjunto
- * en la misma talla, las unidades pareadas usan el precio de conjunto
- * (repartido proporcionalmente entre ambas prendas).
+ * Mantiene precios individuales de las prendas y agrega partidas
+ * "Descuento x conjunto" = (suma individual − precio conjunto) × pares.
  */
-export function aplicarPreciosConjuntoALineas<T extends LineaCarritoConjunto>(
+export function aplicarDescuentosConjuntoALineas<T extends LineaCarritoConjunto>(
   lineas: T[],
   conjuntos: Conjunto[]
 ): T[] {
-  if (!lineas.length || !conjuntos.length) {
-    return lineas.map((l) => {
+  const productos = lineas
+    .filter((l) => !esLineaDescuentoConjunto(l))
+    .map((l) => {
       const lista = listaDe(l);
       return {
         ...l,
         precio_lista: lista,
         precio: lista,
         total: round2(l.cantidad * lista),
-        conjunto_id: null,
-        conjunto_nombre: null,
+        conjunto_id: null as string | null,
+        conjunto_nombre: null as string | null,
         unidades_en_conjunto: 0,
-      };
+        es_descuento_conjunto: false,
+      } as T;
     });
+
+  if (!productos.length || !conjuntos.length) {
+    return productos;
   }
 
-  const out: T[] = lineas.map((l) => {
-    const lista = listaDe(l);
-    return {
-      ...l,
-      precio_lista: lista,
-      precio: lista,
-      total: round2(l.cantidad * lista),
-      conjunto_id: null,
-      conjunto_nombre: null,
-      unidades_en_conjunto: 0,
-    };
-  });
-
+  const descuentos: T[] = [];
   const activos = conjuntos.filter((c) => c.activo !== false);
 
   for (const cj of activos) {
     const tallas = new Set(
-      out
+      productos
         .filter((l) => l.prenda_id === cj.prenda_a_id || l.prenda_id === cj.prenda_b_id)
         .map((l) => l.talla_id)
     );
@@ -78,51 +86,59 @@ export function aplicarPreciosConjuntoALineas<T extends LineaCarritoConjunto>(
       const precioCj = precioConjuntoTalla(cj.precios, tallaId);
       if (precioCj == null) continue;
 
-      const idxA = out
-        .map((l, i) => ({ l, i }))
-        .filter(({ l }) => l.prenda_id === cj.prenda_a_id && l.talla_id === tallaId);
-      const idxB = out
-        .map((l, i) => ({ l, i }))
-        .filter(({ l }) => l.prenda_id === cj.prenda_b_id && l.talla_id === tallaId);
+      const lineasA = productos.filter((l) => l.prenda_id === cj.prenda_a_id && l.talla_id === tallaId);
+      const lineasB = productos.filter((l) => l.prenda_id === cj.prenda_b_id && l.talla_id === tallaId);
+      if (!lineasA.length || !lineasB.length) continue;
 
-      if (idxA.length === 0 || idxB.length === 0) continue;
-
-      const qtyA = idxA.reduce((s, x) => s + x.l.cantidad, 0);
-      const qtyB = idxB.reduce((s, x) => s + x.l.cantidad, 0);
+      const qtyA = lineasA.reduce((s, l) => s + l.cantidad, 0);
+      const qtyB = lineasB.reduce((s, l) => s + l.cantidad, 0);
       const pares = Math.min(qtyA, qtyB);
       if (pares <= 0) continue;
 
-      const listaA = listaDe(idxA[0].l);
-      const listaB = listaDe(idxB[0].l);
-      const sumaLista = listaA + listaB;
-      const parteA = sumaLista > 0 ? round2(precioCj * (listaA / sumaLista)) : round2(precioCj / 2);
-      const parteB = round2(precioCj - parteA);
+      const listaA = listaDe(lineasA[0]);
+      const listaB = listaDe(lineasB[0]);
+      const descuentoUnit = round2(listaA + listaB - precioCj);
+      if (descuentoUnit <= 0) continue;
 
-      const aplicarBlend = (
-        indices: { l: T; i: number }[],
-        qtyTotal: number,
-        partePar: number,
-        lista: number
-      ) => {
-        if (qtyTotal <= 0) return;
-        const unit = round2((pares * partePar + (qtyTotal - pares) * lista) / qtyTotal);
-        for (const { i } of indices) {
-          const cant = out[i].cantidad;
-          out[i] = {
-            ...out[i],
-            precio: unit,
-            total: round2(cant * unit),
-            conjunto_id: cj.id,
-            conjunto_nombre: cj.nombre,
-            unidades_en_conjunto: Math.min(cant, pares),
-          };
-        }
-      };
+      const tallaNombre = lineasA[0].talla || lineasB[0].talla || '';
 
-      aplicarBlend(idxA, qtyA, parteA, listaA);
-      aplicarBlend(idxB, qtyB, parteB, listaB);
+      for (const l of [...lineasA, ...lineasB]) {
+        const i = productos.indexOf(l);
+        if (i < 0) continue;
+        productos[i] = {
+          ...productos[i],
+          conjunto_id: cj.id,
+          conjunto_nombre: cj.nombre,
+          unidades_en_conjunto: Math.min(l.cantidad, pares),
+        } as T;
+      }
+
+      descuentos.push({
+        ...(productos[0] as T),
+        prenda: 'Descuento x conjunto',
+        prenda_id: 'descuento-conjunto',
+        talla: tallaNombre,
+        talla_id: tallaId,
+        especificaciones: cj.nombre,
+        cantidad: pares,
+        pendiente: 0,
+        precio: -descuentoUnit,
+        precio_lista: 0,
+        total: round2(-descuentoUnit * pares),
+        costoId: undefined,
+        tiene_stock: false,
+        cantidad_con_stock: 0,
+        cantidad_pendiente: 0,
+        conjunto_id: cj.id,
+        conjunto_nombre: cj.nombre,
+        unidades_en_conjunto: pares,
+        es_descuento_conjunto: true,
+      } as T);
     }
   }
 
-  return out;
+  return [...productos, ...descuentos];
 }
+
+/** @deprecated Usar aplicarDescuentosConjuntoALineas */
+export const aplicarPreciosConjuntoALineas = aplicarDescuentosConjuntoALineas;

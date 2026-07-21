@@ -23,7 +23,7 @@ import { useTallas } from '@/lib/hooks/useTallas';
 import { usePedidos } from '@/lib/hooks/usePedidos';
 import { useConjuntos } from '@/lib/hooks/useConjuntos';
 import type { Prenda } from '@/lib/types';
-import { aplicarPreciosConjuntoALineas } from '@/lib/conjuntosPrecios';
+import { aplicarDescuentosConjuntoALineas, esLineaDescuentoConjunto } from '@/lib/conjuntosPrecios';
 import {
   esCuentaWinston,
   OPCIONES_FILTRO_LINEA,
@@ -69,6 +69,7 @@ interface DetallePedido {
   conjunto_id?: string | null;
   conjunto_nombre?: string | null;
   unidades_en_conjunto?: number;
+  es_descuento_conjunto?: boolean;
 }
 
 export const dynamic = 'force-dynamic';
@@ -582,7 +583,7 @@ function PedidosPageContent() {
     console.log('✅ Agregando detalle:', nuevoDetalle);
     console.log('📋 Detalles actuales:', formData.detalles);
 
-    const conConjunto = aplicarPreciosConjuntoALineas(
+    const conConjunto = aplicarDescuentosConjuntoALineas(
       [...formData.detalles, nuevoDetalle],
       conjuntos
     );
@@ -630,9 +631,10 @@ function PedidosPageContent() {
 
   const eliminarDetalle = (index: number) => {
     const restantes = formData.detalles.filter((_, i) => i !== index);
+    const soloProductos = restantes.filter((d) => !esLineaDescuentoConjunto(d));
     setFormData({
       ...formData,
-      detalles: aplicarPreciosConjuntoALineas(restantes, conjuntos),
+      detalles: aplicarDescuentosConjuntoALineas(soloProductos, conjuntos),
     });
   };
 
@@ -771,8 +773,10 @@ function PedidosPageContent() {
     
     console.log('✅ Validaciones pasadas, preparando datos...');
     
-    // Determinar estado automáticamente basado en pendientes
-    const hayPendientes = formData.detalles.some(d => (d.cantidad_pendiente || 0) > 0);
+    // Determinar estado automáticamente basado en pendientes (ignorar descuentos)
+    const hayPendientes = formData.detalles.some(
+      (d) => !esLineaDescuentoConjunto(d) && (d.cantidad_pendiente || 0) > 0
+    );
     const estadoPedido = hayPendientes ? 'PENDIENTE' : 'COMPLETADO';
     
     console.log(`📊 Estado determinado: ${estadoPedido} (¿Hay pendientes? ${hayPendientes})`);
@@ -793,6 +797,7 @@ function PedidosPageContent() {
     // Preparar detalles para la base de datos
     const detallesParaDB = formData.detalles.map(detalle => ({
       prenda_id: detalle.prenda_id,
+      prenda_nombre: detalle.prenda,
       talla_id: detalle.talla_id,
       cantidad: detalle.cantidad,
       // IMPORTANTE: usar nullish coalescing, porque 0 es un valor válido (todo pendiente)
@@ -803,6 +808,7 @@ function PedidosPageContent() {
       pendiente: detalle.cantidad_pendiente ?? 0, // Campo pendiente en BD
       especificaciones: detalle.especificaciones,
       tiene_stock: (detalle.cantidad_con_stock ?? 0) > 0, // Tiene stock si hay al menos algo disponible
+      es_descuento_conjunto: Boolean(detalle.es_descuento_conjunto),
     }));
 
     // Crear el pedido en la base de datos
@@ -1502,27 +1508,41 @@ function PedidosPageContent() {
                       )}
 
                       {/* Filas de detalles agregados */}
-                      {formData.detalles.map((detalle, index) => (
+                      {formData.detalles.map((detalle, index) => {
+                        const esDesc = esLineaDescuentoConjunto(detalle);
+                        return (
                         <tr 
                           key={index} 
                           style={{ 
                             borderBottom: '1px solid #e0e0e0', 
-                            backgroundColor: (detalle.cantidad_pendiente || 0) > 0 ? '#fef2f2' : '#fafafa',
-                            borderLeft: (detalle.cantidad_pendiente || 0) > 0 ? '4px solid #ef4444' : 'none'
+                            backgroundColor: esDesc
+                              ? '#ecfdf5'
+                              : (detalle.cantidad_pendiente || 0) > 0
+                                ? '#fef2f2'
+                                : '#fafafa',
+                            borderLeft: esDesc
+                              ? '4px solid #0f766e'
+                              : (detalle.cantidad_pendiente || 0) > 0
+                                ? '4px solid #ef4444'
+                                : 'none'
                           }}
                         >
                           <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                            <button
-                              type="button"
-                              onClick={() => eliminarDetalle(index)}
-                              className="btn btn-danger"
-                              style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}
-                            >
-                              🗑️
-                            </button>
+                            {!esDesc ? (
+                              <button
+                                type="button"
+                                onClick={() => eliminarDetalle(index)}
+                                className="btn btn-danger"
+                                style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}
+                              >
+                                🗑️
+                              </button>
+                            ) : (
+                              <span style={{ color: '#94a3b8', fontSize: '0.75rem' }}>—</span>
+                            )}
                           </td>
                           <td style={{ padding: '0.75rem', fontWeight: '600' }}>
-                            {(detalle.cantidad_pendiente || 0) > 0 && (
+                            {!esDesc && (detalle.cantidad_pendiente || 0) > 0 && (
                               <span style={{ 
                                 display: 'inline-block',
                                 backgroundColor: '#fee2e2',
@@ -1537,32 +1557,22 @@ function PedidosPageContent() {
                               </span>
                             )}
                             {detalle.prenda}
-                            {detalle.conjunto_nombre ? (
-                              <span
-                                style={{
-                                  display: 'inline-block',
-                                  marginLeft: '0.5rem',
-                                  backgroundColor: '#ecfdf5',
-                                  color: '#065f46',
-                                  padding: '0.15rem 0.45rem',
-                                  borderRadius: 4,
-                                  fontSize: '0.68rem',
-                                  fontWeight: 700,
-                                }}
-                                title={detalle.conjunto_nombre}
-                              >
-                                🧩 Conjunto
-                              </span>
-                            ) : null}
                           </td>
                           <td style={{ padding: '0.75rem' }}>
-                            <span className="badge badge-info">{detalle.talla}</span>
+                            {detalle.talla ? (
+                              <span className="badge badge-info">{detalle.talla}</span>
+                            ) : (
+                              '—'
+                            )}
                           </td>
                           <td style={{ padding: '0.75rem', fontSize: '0.9rem', color: '#666' }}>
                             {detalle.especificaciones || '-'}
                           </td>
                           <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                            {(() => {
+                            {esDesc ? (
+                              '—'
+                            ) : (
+                            (() => {
                               const costo = costos.find(c => 
                                 c.prenda_id === detalle.prenda_id && 
                                 c.talla_id === detalle.talla_id
@@ -1581,13 +1591,14 @@ function PedidosPageContent() {
                                   {stock}
                                 </span>
                               );
-                            })()}
+                            })()
+                            )}
                           </td>
                           <td style={{ padding: '0.75rem', textAlign: 'center', fontWeight: '600' }}>
                             {detalle.cantidad}
                           </td>
                           <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                            {(() => {
+                            {esDesc ? '—' : (() => {
                               const entregado = detalle.cantidad_con_stock || 0;
                               return (
                                 <span style={{
@@ -1605,7 +1616,7 @@ function PedidosPageContent() {
                             })()}
                           </td>
                           <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                            {(() => {
+                            {esDesc ? '—' : (() => {
                               const pendiente = detalle.cantidad_pendiente || 0;
                               const hayPendientes = pendiente > 0;
                               
@@ -1663,14 +1674,15 @@ function PedidosPageContent() {
                               );
                             })()}
                           </td>
-                          <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                            ${detalle.precio.toFixed(2)}
+                          <td style={{ padding: '0.75rem', textAlign: 'right', color: esDesc ? '#0f766e' : undefined, fontWeight: esDesc ? 700 : undefined }}>
+                            {esDesc ? `-$${Math.abs(detalle.precio).toFixed(2)}` : `$${detalle.precio.toFixed(2)}`}
                           </td>
-                          <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: '700', color: (detalle.cantidad_pendiente || 0) > 0 ? '#f59e0b' : '#10b981' }}>
-                            ${detalle.total.toFixed(2)}
+                          <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: '700', color: esDesc ? '#0f766e' : (detalle.cantidad_pendiente || 0) > 0 ? '#f59e0b' : '#10b981' }}>
+                            {esDesc ? `-$${Math.abs(detalle.total).toFixed(2)}` : `$${detalle.total.toFixed(2)}`}
                           </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

@@ -10,6 +10,7 @@ import {
   type LineaVentaWinston,
   type SesionLineaVenta,
 } from '@/lib/winstonLineaVenta';
+import { esLineaDescuentoConjunto } from '@/lib/conjuntosPrecios';
 
 interface Pedido {
   id: string;
@@ -41,6 +42,7 @@ interface DetallePedido {
   subtotal: number;
   pendiente: number;
   especificaciones?: string;
+  es_descuento_conjunto?: boolean;
 }
 
 export type PedidoCreadoResumen = {
@@ -73,6 +75,62 @@ function totalDetalles(detalles: Array<{ subtotal?: number; total?: number; prec
     if (d.total != null) return sum + Number(d.total);
     return sum + Number(d.precio_unitario ?? 0) * Number(d.cantidad ?? 0);
   }, 0);
+}
+
+type DetalleCarrito = Omit<DetallePedido, 'id' | 'pedido_id'> & {
+  es_descuento_conjunto?: boolean;
+  total?: number;
+};
+
+async function insertarDescuentosConjuntoEnPedido(
+  pedidoId: string,
+  descuentos: DetalleCarrito[]
+) {
+  if (!descuentos.length) return;
+
+  const rows = descuentos.map((d) => ({
+    pedido_id: pedidoId,
+    prenda_id: null,
+    talla_id: d.talla_id || null,
+    cantidad: Math.max(1, Number(d.cantidad) || 1),
+    precio_unitario: Number(d.precio_unitario),
+    subtotal: Number(
+      d.subtotal != null
+        ? d.subtotal
+        : Number(d.precio_unitario) * Number(d.cantidad || 1)
+    ),
+    pendiente: 0,
+    especificaciones: (d.especificaciones || d.prenda_nombre || 'DESCUENTO X CONJUNTO').toUpperCase(),
+  }));
+
+  const { error } = await insforgeDb().from('detalle_pedidos').insert(rows);
+  if (error) throw error;
+
+  const { data: dets, error: errD } = await insforgeDb()
+    .from('detalle_pedidos')
+    .select('subtotal')
+    .eq('pedido_id', pedidoId);
+  if (errD) throw errD;
+
+  const total = (dets || []).reduce((s, r) => s + Number((r as { subtotal?: number }).subtotal || 0), 0);
+  const { error: errU } = await insforgeDb()
+    .from('pedidos')
+    .update({ total, subtotal: total })
+    .eq('id', pedidoId);
+  if (errU) throw errU;
+}
+
+function separarDescuentos(detalles: DetalleCarrito[]) {
+  const productos: DetalleCarrito[] = [];
+  const descuentos: DetalleCarrito[] = [];
+  for (const d of detalles) {
+    if (esLineaDescuentoConjunto(d) || Number(d.precio_unitario) < 0) {
+      descuentos.push(d);
+    } else {
+      productos.push(d);
+    }
+  }
+  return { productos, descuentos };
 }
 
 export function usePedidos(sucursal_id?: string) {
@@ -240,17 +298,27 @@ export function usePedidos(sucursal_id?: string) {
   /** Winston: divide carrito mixto (prendas → tenis → remate tenis). */
   const crearPedidosDesdeCarrito = async (
     pedido: Omit<Pedido, 'id' | 'created_at' | 'updated_at'>,
-    detalles: Omit<DetallePedido, 'id' | 'pedido_id'>[],
+    detalles: DetalleCarrito[],
     pedido_sucursal_id?: string,
     sesion?: SesionLineaVenta | null
   ): Promise<{ success: boolean; pedidos: PedidoCreadoResumen[]; error?: string; message?: string }> => {
     const sid = pedido_sucursal_id || sucursal_id;
     const esWinston = esCuentaWinston(sesion);
+    const { productos, descuentos } = separarDescuentos(detalles);
 
     if (!esWinston) {
-      const r = await crearPedido(pedido, detalles, sid);
+      const r = await crearPedido(pedido, productos as Omit<DetallePedido, 'id' | 'pedido_id'>[], sid);
       if (!r.success) {
         return { success: false, pedidos: [], error: String(r.error ?? 'Error al crear pedido') };
+      }
+      try {
+        await insertarDescuentosConjuntoEnPedido(r.data!.id, descuentos);
+      } catch (e: unknown) {
+        return {
+          success: false,
+          pedidos: [{ id: r.data!.id, folio: r.data!.folio, linea_venta: null }],
+          error: getSupabaseErrorMessage(e),
+        };
       }
       return {
         success: true,
@@ -259,7 +327,7 @@ export function usePedidos(sucursal_id?: string) {
       };
     }
 
-    const { prendas, tenis, remate_tenis } = dividirDetallesPorLinea(detalles);
+    const { prendas, tenis, remate_tenis } = dividirDetallesPorLinea(productos);
     const creados: PedidoCreadoResumen[] = [];
 
     try {
@@ -267,10 +335,11 @@ export function usePedidos(sucursal_id?: string) {
         const totalPrendas = totalDetalles(prendas);
         const creado = await crearPedidoAtomico(
           { ...pedido, total: totalPrendas },
-          prendas,
+          prendas as Omit<DetallePedido, 'id' | 'pedido_id'>[],
           sid,
           'prendas'
         );
+        await insertarDescuentosConjuntoEnPedido(creado.id, descuentos);
         creados.push(creado);
       }
 
@@ -278,7 +347,7 @@ export function usePedidos(sucursal_id?: string) {
         const totalTenis = totalDetalles(tenis);
         const creado = await crearPedidoAtomico(
           { ...pedido, total: totalTenis },
-          tenis,
+          tenis as Omit<DetallePedido, 'id' | 'pedido_id'>[],
           sid,
           'tenis'
         );
@@ -289,7 +358,7 @@ export function usePedidos(sucursal_id?: string) {
         const totalRemate = totalDetalles(remate_tenis);
         const creado = await crearPedidoAtomico(
           { ...pedido, total: totalRemate },
-          remate_tenis,
+          remate_tenis as Omit<DetallePedido, 'id' | 'pedido_id'>[],
           sid,
           'remate_tenis'
         );

@@ -4,15 +4,15 @@ import { leerLineaVentaPedido } from '@/lib/winstonLineaVenta';
 
 export interface DetallePedidoRecibo {
   id: string;
-  prenda_id: string;
-  talla_id: string;
+  prenda_id: string | null;
+  talla_id: string | null;
   cantidad: number;
   precio_unitario: number;
   subtotal: number;
   pendiente: number;
   especificaciones: string | null;
-  prenda: { nombre: string };
-  talla: { nombre: string };
+  prenda: { nombre: string } | null;
+  talla: { nombre: string } | null;
 }
 
 export interface PedidoRecibo {
@@ -56,7 +56,9 @@ type ReciboPedidoTicketProps = {
 };
 
 export default function ReciboPedidoTicket({ pedido, id, className, extraStyle }: ReciboPedidoTicketProps) {
-  const tienePendientes = pedido.detalles.some((d) => d.pendiente > 0);
+  const tienePendientes = pedido.detalles.some(
+    (d) => d.pendiente > 0 && d.prenda_id != null && Number(d.precio_unitario) >= 0
+  );
   const nombreSucursal = pedido.sucursal?.nombre?.trim() || 'Uniformes';
 
   return (
@@ -168,7 +170,19 @@ export default function ReciboPedidoTicket({ pedido, id, className, extraStyle }
           <tbody>
             {pedido.detalles.map((detalle, index) => {
               const cant = Number(detalle.cantidad) || 0;
-              const lineaEstado = detalle.pendiente > 0 ? 'Pend.' : 'Ent.';
+              const esDesc =
+                !detalle.prenda_id ||
+                Number(detalle.precio_unitario) < 0 ||
+                Number(detalle.subtotal) < 0 ||
+                /descuento/i.test(String(detalle.especificaciones || detalle.prenda?.nombre || ''));
+              const nombrePrenda =
+                detalle.prenda?.nombre ||
+                (esDesc ? 'Descuento x conjunto' : detalle.especificaciones) ||
+                '—';
+              const nombreTalla = detalle.talla?.nombre || '—';
+              const lineaEstado = esDesc ? '—' : detalle.pendiente > 0 ? 'Pend.' : 'Ent.';
+              const precioAbs = Math.abs(Number(detalle.precio_unitario) || 0);
+              const subAbs = Math.abs(Number(detalle.subtotal) || 0);
               return (
                 <tr
                   key={detalle.id}
@@ -184,19 +198,28 @@ export default function ReciboPedidoTicket({ pedido, id, className, extraStyle }
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap',
+                        color: esDesc ? '#0f766e' : undefined,
                       }}
                     >
-                      {detalle.prenda.nombre}
+                      {nombrePrenda}
                     </div>
                   </td>
                   <td style={{ padding: '0.125rem 0', overflow: 'hidden' }}>
                     <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 700 }}>
-                      {detalle.talla.nombre}
+                      {nombreTalla || (esDesc ? '—' : '')}
                     </div>
                   </td>
                   <td style={{ textAlign: 'center', padding: '0.125rem 0.2rem', fontWeight: 800 }}>{cant}</td>
-                  <td style={{ textAlign: 'right', padding: '0.125rem 0', fontVariantNumeric: 'tabular-nums' }}>
-                    ${detalle.precio_unitario.toFixed(2)}
+                  <td
+                    style={{
+                      textAlign: 'right',
+                      padding: '0.125rem 0',
+                      fontVariantNumeric: 'tabular-nums',
+                      color: esDesc ? '#0f766e' : undefined,
+                      fontWeight: esDesc ? 800 : undefined,
+                    }}
+                  >
+                    {esDesc ? `-$${precioAbs.toFixed(2)}` : `$${precioAbs.toFixed(2)}`}
                   </td>
                   <td
                     style={{
@@ -204,9 +227,10 @@ export default function ReciboPedidoTicket({ pedido, id, className, extraStyle }
                       padding: '0.125rem 0',
                       fontWeight: 900,
                       fontVariantNumeric: 'tabular-nums',
+                      color: esDesc ? '#0f766e' : undefined,
                     }}
                   >
-                    ${detalle.subtotal.toFixed(2)}
+                    {esDesc ? `-$${subAbs.toFixed(2)}` : `$${subAbs.toFixed(2)}`}
                   </td>
                   <td style={{ textAlign: 'center', padding: '0.125rem 0', fontWeight: 900 }}>{lineaEstado}</td>
                 </tr>
@@ -261,7 +285,7 @@ export default function ReciboPedidoTicket({ pedido, id, className, extraStyle }
           </p>
           <div style={{ marginTop: '0.2rem', fontSize: '0.5rem' }}>
             {pedido.detalles
-              .filter((d) => d.pendiente > 0)
+              .filter((d) => d.pendiente > 0 && d.prenda_id != null && Number(d.precio_unitario) >= 0)
               .map((d) => (
                 <div
                   key={d.id}
@@ -275,7 +299,7 @@ export default function ReciboPedidoTicket({ pedido, id, className, extraStyle }
                   }}
                 >
                   <span style={{ color: '#991b1b', fontWeight: '600' }}>
-                    {d.prenda.nombre} - {d.talla.nombre}
+                    {d.prenda?.nombre || '—'} - {d.talla?.nombre || '—'}
                   </span>
                   <span style={{ color: '#dc2626', fontWeight: '700' }}>{d.pendiente}</span>
                 </div>
