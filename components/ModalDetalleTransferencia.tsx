@@ -28,10 +28,10 @@ type DetalleRow = {
 
 function labelEstadoDetalle(estado: string) {
   const e = estado.toUpperCase();
-  if (e === 'RECIBIDA') return { text: 'recibida', color: '#065f46' };
-  if (e === 'EN_TRANSITO_COMPLEMENTARIO') return { text: 'en tránsito complementario', color: '#dc2626' };
-  if (e === 'EN_TRANSITO' || e === 'PENDIENTE') return { text: 'en tránsito', color: '#1d4ed8' };
-  return { text: e.toLowerCase(), color: '#64748b' };
+  if (e === 'RECIBIDA') return { text: 'Recibida', color: '#065f46' };
+  if (e === 'EN_TRANSITO_COMPLEMENTARIO') return { text: 'Tránsito complementario', color: '#dc2626' };
+  if (e === 'EN_TRANSITO' || e === 'PENDIENTE') return { text: 'En tránsito', color: '#1d4ed8' };
+  return { text: e.charAt(0) + e.slice(1).toLowerCase().replace(/_/g, ' '), color: '#64748b' };
 }
 
 function labelEstadoCabecera(estado: string) {
@@ -390,115 +390,220 @@ export default function ModalDetalleTransferencia({
               )}
             </div>
           ) : (
-            <table className="table">
-              <thead>
-                <tr>
-                  {mostrarChecks && (
-                    <th style={{ width: 48 }}>
-                      <input
-                        type="checkbox"
-                        checked={todosMarcados}
-                        onChange={toggleTodos}
-                        aria-label="Seleccionar todas"
-                      />
+            <div style={{ overflowX: 'auto', borderRadius: 12, border: '1px solid #e2e8f0' }}>
+              <table className="table" style={{ margin: 0, minWidth: 640 }}>
+                <thead>
+                  <tr style={{ background: '#f1f5f9' }}>
+                    {mostrarChecks && (
+                      <th style={{ width: 48, padding: '0.85rem 0.75rem' }}>
+                        <input
+                          type="checkbox"
+                          checked={todosMarcados}
+                          onChange={toggleTodos}
+                          aria-label="Seleccionar todas"
+                        />
+                      </th>
+                    )}
+                    <th style={{ padding: '0.85rem 1rem', fontSize: '0.78rem', letterSpacing: '0.04em', textTransform: 'uppercase', color: '#475569' }}>
+                      Prenda
                     </th>
-                  )}
-                  <th>Prenda</th>
-                  <th>Talla</th>
-                  <th>Cantidad</th>
-                  <th>Estatus</th>
-                  {mostrarColAcciones && <th>Acciones</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {detalles.map((d) => {
-                  const est = d.estado.toUpperCase();
-                  const esComplementario = est === 'EN_TRANSITO_COMPLEMENTARIO';
-                  const esPendiente = est === 'EN_TRANSITO' || est === 'PENDIENTE';
-                  const marcado = Boolean(seleccionados[d.id]);
-                  const lab = labelEstadoDetalle(d.estado);
-                  return (
-                    <tr
-                      key={d.id}
-                      style={
-                        esComplementario
-                          ? { background: '#fef2f2' }
-                          : mostrarChecks && esPendiente && !marcado
-                            ? { opacity: 0.55, background: '#f8fafc' }
-                            : undefined
-                      }
-                    >
-                      {mostrarChecks && (
-                        <td>
-                          {esPendiente ? (
-                            <input
-                              type="checkbox"
-                              checked={marcado}
-                              onChange={() => toggleUno(d.id)}
-                              aria-label={`Recibir ${d.prenda_nombre} talla ${d.talla_nombre}`}
-                            />
-                          ) : (
-                            <span aria-hidden style={{ color: '#94a3b8' }}>
-                              —
+                    <th style={{ padding: '0.85rem 1rem', fontSize: '0.78rem', letterSpacing: '0.04em', textTransform: 'uppercase', color: '#475569', textAlign: 'center', width: 110 }}>
+                      Talla
+                    </th>
+                    <th style={{ padding: '0.85rem 1rem', fontSize: '0.78rem', letterSpacing: '0.04em', textTransform: 'uppercase', color: '#475569', textAlign: 'center', width: 130 }}>
+                      Cantidad
+                    </th>
+                    <th style={{ padding: '0.85rem 1rem', fontSize: '0.78rem', letterSpacing: '0.04em', textTransform: 'uppercase', color: '#475569', textAlign: 'center', width: 160 }}>
+                      Estatus
+                    </th>
+                    {mostrarColAcciones && (
+                      <th style={{ padding: '0.85rem 1rem', fontSize: '0.78rem', letterSpacing: '0.04em', textTransform: 'uppercase', color: '#475569' }}>
+                        Acciones
+                      </th>
+                    )}
+                  </tr>
+                </thead>
+                <tbody>
+                  {detalles.map((d) => {
+                    const est = d.estado.toUpperCase();
+                    const esComplementario = est === 'EN_TRANSITO_COMPLEMENTARIO';
+                    const esPendiente = est === 'EN_TRANSITO' || est === 'PENDIENTE';
+                    const marcado = Boolean(seleccionados[d.id]);
+                    const lab = labelEstadoDetalle(d.estado);
+                    const piezasLabel = d.cantidad === 1 ? 'pieza' : 'piezas';
+                    return (
+                      <tr
+                        key={d.id}
+                        style={{
+                          background: esComplementario
+                            ? '#fef2f2'
+                            : mostrarChecks && esPendiente && !marcado
+                              ? '#f8fafc'
+                              : '#fff',
+                          opacity: mostrarChecks && esPendiente && !marcado ? 0.72 : 1,
+                          borderBottom: '1px solid #e2e8f0',
+                        }}
+                      >
+                        {mostrarChecks && (
+                          <td style={{ padding: '1rem 0.75rem', verticalAlign: 'middle' }}>
+                            {esPendiente ? (
+                              <input
+                                type="checkbox"
+                                checked={marcado}
+                                onChange={() => toggleUno(d.id)}
+                                aria-label={`Recibir ${d.prenda_nombre} talla ${d.talla_nombre}`}
+                              />
+                            ) : (
+                              <span aria-hidden style={{ color: '#94a3b8' }}>
+                                —
+                              </span>
+                            )}
+                          </td>
+                        )}
+                        <td style={{ padding: '1rem', verticalAlign: 'middle' }}>
+                          <div
+                            style={{
+                              fontWeight: 700,
+                              fontSize: '1rem',
+                              color: esComplementario ? '#b91c1c' : '#0f172a',
+                              lineHeight: 1.3,
+                            }}
+                          >
+                            {d.prenda_nombre}
+                          </div>
+                        </td>
+                        <td style={{ padding: '1rem', textAlign: 'center', verticalAlign: 'middle' }}>
+                          <div
+                            style={{
+                              display: 'inline-flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              gap: 4,
+                              minWidth: 72,
+                              padding: '0.45rem 0.7rem',
+                              borderRadius: 10,
+                              background: esComplementario ? '#fee2e2' : '#eff6ff',
+                              border: `1px solid ${esComplementario ? '#fecaca' : '#bfdbfe'}`,
+                            }}
+                          >
+                            <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#64748b', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                              Talla
                             </span>
-                          )}
-                        </td>
-                      )}
-                      <td style={esComplementario ? { color: '#dc2626', fontWeight: 700 } : undefined}>
-                        {d.prenda_nombre}
-                      </td>
-                      <td style={esComplementario ? { color: '#dc2626', fontWeight: 600 } : undefined}>
-                        {d.talla_nombre}
-                      </td>
-                      <td style={esComplementario ? { color: '#dc2626', fontWeight: 600 } : undefined}>
-                        {d.cantidad}
-                      </td>
-                      <td>
-                        <span style={{ color: lab.color, fontWeight: 700, fontSize: '0.85rem' }}>{lab.text}</span>
-                      </td>
-                      {mostrarColAcciones && (
-                        <td>
-                          {esOrigen && esComplementario ? (
-                            <button
-                              type="button"
-                              className="btn btn-secondary"
-                              style={{ padding: '0.35rem 0.7rem', fontSize: '0.82rem' }}
-                              onClick={() =>
-                                setPartidaReenviar({
-                                  id: d.id,
-                                  cantidad: d.cantidad,
-                                  prenda_id: d.prenda_id,
-                                  talla_id: d.talla_id,
-                                  costo_id: d.costo_id,
-                                  prenda_nombre: d.prenda_nombre,
-                                  talla_nombre: d.talla_nombre,
-                                })
-                              }
+                            <span
+                              style={{
+                                fontSize: '1.25rem',
+                                fontWeight: 800,
+                                color: esComplementario ? '#b91c1c' : '#1d4ed8',
+                                lineHeight: 1,
+                              }}
                             >
-                              ✏️ Modificar
-                            </button>
-                          ) : esDestino &&
-                            (esComplementario ||
-                              (esPendiente && estadoLocal === 'RECIBIDA_PARCIAL')) ? (
-                            <button
-                              type="button"
-                              className="btn btn-primary"
-                              style={{ padding: '0.35rem 0.7rem', fontSize: '0.82rem' }}
-                              disabled={recibiendoPartidaId === d.id || recibiendo}
-                              onClick={() => void handleRecibirPartidaComplementaria(d.id)}
-                            >
-                              {recibiendoPartidaId === d.id ? '⏳…' : '✅ Recibir'}
-                            </button>
-                          ) : (
-                            <span style={{ color: '#94a3b8' }}>—</span>
-                          )}
+                              {d.talla_nombre}
+                            </span>
+                          </div>
                         </td>
-                      )}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        <td style={{ padding: '1rem', textAlign: 'center', verticalAlign: 'middle' }}>
+                          <div
+                            style={{
+                              display: 'inline-flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              gap: 4,
+                              minWidth: 88,
+                              padding: '0.45rem 0.7rem',
+                              borderRadius: 10,
+                              background: esComplementario ? '#fee2e2' : '#ecfdf5',
+                              border: `1px solid ${esComplementario ? '#fecaca' : '#a7f3d0'}`,
+                            }}
+                          >
+                            <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#64748b', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                              Cantidad
+                            </span>
+                            <span
+                              style={{
+                                fontSize: '1.25rem',
+                                fontWeight: 800,
+                                color: esComplementario ? '#b91c1c' : '#047857',
+                                lineHeight: 1,
+                              }}
+                            >
+                              {d.cantidad}
+                            </span>
+                            <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>
+                              {piezasLabel}
+                            </span>
+                          </div>
+                        </td>
+                        <td style={{ padding: '1rem', textAlign: 'center', verticalAlign: 'middle' }}>
+                          <span
+                            style={{
+                              display: 'inline-block',
+                              padding: '0.4rem 0.75rem',
+                              borderRadius: 999,
+                              fontWeight: 700,
+                              fontSize: '0.82rem',
+                              color: lab.color,
+                              background:
+                                est === 'RECIBIDA'
+                                  ? '#d1fae5'
+                                  : esComplementario
+                                    ? '#fee2e2'
+                                    : '#dbeafe',
+                              border: `1px solid ${
+                                est === 'RECIBIDA'
+                                  ? '#6ee7b7'
+                                  : esComplementario
+                                    ? '#fecaca'
+                                    : '#93c5fd'
+                              }`,
+                            }}
+                          >
+                            {lab.text}
+                          </span>
+                        </td>
+                        {mostrarColAcciones && (
+                          <td style={{ padding: '1rem', verticalAlign: 'middle' }}>
+                            {esOrigen && esComplementario ? (
+                              <button
+                                type="button"
+                                className="btn btn-secondary"
+                                style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem', fontWeight: 600 }}
+                                onClick={() =>
+                                  setPartidaReenviar({
+                                    id: d.id,
+                                    cantidad: d.cantidad,
+                                    prenda_id: d.prenda_id,
+                                    talla_id: d.talla_id,
+                                    costo_id: d.costo_id,
+                                    prenda_nombre: d.prenda_nombre,
+                                    talla_nombre: d.talla_nombre,
+                                  })
+                                }
+                              >
+                                ✏️ Modificar
+                              </button>
+                            ) : esDestino &&
+                              (esComplementario ||
+                                (esPendiente && estadoLocal === 'RECIBIDA_PARCIAL')) ? (
+                              <button
+                                type="button"
+                                className="btn btn-primary"
+                                style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem', fontWeight: 600 }}
+                                disabled={recibiendoPartidaId === d.id || recibiendo}
+                                onClick={() => void handleRecibirPartidaComplementaria(d.id)}
+                              >
+                                {recibiendoPartidaId === d.id ? '⏳…' : '✅ Recibir'}
+                              </button>
+                            ) : (
+                              <span style={{ color: '#94a3b8' }}>—</span>
+                            )}
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
 
           {mostrarChecks && (

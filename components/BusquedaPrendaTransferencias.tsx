@@ -449,7 +449,7 @@ export default function BusquedaPrendaTransferencias({
   );
 }
 
-/** Resumen compacto de lo movido de la prenda en esa transferencia. */
+/** Resumen destacado de lo movido de la prenda en esa transferencia. */
 export function ResumenMovimientoPrenda({
   lineas,
   totalUnidades,
@@ -457,18 +457,48 @@ export function ResumenMovimientoPrenda({
   lineas: LineaMovida[];
   totalUnidades: number;
 }) {
-  const texto = lineas
-    .map((l) => {
-      const u = l.cantidad === 1 ? 'pieza' : 'piezas';
-      return `Talla ${l.tallaNombre}: ${l.cantidad} ${u}`;
-    })
-    .join(' · ');
   return (
-    <div style={{ marginTop: '0.35rem', fontSize: '0.8rem', color: '#475569', lineHeight: 1.35 }}>
-      {texto}
-      {lineas.length > 1 ? (
-        <span style={{ color: '#94a3b8' }}> (total {totalUnidades})</span>
-      ) : null}
+    <div
+      style={{
+        marginTop: '0.5rem',
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: '0.4rem',
+        alignItems: 'center',
+      }}
+    >
+      {lineas.map((l) => {
+        const u = l.cantidad === 1 ? 'pieza' : 'piezas';
+        return (
+          <span
+            key={`${l.tallaId}-${l.cantidad}`}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'baseline',
+              gap: '0.35rem',
+              padding: '0.35rem 0.65rem',
+              borderRadius: 8,
+              background: '#eff6ff',
+              border: '1px solid #bfdbfe',
+              fontSize: '0.8rem',
+              lineHeight: 1.2,
+            }}
+          >
+            <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+              Talla
+            </span>
+            <strong style={{ color: '#1d4ed8', fontSize: '0.95rem' }}>{l.tallaNombre}</strong>
+            <span style={{ color: '#94a3b8' }}>·</span>
+            <strong style={{ color: '#047857' }}>{l.cantidad}</strong>
+            <span style={{ color: '#64748b', fontSize: '0.75rem' }}>{u}</span>
+          </span>
+        );
+      })}
+      {lineas.length > 1 && (
+        <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>
+          Total: {totalUnidades} piezas
+        </span>
+      )}
     </div>
   );
 }
