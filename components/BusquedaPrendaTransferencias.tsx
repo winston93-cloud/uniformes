@@ -410,7 +410,16 @@ export default function BusquedaPrendaTransferencias({
               setIndice(0);
               onResultadosRef.current(null);
             }}
-            onFocus={() => setAbierto(true)}
+            onFocus={() => {
+              // Al volver al campo: limpiar para escribir otra búsqueda
+              if (seleccion || texto.trim()) {
+                setSeleccion(null);
+                setTexto('');
+                setIndice(0);
+                onResultadosRef.current(null);
+              }
+              setAbierto(true);
+            }}
             onKeyDown={onKeyDownBusqueda}
             style={{
               width: '100%',
