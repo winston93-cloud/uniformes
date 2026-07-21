@@ -5,6 +5,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import ModalTransferencia from '@/components/ModalTransferencia';
 import ModalDetalleTransferencia from '@/components/ModalDetalleTransferencia';
+import BusquedaPrendaTransferencias, {
+  ResumenMovimientoPrenda,
+  type TransferenciaConMovimiento,
+} from '@/components/BusquedaPrendaTransferencias';
 import { useTransferencias } from '@/lib/hooks/useTransferencias';
 import type { Transferencia } from '@/lib/types';
 
@@ -14,6 +18,7 @@ export default function TransferenciasPage() {
   const [modalAbierto, setModalAbierto] = useState(false);
   const [transferenciaEditar, setTransferenciaEditar] = useState<Transferencia | null>(null);
   const [transferenciaDetalle, setTransferenciaDetalle] = useState<Transferencia | null>(null);
+  const [filtroPrenda, setFiltroPrenda] = useState<TransferenciaConMovimiento[] | null>(null);
 
   const handleNuevaTransferencia = () => {
     setTransferenciaEditar(null);
@@ -89,18 +94,126 @@ export default function TransferenciasPage() {
     }
   };
 
+  const filasVista = filtroPrenda;
+  const listaBase = filasVista ? filasVista.map((f) => f.transferencia) : transferencias;
+  const movimientoPorId = new Map((filasVista || []).map((f) => [f.transferencia.id, f] as const));
+
+  const renderFila = (transferencia: Transferencia) => {
+    const badge = getBadgeEstado(transferencia.estado);
+    const mov = movimientoPorId.get(transferencia.id);
+    return (
+      <tr key={transferencia.id}>
+        <td>
+          <code
+            style={{
+              background: '#f3f4f6',
+              padding: '0.25rem 0.5rem',
+              borderRadius: '4px',
+              fontWeight: 'bold',
+            }}
+          >
+            {transferencia.folio}
+          </code>
+          {mov && (
+            <ResumenMovimientoPrenda lineas={mov.lineas} totalUnidades={mov.totalUnidades} />
+          )}
+        </td>
+        <td>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            {transferencia.sucursal_origen?.es_matriz ? '🏛️' : '📍'}
+            <span style={{ fontWeight: '600' }}>{transferencia.sucursal_origen?.nombre}</span>
+          </div>
+        </td>
+        <td>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            {transferencia.sucursal_destino?.es_matriz ? '🏛️' : '📍'}
+            <span style={{ fontWeight: '600' }}>{transferencia.sucursal_destino?.nombre}</span>
+          </div>
+        </td>
+        <td>
+          {new Date(transferencia.fecha_transferencia).toLocaleDateString('es-MX', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+          })}
+        </td>
+        <td>
+          <span
+            style={{
+              background: badge.bg,
+              color: badge.color,
+              padding: '0.25rem 0.75rem',
+              borderRadius: '12px',
+              fontSize: '0.85rem',
+              fontWeight: 'bold',
+            }}
+          >
+            {badge.emoji} {badge.label ?? transferencia.estado}
+          </span>
+        </td>
+        <td>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <button
+              className="btn btn-secondary"
+              style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}
+              onClick={() => setTransferenciaDetalle(transferencia)}
+            >
+              👁️ Ver
+            </button>
+            {puedeModificar(transferencia) && (
+              <button
+                className="btn btn-secondary"
+                style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}
+                onClick={() => {
+                  setTransferenciaEditar(transferencia);
+                  setModalAbierto(true);
+                }}
+              >
+                ✏️ Modificar
+              </button>
+            )}
+            {puedeCancelar(transferencia) && (
+              <button
+                className="btn"
+                style={{
+                  padding: '0.5rem 1rem',
+                  fontSize: '0.9rem',
+                  background: '#fee2e2',
+                  color: '#991b1b',
+                  border: '1px solid #fecaca',
+                }}
+                onClick={() => void cancelarTransferencia(transferencia)}
+              >
+                ❌ Cancelar
+              </button>
+            )}
+            {esDestinoPendiente(transferencia) && (
+              <button
+                className="btn btn-primary"
+                style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}
+                onClick={() => setTransferenciaDetalle(transferencia)}
+              >
+                ✅ Recibir
+              </button>
+            )}
+          </div>
+        </td>
+      </tr>
+    );
+  };
+
   return (
     <LayoutWrapper>
       <div className="main-container">
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          marginBottom: '2rem',
-        }}>
-          <h1 className="page-title">
-            🚚 Transferencias de Mercancía
-          </h1>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '2rem',
+          }}
+        >
+          <h1 className="page-title">🚚 Transferencias de Mercancía</h1>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
             <button className="btn btn-primary" type="button" onClick={handleNuevaTransferencia}>
               ➕ Nueva Transferencia
@@ -119,7 +232,7 @@ export default function TransferenciasPage() {
         <div
           className="alert alert-info"
           style={{
-            marginBottom: '2rem',
+            marginBottom: '1.25rem',
             background: '#ffffff',
             color: '#334155',
             border: '1px solid #dbeafe',
@@ -127,9 +240,18 @@ export default function TransferenciasPage() {
             boxShadow: '0 4px 16px rgba(15, 23, 42, 0.08)',
           }}
         >
-          ℹ️ Las transferencias son <strong style={{ color: '#1e40af' }}>bidireccionales</strong>: matriz ↔ sucursal. Quien envía elige prendas de su inventario;
-          quien recibe confirma con <strong style={{ color: '#1e40af' }}>Confirmar recepción</strong> para que el stock aparezca en su tienda.
+          ℹ️ Las transferencias son <strong style={{ color: '#1e40af' }}>bidireccionales</strong>:
+          matriz ↔ sucursal. Quien envía elige prendas de su inventario; quien recibe confirma con{' '}
+          <strong style={{ color: '#1e40af' }}>Confirmar recepción</strong> para que el stock
+          aparezca en su tienda.
         </div>
+
+        {!loading && transferencias.length > 0 && (
+          <BusquedaPrendaTransferencias
+            transferencias={transferencias}
+            onResultados={setFiltroPrenda}
+          />
+        )}
 
         {loading ? (
           <div style={{ textAlign: 'center', padding: '3rem' }}>
@@ -144,8 +266,19 @@ export default function TransferenciasPage() {
               Crea una transferencia hacia otra tienda (matriz o sucursal) usando el botón de arriba.
             </p>
           </div>
+        ) : filasVista && filasVista.length === 0 ? (
+          <div className="card" style={{ textAlign: 'center', padding: '2rem' }}>
+            <h3>Sin transferencias para esa prenda</h3>
+            <p style={{ color: '#64748b' }}>Prueba otra prenda o limpia la búsqueda.</p>
+          </div>
         ) : (
           <div className="table-container">
+            {filasVista && (
+              <p style={{ margin: '0 0 0.75rem', fontSize: '0.9rem', color: '#475569' }}>
+                {filasVista.length} transferencia{filasVista.length === 1 ? '' : 's'} encontrada
+                {filasVista.length === 1 ? '' : 's'}
+              </p>
+            )}
             <table className="table">
               <thead>
                 <tr>
@@ -157,117 +290,14 @@ export default function TransferenciasPage() {
                   <th>Acciones</th>
                 </tr>
               </thead>
-              <tbody>
-                {transferencias.map((transferencia) => {
-                  const badge = getBadgeEstado(transferencia.estado);
-                  return (
-                    <tr key={transferencia.id}>
-                      <td>
-                        <code style={{
-                          background: '#f3f4f6',
-                          padding: '0.25rem 0.5rem',
-                          borderRadius: '4px',
-                          fontWeight: 'bold',
-                        }}>
-                          {transferencia.folio}
-                        </code>
-                      </td>
-                      <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          {transferencia.sucursal_origen?.es_matriz ? '🏛️' : '📍'}
-                          <span style={{ fontWeight: '600' }}>
-                            {transferencia.sucursal_origen?.nombre}
-                          </span>
-                        </div>
-                      </td>
-                      <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          {transferencia.sucursal_destino?.es_matriz ? '🏛️' : '📍'}
-                          <span style={{ fontWeight: '600' }}>
-                            {transferencia.sucursal_destino?.nombre}
-                          </span>
-                        </div>
-                      </td>
-                      <td>
-                        {new Date(transferencia.fecha_transferencia).toLocaleDateString('es-MX', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric',
-                        })}
-                      </td>
-                      <td>
-                        <span style={{
-                          background: badge.bg,
-                          color: badge.color,
-                          padding: '0.25rem 0.75rem',
-                          borderRadius: '12px',
-                          fontSize: '0.85rem',
-                          fontWeight: 'bold',
-                        }}>
-                          {badge.emoji} {badge.label ?? transferencia.estado}
-                        </span>
-                      </td>
-                      <td>
-                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                          <button
-                            className="btn btn-secondary"
-                            style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}
-                            onClick={() => setTransferenciaDetalle(transferencia)}
-                          >
-                            👁️ Ver
-                          </button>
-                          {puedeModificar(transferencia) && (
-                            <button
-                              className="btn btn-secondary"
-                              style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}
-                              onClick={() => {
-                                setTransferenciaEditar(transferencia);
-                                setModalAbierto(true);
-                              }}
-                            >
-                              ✏️ Modificar
-                            </button>
-                          )}
-                          {puedeCancelar(transferencia) && (
-                            <button
-                              className="btn"
-                              style={{
-                                padding: '0.5rem 1rem',
-                                fontSize: '0.9rem',
-                                background: '#fee2e2',
-                                color: '#991b1b',
-                                border: '1px solid #fecaca',
-                              }}
-                              onClick={() => void cancelarTransferencia(transferencia)}
-                            >
-                              ❌ Cancelar
-                            </button>
-                          )}
-                          {esDestinoPendiente(transferencia) && (
-                            <button
-                              className="btn btn-primary"
-                              style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}
-                              onClick={() => setTransferenciaDetalle(transferencia)}
-                            >
-                              ✅ Recibir
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
+              <tbody>{listaBase.map((t) => renderFila(t))}</tbody>
             </table>
           </div>
         )}
       </div>
 
       {modalAbierto && (
-        <ModalTransferencia
-          onClose={handleCerrarModal}
-          transferenciaEditar={transferenciaEditar}
-        />
+        <ModalTransferencia onClose={handleCerrarModal} transferenciaEditar={transferenciaEditar} />
       )}
 
       {transferenciaDetalle && (
