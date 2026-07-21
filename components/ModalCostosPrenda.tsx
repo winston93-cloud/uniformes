@@ -97,12 +97,15 @@ export default function ModalCostosPrenda({
       return;
     }
     const ids = new Set(seleccionadas.map((s) => s.costoId));
+    const n = seleccionadas.length;
     setFilas((prev) =>
-      prev.map((f) => (ids.has(f.costoId) ? { ...f, [campo]: valor } : f))
+      prev.map((f) =>
+        ids.has(f.costoId) ? { ...f, [campo]: valor, selected: false } : f
+      )
     );
     setMensaje({
       tipo: 'ok',
-      text: `${campo === 'mayoreo' ? 'Mayoreo' : 'Menudeo'} aplicado a ${seleccionadas.length} talla(s).`,
+      text: `${campo === 'mayoreo' ? 'Mayoreo' : 'Menudeo'} aplicado a ${n} talla(s).`,
     });
   };
 
