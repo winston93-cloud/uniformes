@@ -93,6 +93,7 @@ export default function BusquedaPrendaTransferencias({
   const [index, setIndex] = useState<DetalleIndex[]>([]);
   const [cargandoIndex, setCargandoIndex] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const opcionesRef = useRef<OpcionBusquedaPrenda[]>([]);
   const indiceRef = useRef(0);
@@ -305,18 +306,25 @@ export default function BusquedaPrendaTransferencias({
     return () => document.removeEventListener('mousedown', onDoc);
   }, []);
 
+  const reiniciarCampoBusqueda = () => {
+    setSeleccion(null);
+    setTexto('');
+    setIndice(0);
+    onResultadosRef.current(null);
+    setAbierto(true);
+  };
+
   const elegir = (op: OpcionBusquedaPrenda) => {
     setSeleccion(op);
     setTexto(op.label);
     setAbierto(false);
+    // Quitar foco: el próximo clic en el input vuelve a disparar focus/click y limpia
+    requestAnimationFrame(() => inputRef.current?.blur());
   };
 
   const limpiar = () => {
-    setSeleccion(null);
-    setTexto('');
+    reiniciarCampoBusqueda();
     setAbierto(false);
-    setIndice(0);
-    onResultadosRef.current(null);
   };
 
   const onKeyDownBusqueda = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -386,6 +394,7 @@ export default function BusquedaPrendaTransferencias({
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'stretch' }}>
         <div style={{ flex: 1, position: 'relative' }}>
           <input
+            ref={inputRef}
             id="busqueda-prenda-transf"
             type="text"
             role="combobox"
@@ -411,14 +420,20 @@ export default function BusquedaPrendaTransferencias({
               onResultadosRef.current(null);
             }}
             onFocus={() => {
-              // Al volver al campo: limpiar para escribir otra búsqueda
-              if (seleccion || texto.trim()) {
-                setSeleccion(null);
-                setTexto('');
-                setIndice(0);
-                onResultadosRef.current(null);
+              // Si ya hay una búsqueda aplicada, al volver al campo se reinicia
+              if (seleccion) {
+                reiniciarCampoBusqueda();
+                return;
               }
               setAbierto(true);
+            }}
+            onClick={() => {
+              // Si el input ya tenía foco (no dispara onFocus), el clic limpia igual
+              if (seleccion) {
+                reiniciarCampoBusqueda();
+              } else {
+                setAbierto(true);
+              }
             }}
             onKeyDown={onKeyDownBusqueda}
             style={{
