@@ -6,6 +6,9 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import ModalDevolucion from '@/components/ModalDevolucion';
+import ModalCompletarPendientes, {
+  type PartidaPendienteCompletar,
+} from '@/components/ModalCompletarPendientes';
 import { insforgeDb } from '@/lib/insforgeBrowser';
 import {
   handlersTapSeleccionDropdown,
@@ -93,6 +96,11 @@ function PedidosPageContent() {
   const [mostrarFormulario, setMostrarFormulario] = useState(true); // Abrir automáticamente al entrar
   const [mostrarModal, setMostrarModal] = useState(false);
   const [mostrarModalDevolucion, setMostrarModalDevolucion] = useState(false);
+  const [mostrarModalCompletar, setMostrarModalCompletar] = useState(false);
+  const [pedidoCompletar, setPedidoCompletar] = useState<Pedido | null>(null);
+  const [partidasCompletar, setPartidasCompletar] = useState<PartidaPendienteCompletar[]>([]);
+  const [cargandoCompletar, setCargandoCompletar] = useState(false);
+  const [guardandoCompletar, setGuardandoCompletar] = useState(false);
   const [pedidoSeleccionado, setPedidoSeleccionado] = useState<any>(null);
   const [mostrarAyuda, setMostrarAyuda] = useState(false);
   const [indiceClienteSeleccionado, setIndiceClienteSeleccionado] = useState(-1);
@@ -120,7 +128,7 @@ function PedidosPageContent() {
   const { searchExternos } = useExternos();
   const { prendas, loading: prendasLoading, error: prendasError, refetch: refetchPrendas } = usePrendas(inventarioOptsPedidos);
   const { tallas } = useTallas();
-  const { pedidos: pedidosDB, loading: loadingPedidos, crearPedidosDesdeCarrito, actualizarEstadoPedido, eliminarPedidoDefinitivo } =
+  const { pedidos: pedidosDB, loading: loadingPedidos, crearPedidosDesdeCarrito, actualizarEstadoPedido, completarDetallesPendientes, eliminarPedidoDefinitivo } =
     usePedidos(sesion?.sucursal_id);
   const { conjuntos } = useConjuntos();
 
@@ -866,6 +874,89 @@ function PedidosPageContent() {
       const msg = typeof resultado.error === 'string' ? resultado.error : 'Error desconocido';
       console.error('❌ Error al actualizar estado:', msg);
       alert(`❌ Error al actualizar el estado del pedido\n\n${msg}`);
+    }
+  };
+
+  const abrirCompletarPendientes = async (pedido: Pedido) => {
+    setPedidoCompletar(pedido);
+    setPartidasCompletar([]);
+    setMostrarModalCompletar(true);
+    setCargandoCompletar(true);
+    try {
+      const { data, error } = await insforgeDb()
+        .from('detalle_pedidos')
+        .select(
+          `
+          id,
+          pendiente,
+          cantidad,
+          especificaciones,
+          prenda_id,
+          precio_unitario,
+          prenda:prendas(nombre),
+          talla:tallas(nombre)
+        `
+        )
+        .eq('pedido_id', pedido.id);
+
+      if (error) throw error;
+
+      const partidas: PartidaPendienteCompletar[] = (data || [])
+        .filter((d: any) => {
+          if (d.prenda_id == null || Number(d.precio_unitario) < 0) return false;
+          return Number(d.pendiente || 0) > 0;
+        })
+        .map((d: any) => {
+          const prendaObj = Array.isArray(d.prenda) ? d.prenda[0] : d.prenda;
+          const tallaObj = Array.isArray(d.talla) ? d.talla[0] : d.talla;
+          return {
+            id: String(d.id),
+            prenda_nombre: prendaObj?.nombre || 'Sin nombre',
+            talla_nombre: tallaObj?.nombre || '—',
+            pendiente: Number(d.pendiente) || 0,
+            cantidad: Number(d.cantidad) || 0,
+            especificaciones: d.especificaciones || '',
+          };
+        });
+
+      setPartidasCompletar(partidas);
+      if (partidas.length === 0) {
+        // Sin pendientes: completar estado del pedido completo
+        setMostrarModalCompletar(false);
+        await cambiarEstado(pedido.id, 'COMPLETADO');
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      alert(`No se pudieron cargar las partidas pendientes:\n${msg}`);
+      setMostrarModalCompletar(false);
+    } finally {
+      setCargandoCompletar(false);
+    }
+  };
+
+  const confirmarCompletarPendientes = async (detalleIds: string[]) => {
+    if (!pedidoCompletar) return;
+    setGuardandoCompletar(true);
+    try {
+      const res = await completarDetallesPendientes(
+        pedidoCompletar.id,
+        detalleIds,
+        (sesion as any)?.usuario_id ?? null
+      );
+      if (!res.success) {
+        alert(`❌ ${res.error || 'No se pudieron completar las partidas'}`);
+        return;
+      }
+      const avisos =
+        'warnings' in res && Array.isArray(res.warnings) && res.warnings.length
+          ? '\n\n⚠️ Sin descontar inventario:\n' + res.warnings.join('\n')
+          : '';
+      alert(`✅ ${res.message || 'Listo'}${avisos}`);
+      setMostrarModalCompletar(false);
+      setPedidoCompletar(null);
+      setPartidasCompletar([]);
+    } finally {
+      setGuardandoCompletar(false);
     }
   };
 
@@ -2043,7 +2134,7 @@ function PedidosPageContent() {
                           e.currentTarget.value = '';
                           if (!v) return;
                           if (v === 'COMPLETAR') {
-                            await cambiarEstado(pedido.id, 'COMPLETADO');
+                            await abrirCompletarPendientes(pedido);
                             return;
                           }
                           if (v === 'ELIMINAR') {
@@ -2131,7 +2222,7 @@ function PedidosPageContent() {
                         }}
                       >
                         <option value="">Acciones…</option>
-                        {pedido.estado === 'PENDIENTE' && <option value="COMPLETAR">✓ Completar (descuenta pendientes)</option>}
+                        {pedido.estado === 'PENDIENTE' && <option value="COMPLETAR">✓ Completar partidas…</option>}
                         {(pedido.estado === 'PENDIENTE' || pedido.estado === 'COMPLETADO') && (
                           <option value="DEVOLUCION">🔄 Devolución / Cambio</option>
                         )}
@@ -2340,6 +2431,22 @@ function PedidosPageContent() {
           // Recargar pedidos después de registrar la devolución
           window.location.reload();
         }}
+      />
+
+      <ModalCompletarPendientes
+        abierto={mostrarModalCompletar}
+        folio={pedidoCompletar?.folio}
+        clienteNombre={pedidoCompletar?.cliente_nombre}
+        partidas={partidasCompletar}
+        cargando={cargandoCompletar}
+        guardando={guardandoCompletar}
+        onClose={() => {
+          if (guardandoCompletar) return;
+          setMostrarModalCompletar(false);
+          setPedidoCompletar(null);
+          setPartidasCompletar([]);
+        }}
+        onConfirmar={confirmarCompletarPendientes}
       />
 
       {/* Modal para Agregar Stock Rápido */}

@@ -430,6 +430,38 @@ export function usePedidos(sucursal_id?: string) {
     }
   };
 
+  const completarDetallesPendientes = async (
+    pedidoId: string,
+    detalleIds: string[],
+    usuario_id?: string | null
+  ) => {
+    try {
+      const { data, error } = await insforgeDb().rpc('completar_detalles_pedido_atomico', {
+        p_pedido_id: pedidoId,
+        p_detalle_ids: detalleIds,
+        p_usuario_id: usuarioIdParaRpc(usuario_id),
+      });
+      if (error) throw error;
+      if (data && data.success === false) {
+        throw new Error(data.error || 'Error al completar partidas');
+      }
+      const warnings = Array.isArray(data?.warnings)
+        ? (data.warnings as string[]).filter(Boolean)
+        : [];
+      await fetchPedidos();
+      return {
+        success: true as const,
+        message: String(data?.message || 'Partidas completadas'),
+        estado: (data?.estado as string) || null,
+        warnings,
+      };
+    } catch (error) {
+      const msg = getSupabaseErrorMessage(error);
+      console.error('Error al completar partidas:', msg, error);
+      return { success: false as const, error: msg };
+    }
+  };
+
   const eliminarPedidoDefinitivo = async (pedidoId: string, motivo?: string) => {
     try {
       const { data, error } = await insforgeDb().rpc('cancelar_pedido_atomico', {
@@ -474,6 +506,7 @@ export function usePedidos(sucursal_id?: string) {
     crearPedido,
     crearPedidosDesdeCarrito,
     actualizarEstadoPedido,
+    completarDetallesPendientes,
     eliminarPedidoDefinitivo,
   };
 }
