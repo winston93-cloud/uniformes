@@ -1548,36 +1548,19 @@ function PedidosPageContent() {
                               ref={checkEspecificacionesRef}
                               type="checkbox"
                               checked={usarEspecificaciones}
-                              onMouseDown={(e) => {
-                                // Evita efectos raros de blur/Enter en el form al marcar
-                                e.preventDefault();
-                              }}
-                              onClick={(e) => {
-                                e.preventDefault();
-                                const on = !usarEspecificacionesRef.current;
+                              onChange={(e) => {
+                                const on = e.target.checked;
                                 usarEspecificacionesRef.current = on;
                                 setUsarEspecificaciones(on);
                                 if (!on) {
                                   setDetalleActual((prev) => ({ ...prev, especificaciones: '' }));
-                                  inputCantidadRef.current?.focus();
                                 } else {
-                                  // Activar y esperar la especificación (NO agregar partida)
-                                  setTimeout(() => inputEspecificacionesRef.current?.focus(), 0);
+                                  setTimeout(() => inputEspecificacionesRef.current?.focus(), 50);
                                 }
                               }}
                               onKeyDown={(e) => {
-                                // Evitar que Enter en el check dispare submit del form / alta
-                                if (e.key === 'Enter' || e.key === ' ') {
-                                  e.preventDefault();
-                                  const on = !usarEspecificacionesRef.current;
-                                  usarEspecificacionesRef.current = on;
-                                  setUsarEspecificaciones(on);
-                                  if (!on) {
-                                    setDetalleActual((prev) => ({ ...prev, especificaciones: '' }));
-                                  } else {
-                                    setTimeout(() => inputEspecificacionesRef.current?.focus(), 0);
-                                  }
-                                }
+                                // Enter en el check no debe enviar el form ni agregar partida
+                                if (e.key === 'Enter') e.preventDefault();
                               }}
                               title="Activar especificaciones"
                               aria-label="Usar especificaciones"
