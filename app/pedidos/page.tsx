@@ -230,8 +230,14 @@ function PedidosPageContent() {
   const selectTallaRef = useRef<HTMLSelectElement>(null);
   const inputEspecificacionesRef = useRef<HTMLInputElement>(null);
   const inputCantidadRef = useRef<HTMLInputElement>(null);
+  const checkEspecificacionesRef = useRef<HTMLInputElement>(null);
   const inputEfectivoRef = useRef<HTMLInputElement>(null);
   const [usarEspecificaciones, setUsarEspecificaciones] = useState(false);
+  const usarEspecificacionesRef = useRef(false);
+
+  useEffect(() => {
+    usarEspecificacionesRef.current = usarEspecificaciones;
+  }, [usarEspecificaciones]);
 
   // Función para buscar clientes (alumnos y externos)
   useEffect(() => {
@@ -1500,23 +1506,33 @@ function PedidosPageContent() {
                               setDetalleActual({ ...detalleActual, cantidad });
                             }}
                             onKeyDown={(e) => {
-                              if (e.key !== 'Enter' && e.key !== 'Tab') return;
                               const cantidad = (e.target as HTMLInputElement).value;
                               const listo =
                                 Boolean(detalleActual.prenda_id) &&
                                 Boolean(detalleActual.talla_id) &&
                                 parseFloat(cantidad) > 0;
+
+                              // Tab: nunca agrega; va al check / especificación
+                              if (e.key === 'Tab' && !e.shiftKey) {
+                                e.preventDefault();
+                                if (usarEspecificacionesRef.current) {
+                                  inputEspecificacionesRef.current?.focus();
+                                } else {
+                                  checkEspecificacionesRef.current?.focus();
+                                }
+                                return;
+                              }
+
+                              if (e.key !== 'Enter') return;
+                              e.preventDefault();
                               if (!listo) return;
 
-                              // Con especificación activa: no agregar aún; ir al input
-                              if (usarEspecificaciones) {
-                                e.preventDefault();
+                              // Con especificación: esperar a escribirla
+                              if (usarEspecificacionesRef.current) {
                                 inputEspecificacionesRef.current?.focus();
                                 return;
                               }
 
-                              // Sin especificación: Enter o Tab agrega la partida
-                              e.preventDefault();
                               agregarDetalle();
                             }}
                             min="0"
@@ -1529,15 +1545,38 @@ function PedidosPageContent() {
                             style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}
                           >
                             <input
+                              ref={checkEspecificacionesRef}
                               type="checkbox"
                               checked={usarEspecificaciones}
-                              onChange={(e) => {
-                                const on = e.target.checked;
+                              onMouseDown={(e) => {
+                                // Evita efectos raros de blur/Enter en el form al marcar
+                                e.preventDefault();
+                              }}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                const on = !usarEspecificacionesRef.current;
+                                usarEspecificacionesRef.current = on;
                                 setUsarEspecificaciones(on);
                                 if (!on) {
                                   setDetalleActual((prev) => ({ ...prev, especificaciones: '' }));
+                                  inputCantidadRef.current?.focus();
                                 } else {
-                                  setTimeout(() => inputEspecificacionesRef.current?.focus(), 50);
+                                  // Activar y esperar la especificación (NO agregar partida)
+                                  setTimeout(() => inputEspecificacionesRef.current?.focus(), 0);
+                                }
+                              }}
+                              onKeyDown={(e) => {
+                                // Evitar que Enter en el check dispare submit del form / alta
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  const on = !usarEspecificacionesRef.current;
+                                  usarEspecificacionesRef.current = on;
+                                  setUsarEspecificaciones(on);
+                                  if (!on) {
+                                    setDetalleActual((prev) => ({ ...prev, especificaciones: '' }));
+                                  } else {
+                                    setTimeout(() => inputEspecificacionesRef.current?.focus(), 0);
+                                  }
                                 }
                               }}
                               title="Activar especificaciones"
@@ -1552,16 +1591,22 @@ function PedidosPageContent() {
                               disabled={!usarEspecificaciones}
                               onChange={(e) => setDetalleActual({ ...detalleActual, especificaciones: e.target.value })}
                               onKeyDown={(e) => {
-                                if (e.key !== 'Enter' && e.key !== 'Tab') return;
+                                if (e.key !== 'Enter') return;
                                 e.preventDefault();
+                                e.stopPropagation();
                                 const cantidad = detalleActual.cantidad;
                                 if (
-                                  detalleActual.prenda_id &&
-                                  detalleActual.talla_id &&
-                                  parseFloat(cantidad) > 0
+                                  !detalleActual.prenda_id ||
+                                  !detalleActual.talla_id ||
+                                  !(parseFloat(cantidad) > 0)
                                 ) {
-                                  agregarDetalle();
+                                  return;
                                 }
+                                // Solo agregar cuando ya escribió la especificación
+                                if (!String(detalleActual.especificaciones || '').trim()) {
+                                  return;
+                                }
+                                agregarDetalle();
                               }}
                               placeholder={usarEspecificaciones ? 'Color, bordado, notas...' : '—'}
                               style={{
