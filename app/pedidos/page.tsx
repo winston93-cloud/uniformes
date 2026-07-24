@@ -77,6 +77,15 @@ interface DetallePedido {
 
 export const dynamic = 'force-dynamic';
 
+/** Minúsculas sin acentos para comparar nombres capturados con o sin tildes. */
+function normalizarTextoBusqueda(valor: unknown): string {
+  return String(valor ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
+}
+
 // Componente para detectar parámetros de búsqueda
 function SearchParamsDetector({ setMostrarFormulario }: { setMostrarFormulario: (value: boolean) => void }) {
   const searchParams = useSearchParams();
@@ -139,13 +148,23 @@ function PedidosPageContent() {
   const fechaActual = new Date();
   const [mesSeleccionado, setMesSeleccionado] = useState(fechaActual.getMonth() + 1); // 1-12
   const [añoSeleccionado, setAñoSeleccionado] = useState(fechaActual.getFullYear());
-  
-  // Filtrar pedidos por mes y año (fecha legible es es-MX; usar siempre timestamp ISO de API)
-  const pedidos = pedidosDB
-    .filter((pedido) =>
-      esWinston ? pedidoCoincideFiltroLinea(pedido as unknown as Record<string, unknown>, filtroLineaVenta) : true
-    )
-    .filter((pedido: any) => {
+
+  // Búsqueda por nombre de cliente / folio en el listado
+  const [busquedaPedido, setBusquedaPedido] = useState('');
+  const [mostrarSugerenciasPedido, setMostrarSugerenciasPedido] = useState(false);
+  const [indiceSugerenciaPedido, setIndiceSugerenciaPedido] = useState(-1);
+  const contenedorBusquedaPedidoRef = useRef<HTMLDivElement>(null);
+
+  const pedidosLinea = pedidosDB.filter((pedido) =>
+    esWinston
+      ? pedidoCoincideFiltroLinea(pedido as unknown as Record<string, unknown>, filtroLineaVenta)
+      : true
+  );
+
+  const terminoBusqueda = normalizarTextoBusqueda(busquedaPedido);
+  const hayBusqueda = terminoBusqueda.length > 0;
+
+  const pedidosDelPeriodo = pedidosLinea.filter((pedido: any) => {
     const raw =
       pedido.created_at ??
       pedido.createdAt ??
@@ -158,10 +177,44 @@ function PedidosPageContent() {
       fechaPedido.getMonth() + 1 === mesSeleccionado &&
       fechaPedido.getFullYear() === añoSeleccionado
     );
-  }).map((p: any) => ({
-    ...p,
-    fecha: p.fecha || new Date(p.created_at).toISOString().split('T')[0],
-  }));
+  });
+
+  const coincideBusqueda = (pedido: any) =>
+    normalizarTextoBusqueda(pedido.cliente_nombre).includes(terminoBusqueda) ||
+    normalizarTextoBusqueda(pedido.folio).includes(terminoBusqueda);
+
+  // Al buscar por nombre se ignora mes/año para no esconder pedidos de otros meses
+  const pedidos = (hayBusqueda ? pedidosLinea.filter(coincideBusqueda) : pedidosDelPeriodo).map(
+    (p: any) => ({
+      ...p,
+      fecha: p.fecha || new Date(p.created_at).toISOString().split('T')[0],
+    })
+  );
+
+  const sugerenciasPedido = hayBusqueda
+    ? Array.from(
+        new Set(
+          pedidosLinea
+            .filter((p: any) => normalizarTextoBusqueda(p.cliente_nombre).includes(terminoBusqueda))
+            .map((p: any) => String(p.cliente_nombre || '').trim())
+            .filter(Boolean)
+        )
+      )
+        .sort((a, b) => a.localeCompare(b))
+        .slice(0, 8)
+    : [];
+
+  const aplicarSugerenciaPedido = (nombre: string) => {
+    setBusquedaPedido(nombre);
+    setMostrarSugerenciasPedido(false);
+    setIndiceSugerenciaPedido(-1);
+  };
+
+  const limpiarBusquedaPedido = () => {
+    setBusquedaPedido('');
+    setMostrarSugerenciasPedido(false);
+    setIndiceSugerenciaPedido(-1);
+  };
 
   // Generar lista de años (últimos 5 años + año actual)
   const años = Array.from({ length: 6 }, (_, i) => fechaActual.getFullYear() - i);
@@ -488,6 +541,13 @@ function PedidosPageContent() {
       }, 100);
     }
   };
+
+  // Cerrar sugerencias del buscador del listado al tocar fuera
+  useEffect(() => {
+    return instalarCierrePointerFuera([contenedorBusquedaPedidoRef], () =>
+      setMostrarSugerenciasPedido(false)
+    );
+  }, []);
 
   // Cerrar dropdowns al tocar fuera (sin cerrar al hacer scroll dentro del portal)
   useEffect(() => {
@@ -2124,6 +2184,7 @@ function PedidosPageContent() {
           gap: '1.5rem', 
           marginBottom: '1.5rem',
           alignItems: 'center',
+          flexWrap: 'wrap',
           background: 'linear-gradient(135deg, #ec4899 0%, #f97316 100%)',
           padding: '1.25rem 1.5rem',
           borderRadius: '12px',
@@ -2204,6 +2265,130 @@ function PedidosPageContent() {
             </select>
           </div>
 
+          <div
+            ref={contenedorBusquedaPedidoRef}
+            style={{ position: 'relative', display: 'flex', gap: '0.6rem', alignItems: 'center' }}
+          >
+            <label style={{ fontSize: '0.95rem', fontWeight: '600', color: 'white' }}>Cliente:</label>
+            <div style={{ position: 'relative' }}>
+              <input
+                type="text"
+                className="form-input"
+                value={busquedaPedido}
+                onChange={(e) => {
+                  setBusquedaPedido(e.target.value);
+                  setMostrarSugerenciasPedido(true);
+                  setIndiceSugerenciaPedido(-1);
+                }}
+                onFocus={() => {
+                  if (busquedaPedido.trim()) setMostrarSugerenciasPedido(true);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    limpiarBusquedaPedido();
+                    return;
+                  }
+                  if (!mostrarSugerenciasPedido || sugerenciasPedido.length === 0) return;
+
+                  if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    setIndiceSugerenciaPedido((prev) =>
+                      prev < sugerenciasPedido.length - 1 ? prev + 1 : prev
+                    );
+                  } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setIndiceSugerenciaPedido((prev) => (prev > 0 ? prev - 1 : -1));
+                  } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const nombre =
+                      indiceSugerenciaPedido >= 0
+                        ? sugerenciasPedido[indiceSugerenciaPedido]
+                        : sugerenciasPedido.length === 1
+                          ? sugerenciasPedido[0]
+                          : null;
+                    if (nombre) aplicarSugerenciaPedido(nombre);
+                    else setMostrarSugerenciasPedido(false);
+                  }
+                }}
+                placeholder="Buscar por nombre o folio..."
+                autoComplete="off"
+                spellCheck={false}
+                style={{
+                  width: '230px',
+                  paddingRight: busquedaPedido ? '1.9rem' : undefined,
+                  fontWeight: '600',
+                  border: '2px solid white',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
+                }}
+              />
+              {busquedaPedido && (
+                <button
+                  type="button"
+                  onClick={limpiarBusquedaPedido}
+                  title="Limpiar búsqueda"
+                  aria-label="Limpiar búsqueda"
+                  style={{
+                    position: 'absolute',
+                    right: '0.45rem',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: '#6b7280',
+                    fontSize: '1rem',
+                    lineHeight: 1,
+                    cursor: 'pointer',
+                  }}
+                >
+                  ✕
+                </button>
+              )}
+
+              {mostrarSugerenciasPedido && sugerenciasPedido.length > 0 && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 4px)',
+                    left: 0,
+                    width: '320px',
+                    maxHeight: '260px',
+                    overflowY: 'auto',
+                    backgroundColor: 'white',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '8px',
+                    boxShadow: '0 8px 20px rgba(0,0,0,0.18)',
+                    zIndex: 60,
+                  }}
+                >
+                  {sugerenciasPedido.map((nombre, idx) => (
+                    <button
+                      key={nombre}
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => aplicarSugerenciaPedido(nombre)}
+                      onMouseEnter={() => setIndiceSugerenciaPedido(idx)}
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        textAlign: 'left',
+                        padding: '0.55rem 0.75rem',
+                        border: 'none',
+                        borderBottom: '1px solid #f1f5f9',
+                        background: idx === indiceSugerenciaPedido ? '#eff6ff' : 'white',
+                        color: '#1f2937',
+                        fontSize: '0.85rem',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {nombre}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
           <div style={{ 
             marginLeft: 'auto',
             fontSize: '1rem',
@@ -2215,6 +2400,11 @@ function PedidosPageContent() {
             textShadow: '0 1px 2px rgba(0,0,0,0.2)'
           }}>
             {pedidos.length} pedido{pedidos.length !== 1 ? 's' : ''} encontrado{pedidos.length !== 1 ? 's' : ''}
+            {hayBusqueda && (
+              <span style={{ display: 'block', fontSize: '0.72rem', fontWeight: '600', opacity: 0.9 }}>
+                Búsqueda en todos los meses
+              </span>
+            )}
           </div>
         </div>
 
