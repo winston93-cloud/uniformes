@@ -536,95 +536,87 @@ function PedidosPageContent() {
     }
   };
 
-  const agregarDetalle = () => {
-    console.log('➕ Intentando agregar detalle:', detalleActual);
-    console.log('   - prenda_id:', detalleActual.prenda_id);
-    console.log('   - talla_id:', detalleActual.talla_id);
-    console.log('   - cantidad:', detalleActual.cantidad);
-    console.log('   - precio:', detalleActual.precio);
-    
-    if (!detalleActual.prenda_id) {
-      console.log('❌ Falta prenda_id');
-      return;
-    }
-    if (!detalleActual.talla_id) {
-      console.log('❌ Falta talla_id');
-      return;
-    }
-    if (!detalleActual.cantidad || parseFloat(detalleActual.cantidad) <= 0) {
-      console.log('❌ Falta cantidad válida');
-      return;
-    }
+  const partidaEnEdicionLista = () =>
+    Boolean(detalleActual.prenda_id) &&
+    Boolean(detalleActual.talla_id) &&
+    parseFloat(detalleActual.cantidad) > 0;
 
-    const costo = costos.find(c => 
-      c.prenda_id === detalleActual.prenda_id && 
-      c.talla_id === detalleActual.talla_id
+  /** Construye la partida desde la fila de captura; null si incompleta o sin costo. */
+  const construirDetalleDesdeEdicion = (): DetallePedido | null => {
+    if (!partidaEnEdicionLista()) return null;
+
+    const costo = costos.find(
+      (c) => c.prenda_id === detalleActual.prenda_id && c.talla_id === detalleActual.talla_id
     );
-
-    if (!costo) {
-      console.log('❌ No se encontró costo');
-      alert('No se encontró el costo para esta prenda y talla');
-      return;
-    }
+    if (!costo) return null;
 
     const cantidadSolicitada = parseFloat(detalleActual.cantidad);
-    
-    // División automática: calcular cuánto se puede vender y cuánto queda pendiente
     const stockDisponible = costo.stock || 0;
     const cantidadConStock = Math.min(stockDisponible, cantidadSolicitada);
     const cantidadPendiente = Math.max(0, cantidadSolicitada - stockDisponible);
-    
-    console.log(`📊 División automática: Total ${cantidadSolicitada} = ${cantidadConStock} con stock + ${cantidadPendiente} pendiente`);
-
-    const cantidad = parseFloat(detalleActual.cantidad);
+    const cantidad = cantidadSolicitada;
     const precio = parseFloat(detalleActual.precio);
     const total = cantidad * precio;
 
-    const nuevoDetalle: DetallePedido = {
+    return {
       prenda: detalleActual.prenda_nombre,
       prenda_id: detalleActual.prenda_id,
       talla: detalleActual.talla_nombre,
       talla_id: detalleActual.talla_id,
       especificaciones: detalleActual.especificaciones,
-      cantidad: cantidad,
-      pendiente: cantidadPendiente, // Solo lo que no tiene stock
-      precio: precio,
+      cantidad,
+      pendiente: cantidadPendiente,
+      precio,
       precio_lista: precio,
-      total: total,
+      total,
       costoId: costo.id,
       tiene_stock: cantidadConStock > 0,
       cantidad_con_stock: cantidadConStock,
       cantidad_pendiente: cantidadPendiente,
     };
+  };
+
+  const limpiarFilaEdicion = () => {
+    setDetalleActual({
+      prenda_id: '',
+      prenda_nombre: '',
+      talla_id: '',
+      talla_nombre: '',
+      especificaciones: '',
+      cantidad: '1',
+      precio: '0',
+    });
+    setUsarEspecificaciones(false);
+    setTextoPrendaBusqueda('');
+    setTallasDisponibles([]);
+  };
+
+  const agregarDetalle = () => {
+    console.log('➕ Intentando agregar detalle:', detalleActual);
+
+    if (!detalleActual.prenda_id || !detalleActual.talla_id) return;
+    if (!detalleActual.cantidad || parseFloat(detalleActual.cantidad) <= 0) return;
+
+    const nuevoDetalle = construirDetalleDesdeEdicion();
+    if (!nuevoDetalle) {
+      alert('No se encontró el costo para esta prenda y talla');
+      return;
+    }
 
     console.log('✅ Agregando detalle:', nuevoDetalle);
-    console.log('📋 Detalles actuales:', formData.detalles);
 
     const conConjunto = aplicarDescuentosConjuntoALineas(
       [...formData.detalles, nuevoDetalle],
       conjuntos
     );
-    
-    setFormData({ 
-      ...formData, 
-      detalles: conConjunto 
+
+    setFormData({
+      ...formData,
+      detalles: conConjunto,
     });
-    
-    console.log('🧹 Limpiando campos de entrada');
-    setDetalleActual({ 
-      prenda_id: '', 
-      prenda_nombre: '',
-      talla_id: '', 
-      talla_nombre: '',
-      especificaciones: '',
-      cantidad: '1', 
-      precio: '0' 
-    });
-    setUsarEspecificaciones(false);
-    setTextoPrendaBusqueda('');
-    setTallasDisponibles([]);
-    
-    // Mover foco al input de prenda para agregar otra partida
+
+    limpiarFilaEdicion();
+
     setTimeout(() => {
       inputPrendaRef.current?.focus();
     }, 100);
@@ -776,15 +768,24 @@ function PedidosPageContent() {
       alert('Por favor selecciona un cliente');
       return;
     }
-    
-    // Si hay un detalle actual sin agregar, avisar al usuario
-    if (detalleActual.prenda_id && detalleActual.talla_id && parseFloat(detalleActual.cantidad) > 0) {
-      console.log('❌ Error: Hay una prenda sin agregar');
-      alert('Tienes una prenda sin agregar. Por favor da clic en "Nueva Partida" o limpia los campos.');
-      return;
+
+    // Incluir automáticamente la partida en edición (el subtotal ya la cuenta)
+    let detallesFinales = formData.detalles;
+    if (partidaEnEdicionLista()) {
+      const nuevoDetalle = construirDetalleDesdeEdicion();
+      if (!nuevoDetalle) {
+        alert('No se encontró el costo para esta prenda y talla');
+        return;
+      }
+      detallesFinales = aplicarDescuentosConjuntoALineas(
+        [...formData.detalles, nuevoDetalle],
+        conjuntos
+      );
+      setFormData((prev) => ({ ...prev, detalles: detallesFinales }));
+      limpiarFilaEdicion();
     }
     
-    if (formData.detalles.length === 0) {
+    if (detallesFinales.length === 0) {
       console.log('❌ Error: No hay detalles en el pedido');
       alert('Debes agregar al menos un producto al pedido');
       return;
@@ -793,12 +794,14 @@ function PedidosPageContent() {
     console.log('✅ Validaciones pasadas, preparando datos...');
     
     // Determinar estado automáticamente basado en pendientes (ignorar descuentos)
-    const hayPendientes = formData.detalles.some(
+    const hayPendientes = detallesFinales.some(
       (d) => !esLineaDescuentoConjunto(d) && (d.cantidad_pendiente || 0) > 0
     );
     const estadoPedido = hayPendientes ? 'PENDIENTE' : 'COMPLETADO';
     
     console.log(`📊 Estado determinado: ${estadoPedido} (¿Hay pendientes? ${hayPendientes})`);
+
+    const totalPedido = detallesFinales.reduce((sum, d) => sum + d.total, 0);
     
     // Preparar datos del pedido para la base de datos
     const pedidoParaDB = {
@@ -806,7 +809,7 @@ function PedidosPageContent() {
       cliente_id: formData.cliente_id,
       cliente_tipo: formData.cliente_tipo,
       cliente_nombre: formData.cliente_nombre,
-      total: calcularTotal(),
+      total: totalPedido,
       estado: estadoPedido as 'PENDIENTE' | 'COMPLETADO',
       observaciones: formData.observaciones,
       modalidad_pago: formData.modalidad_pago,
@@ -814,7 +817,7 @@ function PedidosPageContent() {
     };
 
     // Preparar detalles para la base de datos
-    const detallesParaDB = formData.detalles.map(detalle => ({
+    const detallesParaDB = detallesFinales.map(detalle => ({
       prenda_id: detalle.prenda_id,
       prenda_nombre: detalle.prenda,
       talla_id: detalle.talla_id,
@@ -2021,7 +2024,10 @@ function PedidosPageContent() {
                 <button
                   type="submit"
                   className="btn btn-primary"
-                  disabled={formData.detalles.length === 0 || guardandoPedido}
+                  disabled={
+                    (formData.detalles.length === 0 && !partidaEnEdicionLista()) ||
+                    guardandoPedido
+                  }
                 >
                   {guardandoPedido ? '⏳ Guardando pedido…' : '💾 Crear Pedido'}
                 </button>
