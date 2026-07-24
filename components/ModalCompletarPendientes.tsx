@@ -11,6 +11,8 @@ export type PartidaPendienteCompletar = {
   especificaciones?: string;
 };
 
+export type ItemCompletar = { id: string; cantidad: number };
+
 type Props = {
   abierto: boolean;
   folio?: string | null;
@@ -19,7 +21,7 @@ type Props = {
   cargando?: boolean;
   guardando?: boolean;
   onClose: () => void;
-  onConfirmar: (detalleIds: string[]) => void | Promise<void>;
+  onConfirmar: (items: ItemCompletar[]) => void | Promise<void>;
 };
 
 export default function ModalCompletarPendientes({
@@ -33,20 +35,37 @@ export default function ModalCompletarPendientes({
   onConfirmar,
 }: Props) {
   const [seleccionados, setSeleccionados] = useState<Record<string, boolean>>({});
+  const [cantidades, setCantidades] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!abierto) return;
-    const init: Record<string, boolean> = {};
-    for (const p of partidas) init[p.id] = true;
-    setSeleccionados(init);
+    const initSel: Record<string, boolean> = {};
+    const initCant: Record<string, string> = {};
+    for (const p of partidas) {
+      initSel[p.id] = true;
+      initCant[p.id] = String(p.pendiente);
+    }
+    setSeleccionados(initSel);
+    setCantidades(initCant);
   }, [abierto, partidas]);
 
-  const idsMarcados = useMemo(
-    () => partidas.filter((p) => seleccionados[p.id]).map((p) => p.id),
-    [partidas, seleccionados]
+  const cantidadValida = (p: PartidaPendienteCompletar): number => {
+    const n = Math.floor(Number(cantidades[p.id]));
+    if (!Number.isFinite(n) || n <= 0) return 0;
+    return Math.min(n, p.pendiente);
+  };
+
+  const itemsMarcados = useMemo<ItemCompletar[]>(
+    () =>
+      partidas
+        .filter((p) => seleccionados[p.id])
+        .map((p) => ({ id: p.id, cantidad: cantidadValida(p) }))
+        .filter((it) => it.cantidad > 0),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [partidas, seleccionados, cantidades]
   );
 
-  const todos = partidas.length > 0 && idsMarcados.length === partidas.length;
+  const todos = partidas.length > 0 && partidas.every((p) => seleccionados[p.id]);
 
   if (!abierto) return null;
 
@@ -91,7 +110,8 @@ export default function ModalCompletarPendientes({
             {folio || 'Pedido'} {clienteNombre ? `· ${clienteNombre}` : ''}
           </div>
           <div style={{ marginTop: 8, fontSize: '0.85rem', opacity: 0.9 }}>
-            Marca solo las prendas que entregas ahora. El pedido pasa a COMPLETADO cuando ya no quede ninguna pendiente.
+            Marca las prendas que entregas ahora e indica cuántas piezas de las pendientes se
+            entregan. El pedido pasa a COMPLETADO cuando ya no quede ninguna pendiente.
           </div>
         </div>
 
@@ -135,16 +155,19 @@ export default function ModalCompletarPendientes({
                       <th style={th}>Prenda</th>
                       <th style={th}>Talla</th>
                       <th style={{ ...th, textAlign: 'center' }}>Pend.</th>
+                      <th style={{ ...th, textAlign: 'center' }}>Piezas a entregar</th>
                       <th style={th}>Observación</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {partidas.map((p) => (
+                    {partidas.map((p) => {
+                      const marcado = Boolean(seleccionados[p.id]);
+                      return (
                       <tr key={p.id} style={{ borderTop: '1px solid #e2e8f0' }}>
                         <td style={{ ...td, width: 44, textAlign: 'center' }}>
                           <input
                             type="checkbox"
-                            checked={Boolean(seleccionados[p.id])}
+                            checked={marcado}
                             onChange={() =>
                               setSeleccionados((prev) => ({ ...prev, [p.id]: !prev[p.id] }))
                             }
@@ -156,9 +179,42 @@ export default function ModalCompletarPendientes({
                         <td style={{ ...td, textAlign: 'center', fontWeight: 800, color: '#b45309' }}>
                           {p.pendiente}
                         </td>
+                        <td style={{ ...td, textAlign: 'center' }}>
+                          <input
+                            type="number"
+                            min={1}
+                            max={p.pendiente}
+                            step={1}
+                            disabled={!marcado}
+                            value={cantidades[p.id] ?? String(p.pendiente)}
+                            onChange={(e) => {
+                              const raw = e.target.value;
+                              setCantidades((prev) => ({ ...prev, [p.id]: raw }));
+                            }}
+                            onBlur={(e) => {
+                              const n = Math.floor(Number(e.target.value));
+                              const val =
+                                !Number.isFinite(n) || n <= 0
+                                  ? 1
+                                  : Math.min(n, p.pendiente);
+                              setCantidades((prev) => ({ ...prev, [p.id]: String(val) }));
+                            }}
+                            style={{
+                              width: 72,
+                              textAlign: 'center',
+                              padding: '0.35rem 0.4rem',
+                              borderRadius: 8,
+                              border: '1px solid #cbd5e1',
+                              fontWeight: 700,
+                              background: marcado ? '#fff' : '#f1f5f9',
+                              color: marcado ? '#0f172a' : '#94a3b8',
+                            }}
+                          />
+                        </td>
                         <td style={{ ...td, color: '#64748b' }}>{p.especificaciones || '—'}</td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -181,15 +237,15 @@ export default function ModalCompletarPendientes({
           <button
             type="button"
             className="btn btn-primary"
-            disabled={guardando || idsMarcados.length === 0 || partidas.length === 0}
-            onClick={() => void onConfirmar(idsMarcados)}
+            disabled={guardando || itemsMarcados.length === 0 || partidas.length === 0}
+            onClick={() => void onConfirmar(itemsMarcados)}
             style={{ background: 'linear-gradient(135deg, #0f766e, #0d9488)', border: 'none' }}
           >
             {guardando
               ? 'Guardando…'
-              : idsMarcados.length === partidas.length && partidas.length > 0
+              : itemsMarcados.length === partidas.length && partidas.length > 0
                 ? 'Completar todas'
-                : `Completar ${idsMarcados.length} partida(s)`}
+                : `Completar ${itemsMarcados.length} partida(s)`}
           </button>
         </div>
       </div>

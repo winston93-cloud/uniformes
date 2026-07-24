@@ -432,15 +432,18 @@ export function usePedidos(sucursal_id?: string) {
 
   const completarDetallesPendientes = async (
     pedidoId: string,
-    detalleIds: string[],
+    items: Array<{ id: string; cantidad: number }>,
     usuario_id?: string | null
   ) => {
     try {
-      const { data, error } = await insforgeDb().rpc('completar_detalles_pedido_atomico', {
-        p_pedido_id: pedidoId,
-        p_detalle_ids: detalleIds,
-        p_usuario_id: usuarioIdParaRpc(usuario_id),
-      });
+      const { data, error } = await insforgeDb().rpc(
+        'completar_detalles_pedido_por_piezas_atomico',
+        {
+          p_pedido_id: pedidoId,
+          p_items: items.map((it) => ({ id: it.id, cantidad: it.cantidad })),
+          p_usuario_id: usuarioIdParaRpc(usuario_id),
+        }
+      );
       if (error) throw error;
       if (data && data.success === false) {
         throw new Error(data.error || 'Error al completar partidas');

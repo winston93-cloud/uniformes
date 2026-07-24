@@ -8,6 +8,7 @@ import LayoutWrapper from '@/components/LayoutWrapper';
 import ModalDevolucion from '@/components/ModalDevolucion';
 import ModalCompletarPendientes, {
   type PartidaPendienteCompletar,
+  type ItemCompletar,
 } from '@/components/ModalCompletarPendientes';
 import { insforgeDb } from '@/lib/insforgeBrowser';
 import {
@@ -102,7 +103,7 @@ function SearchParamsDetector({ setMostrarFormulario }: { setMostrarFormulario: 
 function PedidosPageContent() {
   const router = useRouter();
   const { sesion, cicloEscolar } = useAuth();
-  const [mostrarFormulario, setMostrarFormulario] = useState(true); // Abrir automáticamente al entrar
+  const [mostrarFormulario, setMostrarFormulario] = useState(false); // Entrar en Gestión de Pedidos; el form se abre con "Nuevo Pedido" o ?nuevo=true
   const [mostrarModal, setMostrarModal] = useState(false);
   const [mostrarModalDevolucion, setMostrarModalDevolucion] = useState(false);
   const [mostrarModalCompletar, setMostrarModalCompletar] = useState(false);
@@ -1065,13 +1066,13 @@ function PedidosPageContent() {
     }
   };
 
-  const confirmarCompletarPendientes = async (detalleIds: string[]) => {
+  const confirmarCompletarPendientes = async (items: ItemCompletar[]) => {
     if (!pedidoCompletar) return;
     setGuardandoCompletar(true);
     try {
       const res = await completarDetallesPendientes(
         pedidoCompletar.id,
-        detalleIds,
+        items,
         (sesion as any)?.usuario_id ?? null
       );
       if (!res.success) {
@@ -2279,6 +2280,14 @@ function PedidosPageContent() {
                   setBusquedaPedido(e.target.value);
                   setMostrarSugerenciasPedido(true);
                   setIndiceSugerenciaPedido(-1);
+                }}
+                onClick={() => {
+                  // Al hacer click, dejar el campo en blanco para una nueva búsqueda
+                  if (busquedaPedido) {
+                    setBusquedaPedido('');
+                    setIndiceSugerenciaPedido(-1);
+                  }
+                  setMostrarSugerenciasPedido(false);
                 }}
                 onFocus={() => {
                   if (busquedaPedido.trim()) setMostrarSugerenciasPedido(true);
