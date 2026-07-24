@@ -231,6 +231,7 @@ function PedidosPageContent() {
   const inputEspecificacionesRef = useRef<HTMLInputElement>(null);
   const inputCantidadRef = useRef<HTMLInputElement>(null);
   const inputEfectivoRef = useRef<HTMLInputElement>(null);
+  const [usarEspecificaciones, setUsarEspecificaciones] = useState(false);
 
   // Función para buscar clientes (alumnos y externos)
   useEffect(() => {
@@ -520,9 +521,9 @@ function PedidosPageContent() {
         precio: costo.precio_venta.toString(),
       });
       
-      // Mover foco a especificaciones
+      // Flujo: talla → cantidad (especificaciones solo si se activa el check)
       setTimeout(() => {
-        inputEspecificacionesRef.current?.focus();
+        inputCantidadRef.current?.focus();
       }, 100);
     }
   };
@@ -611,6 +612,7 @@ function PedidosPageContent() {
       cantidad: '', 
       precio: '0' 
     });
+    setUsarEspecificaciones(false);
     setTextoPrendaBusqueda('');
     setTallasDisponibles([]);
     
@@ -632,6 +634,7 @@ function PedidosPageContent() {
       cantidad: '', 
       precio: '0' 
     });
+    setUsarEspecificaciones(false);
     setTextoPrendaBusqueda('');
     setTallasDisponibles([]);
     console.log('✅ Campos limpiados, detalles siguen igual');
@@ -1315,9 +1318,9 @@ function PedidosPageContent() {
                         <th style={{ padding: '0.3rem', textAlign: 'center', fontWeight: '600', fontSize: '0.75rem' }}>🗑️</th>
                         <th style={{ padding: '0.3rem', textAlign: 'left', fontWeight: '600', fontSize: '0.75rem' }}>👕 Prenda</th>
                         <th style={{ padding: '0.3rem', textAlign: 'left', fontWeight: '600', fontSize: '0.75rem' }}>📏 Talla</th>
-                        <th style={{ padding: '0.3rem', textAlign: 'left', fontWeight: '600', fontSize: '0.75rem' }}>ℹ️ Especif.</th>
                         <th style={{ padding: '0.3rem', textAlign: 'center', fontWeight: '600', fontSize: '0.75rem' }}>📦 Stock</th>
                         <th style={{ padding: '0.3rem', textAlign: 'center', fontWeight: '600', fontSize: '0.75rem' }}>🔢 Cant.</th>
+                        <th style={{ padding: '0.3rem', textAlign: 'left', fontWeight: '600', fontSize: '0.75rem' }}>ℹ️ Especif.</th>
                         <th style={{ padding: '0.3rem', textAlign: 'center', fontWeight: '600', fontSize: '0.75rem' }}>✅ Entreg.</th>
                         <th style={{ padding: '0.3rem', textAlign: 'center', fontWeight: '600', fontSize: '0.75rem' }}>⚠️ Pend.</th>
                         <th style={{ padding: '0.3rem', textAlign: 'right', fontWeight: '600', fontSize: '0.75rem' }}>$ Precio</th>
@@ -1369,6 +1372,7 @@ function PedidosPageContent() {
                                 cantidad: '', 
                                 precio: '0' 
                               });
+                              setUsarEspecificaciones(false);
                               setTextoPrendaBusqueda('');
                               setTallasDisponibles([]);
                             }}
@@ -1463,23 +1467,6 @@ function PedidosPageContent() {
                             ))}
                           </select>
                         </td>
-                        <td style={{ padding: '0.5rem' }}>
-                          <input
-                            ref={inputEspecificacionesRef}
-                            type="text"
-                            className="form-input"
-                            value={detalleActual.especificaciones}
-                            onChange={(e) => setDetalleActual({ ...detalleActual, especificaciones: e.target.value })}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' || e.key === 'Tab') {
-                                e.preventDefault();
-                                inputCantidadRef.current?.focus();
-                              }
-                            }}
-                            placeholder="Color, bordado, notas..."
-                            style={{ width: '100%', fontSize: '0.85rem', padding: '0.3rem' }}
-                          />
-                        </td>
                         <td style={{ padding: '0.5rem', textAlign: 'center' }}>
                           {(() => {
                             const costo = costos.find(c => 
@@ -1533,6 +1520,49 @@ function PedidosPageContent() {
                             min="0"
                             style={{ width: '80px', textAlign: 'center', fontSize: '0.85rem', padding: '0.3rem' }}
                           />
+                        </td>
+                        <td style={{ padding: '0.5rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                            <input
+                              type="checkbox"
+                              checked={usarEspecificaciones}
+                              onChange={(e) => {
+                                const on = e.target.checked;
+                                setUsarEspecificaciones(on);
+                                if (!on) {
+                                  setDetalleActual((prev) => ({ ...prev, especificaciones: '' }));
+                                } else {
+                                  setTimeout(() => inputEspecificacionesRef.current?.focus(), 50);
+                                }
+                              }}
+                              title="Activar especificaciones"
+                              aria-label="Usar especificaciones"
+                              style={{ width: 16, height: 16, flexShrink: 0, cursor: 'pointer' }}
+                            />
+                            <input
+                              ref={inputEspecificacionesRef}
+                              type="text"
+                              className="form-input"
+                              value={detalleActual.especificaciones}
+                              disabled={!usarEspecificaciones}
+                              onChange={(e) => setDetalleActual({ ...detalleActual, especificaciones: e.target.value })}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  inputCantidadRef.current?.focus();
+                                }
+                              }}
+                              placeholder={usarEspecificaciones ? 'Color, bordado, notas...' : '—'}
+                              style={{
+                                width: '100%',
+                                fontSize: '0.85rem',
+                                padding: '0.3rem',
+                                backgroundColor: usarEspecificaciones ? undefined : '#f1f5f9',
+                                color: usarEspecificaciones ? undefined : '#94a3b8',
+                                cursor: usarEspecificaciones ? 'text' : 'not-allowed',
+                              }}
+                            />
+                          </div>
                         </td>
                         <td style={{ padding: '0.5rem', textAlign: 'center', color: '#6b7280', fontSize: '0.85rem' }}>
                           -
@@ -1656,9 +1686,6 @@ function PedidosPageContent() {
                               '—'
                             )}
                           </td>
-                          <td style={{ padding: '0.75rem', fontSize: '0.9rem', color: '#666' }}>
-                            {detalle.especificaciones || '-'}
-                          </td>
                           <td style={{ padding: '0.75rem', textAlign: 'center' }}>
                             {esDesc ? (
                               '—'
@@ -1687,6 +1714,9 @@ function PedidosPageContent() {
                           </td>
                           <td style={{ padding: '0.75rem', textAlign: 'center', fontWeight: '600' }}>
                             {detalle.cantidad}
+                          </td>
+                          <td style={{ padding: '0.75rem', fontSize: '0.9rem', color: '#666' }}>
+                            {detalle.especificaciones || '-'}
                           </td>
                           <td style={{ padding: '0.75rem', textAlign: 'center' }}>
                             {esDesc ? '—' : (() => {
