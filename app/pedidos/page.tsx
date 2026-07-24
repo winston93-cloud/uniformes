@@ -209,7 +209,7 @@ function PedidosPageContent() {
     talla_id: '',
     talla_nombre: '',
     especificaciones: '',
-    cantidad: '',
+    cantidad: '1',
     precio: '0',
   });
 
@@ -525,11 +525,13 @@ function PedidosPageContent() {
         talla_id: tallaId,
         talla_nombre: talla?.nombre || '',
         precio: costo.precio_venta.toString(),
+        cantidad: '1',
       });
       
-      // Flujo: talla → cantidad (especificaciones solo si se activa el check)
+      // Flujo: talla → cantidad (siempre default 1; especificaciones solo con check)
       setTimeout(() => {
         inputCantidadRef.current?.focus();
+        inputCantidadRef.current?.select();
       }, 100);
     }
   };
@@ -615,7 +617,7 @@ function PedidosPageContent() {
       talla_id: '', 
       talla_nombre: '',
       especificaciones: '',
-      cantidad: '', 
+      cantidad: '1', 
       precio: '0' 
     });
     setUsarEspecificaciones(false);
@@ -637,7 +639,7 @@ function PedidosPageContent() {
       talla_id: '', 
       talla_nombre: '',
       especificaciones: '',
-      cantidad: '', 
+      cantidad: '1', 
       precio: '0' 
     });
     setUsarEspecificaciones(false);
@@ -1375,7 +1377,7 @@ function PedidosPageContent() {
                                 talla_id: '', 
                                 talla_nombre: '',
                                 especificaciones: '',
-                                cantidad: '', 
+                                cantidad: '1', 
                                 precio: '0' 
                               });
                               setUsarEspecificaciones(false);
@@ -1418,9 +1420,15 @@ function PedidosPageContent() {
                                 } else if (e.key === 'ArrowUp') {
                                   e.preventDefault();
                                   setIndicePrendaSeleccionada(prev => prev > 0 ? prev - 1 : -1);
-                                } else if (e.key === 'Enter' && indicePrendaSeleccionada >= 0) {
-                                  e.preventDefault();
-                                  seleccionarPrendaDelDropdown(prendasEncontradas[indicePrendaSeleccionada]);
+                                } else if (e.key === 'Enter') {
+                                  // Una sola coincidencia: Enter la selecciona sin navegar con flechas
+                                  if (prendasEncontradas.length === 1) {
+                                    e.preventDefault();
+                                    seleccionarPrendaDelDropdown(prendasEncontradas[0]);
+                                  } else if (indicePrendaSeleccionada >= 0) {
+                                    e.preventDefault();
+                                    seleccionarPrendaDelDropdown(prendasEncontradas[indicePrendaSeleccionada]);
+                                  }
                                 } else if (e.key === 'Escape') {
                                   setMostrarListaPrendas(false);
                                   setIndicePrendaSeleccionada(-1);
