@@ -234,10 +234,30 @@ function PedidosPageContent() {
   const inputEfectivoRef = useRef<HTMLInputElement>(null);
   const [usarEspecificaciones, setUsarEspecificaciones] = useState(false);
   const usarEspecificacionesRef = useRef(false);
+  const detalleActualRef = useRef(detalleActual);
+  const costosRef = useRef(costos);
+  const formDataDetallesRef = useRef(formData.detalles);
+  const conjuntosRef = useRef(conjuntos);
 
   useEffect(() => {
     usarEspecificacionesRef.current = usarEspecificaciones;
   }, [usarEspecificaciones]);
+
+  useEffect(() => {
+    detalleActualRef.current = detalleActual;
+  }, [detalleActual]);
+
+  useEffect(() => {
+    costosRef.current = costos;
+  }, [costos]);
+
+  useEffect(() => {
+    formDataDetallesRef.current = formData.detalles;
+  }, [formData.detalles]);
+
+  useEffect(() => {
+    conjuntosRef.current = conjuntos;
+  }, [conjuntos]);
 
   // Función para buscar clientes (alumnos y externos)
   useEffect(() => {
@@ -434,14 +454,16 @@ function PedidosPageContent() {
     console.log('🎯 Prenda seleccionada:', prenda.nombre);
     
     setTextoPrendaBusqueda(prenda.nombre);
-    setDetalleActual({
-      ...detalleActual,
+    const next = {
+      ...detalleActualRef.current,
       prenda_id: prenda.id,
       prenda_nombre: prenda.nombre,
       talla_id: '',
       talla_nombre: '',
       precio: '0',
-    });
+    };
+    detalleActualRef.current = next;
+    setDetalleActual(next);
     setMostrarListaPrendas(false);
     
     // Cargar tallas asociadas a esta prenda
@@ -520,13 +542,15 @@ function PedidosPageContent() {
     );
     
     if (costo) {
-      setDetalleActual({
-        ...detalleActual,
+      const next = {
+        ...detalleActualRef.current,
         talla_id: tallaId,
         talla_nombre: talla?.nombre || '',
         precio: costo.precio_venta.toString(),
         cantidad: '1',
-      });
+      };
+      detalleActualRef.current = next;
+      setDetalleActual(next);
       
       // Flujo: talla → cantidad (siempre default 1; especificaciones solo con check)
       setTimeout(() => {
@@ -536,35 +560,37 @@ function PedidosPageContent() {
     }
   };
 
-  const partidaEnEdicionLista = () =>
-    Boolean(detalleActual.prenda_id) &&
-    Boolean(detalleActual.talla_id) &&
-    parseFloat(detalleActual.cantidad) > 0;
+  const partidaEnEdicionLista = (d = detalleActualRef.current) =>
+    Boolean(d.prenda_id) &&
+    Boolean(d.talla_id) &&
+    parseFloat(d.cantidad) > 0;
 
   /** Construye la partida desde la fila de captura; null si incompleta o sin costo. */
-  const construirDetalleDesdeEdicion = (): DetallePedido | null => {
-    if (!partidaEnEdicionLista()) return null;
+  const construirDetalleDesdeEdicion = (
+    override?: Partial<typeof detalleActual>
+  ): DetallePedido | null => {
+    const d = { ...detalleActualRef.current, ...override };
+    if (!partidaEnEdicionLista(d)) return null;
 
-    const costo = costos.find(
-      (c) => c.prenda_id === detalleActual.prenda_id && c.talla_id === detalleActual.talla_id
+    const costo = costosRef.current.find(
+      (c) => c.prenda_id === d.prenda_id && c.talla_id === d.talla_id
     );
     if (!costo) return null;
 
-    const cantidadSolicitada = parseFloat(detalleActual.cantidad);
+    const cantidadSolicitada = parseFloat(d.cantidad);
     const stockDisponible = costo.stock || 0;
     const cantidadConStock = Math.min(stockDisponible, cantidadSolicitada);
     const cantidadPendiente = Math.max(0, cantidadSolicitada - stockDisponible);
-    const cantidad = cantidadSolicitada;
-    const precio = parseFloat(detalleActual.precio);
-    const total = cantidad * precio;
+    const precio = parseFloat(d.precio);
+    const total = cantidadSolicitada * precio;
 
     return {
-      prenda: detalleActual.prenda_nombre,
-      prenda_id: detalleActual.prenda_id,
-      talla: detalleActual.talla_nombre,
-      talla_id: detalleActual.talla_id,
-      especificaciones: detalleActual.especificaciones,
-      cantidad,
+      prenda: d.prenda_nombre,
+      prenda_id: d.prenda_id,
+      talla: d.talla_nombre,
+      talla_id: d.talla_id,
+      especificaciones: d.especificaciones,
+      cantidad: cantidadSolicitada,
       pendiente: cantidadPendiente,
       precio,
       precio_lista: precio,
@@ -577,7 +603,9 @@ function PedidosPageContent() {
   };
 
   const limpiarFilaEdicion = () => {
-    setDetalleActual({
+    usarEspecificacionesRef.current = false;
+    setUsarEspecificaciones(false);
+    const limpio = {
       prenda_id: '',
       prenda_nombre: '',
       talla_id: '',
@@ -585,19 +613,43 @@ function PedidosPageContent() {
       especificaciones: '',
       cantidad: '1',
       precio: '0',
-    });
-    setUsarEspecificaciones(false);
+    };
+    detalleActualRef.current = limpio;
+    setDetalleActual(limpio);
     setTextoPrendaBusqueda('');
     setTallasDisponibles([]);
   };
 
-  const agregarDetalle = () => {
-    console.log('➕ Intentando agregar detalle:', detalleActual);
+  const agregarDetalle = (
+    cantidadOverride?: string,
+    opts?: { ignorarEspecif?: boolean }
+  ) => {
+    const cantidad =
+      cantidadOverride !== undefined
+        ? cantidadOverride
+        : inputCantidadRef.current?.value ?? detalleActualRef.current.cantidad;
 
-    if (!detalleActual.prenda_id || !detalleActual.talla_id) return;
-    if (!detalleActual.cantidad || parseFloat(detalleActual.cantidad) <= 0) return;
+    const snapshot = {
+      ...detalleActualRef.current,
+      cantidad,
+    };
+    detalleActualRef.current = snapshot;
 
-    const nuevoDetalle = construirDetalleDesdeEdicion();
+    if (!snapshot.prenda_id || !snapshot.talla_id) {
+      console.log('❌ Falta prenda o talla al agregar');
+      return;
+    }
+    if (!cantidad || !(parseFloat(cantidad) > 0)) {
+      console.log('❌ Cantidad inválida al agregar');
+      return;
+    }
+
+    if (usarEspecificacionesRef.current && !opts?.ignorarEspecif) {
+      inputEspecificacionesRef.current?.focus();
+      return;
+    }
+
+    const nuevoDetalle = construirDetalleDesdeEdicion({ cantidad });
     if (!nuevoDetalle) {
       alert('No se encontró el costo para esta prenda y talla');
       return;
@@ -606,14 +658,15 @@ function PedidosPageContent() {
     console.log('✅ Agregando detalle:', nuevoDetalle);
 
     const conConjunto = aplicarDescuentosConjuntoALineas(
-      [...formData.detalles, nuevoDetalle],
-      conjuntos
+      [...formDataDetallesRef.current, nuevoDetalle],
+      conjuntosRef.current
     );
+    formDataDetallesRef.current = conConjunto;
 
-    setFormData({
-      ...formData,
+    setFormData((prev) => ({
+      ...prev,
       detalles: conConjunto,
-    });
+    }));
 
     limpiarFilaEdicion();
 
@@ -770,17 +823,21 @@ function PedidosPageContent() {
     }
 
     // Incluir automáticamente la partida en edición (el subtotal ya la cuenta)
-    let detallesFinales = formData.detalles;
+    let detallesFinales = formDataDetallesRef.current;
     if (partidaEnEdicionLista()) {
-      const nuevoDetalle = construirDetalleDesdeEdicion();
+      const cantidadDom = inputCantidadRef.current?.value;
+      const nuevoDetalle = construirDetalleDesdeEdicion(
+        cantidadDom ? { cantidad: cantidadDom } : undefined
+      );
       if (!nuevoDetalle) {
         alert('No se encontró el costo para esta prenda y talla');
         return;
       }
       detallesFinales = aplicarDescuentosConjuntoALineas(
-        [...formData.detalles, nuevoDetalle],
-        conjuntos
+        [...formDataDetallesRef.current, nuevoDetalle],
+        conjuntosRef.current
       );
+      formDataDetallesRef.current = detallesFinales;
       setFormData((prev) => ({ ...prev, detalles: detallesFinales }));
       limpiarFilaEdicion();
     }
@@ -1509,20 +1566,19 @@ function PedidosPageContent() {
                         <td style={{ padding: '0.5rem', textAlign: 'center' }}>
                           <input
                             ref={inputCantidadRef}
-                            type="number"
+                            type="text"
+                            inputMode="numeric"
                             className="form-input"
                             value={detalleActual.cantidad}
                             onChange={(e) => {
-                              const cantidad = e.target.value;
-                              setDetalleActual({ ...detalleActual, cantidad });
+                              const cantidad = e.target.value.replace(/[^\d.]/g, '');
+                              setDetalleActual((prev) => {
+                                const next = { ...prev, cantidad };
+                                detalleActualRef.current = next;
+                                return next;
+                              });
                             }}
                             onKeyDown={(e) => {
-                              const cantidad = (e.target as HTMLInputElement).value;
-                              const listo =
-                                Boolean(detalleActual.prenda_id) &&
-                                Boolean(detalleActual.talla_id) &&
-                                parseFloat(cantidad) > 0;
-
                               // Tab: nunca agrega; va al check / especificación
                               if (e.key === 'Tab' && !e.shiftKey) {
                                 e.preventDefault();
@@ -1535,18 +1591,12 @@ function PedidosPageContent() {
                               }
 
                               if (e.key !== 'Enter') return;
+                              // Evitar submit del form; agregar partida con el valor del input
                               e.preventDefault();
-                              if (!listo) return;
-
-                              // Con especificación: esperar a escribirla
-                              if (usarEspecificacionesRef.current) {
-                                inputEspecificacionesRef.current?.focus();
-                                return;
-                              }
-
-                              agregarDetalle();
+                              e.stopPropagation();
+                              const cantidad = (e.target as HTMLInputElement).value;
+                              agregarDetalle(cantidad);
                             }}
-                            min="0"
                             style={{ width: '80px', textAlign: 'center', fontSize: '0.85rem', padding: '0.3rem' }}
                           />
                         </td>
@@ -1583,24 +1633,26 @@ function PedidosPageContent() {
                               className="form-input"
                               value={detalleActual.especificaciones}
                               disabled={!usarEspecificaciones}
-                              onChange={(e) => setDetalleActual({ ...detalleActual, especificaciones: e.target.value })}
+                              onChange={(e) => {
+                                const valor = e.target.value;
+                                setDetalleActual((prev) => {
+                                  const next = { ...prev, especificaciones: valor };
+                                  detalleActualRef.current = next;
+                                  return next;
+                                });
+                              }}
                               onKeyDown={(e) => {
                                 if (e.key !== 'Enter') return;
                                 e.preventDefault();
                                 e.stopPropagation();
-                                const cantidad = detalleActual.cantidad;
-                                if (
-                                  !detalleActual.prenda_id ||
-                                  !detalleActual.talla_id ||
-                                  !(parseFloat(cantidad) > 0)
-                                ) {
+                                const d = detalleActualRef.current;
+                                if (!d.prenda_id || !d.talla_id || !(parseFloat(d.cantidad) > 0)) {
                                   return;
                                 }
-                                // Solo agregar cuando ya escribió la especificación
-                                if (!String(detalleActual.especificaciones || '').trim()) {
+                                if (!String(d.especificaciones || '').trim()) {
                                   return;
                                 }
-                                agregarDetalle();
+                                agregarDetalle(d.cantidad, { ignorarEspecif: true });
                               }}
                               placeholder={usarEspecificaciones ? 'Color, bordado, notas...' : '—'}
                               style={{
