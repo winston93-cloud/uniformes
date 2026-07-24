@@ -1579,22 +1579,20 @@ function PedidosPageContent() {
                               });
                             }}
                             onKeyDown={(e) => {
-                              // Tab: nunca agrega; va al check / especificación
-                              if (e.key === 'Tab' && !e.shiftKey) {
-                                e.preventDefault();
-                                if (usarEspecificacionesRef.current) {
-                                  inputEspecificacionesRef.current?.focus();
-                                } else {
-                                  checkEspecificacionesRef.current?.focus();
-                                }
+                              if (e.key !== 'Enter' && !(e.key === 'Tab' && !e.shiftKey)) return;
+
+                              e.preventDefault();
+                              e.stopPropagation();
+
+                              const cantidad = (e.target as HTMLInputElement).value;
+
+                              // Con especificación activa: ir al campo (no agregar aún)
+                              if (usarEspecificacionesRef.current) {
+                                inputEspecificacionesRef.current?.focus();
                                 return;
                               }
 
-                              if (e.key !== 'Enter') return;
-                              // Evitar submit del form; agregar partida con el valor del input
-                              e.preventDefault();
-                              e.stopPropagation();
-                              const cantidad = (e.target as HTMLInputElement).value;
+                              // Enter o Tab → agregar partida
                               agregarDetalle(cantidad);
                             }}
                             style={{ width: '80px', textAlign: 'center', fontSize: '0.85rem', padding: '0.3rem' }}
@@ -1642,7 +1640,7 @@ function PedidosPageContent() {
                                 });
                               }}
                               onKeyDown={(e) => {
-                                if (e.key !== 'Enter') return;
+                                if (e.key !== 'Enter' && !(e.key === 'Tab' && !e.shiftKey)) return;
                                 e.preventDefault();
                                 e.stopPropagation();
                                 const d = detalleActualRef.current;
@@ -2908,7 +2906,7 @@ function PedidosPageContent() {
                     <span style={{ color: '#666' }}>Campo anterior</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem', backgroundColor: '#f3f4f6', borderRadius: '6px' }}>
-                    <span style={{ fontWeight: '600' }}>Enter (en cantidad)</span>
+                    <span style={{ fontWeight: '600' }}>Enter o Tab (en cantidad)</span>
                     <span style={{ color: '#666' }}>Agregar partida automáticamente</span>
                   </div>
                 </div>
