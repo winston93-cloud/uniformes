@@ -1499,30 +1499,35 @@ function PedidosPageContent() {
                               const cantidad = e.target.value;
                               setDetalleActual({ ...detalleActual, cantidad });
                             }}
-                            onBlur={(e) => {
-                              const cantidad = e.target.value;
-                              // Agregar automáticamente cuando todos los campos están completos al salir del input
-                              if (detalleActual.prenda_id && detalleActual.talla_id && parseFloat(cantidad) > 0) {
-                                agregarDetalle();
-                              }
-                            }}
                             onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
+                              if (e.key !== 'Enter' && e.key !== 'Tab') return;
+                              const cantidad = (e.target as HTMLInputElement).value;
+                              const listo =
+                                Boolean(detalleActual.prenda_id) &&
+                                Boolean(detalleActual.talla_id) &&
+                                parseFloat(cantidad) > 0;
+                              if (!listo) return;
+
+                              // Con especificación activa: no agregar aún; ir al input
+                              if (usarEspecificaciones) {
                                 e.preventDefault();
-                                const cantidad = (e.target as HTMLInputElement).value;
-                                // Agregar automáticamente al presionar Enter (mismo comportamiento que TAB)
-                                if (detalleActual.prenda_id && detalleActual.talla_id && parseFloat(cantidad) > 0) {
-                                  agregarDetalle();
-                                  // agregarDetalle() ya enfoca inputPrendaRef automáticamente
-                                }
+                                inputEspecificacionesRef.current?.focus();
+                                return;
                               }
+
+                              // Sin especificación: Enter o Tab agrega la partida
+                              e.preventDefault();
+                              agregarDetalle();
                             }}
                             min="0"
                             style={{ width: '80px', textAlign: 'center', fontSize: '0.85rem', padding: '0.3rem' }}
                           />
                         </td>
                         <td style={{ padding: '0.5rem' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                          <div
+                            data-especif-controls
+                            style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                          >
                             <input
                               type="checkbox"
                               checked={usarEspecificaciones}
@@ -1547,9 +1552,15 @@ function PedidosPageContent() {
                               disabled={!usarEspecificaciones}
                               onChange={(e) => setDetalleActual({ ...detalleActual, especificaciones: e.target.value })}
                               onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  e.preventDefault();
-                                  inputCantidadRef.current?.focus();
+                                if (e.key !== 'Enter' && e.key !== 'Tab') return;
+                                e.preventDefault();
+                                const cantidad = detalleActual.cantidad;
+                                if (
+                                  detalleActual.prenda_id &&
+                                  detalleActual.talla_id &&
+                                  parseFloat(cantidad) > 0
+                                ) {
+                                  agregarDetalle();
                                 }
                               }}
                               placeholder={usarEspecificaciones ? 'Color, bordado, notas...' : '—'}
