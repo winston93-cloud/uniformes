@@ -9,6 +9,8 @@ export type PartidaPendienteCompletar = {
   pendiente: number;
   cantidad: number;
   especificaciones?: string;
+  /** Stock actual en la sucursal del pedido (informativo). */
+  stock?: number;
 };
 
 export type ItemCompletar = { id: string; cantidad: number };
@@ -65,6 +67,28 @@ export default function ModalCompletarPendientes({
     [partidas, seleccionados, cantidades]
   );
 
+  const totalPiezas = useMemo(
+    () => itemsMarcados.reduce((s, it) => s + it.cantidad, 0),
+    [itemsMarcados]
+  );
+
+  const avisosStock = useMemo(() => {
+    const avisos: string[] = [];
+    for (const p of partidas) {
+      if (!seleccionados[p.id]) continue;
+      const cant = cantidadValida(p);
+      if (cant <= 0) continue;
+      const stock = p.stock ?? 0;
+      if (stock < cant) {
+        avisos.push(
+          `${p.prenda_nombre} / ${p.talla_nombre}: entregar ${cant}, stock ${stock}`
+        );
+      }
+    }
+    return avisos;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [partidas, seleccionados, cantidades]);
+
   const todos = partidas.length > 0 && partidas.every((p) => seleccionados[p.id]);
 
   if (!abierto) return null;
@@ -87,7 +111,7 @@ export default function ModalCompletarPendientes({
     >
       <div
         style={{
-          width: 'min(720px, 100%)',
+          width: 'min(820px, 100%)',
           maxHeight: '90vh',
           overflow: 'hidden',
           display: 'flex',
@@ -110,8 +134,9 @@ export default function ModalCompletarPendientes({
             {folio || 'Pedido'} {clienteNombre ? `· ${clienteNombre}` : ''}
           </div>
           <div style={{ marginTop: 8, fontSize: '0.85rem', opacity: 0.9 }}>
-            Marca las prendas que entregas ahora e indica cuántas piezas de las pendientes se
-            entregan. El pedido pasa a COMPLETADO cuando ya no quede ninguna pendiente.
+            Marca las prendas e indica cuántas piezas de las pendientes se entregan ahora.
+            Si pones menos que el pendiente, el resto sigue pendiente. El pedido pasa a
+            COMPLETADO solo cuando ya no quede ninguna.
           </div>
         </div>
 
@@ -147,6 +172,29 @@ export default function ModalCompletarPendientes({
                 Seleccionar todas ({partidas.length})
               </label>
 
+              {avisosStock.length > 0 && (
+                <div
+                  style={{
+                    marginBottom: '0.85rem',
+                    padding: '0.65rem 0.85rem',
+                    borderRadius: 10,
+                    background: '#fff7ed',
+                    border: '1px solid #fdba74',
+                    color: '#9a3412',
+                    fontSize: '0.85rem',
+                    fontWeight: 600,
+                  }}
+                >
+                  Stock insuficiente en alguna partida: se marcará entregado, pero{' '}
+                  <strong>no se descontará inventario</strong> de esas piezas.
+                  <ul style={{ margin: '0.4rem 0 0', paddingLeft: '1.2rem' }}>
+                    {avisosStock.map((a) => (
+                      <li key={a}>{a}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
               <div style={{ border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
@@ -155,6 +203,7 @@ export default function ModalCompletarPendientes({
                       <th style={th}>Prenda</th>
                       <th style={th}>Talla</th>
                       <th style={{ ...th, textAlign: 'center' }}>Pend.</th>
+                      <th style={{ ...th, textAlign: 'center' }}>Stock</th>
                       <th style={{ ...th, textAlign: 'center' }}>Piezas a entregar</th>
                       <th style={th}>Observación</th>
                     </tr>
@@ -162,57 +211,70 @@ export default function ModalCompletarPendientes({
                   <tbody>
                     {partidas.map((p) => {
                       const marcado = Boolean(seleccionados[p.id]);
+                      const cant = cantidadValida(p);
+                      const stock = p.stock ?? 0;
+                      const sinStock = marcado && cant > stock;
                       return (
-                      <tr key={p.id} style={{ borderTop: '1px solid #e2e8f0' }}>
-                        <td style={{ ...td, width: 44, textAlign: 'center' }}>
-                          <input
-                            type="checkbox"
-                            checked={marcado}
-                            onChange={() =>
-                              setSeleccionados((prev) => ({ ...prev, [p.id]: !prev[p.id] }))
-                            }
-                            style={{ width: 18, height: 18 }}
-                          />
-                        </td>
-                        <td style={{ ...td, fontWeight: 700 }}>{p.prenda_nombre}</td>
-                        <td style={td}>{p.talla_nombre}</td>
-                        <td style={{ ...td, textAlign: 'center', fontWeight: 800, color: '#b45309' }}>
-                          {p.pendiente}
-                        </td>
-                        <td style={{ ...td, textAlign: 'center' }}>
-                          <input
-                            type="number"
-                            min={1}
-                            max={p.pendiente}
-                            step={1}
-                            disabled={!marcado}
-                            value={cantidades[p.id] ?? String(p.pendiente)}
-                            onChange={(e) => {
-                              const raw = e.target.value;
-                              setCantidades((prev) => ({ ...prev, [p.id]: raw }));
-                            }}
-                            onBlur={(e) => {
-                              const n = Math.floor(Number(e.target.value));
-                              const val =
-                                !Number.isFinite(n) || n <= 0
-                                  ? 1
-                                  : Math.min(n, p.pendiente);
-                              setCantidades((prev) => ({ ...prev, [p.id]: String(val) }));
-                            }}
+                        <tr key={p.id} style={{ borderTop: '1px solid #e2e8f0' }}>
+                          <td style={{ ...td, width: 44, textAlign: 'center' }}>
+                            <input
+                              type="checkbox"
+                              checked={marcado}
+                              onChange={() =>
+                                setSeleccionados((prev) => ({ ...prev, [p.id]: !prev[p.id] }))
+                              }
+                              style={{ width: 18, height: 18 }}
+                            />
+                          </td>
+                          <td style={{ ...td, fontWeight: 700 }}>{p.prenda_nombre}</td>
+                          <td style={td}>{p.talla_nombre}</td>
+                          <td style={{ ...td, textAlign: 'center', fontWeight: 800, color: '#b45309' }}>
+                            {p.pendiente}
+                          </td>
+                          <td
                             style={{
-                              width: 72,
+                              ...td,
                               textAlign: 'center',
-                              padding: '0.35rem 0.4rem',
-                              borderRadius: 8,
-                              border: '1px solid #cbd5e1',
                               fontWeight: 700,
-                              background: marcado ? '#fff' : '#f1f5f9',
-                              color: marcado ? '#0f172a' : '#94a3b8',
+                              color: stock <= 0 ? '#b91c1c' : '#065f46',
                             }}
-                          />
-                        </td>
-                        <td style={{ ...td, color: '#64748b' }}>{p.especificaciones || '—'}</td>
-                      </tr>
+                          >
+                            {stock}
+                          </td>
+                          <td style={{ ...td, textAlign: 'center' }}>
+                            <input
+                              type="number"
+                              min={1}
+                              max={p.pendiente}
+                              step={1}
+                              disabled={!marcado}
+                              value={cantidades[p.id] ?? String(p.pendiente)}
+                              onChange={(e) => {
+                                const raw = e.target.value.replace(/[^\d]/g, '');
+                                setCantidades((prev) => ({ ...prev, [p.id]: raw }));
+                              }}
+                              onBlur={(e) => {
+                                const n = Math.floor(Number(e.target.value));
+                                const val =
+                                  !Number.isFinite(n) || n <= 0
+                                    ? 1
+                                    : Math.min(n, p.pendiente);
+                                setCantidades((prev) => ({ ...prev, [p.id]: String(val) }));
+                              }}
+                              style={{
+                                width: 72,
+                                textAlign: 'center',
+                                padding: '0.35rem 0.4rem',
+                                borderRadius: 8,
+                                border: sinStock ? '2px solid #f97316' : '1px solid #cbd5e1',
+                                fontWeight: 700,
+                                background: marcado ? '#fff' : '#f1f5f9',
+                                color: marcado ? '#0f172a' : '#94a3b8',
+                              }}
+                            />
+                          </td>
+                          <td style={{ ...td, color: '#64748b' }}>{p.especificaciones || '—'}</td>
+                        </tr>
                       );
                     })}
                   </tbody>
@@ -229,8 +291,14 @@ export default function ModalCompletarPendientes({
             display: 'flex',
             justifyContent: 'flex-end',
             gap: '0.65rem',
+            alignItems: 'center',
           }}
         >
+          {itemsMarcados.length > 0 && (
+            <span style={{ marginRight: 'auto', fontSize: '0.85rem', color: '#475569', fontWeight: 600 }}>
+              {itemsMarcados.length} partida(s) · {totalPiezas} pieza(s)
+            </span>
+          )}
           <button type="button" className="btn btn-secondary" onClick={onClose} disabled={guardando}>
             Cancelar
           </button>
@@ -238,14 +306,27 @@ export default function ModalCompletarPendientes({
             type="button"
             className="btn btn-primary"
             disabled={guardando || itemsMarcados.length === 0 || partidas.length === 0}
-            onClick={() => void onConfirmar(itemsMarcados)}
+            onClick={() => {
+              // Recalcular al momento del click (evita estado stale del input)
+              const frescos: ItemCompletar[] = partidas
+                .filter((p) => seleccionados[p.id])
+                .map((p) => {
+                  const raw = cantidades[p.id] ?? String(p.pendiente);
+                  const n = Math.floor(Number(raw));
+                  const cantidad =
+                    !Number.isFinite(n) || n <= 0 ? 0 : Math.min(n, p.pendiente);
+                  return { id: p.id, cantidad };
+                })
+                .filter((it) => it.cantidad > 0);
+              if (frescos.length === 0) {
+                alert('Indica al menos 1 pieza a entregar en las partidas marcadas.');
+                return;
+              }
+              void onConfirmar(frescos);
+            }}
             style={{ background: 'linear-gradient(135deg, #0f766e, #0d9488)', border: 'none' }}
           >
-            {guardando
-              ? 'Guardando…'
-              : itemsMarcados.length === partidas.length && partidas.length > 0
-                ? 'Completar todas'
-                : `Completar ${itemsMarcados.length} partida(s)`}
+            {guardando ? 'Guardando…' : 'Completar marcadas'}
           </button>
         </div>
       </div>

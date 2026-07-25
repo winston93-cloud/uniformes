@@ -29,8 +29,19 @@ DECLARE
   v_partidas INTEGER := 0;
   v_piezas INTEGER := 0;
   v_estado_final TEXT;
+  v_items JSONB;
 BEGIN
-  IF p_items IS NULL OR jsonb_typeof(p_items) <> 'array' OR jsonb_array_length(p_items) = 0 THEN
+  v_items := p_items;
+  -- Algunos clientes envían el JSONB doblemente serializado (string que contiene el array).
+  IF v_items IS NOT NULL AND jsonb_typeof(v_items) = 'string' THEN
+    BEGIN
+      v_items := (v_items #>> '{}')::jsonb;
+    EXCEPTION WHEN OTHERS THEN
+      v_items := p_items;
+    END;
+  END IF;
+
+  IF v_items IS NULL OR jsonb_typeof(v_items) <> 'array' OR jsonb_array_length(v_items) = 0 THEN
     RETURN json_build_object('success', false, 'error', 'Selecciona al menos una partida a completar.');
   END IF;
 
@@ -51,7 +62,7 @@ BEGIN
     SELECT
       (elem->>'id')::UUID AS detalle_id,
       GREATEST(COALESCE((elem->>'cantidad')::INTEGER, 0), 0) AS cantidad
-    FROM jsonb_array_elements(p_items) AS elem
+    FROM jsonb_array_elements(v_items) AS elem
   LOOP
     IF v_item.cantidad <= 0 THEN
       CONTINUE;

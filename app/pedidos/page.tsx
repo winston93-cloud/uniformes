@@ -1024,9 +1024,10 @@ function PedidosPageContent() {
           cantidad,
           especificaciones,
           prenda_id,
+          talla_id,
           precio_unitario,
           prenda:prendas(nombre),
-          talla:tallas(nombre)
+          talla:tallas(id, nombre)
         `
         )
         .eq('pedido_id', pedido.id);
@@ -1041,6 +1042,12 @@ function PedidosPageContent() {
         .map((d: any) => {
           const prendaObj = Array.isArray(d.prenda) ? d.prenda[0] : d.prenda;
           const tallaObj = Array.isArray(d.talla) ? d.talla[0] : d.talla;
+          const tallaId = String(d.talla_id || tallaObj?.id || '');
+          const costo = costos.find(
+            (c: any) =>
+              String(c.prenda_id) === String(d.prenda_id) &&
+              String(c.talla_id) === tallaId
+          );
           return {
             id: String(d.id),
             prenda_nombre: prendaObj?.nombre || 'Sin nombre',
@@ -1048,6 +1055,7 @@ function PedidosPageContent() {
             pendiente: Number(d.pendiente) || 0,
             cantidad: Number(d.cantidad) || 0,
             especificaciones: d.especificaciones || '',
+            stock: Number(costo?.stock ?? 0),
           };
         });
 
@@ -1081,12 +1089,13 @@ function PedidosPageContent() {
       }
       const avisos =
         'warnings' in res && Array.isArray(res.warnings) && res.warnings.length
-          ? '\n\n⚠️ Sin descontar inventario:\n' + res.warnings.join('\n')
+          ? '\n\n⚠️ Sin descontar inventario (stock insuficiente):\n' + res.warnings.join('\n')
           : '';
       alert(`✅ ${res.message || 'Listo'}${avisos}`);
       setMostrarModalCompletar(false);
       setPedidoCompletar(null);
       setPartidasCompletar([]);
+      void refetchCostos?.();
     } finally {
       setGuardandoCompletar(false);
     }

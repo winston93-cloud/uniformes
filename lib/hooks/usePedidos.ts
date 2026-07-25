@@ -436,11 +436,22 @@ export function usePedidos(sucursal_id?: string) {
     usuario_id?: string | null
   ) => {
     try {
+      const payload = items
+        .map((it) => ({
+          id: String(it.id),
+          cantidad: Math.max(0, Math.floor(Number(it.cantidad) || 0)),
+        }))
+        .filter((it) => it.id && it.cantidad > 0);
+
+      if (payload.length === 0) {
+        return { success: false as const, error: 'Indica al menos 1 pieza a entregar.' };
+      }
+
       const { data, error } = await insforgeDb().rpc(
         'completar_detalles_pedido_por_piezas_atomico',
         {
           p_pedido_id: pedidoId,
-          p_items: items.map((it) => ({ id: it.id, cantidad: it.cantidad })),
+          p_items: payload,
           p_usuario_id: usuarioIdParaRpc(usuario_id),
         }
       );
@@ -457,6 +468,8 @@ export function usePedidos(sucursal_id?: string) {
         message: String(data?.message || 'Partidas completadas'),
         estado: (data?.estado as string) || null,
         warnings,
+        piezas: Number(data?.piezas || 0),
+        partidas: Number(data?.partidas || 0),
       };
     } catch (error) {
       const msg = getSupabaseErrorMessage(error);
