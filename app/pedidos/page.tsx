@@ -756,24 +756,6 @@ function PedidosPageContent() {
     }, 100);
   };
 
-  const limpiarCamposParaNuevaPartida = () => {
-    console.log('🆕 Nueva Partida - Limpiando campos');
-    console.log('📋 Detalles antes de limpiar:', formData.detalles);
-    setDetalleActual({ 
-      prenda_id: '', 
-      prenda_nombre: '',
-      talla_id: '', 
-      talla_nombre: '',
-      especificaciones: '',
-      cantidad: '1', 
-      precio: '0' 
-    });
-    setUsarEspecificaciones(false);
-    setTextoPrendaBusqueda('');
-    setTallasDisponibles([]);
-    console.log('✅ Campos limpiados, detalles siguen igual');
-  };
-
   const eliminarDetalle = (index: number) => {
     const restantes = formData.detalles.filter((_, i) => i !== index);
     const soloProductos = restantes.filter((d) => !esLineaDescuentoConjunto(d));
@@ -1455,18 +1437,10 @@ function PedidosPageContent() {
               </div>
 
               <div style={{ background: 'white', padding: '0.75rem', borderRadius: '8px', marginBottom: '0.75rem', border: '1px solid #e0e0e0' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <div style={{ marginBottom: '0.5rem' }}>
                   <h3 style={{ margin: 0, fontWeight: '600', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                     📄 Detalles del Pedido
                   </h3>
-                  <button
-                    type="button"
-                    className="btn btn-primary"
-                    onClick={limpiarCamposParaNuevaPartida}
-                    style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
-                  >
-                    + Nueva Partida
-                  </button>
                 </div>
 
                 <div style={{ overflowX: 'auto' }}>
