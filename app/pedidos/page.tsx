@@ -286,6 +286,9 @@ function PedidosPageContent() {
   const inputCantidadRef = useRef<HTMLInputElement>(null);
   const checkEspecificacionesRef = useRef<HTMLInputElement>(null);
   const inputEfectivoRef = useRef<HTMLInputElement>(null);
+  /** Evita que al teclear "23" el select tome "2" y el "3" caiga en cantidad. */
+  const tallaTecleandoRef = useRef(false);
+  const tallaAvanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [usarEspecificaciones, setUsarEspecificaciones] = useState(false);
   const usarEspecificacionesRef = useRef(false);
   const detalleActualRef = useRef(detalleActual);
@@ -595,10 +598,17 @@ function PedidosPageContent() {
 
   // ELIMINADO: useEffect y seleccionarPrenda viejos - ahora se usa seleccionarPrendaDelDropdown
 
-  const seleccionarTalla = (tallaId: string) => {
+  const enfocarCantidadTrasTalla = () => {
+    setTimeout(() => {
+      inputCantidadRef.current?.focus();
+      inputCantidadRef.current?.select();
+    }, 50);
+  };
+
+  const seleccionarTalla = (tallaId: string, opts?: { avanzar?: boolean }) => {
     const talla = tallasDisponibles.find(t => t.id === tallaId);
     const costo = costos.find(c => 
-      c.prenda_id === detalleActual.prenda_id && 
+      c.prenda_id === detalleActualRef.current.prenda_id && 
       c.talla_id === tallaId
     );
     
@@ -608,17 +618,27 @@ function PedidosPageContent() {
         talla_id: tallaId,
         talla_nombre: talla?.nombre || '',
         precio: costo.precio_venta.toString(),
-        cantidad: '1',
+        cantidad: detalleActualRef.current.cantidad || '1',
       };
+      if (!next.cantidad || next.cantidad === '0') next.cantidad = '1';
       detalleActualRef.current = next;
       setDetalleActual(next);
       
-      // Flujo: talla → cantidad (siempre default 1; especificaciones solo con check)
-      setTimeout(() => {
-        inputCantidadRef.current?.focus();
-        inputCantidadRef.current?.select();
-      }, 100);
+      if (opts?.avanzar !== false && !tallaTecleandoRef.current) {
+        enfocarCantidadTrasTalla();
+      }
     }
+  };
+
+  const programarAvanceTallaTeclado = () => {
+    if (tallaAvanceTimerRef.current) clearTimeout(tallaAvanceTimerRef.current);
+    tallaAvanceTimerRef.current = setTimeout(() => {
+      tallaTecleandoRef.current = false;
+      tallaAvanceTimerRef.current = null;
+      if (detalleActualRef.current.talla_id) {
+        enfocarCantidadTrasTalla();
+      }
+    }, 500);
   };
 
   const partidaEnEdicionLista = (d = detalleActualRef.current) =>
@@ -1599,7 +1619,41 @@ function PedidosPageContent() {
                             ref={selectTallaRef}
                             className="form-select"
                             value={detalleActual.talla_id}
-                            onChange={(e) => seleccionarTalla(e.target.value)}
+                            onChange={(e) => {
+                              const id = e.target.value;
+                              // Con teclado no avanzar aún: el typeahead del <select> dispara
+                              // onChange en cada dígito ("2" de "23") y robaba el foco a cantidad.
+                              seleccionarTalla(id, { avanzar: !tallaTecleandoRef.current });
+                              if (tallaTecleandoRef.current && id) {
+                                programarAvanceTallaTeclado();
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              const esDigitoOLetra =
+                                e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey;
+                              if (esDigitoOLetra || e.key === 'Backspace') {
+                                tallaTecleandoRef.current = true;
+                                programarAvanceTallaTeclado();
+                              }
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                tallaTecleandoRef.current = false;
+                                if (tallaAvanceTimerRef.current) {
+                                  clearTimeout(tallaAvanceTimerRef.current);
+                                  tallaAvanceTimerRef.current = null;
+                                }
+                                if (detalleActualRef.current.talla_id) {
+                                  enfocarCantidadTrasTalla();
+                                }
+                              }
+                            }}
+                            onBlur={() => {
+                              tallaTecleandoRef.current = false;
+                              if (tallaAvanceTimerRef.current) {
+                                clearTimeout(tallaAvanceTimerRef.current);
+                                tallaAvanceTimerRef.current = null;
+                              }
+                            }}
                             disabled={!detalleActual.prenda_id}
                             style={{ width: '100%', fontSize: '0.85rem', padding: '0.3rem' }}
                           >
