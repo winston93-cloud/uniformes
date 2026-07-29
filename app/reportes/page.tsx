@@ -386,7 +386,9 @@ export default function ReportesPage() {
           const t = String(p.talla || '—').trim() || '—';
           porTalla.set(t, (porTalla.get(t) || 0) + Math.max(0, Number(p.cantidad_pendiente ?? 0)));
         }
-        const tallasAsc = [...porTalla.entries()].sort((a, b) => compararTallas(a[0], b[0]));
+        const tallasAsc = [...porTalla.entries()].sort((a, b) =>
+          compararTallas({ nombre: a[0] }, { nombre: b[0] })
+        );
         const totalPzas = tallasAsc.reduce((s, [, n]) => s + n, 0);
         const chips = tallasAsc.map(([t, n]) => `${t} = ${n}`);
         const cols = Math.min(6, Math.max(chips.length, 1));
