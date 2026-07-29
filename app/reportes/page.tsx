@@ -126,9 +126,9 @@ export default function ReportesPage() {
     // Tabla con detalle de cada venta
     autoTable(doc, {
       startY: 35,
-      head: [['ID Pedido', 'Fecha', 'Cliente', 'Tipo', 'Total']],
+      head: [['Folio', 'Fecha', 'Cliente', 'Tipo', 'Total']],
       body: datos.map(v => [
-        `#${v.id.substring(0, 8)}`,
+        v.folio || '—',
         new Date(v.fecha).toLocaleDateString('es-MX'),
         v.cliente,
         v.tipo_cliente === 'alumno' ? 'Alumno' : 'Externo',

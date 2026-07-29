@@ -15,6 +15,7 @@ import {
 
 export interface ReporteVentas {
   id: string;
+  folio: string;
   fecha: string;
   cliente: string;
   tipo_cliente: string;
@@ -152,8 +153,10 @@ export function useReportes(
         })
         .map((pedido) => {
           const fechaPedido = fechaEfectivaPedido(pedido) ?? new Date();
+          const folioRaw = String(pedido.folio ?? '').trim();
           return {
             id: String(pedido.id),
+            folio: folioRaw || `#${String(pedido.id).substring(0, 8)}`,
             fecha: fechaPedido.toISOString(),
             cliente: String(pedido.cliente_nombre ?? 'Sin cliente'),
             tipo_cliente: String(pedido.tipo_cliente ?? ''),
