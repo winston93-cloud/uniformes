@@ -380,6 +380,7 @@ export function useReportes(
       created_at: string;
       total: number;
       prenda: string;
+      cantidad_pendiente: number;
       talla: string;
       observacion: string;
     }>
@@ -393,6 +394,7 @@ export function useReportes(
         created_at: string;
         total: number;
         prenda: string;
+        cantidad_pendiente: number;
         talla: string;
         observacion: string;
       };
@@ -499,6 +501,7 @@ export function useReportes(
             created_at: p.created_at,
             total: Number(p.total) || 0,
             prenda: '—',
+            cantidad_pendiente: 0,
             talla: '—',
             observacion: '—',
           });
@@ -508,12 +511,14 @@ export function useReportes(
         for (const d of lineas) {
           const prendaObj = d.prenda as { nombre?: string } | null;
           const tallaObj = d.talla as { nombre?: string } | null;
+          const cantPend = Math.max(0, Math.round(Number(d.pendiente ?? 0)));
           filas.push({
             folio,
             cliente_nombre: p.cliente_nombre || 'Sin cliente',
             created_at: p.created_at,
             total: Number(p.total) || 0,
             prenda: prendaObj?.nombre || '—',
+            cantidad_pendiente: cantPend,
             talla: tallaObj?.nombre || '—',
             observacion: String(d.especificaciones || '').trim() || '—',
           });

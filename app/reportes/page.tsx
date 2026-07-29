@@ -281,24 +281,26 @@ export default function ReportesPage() {
     
     autoTable(doc, {
       startY: 35,
-      head: [['Folio', 'Cliente', 'Fecha', 'Prenda', 'Talla', 'Observación']],
+      head: [['Folio', 'Cliente', 'Fecha', 'Prenda', 'Pendiente', 'Talla', 'Observación']],
       body: datos.map((p) => [
         p.folio || '—',
         p.cliente_nombre || 'Sin cliente',
         p.created_at ? new Date(p.created_at).toLocaleDateString('es-MX') : '—',
         p.prenda || '—',
+        String(p.cantidad_pendiente ?? 0),
         p.talla || '—',
         p.observacion || '—',
       ]),
       styles: { fontSize: 8, cellPadding: 2 },
       headStyles: { fillColor: [37, 99, 235], fontSize: 8 },
       columnStyles: {
-        0: { cellWidth: 22 },
-        1: { cellWidth: 42 },
-        2: { cellWidth: 20 },
-        3: { cellWidth: 40 },
-        4: { cellWidth: 18 },
-        5: { cellWidth: 'auto' },
+        0: { cellWidth: 20 },
+        1: { cellWidth: 38 },
+        2: { cellWidth: 18 },
+        3: { cellWidth: 36 },
+        4: { cellWidth: 18, halign: 'center' },
+        5: { cellWidth: 16 },
+        6: { cellWidth: 'auto' },
       },
     });
     
