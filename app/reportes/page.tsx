@@ -62,6 +62,7 @@ export default function ReportesPage() {
     clientesFrecuentes,
     resumenGeneral,
     ingresosYGanancias,
+    ventasAgrupadas,
   } = useReportes(
     sucursalIdReporte,
     esMatrizReporte,
@@ -739,7 +740,11 @@ export default function ReportesPage() {
       </div>
       
       {modalReportesAbierto && (
-        <ModalReportes onClose={() => setModalReportesAbierto(false)} />
+        <ModalReportes
+          onClose={() => setModalReportesAbierto(false)}
+          etiquetaCuenta={etiquetaTienda}
+          ventasAgrupadas={ventasAgrupadas}
+        />
       )}
 
       {modalInventarioAbierto && (

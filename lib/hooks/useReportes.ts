@@ -53,6 +53,52 @@ export interface ReporteGanancias {
   }[];
 }
 
+export type VentasAgrupadasFiltro =
+  | { tipo: 'fechas'; fechaInicio: string; fechaFin: string }
+  | { tipo: 'folios'; folioInicio: string; folioFin: string };
+
+export type PrendaAgrupadaReporte = {
+  prenda: string;
+  detalles: {
+    talla: string;
+    cantidad: number;
+    precio_unitario: number;
+    subtotal: number;
+    folio?: string;
+  }[];
+  subtotal_cantidad: number;
+  subtotal_monto: number;
+};
+
+/** Extrae prefijo + número de folios tipo wu0058, wt12, 5001. */
+function parseFolioKey(folio: string): { prefix: string; num: number; raw: string } {
+  const raw = folio.trim().toLowerCase();
+  const m = raw.match(/^([a-z]*)(\d+)$/i);
+  if (m) return { prefix: m[1], num: parseInt(m[2], 10), raw };
+  const digits = raw.replace(/\D/g, '');
+  return { prefix: '', num: digits ? parseInt(digits, 10) : Number.NaN, raw };
+}
+
+export function folioEnRangoNumerico(folio: string, inicio: string, fin: string): boolean {
+  const f = parseFolioKey(folio);
+  const a = parseFolioKey(inicio);
+  const b = parseFolioKey(fin);
+  if (!Number.isFinite(f.num) || !Number.isFinite(a.num) || !Number.isFinite(b.num)) {
+    const fl = f.raw;
+    const al = a.raw;
+    const bl = b.raw;
+    const lo = al <= bl ? al : bl;
+    const hi = al <= bl ? bl : al;
+    return fl >= lo && fl <= hi;
+  }
+  if (a.prefix && b.prefix && a.prefix === b.prefix && f.prefix !== a.prefix) {
+    return false;
+  }
+  const lo = Math.min(a.num, b.num);
+  const hi = Math.max(a.num, b.num);
+  return f.num >= lo && f.num <= hi;
+}
+
 export function useReportes(
   sucursal_id?: string,
   es_matriz?: boolean,
@@ -776,6 +822,170 @@ export function useReportes(
     }
   };
 
+  const ventasAgrupadas = async (
+    filtro: VentasAgrupadasFiltro
+  ): Promise<PrendaAgrupadaReporte[]> => {
+    try {
+      setLoading(true);
+
+      let pedidosQuery = insforgeDb()
+        .from('pedidos')
+        .select('id, folio, created_at, updated_at, estado, linea_venta, sucursal_id')
+        .in('estado', ['PENDIENTE', 'COMPLETADO']);
+      if (sid) pedidosQuery = pedidosQuery.eq('sucursal_id', sid);
+
+      if (filtro.tipo === 'fechas') {
+        const { startIso, endIso } = rangoLocalAIso(filtro.fechaInicio, filtro.fechaFin);
+        pedidosQuery = pedidosQuery.gte('created_at', startIso).lte('created_at', endIso);
+      }
+
+      const { data: pedidosRaw, error: errPedidos } = await pedidosQuery;
+      if (errPedidos) throw errPedidos;
+
+      let pedidos = filtrarPedidosLinea((pedidosRaw || []) as Record<string, unknown>[]);
+
+      if (filtro.tipo === 'fechas') {
+        const { startLocal, endLocal } = rangoLocalAIso(filtro.fechaInicio, filtro.fechaFin);
+        pedidos = pedidos.filter((p) => {
+          const f = fechaEfectivaPedido(p);
+          return !!f && f >= startLocal && f <= endLocal;
+        });
+      } else {
+        pedidos = pedidos.filter((p) => {
+          const folio = String(p.folio ?? '').trim();
+          if (!folio) return false;
+          return folioEnRangoNumerico(folio, filtro.folioInicio, filtro.folioFin);
+        });
+      }
+
+      if (pedidos.length === 0) return [];
+
+      const pedidoMeta = new Map<string, { folio: string }>();
+      for (const p of pedidos) {
+        pedidoMeta.set(String(p.id), {
+          folio: String(p.folio ?? '').trim() || `#${String(p.id).substring(0, 8)}`,
+        });
+      }
+      const pedidoIds = [...pedidoMeta.keys()];
+
+      type DetalleRow = {
+        pedido_id: string;
+        cantidad: number;
+        precio_unitario: number;
+        subtotal: number;
+        prenda_id?: string | null;
+        prenda?: { nombre?: string } | null;
+        talla?: { nombre?: string } | null;
+      };
+
+      const detalles: DetalleRow[] = [];
+      const chunkSize = 80;
+      for (let i = 0; i < pedidoIds.length; i += chunkSize) {
+        const chunk = pedidoIds.slice(i, i + chunkSize);
+        const { data, error } = await insforgeDb()
+          .from('detalle_pedidos')
+          .select(
+            `
+            pedido_id,
+            cantidad,
+            precio_unitario,
+            subtotal,
+            prenda_id,
+            prenda:prendas ( nombre ),
+            talla:tallas ( nombre )
+          `
+          )
+          .in('pedido_id', chunk);
+        if (error) throw error;
+        for (const row of data || []) detalles.push(row as DetalleRow);
+      }
+
+      type Agg = {
+        prenda: string;
+        talla: string;
+        cantidad: number;
+        precio_unitario: number;
+        subtotal: number;
+        folio?: string;
+      };
+
+      const mapa = new Map<string, Agg>();
+
+      for (const d of detalles) {
+        if (d.prenda_id == null || Number(d.precio_unitario) < 0) continue;
+        const cant = Math.max(0, Math.round(Number(d.cantidad ?? 0)));
+        if (cant <= 0) continue;
+        const prenda = String(d.prenda?.nombre ?? 'Sin nombre').trim() || 'Sin nombre';
+        const talla = String(d.talla?.nombre ?? '—').trim() || '—';
+        const precio = parseFloat(String(d.precio_unitario ?? 0)) || 0;
+        const sub =
+          Number.isFinite(Number(d.subtotal)) && Number(d.subtotal) > 0
+            ? parseFloat(String(d.subtotal))
+            : cant * precio;
+        const meta = pedidoMeta.get(String(d.pedido_id));
+        const folio = meta?.folio;
+
+        const key =
+          filtro.tipo === 'folios'
+            ? `${prenda}||${talla}||${precio}||${folio ?? ''}`
+            : `${prenda}||${talla}||${precio}`;
+
+        const prev = mapa.get(key);
+        if (prev) {
+          prev.cantidad += cant;
+          prev.subtotal += sub;
+        } else {
+          mapa.set(key, {
+            prenda,
+            talla,
+            cantidad: cant,
+            precio_unitario: precio,
+            subtotal: sub,
+            folio: filtro.tipo === 'folios' ? folio : undefined,
+          });
+        }
+      }
+
+      const porPrenda = new Map<string, PrendaAgrupadaReporte>();
+      for (const row of mapa.values()) {
+        const g =
+          porPrenda.get(row.prenda) ||
+          ({
+            prenda: row.prenda,
+            detalles: [],
+            subtotal_cantidad: 0,
+            subtotal_monto: 0,
+          } satisfies PrendaAgrupadaReporte);
+        g.detalles.push({
+          talla: row.talla,
+          cantidad: row.cantidad,
+          precio_unitario: row.precio_unitario,
+          subtotal: row.subtotal,
+          folio: row.folio,
+        });
+        g.subtotal_cantidad += row.cantidad;
+        g.subtotal_monto += row.subtotal;
+        porPrenda.set(row.prenda, g);
+      }
+
+      const resultado = Array.from(porPrenda.values())
+        .map((g) => ({
+          ...g,
+          detalles: g.detalles.sort((a, b) =>
+            a.talla.localeCompare(b.talla, 'es', { numeric: true, sensitivity: 'base' })
+          ),
+        }))
+        .sort((a, b) => a.prenda.localeCompare(b.prenda, 'es', { sensitivity: 'base' }));
+
+      return resultado;
+    } catch (err: any) {
+      console.error('Error en ventasAgrupadas:', err);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     loading,
     ventasPorPeriodo,
@@ -786,6 +996,7 @@ export function useReportes(
     clientesFrecuentes,
     resumenGeneral,
     ingresosYGanancias,
+    ventasAgrupadas,
   };
 }
 
