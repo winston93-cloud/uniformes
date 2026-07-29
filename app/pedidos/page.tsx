@@ -119,6 +119,9 @@ function PedidosPageContent() {
   const [cantidadAgregar, setCantidadAgregar] = useState('');
   const [stockActualDetalle, setStockActualDetalle] = useState<any>(null);
   const [partidaParaAgregarStock, setPartidaParaAgregarStock] = useState<number | null>(null);
+  /** Stock desde modal Completar pendientes (prenda/talla de una partida pendiente). */
+  const [partidaStockCompletar, setPartidaStockCompletar] =
+    useState<PartidaPendienteCompletar | null>(null);
   const [mostrarExitoStock, setMostrarExitoStock] = useState(false);
   const [mensajeExitoStock, setMensajeExitoStock] = useState('');
   const [guardandoPedido, setGuardandoPedido] = useState(false);
@@ -778,10 +781,34 @@ function PedidosPageContent() {
     );
 
     if (costo) {
-      setStockActualDetalle(costo.stock || 0);
+      setPartidaStockCompletar(null);
+      setStockActualDetalle(costo);
       setCantidadAgregar('');
       setMostrarModalAgregarStock(true);
     }
+  };
+
+  const abrirStockDesdeCompletar = (partida: PartidaPendienteCompletar) => {
+    const costo =
+      (partida.costo_id
+        ? costos.find((c: any) => String(c.id) === String(partida.costo_id))
+        : null) ||
+      costos.find(
+        (c: any) =>
+          String(c.prenda_id) === String(partida.prenda_id) &&
+          String(c.talla_id) === String(partida.talla_id)
+      );
+
+    if (!costo) {
+      alert('No se encontró el costo/stock de esa prenda y talla. Revisa el catálogo en Prendas.');
+      return;
+    }
+
+    setPartidaStockCompletar(partida);
+    setPartidaParaAgregarStock(null);
+    setStockActualDetalle(costo);
+    setCantidadAgregar('');
+    setMostrarModalAgregarStock(true);
   };
 
   const guardarStockAgregado = async () => {
@@ -792,7 +819,7 @@ function PedidosPageContent() {
 
     try {
       // Buscar el costo correcto
-      let costo = stockActualDetalle; // Si viene de una partida agregada
+      let costo = stockActualDetalle; // Si viene de una partida agregada o completar
       
       if (!costo && detalleActual.prenda_id && detalleActual.talla_id) {
         // Si viene del flujo de agregar nueva partida
@@ -821,14 +848,13 @@ function PedidosPageContent() {
       // Recargar TODOS los costos para actualizar la información
       await refetchCostos();
 
-      // Si estamos agregando stock a una partida existente, recalcular división
+      // Si estamos agregando stock a una partida existente del formulario nuevo pedido
       if (partidaParaAgregarStock !== null) {
         const partida = formData.detalles[partidaParaAgregarStock];
         const cantidadTotal = partida.cantidad;
         const cantidadConStock = Math.min(nuevoStock, cantidadTotal);
         const cantidadPendiente = Math.max(0, cantidadTotal - nuevoStock);
 
-        // Actualizar la partida
         const nuevosDetalles = [...formData.detalles];
         nuevosDetalles[partidaParaAgregarStock] = {
           ...partida,
@@ -841,24 +867,35 @@ function PedidosPageContent() {
         setPartidaParaAgregarStock(null);
       }
 
-      // Cerrar modal de agregar stock
+      // Si viene de Completar pendientes: actualizar stock visible en esa partida
+      if (partidaStockCompletar) {
+        const id = partidaStockCompletar.id;
+        setPartidasCompletar((prev) =>
+          prev.map((p) =>
+            p.id === id
+              ? { ...p, stock: nuevoStock, costo_id: String(costo.id) }
+              : p
+          )
+        );
+        setPartidaStockCompletar(null);
+      }
+
       setMostrarModalAgregarStock(false);
       setCantidadAgregar('');
       setStockActualDetalle(null);
 
-      // Mostrar modal de éxito
       setMensajeExitoStock(`Stock actualizado: ${costo.stock} → ${nuevoStock} (+${nuevaCantidad})`);
       setMostrarExitoStock(true);
 
-      // Auto-cerrar modal de éxito después de 2 segundos
       setTimeout(() => {
         setMostrarExitoStock(false);
       }, 2000);
 
-      // Enfocar en input de prenda para continuar agregando partidas
-      setTimeout(() => {
-        inputPrendaRef.current?.focus();
-      }, 100);
+      if (!mostrarModalCompletar) {
+        setTimeout(() => {
+          inputPrendaRef.current?.focus();
+        }, 100);
+      }
     } catch (error: any) {
       console.error('Error al actualizar stock:', error);
       alert('Error al actualizar el stock: ' + error.message);
@@ -1052,12 +1089,15 @@ function PedidosPageContent() {
           );
           return {
             id: String(d.id),
+            prenda_id: String(d.prenda_id),
+            talla_id: tallaId,
             prenda_nombre: prendaObj?.nombre || 'Sin nombre',
             talla_nombre: tallaObj?.nombre || '—',
             pendiente: Number(d.pendiente) || 0,
             cantidad: Number(d.cantidad) || 0,
             especificaciones: d.especificaciones || '',
             stock: Number(costo?.stock ?? 0),
+            costo_id: costo?.id ? String(costo.id) : undefined,
           };
         });
 
@@ -1091,12 +1131,13 @@ function PedidosPageContent() {
       }
       const avisos =
         'warnings' in res && Array.isArray(res.warnings) && res.warnings.length
-          ? '\n\n⚠️ Sin descontar inventario (stock insuficiente):\n' + res.warnings.join('\n')
+          ? '\n\n⚠️ Avisos:\n' + res.warnings.join('\n')
           : '';
       alert(`✅ ${res.message || 'Listo'}${avisos}`);
       setMostrarModalCompletar(false);
       setPedidoCompletar(null);
       setPartidasCompletar([]);
+      setPartidaStockCompletar(null);
       void refetchCostos?.();
     } finally {
       setGuardandoCompletar(false);
@@ -2816,6 +2857,7 @@ function PedidosPageContent() {
           setPartidasCompletar([]);
         }}
         onConfirmar={confirmarCompletarPendientes}
+        onAgregarStock={abrirStockDesdeCompletar}
       />
 
       {/* Modal para Agregar Stock Rápido */}
@@ -2870,7 +2912,9 @@ function PedidosPageContent() {
                   <div style={{ marginBottom: '0.75rem' }}>
                     <span style={{ fontSize: '0.9rem', color: '#666', display: 'block', marginBottom: '0.25rem' }}>Prenda:</span>
                     <span style={{ fontSize: '1.1rem', fontWeight: '700', color: '#065f46' }}>
-                      {partidaParaAgregarStock !== null 
+                      {partidaStockCompletar
+                        ? partidaStockCompletar.prenda_nombre
+                        : partidaParaAgregarStock !== null 
                         ? formData.detalles[partidaParaAgregarStock].prenda
                         : detalleActual.prenda_nombre}
                     </span>
@@ -2878,15 +2922,17 @@ function PedidosPageContent() {
                   <div style={{ marginBottom: '0.75rem' }}>
                     <span style={{ fontSize: '0.9rem', color: '#666', display: 'block', marginBottom: '0.25rem' }}>Talla:</span>
                     <span style={{ fontSize: '1.1rem', fontWeight: '700', color: '#065f46' }}>
-                      {partidaParaAgregarStock !== null 
+                      {partidaStockCompletar
+                        ? partidaStockCompletar.talla_nombre
+                        : partidaParaAgregarStock !== null 
                         ? formData.detalles[partidaParaAgregarStock].talla
                         : detalleActual.talla_nombre}
                     </span>
                   </div>
                   <div>
                     <span style={{ fontSize: '0.9rem', color: '#666', display: 'block', marginBottom: '0.25rem' }}>Stock actual:</span>
-                    <span style={{ fontSize: '1.3rem', fontWeight: '700', color: (stockActualDetalle?.stock || 0) === 0 ? '#dc2626' : '#059669' }}>
-                      {stockActualDetalle?.stock || 0} unidades
+                    <span style={{ fontSize: '1.3rem', fontWeight: '700', color: (Number(stockActualDetalle?.stock ?? stockActualDetalle) || 0) === 0 ? '#dc2626' : '#059669' }}>
+                      {Number(stockActualDetalle?.stock ?? stockActualDetalle) || 0} unidades
                     </span>
                   </div>
                 </div>
@@ -2937,7 +2983,7 @@ function PedidosPageContent() {
                   }}>
                     <p style={{ margin: 0, fontSize: '0.95rem', color: '#1e40af' }}>
                       Stock nuevo: <strong style={{ fontSize: '1.2rem' }}>
-                        {stockActualDetalle + parseFloat(cantidadAgregar)} unidades
+                        {(Number(stockActualDetalle?.stock ?? stockActualDetalle) || 0) + parseFloat(cantidadAgregar)} unidades
                       </strong>
                     </p>
                   </div>
@@ -2951,11 +2997,14 @@ function PedidosPageContent() {
                     setCantidadAgregar('');
                     setStockActualDetalle(null);
                     setPartidaParaAgregarStock(null);
+                    setPartidaStockCompletar(null);
                     
-                    // Volver al input de prenda para continuar
-                    setTimeout(() => {
-                      inputPrendaRef.current?.focus();
-                    }, 100);
+                    // Volver al input de prenda solo si no estamos en Completar
+                    if (!mostrarModalCompletar) {
+                      setTimeout(() => {
+                        inputPrendaRef.current?.focus();
+                      }, 100);
+                    }
                   }}
                   style={{
                     flex: 1,
