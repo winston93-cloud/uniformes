@@ -23,6 +23,7 @@ import {
   type FiltroLineaVenta,
 } from '@/lib/winstonLineaVenta';
 import { opcionesInventarioDesdeCuentaReporte } from '@/lib/inventarioSucursal';
+import { compararTallas } from '@/lib/ordenTallas';
 
 export const dynamic = 'force-dynamic';
 
@@ -343,7 +344,7 @@ export default function ReportesPage() {
       for (const nombre of nombres) {
         const filas = ordenarFilasPorFolio(porPrenda.get(nombre)!);
         const pageH = doc.internal.pageSize.getHeight();
-        if (startY > pageH - 40) {
+        if (startY > pageH - 55) {
           doc.addPage();
           startY = 20;
         }
@@ -377,8 +378,57 @@ export default function ReportesPage() {
           margin: { left: 14, right: 14 },
         });
 
-        const finalY = (doc as any).lastAutoTable?.finalY;
-        startY = (typeof finalY === 'number' ? finalY : startY + 30) + 10;
+        const afterTableY = (doc as any).lastAutoTable?.finalY;
+        let y = typeof afterTableY === 'number' ? afterTableY : startY + 30;
+
+        const porTalla = new Map<string, number>();
+        for (const p of filas) {
+          const t = String(p.talla || '—').trim() || '—';
+          porTalla.set(t, (porTalla.get(t) || 0) + Math.max(0, Number(p.cantidad_pendiente ?? 0)));
+        }
+        const tallasAsc = [...porTalla.entries()].sort((a, b) => compararTallas(a[0], b[0]));
+        const totalPzas = tallasAsc.reduce((s, [, n]) => s + n, 0);
+        const chips = tallasAsc.map(([t, n]) => `${t} = ${n}`);
+        const cols = Math.min(6, Math.max(chips.length, 1));
+        const bodyRows: string[][] = [];
+        for (let i = 0; i < chips.length; i += cols) {
+          const slice = chips.slice(i, i + cols);
+          while (slice.length < cols) slice.push('');
+          bodyRows.push(slice);
+        }
+
+        if (y > pageH - 28) {
+          doc.addPage();
+          y = 20;
+        }
+
+        autoTable(doc, {
+          startY: y + 1.5,
+          head: [[{ content: `Totales por talla · ${totalPzas} pzas`, colSpan: cols }]],
+          body: bodyRows,
+          styles: {
+            fontSize: 8,
+            cellPadding: 2.5,
+            halign: 'center',
+            textColor: [51, 65, 85],
+            lineColor: [226, 232, 240],
+            lineWidth: 0.2,
+          },
+          headStyles: {
+            fillColor: [248, 250, 252],
+            textColor: [71, 85, 105],
+            fontStyle: 'bold',
+            fontSize: 8,
+            halign: 'left',
+            cellPadding: { top: 2.5, right: 4, bottom: 2.5, left: 4 },
+          },
+          bodyStyles: { fillColor: [255, 255, 255] },
+          theme: 'grid',
+          margin: { left: 14, right: 14 },
+        });
+
+        const afterTotalesY = (doc as any).lastAutoTable?.finalY;
+        startY = (typeof afterTotalesY === 'number' ? afterTotalesY : y + 18) + 10;
       }
     }
 
