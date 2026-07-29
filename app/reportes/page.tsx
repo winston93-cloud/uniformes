@@ -7,6 +7,7 @@ import { useReportes } from '@/lib/hooks/useReportes';
 import { useCategorias } from '@/lib/hooks/useCategorias';
 import { useSucursales } from '@/lib/hooks/useSucursales';
 import ModalReportes from '@/components/ModalReportes';
+import ModalOrdenPendientes, { type OrdenReportePendientes } from '@/components/ModalOrdenPendientes';
 import ModalFiltroInventario, { type FiltroInventarioSeleccion } from '@/components/ModalFiltroInventario';
 import { mostrarPdfJsPDF, abrirVentanaPdfPlaceholder, cerrarVentanaPdf } from '@/lib/abrirPdfNavegador';
 import jsPDF from 'jspdf';
@@ -71,6 +72,8 @@ export default function ReportesPage() {
   );
   
   const [modalReportesAbierto, setModalReportesAbierto] = useState(false);
+  const [modalPendientesAbierto, setModalPendientesAbierto] = useState(false);
+  const [generandoPendientes, setGenerandoPendientes] = useState(false);
   const [modalInventarioAbierto, setModalInventarioAbierto] = useState(false);
   const [generandoInventario, setGenerandoInventario] = useState(false);
 
@@ -272,41 +275,132 @@ export default function ReportesPage() {
     [estadoInventario]
   );
 
-  const generarPDFPendientes = (datos: any[]) => {
+  const ordenarFilasPorFolio = (datos: any[]) => {
+    const key = (folio: string) => {
+      const raw = String(folio || '').trim().toLowerCase();
+      const m = raw.match(/^([a-z]*)(\d+)$/i);
+      if (m) return { prefix: m[1], num: parseInt(m[2], 10), raw };
+      const digits = raw.replace(/\D/g, '');
+      return { prefix: '', num: digits ? parseInt(digits, 10) : 0, raw };
+    };
+    return [...datos].sort((a, b) => {
+      const ka = key(a.folio);
+      const kb = key(b.folio);
+      if (ka.prefix !== kb.prefix) return ka.prefix.localeCompare(kb.prefix);
+      if (ka.num !== kb.num) return ka.num - kb.num;
+      return ka.raw.localeCompare(kb.raw);
+    });
+  };
+
+  const generarPDFPendientes = (datos: any[], orden: OrdenReportePendientes) => {
     const doc = new jsPDF();
-    
+    const modoLabel = orden === 'folio' ? 'Ordenado por folio' : 'Agrupado por prenda';
+
     doc.setFontSize(18);
     doc.text('Pedidos Pendientes', 14, 20);
-    doc.setFontSize(11);
-    doc.text(`Generado: ${new Date().toLocaleDateString('es-MX')}`, 14, 28);
-    
-    autoTable(doc, {
-      startY: 35,
-      head: [['Folio', 'Cliente', 'Fecha', 'Prenda', 'Pendiente', 'Talla', 'Observación']],
-      body: datos.map((p) => [
-        p.folio || '—',
-        p.cliente_nombre || 'Sin cliente',
-        p.created_at ? new Date(p.created_at).toLocaleDateString('es-MX') : '—',
-        p.prenda || '—',
-        String(p.cantidad_pendiente ?? 0),
-        p.talla || '—',
-        p.observacion || '—',
-      ]),
-      styles: { fontSize: 8, cellPadding: 2 },
-      headStyles: { fillColor: [37, 99, 235], fontSize: 8 },
-      columnStyles: {
-        0: { cellWidth: 20 },
-        1: { cellWidth: 38 },
-        2: { cellWidth: 18 },
-        3: { cellWidth: 36 },
-        4: { cellWidth: 18, halign: 'center' },
-        5: { cellWidth: 16 },
-        6: { cellWidth: 'auto' },
-      },
-    });
-    
-    // Mostrar PDF en nueva pestaña en lugar de descargar
+    doc.setFontSize(10);
+    doc.text(`Cuenta: ${etiquetaTienda}`, 14, 28);
+    doc.text(`${modoLabel} · Generado: ${new Date().toLocaleDateString('es-MX')}`, 14, 34);
+
+    if (orden === 'folio') {
+      const filas = ordenarFilasPorFolio(datos);
+      autoTable(doc, {
+        startY: 40,
+        head: [['Folio', 'Cliente', 'Fecha', 'Prenda', 'Pendiente', 'Talla', 'Observación']],
+        body: filas.map((p) => [
+          p.folio || '—',
+          p.cliente_nombre || 'Sin cliente',
+          p.created_at ? new Date(p.created_at).toLocaleDateString('es-MX') : '—',
+          p.prenda || '—',
+          String(p.cantidad_pendiente ?? 0),
+          p.talla || '—',
+          p.observacion || '—',
+        ]),
+        styles: { fontSize: 8, cellPadding: 2 },
+        headStyles: { fillColor: [37, 99, 235], fontSize: 8 },
+        columnStyles: {
+          0: { cellWidth: 20 },
+          1: { cellWidth: 38 },
+          2: { cellWidth: 18 },
+          3: { cellWidth: 36 },
+          4: { cellWidth: 18, halign: 'center' },
+          5: { cellWidth: 16 },
+          6: { cellWidth: 'auto' },
+        },
+      });
+    } else {
+      const porPrenda = new Map<string, any[]>();
+      for (const p of datos) {
+        const nombre = String(p.prenda || '—').trim() || '—';
+        if (!porPrenda.has(nombre)) porPrenda.set(nombre, []);
+        porPrenda.get(nombre)!.push(p);
+      }
+      const nombres = Array.from(porPrenda.keys()).sort((a, b) =>
+        a.localeCompare(b, 'es', { sensitivity: 'base' })
+      );
+
+      let startY = 40;
+      for (const nombre of nombres) {
+        const filas = ordenarFilasPorFolio(porPrenda.get(nombre)!);
+        const pageH = doc.internal.pageSize.getHeight();
+        if (startY > pageH - 40) {
+          doc.addPage();
+          startY = 20;
+        }
+
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.text(nombre, 14, startY);
+        doc.setFont('helvetica', 'normal');
+
+        autoTable(doc, {
+          startY: startY + 3,
+          head: [['Folio', 'Cliente', 'Fecha', 'Pendiente', 'Talla', 'Observación']],
+          body: filas.map((p) => [
+            p.folio || '—',
+            p.cliente_nombre || 'Sin cliente',
+            p.created_at ? new Date(p.created_at).toLocaleDateString('es-MX') : '—',
+            String(p.cantidad_pendiente ?? 0),
+            p.talla || '—',
+            p.observacion || '—',
+          ]),
+          styles: { fontSize: 8, cellPadding: 2 },
+          headStyles: { fillColor: [124, 58, 237], fontSize: 8 },
+          columnStyles: {
+            0: { cellWidth: 22 },
+            1: { cellWidth: 48 },
+            2: { cellWidth: 20 },
+            3: { cellWidth: 20, halign: 'center' },
+            4: { cellWidth: 18 },
+            5: { cellWidth: 'auto' },
+          },
+          margin: { left: 14, right: 14 },
+        });
+
+        const finalY = (doc as any).lastAutoTable?.finalY;
+        startY = (typeof finalY === 'number' ? finalY : startY + 30) + 10;
+      }
+    }
+
     window.open(doc.output('bloburl'), '_blank');
+  };
+
+  const generarReportePendientes = async (orden: OrdenReportePendientes) => {
+    setGenerandoPendientes(true);
+    try {
+      const datos = await pedidosPendientes();
+      if (datos.length === 0) {
+        alert('No hay pedidos pendientes');
+        return;
+      }
+      generarPDFPendientes(datos, orden);
+      setModalPendientesAbierto(false);
+    } catch (error: any) {
+      console.error('Error al generar reporte:', error);
+      alert(`Error al generar reporte: ${error.message}`);
+    } finally {
+      setGenerandoPendientes(false);
+    }
   };
 
   const generarPDFClientes = (datos: any[]) => {
@@ -433,12 +527,7 @@ export default function ReportesPage() {
           break;
 
         case 'pendientes':
-          datos = await pedidosPendientes();
-          if (datos.length === 0) {
-            alert('No hay pedidos pendientes');
-            return;
-          }
-          generarPDFPendientes(datos);
+          setModalPendientesAbierto(true);
           break;
 
         case 'clientes':
@@ -739,6 +828,17 @@ export default function ReportesPage() {
         {/* Los reportes se muestran en una nueva pestaña como PDF */}
       </div>
       
+      {modalPendientesAbierto && (
+        <ModalOrdenPendientes
+          etiquetaCuenta={etiquetaTienda}
+          cargando={generandoPendientes || loading}
+          onClose={() => {
+            if (!generandoPendientes) setModalPendientesAbierto(false);
+          }}
+          onSelect={(orden) => void generarReportePendientes(orden)}
+        />
+      )}
+
       {modalReportesAbierto && (
         <ModalReportes
           onClose={() => setModalReportesAbierto(false)}
