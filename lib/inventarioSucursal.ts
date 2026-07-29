@@ -1,5 +1,5 @@
 import { filtrarFilasPorSucursalSiHayColumna } from '@/lib/sucursalCliente';
-import { esCuentaWinston } from '@/lib/winstonLineaVenta';
+import { esCuentaWinston, type CuentaReporte } from '@/lib/winstonLineaVenta';
 import type { SesionUsuario } from '@/lib/types';
 
 export type OpcionesInventarioTienda = {
@@ -45,6 +45,27 @@ export function opcionesInventarioDesdeSesion(
     sucursalId: sesion?.sucursal_id,
     esMatriz: false,
     incluirStockCero: false,
+  };
+}
+
+/** Inventario/reportes según cuenta seleccionada (Winston ↔ SUC-WIN, Uniformes ↔ MAT-MAD). */
+export function opcionesInventarioDesdeCuentaReporte(
+  cuenta: CuentaReporte,
+  sucursalId?: string | null
+): OpcionesInventarioTienda {
+  if (cuenta === 'winston') {
+    return {
+      sucursalId: sucursalId ?? undefined,
+      esMatriz: false,
+      inventarioSoloSucursal: true,
+      incluirStockCero: true,
+    };
+  }
+  return {
+    sucursalId: sucursalId ?? undefined,
+    esMatriz: true,
+    inventarioSoloSucursal: true,
+    incluirStockCero: true,
   };
 }
 

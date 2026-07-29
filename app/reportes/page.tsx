@@ -1,28 +1,58 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import { useAuth } from '@/contexts/AuthContext';
 import { useReportes } from '@/lib/hooks/useReportes';
 import { useCategorias } from '@/lib/hooks/useCategorias';
+import { useSucursales } from '@/lib/hooks/useSucursales';
 import ModalReportes from '@/components/ModalReportes';
 import ModalFiltroInventario, { type FiltroInventarioSeleccion } from '@/components/ModalFiltroInventario';
 import { mostrarPdfJsPDF, abrirVentanaPdfPlaceholder, cerrarVentanaPdf } from '@/lib/abrirPdfNavegador';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import {
-  esCuentaWinston,
+  cuentaReporteDesdeSesion,
+  etiquetaCuentaReporte,
+  esCuentaWinstonSeleccionada,
+  OPCIONES_CUENTA_REPORTE,
   OPCIONES_FILTRO_LINEA,
+  resolverSucursalCuentaReporte,
+  type CuentaReporte,
   type FiltroLineaVenta,
 } from '@/lib/winstonLineaVenta';
-import { opcionesInventarioDesdeSesion } from '@/lib/inventarioSucursal';
+import { opcionesInventarioDesdeCuentaReporte } from '@/lib/inventarioSucursal';
 
 export const dynamic = 'force-dynamic';
 
 export default function ReportesPage() {
   const { sesion } = useAuth();
-  const esWinston = esCuentaWinston(sesion);
+  const { sucursales } = useSucursales();
+  const [filtroCuenta, setFiltroCuenta] = useState<CuentaReporte | null>(null);
+  const cuentaDefaultAplicada = useRef(false);
   const [filtroLineaVenta, setFiltroLineaVenta] = useState<FiltroLineaVenta>('todos');
+
+  useEffect(() => {
+    if (cuentaDefaultAplicada.current || !sesion?.sucursal_id) return;
+    setFiltroCuenta(cuentaReporteDesdeSesion(sesion));
+    cuentaDefaultAplicada.current = true;
+  }, [sesion]);
+
+  const cuentaActiva: CuentaReporte = filtroCuenta ?? cuentaReporteDesdeSesion(sesion);
+  const esWinston = esCuentaWinstonSeleccionada(cuentaActiva);
+
+  const sucursalReporte = useMemo(
+    () => resolverSucursalCuentaReporte(sucursales, cuentaActiva),
+    [sucursales, cuentaActiva]
+  );
+
+  const sucursalIdReporte =
+    sucursalReporte?.id ??
+    (cuentaActiva === cuentaReporteDesdeSesion(sesion) ? sesion?.sucursal_id : undefined);
+  const esMatrizReporte = cuentaActiva === 'uniformes' || sucursalReporte?.es_matriz === true;
+  const etiquetaTienda = etiquetaCuentaReporte(cuentaActiva, sucursalReporte?.nombre);
+  const inventarioOpts = opcionesInventarioDesdeCuentaReporte(cuentaActiva, sucursalIdReporte);
+
   const {
     loading,
     ventasPorPeriodo,
@@ -33,10 +63,10 @@ export default function ReportesPage() {
     resumenGeneral,
     ingresosYGanancias,
   } = useReportes(
-    sesion?.sucursal_id,
-    sesion?.es_matriz,
+    sucursalIdReporte,
+    esMatrizReporte,
     esWinston ? filtroLineaVenta : 'todos',
-    opcionesInventarioDesdeSesion(sesion, 'gestion').incluirStockCero
+    inventarioOpts.incluirStockCero
   );
   
   const [modalReportesAbierto, setModalReportesAbierto] = useState(false);
@@ -69,18 +99,19 @@ export default function ReportesPage() {
   });
 
   useEffect(() => {
+    if (!sucursalIdReporte) return;
     void cargarResumen();
     refetchCategorias(false);
-  }, [sesion?.sucursal_id, filtroLineaVenta]);
+  }, [sucursalIdReporte, filtroLineaVenta, cuentaActiva]);
 
   const cargarResumen = useCallback(async () => {
     const datos = await resumenGeneral();
     setResumen(datos);
-  }, [resumenGeneral, filtroLineaVenta]);
+  }, [resumenGeneral, filtroLineaVenta, sucursalIdReporte]);
 
   const generarPDFVentas = (datos: any[]) => {
     const doc = new jsPDF();
-    const tienda = sesion?.sucursal_nombre ?? 'Tienda';
+    const tienda = etiquetaTienda;
     
     // Título
     doc.setFontSize(18);
@@ -116,10 +147,11 @@ export default function ReportesPage() {
     doc.setFontSize(18);
     doc.text('Prendas Más Vendidas', 14, 20);
     doc.setFontSize(11);
-    doc.text(`Generado: ${new Date().toLocaleDateString('es-MX')}`, 14, 28);
+    doc.text(`Cuenta: ${etiquetaTienda}`, 14, 28);
+    doc.text(`Generado: ${new Date().toLocaleDateString('es-MX')}`, 14, 34);
     
     autoTable(doc, {
-      startY: 35,
+      startY: 40,
       head: [['Prenda', 'Talla', 'Cantidad', 'Total']],
       body: datos.map(p => [
         p.prenda,
@@ -154,14 +186,15 @@ export default function ReportesPage() {
     doc.text('Estado de Inventario', 14, 20);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
-    doc.text(`Generado: ${fechaGen}`, 14, 28);
+    doc.text(`Cuenta: ${etiquetaTienda}`, 14, 28);
+    doc.text(`Generado: ${fechaGen}`, 14, 33);
 
     const resumenCat =
       categoriasEtiqueta.length <= 5
         ? categoriasEtiqueta.join(' · ')
         : `${categoriasEtiqueta.length} categorías seleccionadas`;
     const lineasCat = doc.splitTextToSize(`Categorías: ${resumenCat}`, 182);
-    doc.text(lineasCat, 14, 35);
+    doc.text(lineasCat, 14, 39);
 
     const grupos = new Map<string, any[]>();
     for (const row of datos) {
@@ -440,58 +473,78 @@ export default function ReportesPage() {
           📈 Reportes y Estadísticas
         </h1>
 
-        {sesion?.sucursal_nombre && (
-          <div
-            style={{
-              marginBottom: '2rem',
-              background: '#ffffff',
-              color: '#334155',
-              border: '1px solid #dbeafe',
-              borderLeft: '4px solid #3b82f6',
-              borderRadius: '10px',
-              padding: '0.85rem 1.15rem',
-              boxShadow: '0 4px 16px rgba(15, 23, 42, 0.08)',
-              fontSize: '0.92rem',
-            }}
-          >
-            Reportes de <strong style={{ color: '#1e40af' }}>{sesion.sucursal_nombre}</strong> únicamente
-            (ventas, inventario y clientes de esta tienda).
+        <div
+          style={{
+            marginBottom: '2rem',
+            background: '#ffffff',
+            color: '#334155',
+            border: '1px solid #dbeafe',
+            borderLeft: '4px solid #3b82f6',
+            borderRadius: '10px',
+            padding: '0.85rem 1.15rem',
+            boxShadow: '0 4px 16px rgba(15, 23, 42, 0.08)',
+            fontSize: '0.92rem',
+          }}
+        >
+          Reportes de la cuenta <strong style={{ color: '#1e40af' }}>{etiquetaTienda}</strong> (
+          ventas, inventario y clientes de esa tienda). Elige Winston o Uniformes abajo.
+          {esWinston && (
+            <>
+              {' '}
+              Con cuenta Winston puedes filtrar por <strong>prendas (wu…)</strong>,{' '}
+              <strong>tenis (wt…)</strong> o <strong>remate tenis (rt…)</strong>.
+            </>
+          )}
+        </div>
+
+        <div className="form-container" style={{ marginBottom: '1.5rem', padding: '1rem 1.25rem' }}>
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <label className="form-label" style={{ marginBottom: 0 }}>
+              Cuenta:
+            </label>
+            <select
+              className="form-input"
+              style={{ maxWidth: '180px', marginBottom: 0 }}
+              value={cuentaActiva}
+              onChange={(e) => {
+                const next = e.target.value as CuentaReporte;
+                setFiltroCuenta(next);
+                if (next !== 'winston') setFiltroLineaVenta('todos');
+              }}
+            >
+              {OPCIONES_CUENTA_REPORTE.map((op) => (
+                <option key={op.value} value={op.value}>
+                  {op.label}
+                </option>
+              ))}
+            </select>
+
             {esWinston && (
               <>
-                {' '}
-                Filtra por <strong>prendas (wu…)</strong>, <strong>tenis (wt…)</strong> o{' '}
-                <strong>remate tenis (rt…)</strong> con el selector de abajo.
+                <label className="form-label" style={{ marginBottom: 0 }}>
+                  Línea de reporte:
+                </label>
+                <select
+                  className="form-input"
+                  style={{ maxWidth: '180px', marginBottom: 0 }}
+                  value={filtroLineaVenta}
+                  onChange={(e) => setFiltroLineaVenta(e.target.value as FiltroLineaVenta)}
+                >
+                  {OPCIONES_FILTRO_LINEA.map((op) => (
+                    <option key={op.value} value={op.value}>
+                      {op.label}
+                    </option>
+                  ))}
+                </select>
               </>
             )}
           </div>
-        )}
-
-        {esWinston && (
-          <div className="form-container" style={{ marginBottom: '1.5rem', padding: '1rem 1.25rem' }}>
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-              <label className="form-label" style={{ marginBottom: 0 }}>
-                Línea de reporte:
-              </label>
-              <select
-                className="form-input"
-                style={{ maxWidth: '180px', marginBottom: 0 }}
-                value={filtroLineaVenta}
-                onChange={(e) => setFiltroLineaVenta(e.target.value as FiltroLineaVenta)}
-              >
-                {OPCIONES_FILTRO_LINEA.map((op) => (
-                  <option key={op.value} value={op.value}>
-                    {op.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        )}
+        </div>
 
         {/* Resumen Rápido */}
         <div className="table-container" style={{ marginBottom: '3rem' }}>
           <h3 style={{ marginBottom: '1rem', fontSize: '1.5rem', fontWeight: '600' }}>
-            Resumen General{sesion?.sucursal_nombre ? ` — ${sesion.sucursal_nombre}` : ''}
+            Resumen General — {etiquetaTienda}
           </h3>
           
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginTop: '2rem' }}>

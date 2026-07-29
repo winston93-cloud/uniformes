@@ -2,6 +2,9 @@
 
 export const WINSTON_SUCURSAL_CODIGO = 'SUC-WIN';
 
+/** Código de Matriz Madero — cuenta Uniformes / Mario. */
+export const UNIFORMES_SUCURSAL_CODIGO = 'MAT-MAD';
+
 /** ID de la prenda TENIS en catálogo (ZAPATERIA). */
 export const TENIS_PRENDA_ID = '5a291f2f-fc07-41a3-bff8-082df51d13ff';
 
@@ -18,6 +21,58 @@ export type SesionLineaVenta = {
 
 export function esCuentaWinston(sesion?: SesionLineaVenta | null): boolean {
   return sesion?.sucursal_codigo === WINSTON_SUCURSAL_CODIGO && sesion?.es_matriz !== true;
+}
+
+/** Selector de reportes: cuenta = tienda (Winston ↔ SUC-WIN, Uniformes ↔ MAT-MAD). */
+export type CuentaReporte = 'winston' | 'uniformes';
+
+export const OPCIONES_CUENTA_REPORTE: { value: CuentaReporte; label: string }[] = [
+  { value: 'winston', label: 'Winston' },
+  { value: 'uniformes', label: 'Uniformes' },
+];
+
+export function cuentaReporteDesdeSesion(sesion?: SesionLineaVenta | null): CuentaReporte {
+  return esCuentaWinston(sesion) ? 'winston' : 'uniformes';
+}
+
+export function codigoSucursalDeCuenta(cuenta: CuentaReporte): string {
+  return cuenta === 'winston' ? WINSTON_SUCURSAL_CODIGO : UNIFORMES_SUCURSAL_CODIGO;
+}
+
+export function esCuentaWinstonSeleccionada(cuenta: CuentaReporte): boolean {
+  return cuenta === 'winston';
+}
+
+export type SucursalCuentaReporte = {
+  id: string;
+  nombre: string;
+  codigo?: string | null;
+  es_matriz?: boolean | null;
+};
+
+/** Resuelve la sucursal de BD para la cuenta elegida. */
+export function resolverSucursalCuentaReporte(
+  sucursales: SucursalCuentaReporte[],
+  cuenta: CuentaReporte
+): SucursalCuentaReporte | null {
+  const codigo = codigoSucursalDeCuenta(cuenta);
+  const porCodigo = sucursales.find(
+    (s) => String(s.codigo ?? '').trim().toUpperCase() === codigo
+  );
+  if (porCodigo) return porCodigo;
+  if (cuenta === 'winston') {
+    return (
+      sucursales.find((s) => /winston/i.test(String(s.nombre ?? '')) && !s.es_matriz) ?? null
+    );
+  }
+  return sucursales.find((s) => s.es_matriz) ?? null;
+}
+
+export function etiquetaCuentaReporte(cuenta: CuentaReporte, sucursalNombre?: string | null): string {
+  if (cuenta === 'winston') {
+    return sucursalNombre?.trim() ? `Winston (${sucursalNombre})` : 'Winston';
+  }
+  return sucursalNombre?.trim() ? `Uniformes (${sucursalNombre})` : 'Uniformes';
 }
 
 export function esPrendaTenis(
