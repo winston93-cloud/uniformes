@@ -193,8 +193,8 @@ export default function StockMasivoPage() {
           Stock masivo
         </h1>
         <p style={{ color: 'rgba(255,255,255,0.92)', marginBottom: '1.75rem', maxWidth: 640 }}>
-          Busca una prenda, elige tallas y suma o resta la misma cantidad a todas las
-          seleccionadas. El cambio se refleja en el stock de tu sucursal.
+          Busca una prenda, marca tallas y en cada una indica cuánto sumar o restar. El cambio se
+          refleja en el stock de tu sucursal.
         </p>
 
         {!puedeEditar && (
