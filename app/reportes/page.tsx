@@ -717,8 +717,9 @@ export default function ReportesPage() {
             Resumen General — {etiquetaTienda}
           </h3>
           <p style={{ margin: '0 0 1.25rem', color: 'var(--text-secondary)', fontSize: '0.92rem' }}>
-            Pedidos y ventas del período {periodo.fechaInicio} al {periodo.fechaFin}. Alumnos y stock
-            son el total actual de la cuenta.
+            Pedidos y ventas del período {periodo.fechaInicio} al {periodo.fechaFin} (misma base que
+            Ventas por período: pendientes + completados). Alumnos y stock son el total actual de la
+            cuenta.
           </p>
           
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginTop: '1rem' }}>

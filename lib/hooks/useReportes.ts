@@ -676,9 +676,11 @@ export function useReportes(
         filtrarCostosTienda((costosRaw || []) as Record<string, unknown>[])
       );
 
-      const ventasTotales = pedidos
-        .filter((p) => String(p.estado ?? '') === 'COMPLETADO')
-        .reduce((sum, p) => sum + parseFloat(String(p.total ?? 0)), 0);
+      // Misma base que «Ventas por período»: PENDIENTE + COMPLETADO del rango.
+      const ventasTotales = pedidos.reduce(
+        (sum, p) => sum + parseFloat(String(p.total ?? 0)),
+        0
+      );
 
       return {
         totalPedidos: pedidos.length,
