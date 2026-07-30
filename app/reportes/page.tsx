@@ -107,12 +107,13 @@ export default function ReportesPage() {
     if (!sucursalIdReporte) return;
     void cargarResumen();
     refetchCategorias(false);
-  }, [sucursalIdReporte, filtroLineaVenta, cuentaActiva]);
+  }, [sucursalIdReporte, filtroLineaVenta, cuentaActiva, periodo.fechaInicio, periodo.fechaFin]);
 
   const cargarResumen = useCallback(async () => {
-    const datos = await resumenGeneral();
+    if (!periodo.fechaInicio || !periodo.fechaFin) return;
+    const datos = await resumenGeneral(periodo.fechaInicio, periodo.fechaFin);
     setResumen(datos);
-  }, [resumenGeneral, filtroLineaVenta, sucursalIdReporte]);
+  }, [resumenGeneral, filtroLineaVenta, sucursalIdReporte, periodo.fechaInicio, periodo.fechaFin]);
 
   const generarPDFVentas = (datos: any[]) => {
     const doc = new jsPDF();
@@ -685,13 +686,42 @@ export default function ReportesPage() {
           </div>
         </div>
 
+        {/* Filtros de Período */}
+        <div className="form-container" style={{ marginBottom: '1.5rem' }}>
+          <h3 style={{ marginBottom: '1rem', fontSize: '1.2rem', fontWeight: '600' }}>Filtros de Período</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">Fecha Inicio</label>
+              <input
+                type="date"
+                className="form-input"
+                value={periodo.fechaInicio}
+                onChange={(e) => setPeriodo({ ...periodo, fechaInicio: e.target.value })}
+              />
+            </div>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">Fecha Fin</label>
+              <input
+                type="date"
+                className="form-input"
+                value={periodo.fechaFin}
+                onChange={(e) => setPeriodo({ ...periodo, fechaFin: e.target.value })}
+              />
+            </div>
+          </div>
+        </div>
+
         {/* Resumen Rápido */}
         <div className="table-container" style={{ marginBottom: '3rem' }}>
-          <h3 style={{ marginBottom: '1rem', fontSize: '1.5rem', fontWeight: '600' }}>
+          <h3 style={{ marginBottom: '0.35rem', fontSize: '1.5rem', fontWeight: '600' }}>
             Resumen General — {etiquetaTienda}
           </h3>
+          <p style={{ margin: '0 0 1.25rem', color: 'var(--text-secondary)', fontSize: '0.92rem' }}>
+            Pedidos y ventas del período {periodo.fechaInicio} al {periodo.fechaFin}. Alumnos y stock
+            son el total actual de la cuenta.
+          </p>
           
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginTop: '2rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginTop: '1rem' }}>
             <div style={{ textAlign: 'center', padding: '1.5rem', background: 'linear-gradient(135deg, rgba(236, 72, 153, 0.1) 0%, rgba(251, 146, 60, 0.05) 100%)', borderRadius: '15px' }}>
               <div style={{ fontSize: '2.5rem', fontWeight: '700', color: '#ec4899' }}>{resumen.totalPedidos}</div>
               <div style={{ color: 'var(--text-secondary)', marginTop: '0.5rem' }}>Pedidos Totales</div>
@@ -720,31 +750,6 @@ export default function ReportesPage() {
                       ? 'Prendas en Stock'
                       : 'Prendas en Stock'}
               </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Filtros de Período */}
-        <div className="form-container" style={{ marginBottom: '2rem' }}>
-          <h3 style={{ marginBottom: '1rem', fontSize: '1.2rem', fontWeight: '600' }}>Filtros de Período</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-            <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">Fecha Inicio</label>
-              <input
-                type="date"
-                className="form-input"
-                value={periodo.fechaInicio}
-                onChange={(e) => setPeriodo({ ...periodo, fechaInicio: e.target.value })}
-              />
-            </div>
-            <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">Fecha Fin</label>
-              <input
-                type="date"
-                className="form-input"
-                value={periodo.fechaFin}
-                onChange={(e) => setPeriodo({ ...periodo, fechaFin: e.target.value })}
-              />
             </div>
           </div>
         </div>

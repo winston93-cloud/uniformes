@@ -629,25 +629,28 @@ export function useReportes(
     }
   };
 
-  const resumenGeneral = async () => {
+  const resumenGeneral = async (fechaInicio?: string, fechaFin?: string) => {
     try {
       setLoading(true);
 
-      let countPedidos = insforgeDb().from('pedidos').select('*', { count: 'exact', head: true });
-      let liquidadosQuery = insforgeDb().from('pedidos').select('total').in('estado', ['COMPLETADO']);
-      if (sid) {
-        countPedidos = countPedidos.eq('sucursal_id', sid);
-        liquidadosQuery = liquidadosQuery.eq('sucursal_id', sid);
+      const tienePeriodo = Boolean(fechaInicio?.trim() && fechaFin?.trim());
+      const rango = tienePeriodo ? rangoLocalAIso(fechaInicio!.trim(), fechaFin!.trim()) : null;
+
+      let pedidosQuery = insforgeDb()
+        .from('pedidos')
+        .select('id, folio, linea_venta, total, estado, created_at, updated_at')
+        .in('estado', ['PENDIENTE', 'COMPLETADO']);
+      if (sid) pedidosQuery = pedidosQuery.eq('sucursal_id', sid);
+      if (rango) {
+        pedidosQuery = pedidosQuery.gte('created_at', rango.startIso).lte('created_at', rango.endIso);
       }
 
       const [
-        { count: totalPedidos },
-        { data: pedidosLiquidados },
+        { data: pedidosRaw, error: errPedidos },
         { count: totalAlumnos },
         { data: costosRaw },
       ] = await Promise.all([
-        countPedidos,
-        liquidadosQuery,
+        pedidosQuery,
         fetch('/api/alumno/count')
           .then((r) => r.json())
           .then((j) => ({ count: j?.success ? Number(j.count) || 0 : 0 }))
@@ -659,29 +662,29 @@ export function useReportes(
         })(),
       ]);
 
+      if (errPedidos) throw errPedidos;
+
+      let pedidos = filtrarPedidosLinea((pedidosRaw || []) as Record<string, unknown>[]);
+      if (rango) {
+        pedidos = pedidos.filter((p) => {
+          const f = fechaEfectivaPedido(p);
+          return !!f && f >= rango.startLocal && f <= rango.endLocal;
+        });
+      }
+
       const costosTienda = filtrarCostosPorLinea(
         filtrarCostosTienda((costosRaw || []) as Record<string, unknown>[])
       );
 
-      const pedidosFiltrados = filtrarPedidosLinea((pedidosLiquidados || []) as Record<string, unknown>[]);
-      const ventasTotales =
-        pedidosFiltrados.reduce((sum, p) => sum + parseFloat(String(p.total ?? 0)), 0) || 0;
-      const prendasStock = costosTienda.reduce((sum, c) => sum + Number(c.stock ?? 0), 0);
-
-      let totalPedidosCount = totalPedidos || 0;
-      if (filtroLinea !== 'todos' && sid) {
-        const { data: todosPedidos } = await insforgeDb()
-          .from('pedidos')
-          .select('id, folio, linea_venta')
-          .eq('sucursal_id', sid);
-        totalPedidosCount = filtrarPedidosLinea((todosPedidos || []) as Record<string, unknown>[]).length;
-      }
+      const ventasTotales = pedidos
+        .filter((p) => String(p.estado ?? '') === 'COMPLETADO')
+        .reduce((sum, p) => sum + parseFloat(String(p.total ?? 0)), 0);
 
       return {
-        totalPedidos: totalPedidosCount,
+        totalPedidos: pedidos.length,
         ventasTotales,
         totalAlumnos: totalAlumnos || 0,
-        prendasStock,
+        prendasStock: costosTienda.reduce((sum, c) => sum + Number(c.stock ?? 0), 0),
       };
     } catch (err: any) {
       console.error('Error en resumenGeneral:', err);
