@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import ModalStockMasivo from '@/components/ModalStockMasivo';
 import { useAuth } from '@/contexts/AuthContext';
@@ -26,11 +26,13 @@ export default function StockMasivoPage() {
 
   const [busqueda, setBusqueda] = useState('');
   const [mostrarResultados, setMostrarResultados] = useState(false);
+  const [indiceResaltado, setIndiceResaltado] = useState(0);
   const [prendaId, setPrendaId] = useState('');
   const [modalAbierto, setModalAbierto] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const listaRef = useRef<HTMLDivElement>(null);
 
   const grupos = useMemo(() => agruparCostosPorPrenda(costos), [costos]);
 
@@ -49,6 +51,24 @@ export default function StockMasivoPage() {
       .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
   }, [prendas, grupos, busqueda]);
 
+  const resultadosVisibles = useMemo(() => prendasConStock.slice(0, 40), [prendasConStock]);
+
+  useEffect(() => {
+    setIndiceResaltado(0);
+  }, [busqueda]);
+
+  useEffect(() => {
+    if (indiceResaltado >= resultadosVisibles.length) {
+      setIndiceResaltado(Math.max(0, resultadosVisibles.length - 1));
+    }
+  }, [resultadosVisibles.length, indiceResaltado]);
+
+  useEffect(() => {
+    if (!mostrarResultados || !listaRef.current) return;
+    const el = listaRef.current.querySelector<HTMLElement>(`[data-idx="${indiceResaltado}"]`);
+    el?.scrollIntoView({ block: 'nearest' });
+  }, [indiceResaltado, mostrarResultados]);
+
   const grupoActivo = useMemo(
     () => grupos.find((g) => g.prenda_id === prendaId) ?? null,
     [grupos, prendaId]
@@ -63,8 +83,46 @@ export default function StockMasivoPage() {
     setPrendaId(id);
     setBusqueda('');
     setMostrarResultados(false);
+    setIndiceResaltado(0);
     setMensaje('');
     setModalAbierto(true);
+    requestAnimationFrame(() => inputRef.current?.blur());
+  };
+
+  const onKeyDownBusqueda = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!puedeEditar) return;
+    const ops = resultadosVisibles;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (ops.length === 0) return;
+      setMostrarResultados(true);
+      setIndiceResaltado((i) => (mostrarResultados ? Math.min(i + 1, ops.length - 1) : 0));
+      return;
+    }
+
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (ops.length === 0) return;
+      setMostrarResultados(true);
+      setIndiceResaltado((i) => Math.max(i - 1, 0));
+      return;
+    }
+
+    if (e.key === 'Enter') {
+      if (ops.length === 0) return;
+      e.preventDefault();
+      e.stopPropagation();
+      setMostrarResultados(true);
+      const elegida = ops.length === 1 ? ops[0] : ops[indiceResaltado] ?? ops[0];
+      if (elegida) abrirModalPara(elegida.id, elegida.nombre);
+      return;
+    }
+
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      setMostrarResultados(false);
+    }
   };
 
   const aplicarAjuste = async (
@@ -163,21 +221,35 @@ export default function StockMasivoPage() {
               className="form-input"
               value={busqueda}
               disabled={!puedeEditar}
+              autoComplete="off"
+              role="combobox"
+              aria-expanded={mostrarResultados}
+              aria-autocomplete="list"
+              aria-activedescendant={
+                mostrarResultados && resultadosVisibles[indiceResaltado]
+                  ? `stock-masivo-opcion-${resultadosVisibles[indiceResaltado].id}`
+                  : undefined
+              }
               onChange={(e) => {
                 setBusqueda(e.target.value);
                 setMostrarResultados(true);
                 setPrendaId('');
+                setIndiceResaltado(0);
               }}
               onFocus={() => {
                 setBusqueda('');
+                setIndiceResaltado(0);
                 setMostrarResultados(true);
               }}
               onBlur={() => setTimeout(() => setMostrarResultados(false), 200)}
-              placeholder="🔍 Nombre o código…"
+              onKeyDown={onKeyDownBusqueda}
+              placeholder="🔍 Nombre o código… (↑↓ Enter)"
               style={{ width: '100%' }}
             />
             {mostrarResultados && puedeEditar && (
               <div
+                ref={listaRef}
+                role="listbox"
                 style={{
                   position: 'absolute',
                   top: '100%',
@@ -195,28 +267,30 @@ export default function StockMasivoPage() {
               >
                 {loading ? (
                   <div style={{ padding: '1rem', textAlign: 'center', color: '#999' }}>Cargando…</div>
-                ) : prendasConStock.length === 0 ? (
+                ) : resultadosVisibles.length === 0 ? (
                   <div style={{ padding: '1rem', textAlign: 'center', color: '#999' }}>
                     No se encontraron prendas con tallas en esta sucursal
                   </div>
                 ) : (
-                  prendasConStock.slice(0, 40).map((p) => {
+                  resultadosVisibles.map((p, idx) => {
                     const g = grupos.find((x) => x.prenda_id === p.id);
                     const nTallas = g?.costos.length ?? 0;
+                    const activo = idx === indiceResaltado;
                     return (
                       <div
                         key={p.id}
+                        id={`stock-masivo-opcion-${p.id}`}
+                        data-idx={idx}
+                        role="option"
+                        aria-selected={activo}
+                        onMouseDown={(e) => e.preventDefault()}
                         onClick={() => abrirModalPara(p.id, p.nombre)}
+                        onMouseEnter={() => setIndiceResaltado(idx)}
                         style={{
                           padding: '0.75rem 1rem',
                           cursor: 'pointer',
                           borderBottom: '1px solid #f0f0f0',
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = '#f0f9ff';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = 'white';
+                          backgroundColor: activo ? '#e0f2fe' : 'white',
                         }}
                       >
                         <div style={{ fontWeight: 600 }}>{p.nombre}</div>
@@ -232,7 +306,7 @@ export default function StockMasivoPage() {
             )}
           </div>
           <p style={{ margin: '0.75rem 0 0', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-            Al elegir una prenda se abre el modal con tallas, stock y el ajuste masivo.
+            Usa ↑ ↓ para moverte y Enter para abrir. Si solo hay un resultado, Enter lo selecciona solo.
           </p>
         </div>
 
