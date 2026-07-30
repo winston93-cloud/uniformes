@@ -59,9 +59,9 @@ export default function StockMasivoPage() {
     [prendas, prendaId]
   );
 
-  const abrirModalPara = (id: string, nombre: string) => {
+  const abrirModalPara = (id: string, _nombre: string) => {
     setPrendaId(id);
-    setBusqueda(nombre);
+    setBusqueda('');
     setMostrarResultados(false);
     setMensaje('');
     setModalAbierto(true);
@@ -168,7 +168,10 @@ export default function StockMasivoPage() {
                 setMostrarResultados(true);
                 setPrendaId('');
               }}
-              onFocus={() => setMostrarResultados(true)}
+              onFocus={() => {
+                setBusqueda('');
+                setMostrarResultados(true);
+              }}
               onBlur={() => setTimeout(() => setMostrarResultados(false), 200)}
               placeholder="🔍 Nombre o código…"
               style={{ width: '100%' }}
