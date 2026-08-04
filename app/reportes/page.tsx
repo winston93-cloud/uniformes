@@ -5,6 +5,7 @@ import LayoutWrapper from '@/components/LayoutWrapper';
 import { useAuth } from '@/contexts/AuthContext';
 import { useReportes } from '@/lib/hooks/useReportes';
 import { useCategorias } from '@/lib/hooks/useCategorias';
+import { usePrendas } from '@/lib/hooks/usePrendas';
 import { useSucursales } from '@/lib/hooks/useSucursales';
 import ModalReportes from '@/components/ModalReportes';
 import ModalOrdenPendientes, { type OrdenReportePendientes } from '@/components/ModalOrdenPendientes';
@@ -79,6 +80,7 @@ export default function ReportesPage() {
   const [generandoInventario, setGenerandoInventario] = useState(false);
 
   const { categorias, loading: loadingCategorias, refetch: refetchCategorias } = useCategorias();
+  const { prendas } = usePrendas(inventarioOpts);
 
   const [resumen, setResumen] = useState({
     totalPedidos: 0,
@@ -256,10 +258,19 @@ export default function ReportesPage() {
       const ventanaPdf = abrirVentanaPdfPlaceholder();
       setGenerandoInventario(true);
       try {
-        const datos = await estadoInventario(filtro.categoriaIds, filtro.incluirSinCategoria);
+        const datos = await estadoInventario({
+          categoriaIds: filtro.categoriaIds,
+          incluirSinCategoria: filtro.incluirSinCategoria,
+          prendaIds: filtro.prendaIds,
+          excluirStockCero: filtro.excluirStockCero,
+        });
         if (datos.length === 0) {
           cerrarVentanaPdf(ventanaPdf);
-          alert('No hay inventario para las categorías seleccionadas.');
+          alert(
+            filtro.excluirStockCero
+              ? 'No hay inventario con stock mayor a 0 para la selección.'
+              : 'No hay inventario para la selección.'
+          );
           return;
         }
         const doc = generarPDFInventario(datos, filtro.etiquetas);
@@ -908,6 +919,7 @@ export default function ReportesPage() {
       {modalInventarioAbierto && (
         <ModalFiltroInventario
           categorias={categorias}
+          prendas={prendas}
           loadingCategorias={loadingCategorias}
           generando={generandoInventario || loading}
           onClose={() => setModalInventarioAbierto(false)}

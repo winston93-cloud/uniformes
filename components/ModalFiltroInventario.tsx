@@ -3,22 +3,38 @@
 import { type CSSProperties, useEffect, useMemo, useState } from 'react';
 import type { CategoriaPrenda } from '@/lib/hooks/useCategorias';
 
+export type ModoFiltroInventario = 'categorias' | 'con_stock' | 'prendas';
+
 export type FiltroInventarioSeleccion = {
+  modo: ModoFiltroInventario;
   categoriaIds: string[];
   incluirSinCategoria: boolean;
+  prendaIds: string[];
+  excluirStockCero: boolean;
   etiquetas: string[];
+};
+
+export type PrendaFiltroInventario = {
+  id: string;
+  nombre: string;
+  codigo?: string | null;
+  activo?: boolean;
 };
 
 interface ModalFiltroInventarioProps {
   categorias: CategoriaPrenda[];
+  prendas: PrendaFiltroInventario[];
   loadingCategorias: boolean;
   generando: boolean;
   onClose: () => void;
   onGenerar: (filtro: FiltroInventarioSeleccion) => void;
 }
 
+type Pestana = ModoFiltroInventario;
+
 export default function ModalFiltroInventario({
   categorias,
+  prendas,
   loadingCategorias,
   generando,
   onClose,
@@ -32,27 +48,68 @@ export default function ModalFiltroInventario({
     [categorias]
   );
 
-  const [seleccion, setSeleccion] = useState<Set<string>>(new Set());
+  const prendasOrdenadas = useMemo(
+    () =>
+      [...prendas]
+        .filter((p) => p.activo !== false)
+        .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' })),
+    [prendas]
+  );
+
+  const [pestana, setPestana] = useState<Pestana>('categorias');
+  const [seleccionCat, setSeleccionCat] = useState<Set<string>>(new Set());
   const [incluirSinCategoria, setIncluirSinCategoria] = useState(false);
+  const [seleccionPrenda, setSeleccionPrenda] = useState<Set<string>>(new Set());
   const [busqueda, setBusqueda] = useState('');
 
   useEffect(() => {
-    setSeleccion(new Set(categoriasOrdenadas.map((c) => c.id)));
+    setSeleccionCat(new Set(categoriasOrdenadas.map((c) => c.id)));
     setIncluirSinCategoria(false);
     setBusqueda('');
   }, [categoriasOrdenadas]);
 
-  const filtradas = useMemo(() => {
+  useEffect(() => {
+    setSeleccionPrenda(new Set());
+  }, [prendasOrdenadas]);
+
+  useEffect(() => {
+    setBusqueda('');
+  }, [pestana]);
+
+  const esPorPrenda = pestana === 'prendas';
+  const excluirStockCero = pestana === 'con_stock';
+
+  const filtradasCat = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
     if (!q) return categoriasOrdenadas;
     return categoriasOrdenadas.filter((c) => c.nombre.toLowerCase().includes(q));
   }, [categoriasOrdenadas, busqueda]);
 
-  const totalSeleccionadas =
-    seleccion.size + (incluirSinCategoria ? 1 : 0);
+  const filtradasPrenda = useMemo(() => {
+    const q = busqueda.trim().toLowerCase();
+    if (!q) return prendasOrdenadas;
+    return prendasOrdenadas.filter(
+      (p) =>
+        p.nombre.toLowerCase().includes(q) ||
+        (p.codigo && p.codigo.toLowerCase().includes(q))
+    );
+  }, [prendasOrdenadas, busqueda]);
 
-  const toggle = (id: string) => {
-    setSeleccion((prev) => {
+  const totalSeleccionadas = esPorPrenda
+    ? seleccionPrenda.size
+    : seleccionCat.size + (incluirSinCategoria ? 1 : 0);
+
+  const toggleCat = (id: string) => {
+    setSeleccionCat((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const togglePrenda = (id: string) => {
+    setSeleccionPrenda((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -61,33 +118,63 @@ export default function ModalFiltroInventario({
   };
 
   const seleccionarTodas = () => {
-    setSeleccion(new Set(categoriasOrdenadas.map((c) => c.id)));
-    setIncluirSinCategoria(true);
+    if (esPorPrenda) {
+      setSeleccionPrenda(new Set(prendasOrdenadas.map((p) => p.id)));
+    } else {
+      setSeleccionCat(new Set(categoriasOrdenadas.map((c) => c.id)));
+      setIncluirSinCategoria(true);
+    }
   };
 
   const limpiarTodas = () => {
-    setSeleccion(new Set());
-    setIncluirSinCategoria(false);
+    if (esPorPrenda) {
+      setSeleccionPrenda(new Set());
+    } else {
+      setSeleccionCat(new Set());
+      setIncluirSinCategoria(false);
+    }
   };
 
   const handleGenerar = () => {
     if (totalSeleccionadas === 0) {
-      alert('Selecciona al menos una categoría para generar el reporte.');
+      alert(
+        esPorPrenda
+          ? 'Selecciona al menos una prenda para generar el reporte.'
+          : 'Selecciona al menos una categoría para generar el reporte.'
+      );
       return;
     }
+
+    if (esPorPrenda) {
+      const elegidas = prendasOrdenadas.filter((p) => seleccionPrenda.has(p.id));
+      onGenerar({
+        modo: 'prendas',
+        categoriaIds: [],
+        incluirSinCategoria: false,
+        prendaIds: elegidas.map((p) => p.id),
+        excluirStockCero: false,
+        etiquetas: elegidas.map((p) => p.nombre),
+      });
+      return;
+    }
+
     const etiquetas: string[] = categoriasOrdenadas
-      .filter((c) => seleccion.has(c.id))
+      .filter((c) => seleccionCat.has(c.id))
       .map((c) => c.nombre);
     if (incluirSinCategoria) etiquetas.push('Sin categoría');
+    if (excluirStockCero) etiquetas.push('Solo stock > 0');
 
     onGenerar({
-      categoriaIds: Array.from(seleccion),
+      modo: pestana,
+      categoriaIds: Array.from(seleccionCat),
       incluirSinCategoria,
+      prendaIds: [],
+      excluirStockCero,
       etiquetas,
     });
   };
 
-  const filaCategoriaStyle = (activa: boolean, variante: 'normal' | 'opcional' = 'normal'): CSSProperties => {
+  const filaStyle = (activa: boolean, variante: 'normal' | 'opcional' = 'normal'): CSSProperties => {
     const esOpcional = variante === 'opcional';
     return {
       display: 'flex',
@@ -113,6 +200,29 @@ export default function ModalFiltroInventario({
     };
   };
 
+  const tabStyle = (activa: boolean): CSSProperties => ({
+    flex: 1,
+    minWidth: 0,
+    padding: '0.55rem 0.4rem',
+    borderRadius: 10,
+    border: activa ? '2px solid #0ea5e9' : '1px solid rgba(148, 163, 184, 0.45)',
+    background: activa
+      ? 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)'
+      : 'rgba(255,255,255,0.95)',
+    color: activa ? '#fff' : '#334155',
+    fontWeight: 700,
+    fontSize: '0.78rem',
+    cursor: 'pointer',
+    lineHeight: 1.25,
+  });
+
+  const descripcion =
+    pestana === 'categorias'
+      ? 'Elige categorías. El PDF se agrupa por categoría (A → Z).'
+      : pestana === 'con_stock'
+        ? 'Igual que categorías, pero no aparecen tallas con stock en 0.'
+        : 'Elige una o varias prendas. El PDF se agrupa por categoría de cada una.';
+
   return (
     <div
       role="dialog"
@@ -133,8 +243,8 @@ export default function ModalFiltroInventario({
       <div
         className="form-container"
         style={{
-          width: 'min(440px, 100%)',
-          maxHeight: 'min(90vh, 720px)',
+          width: 'min(480px, 100%)',
+          maxHeight: 'min(90vh, 760px)',
           display: 'flex',
           flexDirection: 'column',
           margin: 0,
@@ -148,7 +258,7 @@ export default function ModalFiltroInventario({
               📦 Estado de Inventario
             </h2>
             <p style={{ margin: '0.5rem 0 0', color: 'var(--text-secondary)', fontSize: '0.92rem' }}>
-              Elige las categorías del catálogo. El PDF se agrupa por categoría (A → Z).
+              {descripcion}
             </p>
           </div>
           <button
@@ -162,14 +272,26 @@ export default function ModalFiltroInventario({
           </button>
         </div>
 
-        <div style={{ marginTop: '1.25rem' }}>
+        <div style={{ display: 'flex', gap: '0.45rem', marginTop: '1.1rem' }}>
+          <button type="button" style={tabStyle(pestana === 'categorias')} onClick={() => setPestana('categorias')}>
+            Categorías
+          </button>
+          <button type="button" style={tabStyle(pestana === 'con_stock')} onClick={() => setPestana('con_stock')}>
+            Sin stock 0
+          </button>
+          <button type="button" style={tabStyle(pestana === 'prendas')} onClick={() => setPestana('prendas')}>
+            Por prenda
+          </button>
+        </div>
+
+        <div style={{ marginTop: '1rem' }}>
           <input
             type="search"
             className="form-input"
-            placeholder="🔍 Buscar categoría…"
+            placeholder={esPorPrenda ? '🔍 Buscar prenda…' : '🔍 Buscar categoría…'}
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
-            disabled={loadingCategorias}
+            disabled={loadingCategorias && !esPorPrenda}
           />
         </div>
 
@@ -182,10 +304,20 @@ export default function ModalFiltroInventario({
             alignItems: 'center',
           }}
         >
-          <button type="button" className="btn btn-secondary" style={{ padding: '0.35rem 0.75rem', fontSize: '0.85rem' }} onClick={seleccionarTodas}>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            style={{ padding: '0.35rem 0.75rem', fontSize: '0.85rem' }}
+            onClick={seleccionarTodas}
+          >
             ✓ Todas
           </button>
-          <button type="button" className="btn btn-secondary" style={{ padding: '0.35rem 0.75rem', fontSize: '0.85rem' }} onClick={limpiarTodas}>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            style={{ padding: '0.35rem 0.75rem', fontSize: '0.85rem' }}
+            onClick={limpiarTodas}
+          >
             Limpiar
           </button>
           <span
@@ -206,43 +338,106 @@ export default function ModalFiltroInventario({
             overflowY: 'auto',
             marginTop: '1rem',
             minHeight: 120,
-            maxHeight: 'min(46vh, 400px)',
+            maxHeight: 'min(42vh, 380px)',
             border: '1px solid rgba(148, 163, 184, 0.35)',
             borderRadius: 12,
             background: 'rgba(248, 250, 252, 0.65)',
           }}
         >
-          {loadingCategorias ? (
+          {esPorPrenda ? (
+            filtradasPrenda.length === 0 ? (
+              <p style={{ color: 'var(--text-secondary)', padding: '1rem' }}>
+                {busqueda
+                  ? 'No hay coincidencias con tu búsqueda.'
+                  : 'No hay prendas con inventario en esta cuenta.'}
+              </p>
+            ) : (
+              <div role="listbox" aria-multiselectable="true" aria-label="Prendas">
+                {filtradasPrenda.map((p, index) => {
+                  const activa = seleccionPrenda.has(p.id);
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      role="option"
+                      aria-selected={activa}
+                      onClick={() => togglePrenda(p.id)}
+                      style={{
+                        ...filaStyle(activa),
+                        borderBottom:
+                          index < filtradasPrenda.length - 1
+                            ? '1px solid rgba(148, 163, 184, 0.22)'
+                            : undefined,
+                      }}
+                    >
+                      <span
+                        aria-hidden
+                        style={{
+                          width: 20,
+                          height: 20,
+                          borderRadius: 6,
+                          flexShrink: 0,
+                          border: activa ? '2px solid #10b981' : '2px solid rgba(148, 163, 184, 0.55)',
+                          background: activa ? '#10b981' : '#fff',
+                          color: '#fff',
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        {activa ? '✓' : ''}
+                      </span>
+                      <span
+                        style={{
+                          flex: 1,
+                          fontSize: '0.9rem',
+                          fontWeight: activa ? 600 : 500,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {p.nombre}
+                        {p.codigo ? (
+                          <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
+                            {' '}
+                            ({p.codigo})
+                          </span>
+                        ) : null}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )
+          ) : loadingCategorias ? (
             <p style={{ color: 'var(--text-secondary)', padding: '1rem' }}>Cargando categorías…</p>
-          ) : filtradas.length === 0 && !busqueda ? (
+          ) : filtradasCat.length === 0 && !busqueda ? (
             <p style={{ color: 'var(--text-secondary)', padding: '1rem' }}>
               No hay categorías en el catálogo. Créalas en Gestión de Categorías de Prendas.
             </p>
-          ) : filtradas.length === 0 ? (
+          ) : filtradasCat.length === 0 ? (
             <p style={{ color: 'var(--text-secondary)', padding: '1rem' }}>No hay coincidencias con tu búsqueda.</p>
           ) : (
-            <div
-              role="listbox"
-              aria-multiselectable="true"
-              aria-label="Categorías de prendas"
-              style={{ display: 'flex', flexDirection: 'column' }}
-            >
-              {filtradas.map((cat, index) => {
-                const activa = seleccion.has(cat.id);
-                const etiqueta = `${cat.nombre}${!cat.activo ? ' (inactiva)' : ''}`;
+            <div role="listbox" aria-multiselectable="true" aria-label="Categorías de prendas">
+              {filtradasCat.map((cat, index) => {
+                const activa = seleccionCat.has(cat.id);
                 return (
                   <button
                     key={cat.id}
                     type="button"
                     role="option"
                     aria-selected={activa}
-                    onClick={() => toggle(cat.id)}
+                    onClick={() => toggleCat(cat.id)}
                     style={{
-                      ...filaCategoriaStyle(activa),
+                      ...filaStyle(activa),
                       borderBottom:
-                        index < filtradas.length - 1 ? '1px solid rgba(148, 163, 184, 0.22)' : undefined,
+                        index < filtradasCat.length - 1
+                          ? '1px solid rgba(148, 163, 184, 0.22)'
+                          : undefined,
                     }}
-                    title={etiqueta}
                   >
                     <span
                       aria-hidden
@@ -285,7 +480,7 @@ export default function ModalFiltroInventario({
           )}
         </div>
 
-        {!busqueda && (
+        {!esPorPrenda && !busqueda && (
           <div style={{ marginTop: '0.85rem' }}>
             <div
               style={{
@@ -303,7 +498,7 @@ export default function ModalFiltroInventario({
             <button
               type="button"
               onClick={() => setIncluirSinCategoria((v) => !v)}
-              style={filaCategoriaStyle(incluirSinCategoria, 'opcional')}
+              style={filaStyle(incluirSinCategoria, 'opcional')}
             >
               <span
                 aria-hidden
@@ -324,7 +519,9 @@ export default function ModalFiltroInventario({
               >
                 {incluirSinCategoria ? '✓' : ''}
               </span>
-              <span style={{ fontSize: '0.9rem', fontWeight: incluirSinCategoria ? 600 : 500 }}>Sin categoría</span>
+              <span style={{ fontSize: '0.9rem', fontWeight: incluirSinCategoria ? 600 : 500 }}>
+                Sin categoría
+              </span>
             </button>
           </div>
         )}
@@ -338,7 +535,7 @@ export default function ModalFiltroInventario({
             className="btn btn-primary"
             style={{ flex: 2 }}
             onClick={handleGenerar}
-            disabled={generando || loadingCategorias || totalSeleccionadas === 0}
+            disabled={generando || (!esPorPrenda && loadingCategorias) || totalSeleccionadas === 0}
           >
             {generando ? '⏳ Generando PDF…' : '📄 Generar PDF'}
           </button>

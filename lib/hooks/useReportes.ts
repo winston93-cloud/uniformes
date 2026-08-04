@@ -350,15 +350,24 @@ export function useReportes(
   };
 
   /**
-   * Inventario por categorías elegidas (catálogo categorias_prendas).
-   * @param categoriaIds IDs a incluir; vacío = ninguna categoría del catálogo
-   * @param incluirSinCategoria incluir prendas sin categoría asignada
+   * Inventario por categorías o prendas elegidas.
+   * excluirStockCero: no incluye filas con stock existente = 0.
    */
-  const estadoInventario = async (categoriaIds: string[], incluirSinCategoria = false) => {
+  const estadoInventario = async (opts: {
+    categoriaIds?: string[];
+    incluirSinCategoria?: boolean;
+    prendaIds?: string[];
+    excluirStockCero?: boolean;
+  }) => {
     try {
       setLoading(true);
 
-      const prendaIds = new Set<string>();
+      const categoriaIds = opts.categoriaIds ?? [];
+      const incluirSinCategoria = opts.incluirSinCategoria ?? false;
+      const prendaIdsDirectos = opts.prendaIds ?? [];
+      const excluirStockCero = opts.excluirStockCero ?? false;
+
+      const prendaIds = new Set<string>(prendaIdsDirectos.map(String));
 
       if (categoriaIds.length > 0) {
         const { data: prendasCat, error: errPrendas } = await insforgeDb()
@@ -401,8 +410,18 @@ export function useReportes(
 
       if (error) throw error;
 
-      const costosTienda = filtrarCostosTienda((costosRaw || []) as Record<string, unknown>[]);
+      let costosTienda = filtrarCostosTienda((costosRaw || []) as Record<string, unknown>[]);
 
+      if (excluirStockCero) {
+        costosTienda = costosTienda.filter((row) => {
+          const actual = Number(row.stock);
+          if (Number.isFinite(actual)) return actual > 0;
+          const inicial = Number(row.stock_inicial);
+          return Number.isFinite(inicial) ? inicial > 0 : false;
+        });
+      }
+
+      // PostgREST puede truncar .in() muy grande; si hay muchos IDs, ya vienen por categoría/prenda.
       const filas = costosTienda.map((row) => {
         const r = row as Record<string, any>;
         const cat = r.prenda?.categorias_prendas;
