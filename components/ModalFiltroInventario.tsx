@@ -291,6 +291,11 @@ export default function ModalFiltroInventario({
             placeholder={esPorPrenda ? '🔍 Buscar prenda…' : '🔍 Buscar categoría…'}
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
+            onFocus={() => {
+              if (esPorPrenda && seleccionPrenda.size > 0) {
+                setBusqueda('');
+              }
+            }}
             disabled={loadingCategorias && !esPorPrenda}
           />
         </div>
