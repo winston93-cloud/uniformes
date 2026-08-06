@@ -139,8 +139,12 @@ export default function ReportesPage() {
         v.folio || '—',
         new Date(v.fecha).toLocaleDateString('es-MX'),
         v.cliente,
-        v.tipo_cliente === 'alumno' ? 'Alumno' : 'Externo',
-        `$${v.total.toFixed(2)}`
+        v.tipo_cliente === 'cambio'
+          ? 'Cambio'
+          : v.tipo_cliente === 'alumno'
+            ? 'Alumno'
+            : 'Externo',
+        `$${Number(v.total).toFixed(2)}`
       ]),
       foot: [['', '', '', 'Total:', `$${totalGeneral.toFixed(2)}`]],
     });

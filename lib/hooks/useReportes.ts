@@ -164,6 +164,145 @@ export function useReportes(
     return Number.isNaN(d.getTime()) ? null : d;
   };
 
+  /**
+   * Diferencias monetarias de cambios (devoluciones con es_cambio) en el período.
+   * diferencia = (precio_cambio × cant_cambio) − (precio_devuelto × cant_devuelta)
+   * (+ = cliente paga más, − = a favor del cliente)
+   */
+  const cambiosMonetariosPorPeriodo = async (
+    fechaInicio: string,
+    fechaFin: string
+  ): Promise<{
+    filas: ReporteVentas[];
+    /** Suma de diferencias por pedido_id (para no doble-contar en el total del pedido). */
+    ajustePorPedidoId: Map<string, number>;
+  }> => {
+    const { startLocal, endLocal, startIso, endIso } = rangoLocalAIso(fechaInicio, fechaFin);
+    const vacio = { filas: [] as ReporteVentas[], ajustePorPedidoId: new Map<string, number>() };
+
+    let q = insforgeDb()
+      .from('devoluciones')
+      .select('id, folio, pedido_id, sucursal_id, created_at, estado, tipo_devolucion')
+      .neq('estado', 'CANCELADA')
+      .gte('created_at', startIso)
+      .lte('created_at', endIso)
+      .order('created_at', { ascending: true });
+    if (sid) q = q.eq('sucursal_id', sid);
+
+    const { data: devolucionesRaw, error } = await q;
+    if (error) {
+      console.error('Error obteniendo devoluciones/cambios:', error);
+      return vacio;
+    }
+
+    const devoluciones = (devolucionesRaw || []).filter((d) => {
+      const f = fechaEfectivaPedido(d as Record<string, unknown>);
+      return !!f && f >= startLocal && f <= endLocal;
+    }) as Record<string, unknown>[];
+
+    if (devoluciones.length === 0) return vacio;
+
+    const pedidoIds = [
+      ...new Set(
+        devoluciones
+          .map((d) => String(d.pedido_id ?? d.pedidoId ?? '').trim())
+          .filter(Boolean)
+      ),
+    ];
+
+    const pedidoMeta = new Map<
+      string,
+      { cliente_nombre: string; folio: string; linea_venta?: string | null }
+    >();
+    if (pedidoIds.length > 0) {
+      const { data: pedidosMeta } = await insforgeDb()
+        .from('pedidos')
+        .select('id, cliente_nombre, folio, linea_venta')
+        .in('id', pedidoIds);
+      for (const p of pedidosMeta || []) {
+        const row = p as Record<string, unknown>;
+        pedidoMeta.set(String(row.id), {
+          cliente_nombre: String(row.cliente_nombre ?? 'Sin cliente'),
+          folio: String(row.folio ?? '').trim() || `#${String(row.id).substring(0, 8)}`,
+          linea_venta: (row.linea_venta as string | null | undefined) ?? null,
+        });
+      }
+    }
+
+    const filas: ReporteVentas[] = [];
+    const ajustePorPedidoId = new Map<string, number>();
+
+    for (const dev of devoluciones) {
+      const devId = String(dev.id);
+      const pedidoId = String(dev.pedido_id ?? '').trim();
+      const meta = pedidoMeta.get(pedidoId);
+      if (!meta) continue;
+      if (
+        !pedidoCoincideFiltroLinea(
+          { folio: meta.folio, linea_venta: meta.linea_venta } as Record<string, unknown>,
+          filtroLinea
+        )
+      ) {
+        continue;
+      }
+
+      const { data: detalles, error: errDet } = await insforgeDb()
+        .from('detalle_devoluciones')
+        .select(
+          'es_cambio, precio_unitario, cantidad_devuelta, precio_cambio, cantidad_cambio, prenda_cambio_id, talla_cambio_id'
+        )
+        .eq('devolucion_id', devId);
+      if (errDet) {
+        console.error('Error detalles devolución:', errDet);
+        continue;
+      }
+
+      let diferencia = 0;
+      let hayCambio = false;
+      for (const det of detalles || []) {
+        const d = det as Record<string, unknown>;
+        if (!d.es_cambio) continue;
+        if (d.prenda_cambio_id == null && d.talla_cambio_id == null) continue;
+        hayCambio = true;
+        const qtyDev = Math.max(0, Number(d.cantidad_devuelta ?? 0));
+        const precioDev = Number(d.precio_unitario ?? 0);
+        const qtyCamb = Math.max(
+          0,
+          Number(d.cantidad_cambio ?? d.cantidad_devuelta ?? 0)
+        );
+        const precioCamb = Number(d.precio_cambio ?? 0);
+        diferencia += qtyCamb * precioCamb - qtyDev * precioDev;
+      }
+
+      if (!hayCambio) continue;
+      // Redondeo a centavos; omitir diferencias nulas
+      diferencia = Math.round(diferencia * 100) / 100;
+      if (Math.abs(diferencia) < 0.005) continue;
+
+      const fechaDev = fechaEfectivaPedido(dev) ?? new Date();
+      const folioDev =
+        dev.folio != null && String(dev.folio).trim() !== ''
+          ? `C-${String(dev.folio)}`
+          : `C-${meta.folio}`;
+
+      filas.push({
+        id: `cambio-${devId}`,
+        folio: folioDev,
+        fecha: fechaDev.toISOString(),
+        cliente: meta.cliente_nombre,
+        tipo_cliente: 'cambio',
+        total: diferencia,
+      });
+
+      ajustePorPedidoId.set(
+        pedidoId,
+        Math.round(((ajustePorPedidoId.get(pedidoId) || 0) + diferencia) * 100) / 100
+      );
+    }
+
+    return { filas, ajustePorPedidoId };
+  };
+
   const ventasPorPeriodo = async (fechaInicio: string, fechaFin: string): Promise<ReporteVentas[]> => {
     try {
       setLoading(true);
@@ -184,7 +323,10 @@ export function useReportes(
         query = query.eq('sucursal_id', sid);
       }
 
-      const { data, error } = await query;
+      const [{ data, error }, cambios] = await Promise.all([
+        query,
+        cambiosMonetariosPorPeriodo(fechaInicio, fechaFin),
+      ]);
 
       if (error) {
         console.error('❌ Error obteniendo pedidos:', error);
@@ -200,17 +342,23 @@ export function useReportes(
         .map((pedido) => {
           const fechaPedido = fechaEfectivaPedido(pedido) ?? new Date();
           const folioRaw = String(pedido.folio ?? '').trim();
+          const id = String(pedido.id);
+          const ajuste = cambios.ajustePorPedidoId.get(id) || 0;
+          // El total del pedido ya incluye cambios; restamos los del período para no doble-contar.
+          const totalPedido = parseFloat(String(pedido.total ?? 0)) - ajuste;
           return {
-            id: String(pedido.id),
-            folio: folioRaw || `#${String(pedido.id).substring(0, 8)}`,
+            id,
+            folio: folioRaw || `#${id.substring(0, 8)}`,
             fecha: fechaPedido.toISOString(),
             cliente: String(pedido.cliente_nombre ?? 'Sin cliente'),
             tipo_cliente: String(pedido.tipo_cliente ?? ''),
-            total: parseFloat(String(pedido.total ?? 0)),
+            total: Math.round(totalPedido * 100) / 100,
           };
         });
 
-      return pedidosDetalle;
+      return [...pedidosDetalle, ...cambios.filas].sort(
+        (a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime()
+      );
     } catch (err: any) {
       console.error('Error en ventasPorPeriodo:', err);
       return [];
@@ -695,14 +843,21 @@ export function useReportes(
         filtrarCostosTienda((costosRaw || []) as Record<string, unknown>[])
       );
 
-      // Misma base que «Ventas por período»: PENDIENTE + COMPLETADO del rango.
-      const ventasTotales = pedidos.reduce(
-        (sum, p) => sum + parseFloat(String(p.total ?? 0)),
-        0
-      );
+      // Misma base que «Ventas por período»: PENDIENTE + COMPLETADO del rango + diferencias de cambio.
+      const cambios = tienePeriodo
+        ? await cambiosMonetariosPorPeriodo(fechaInicio!.trim(), fechaFin!.trim())
+        : { filas: [] as ReporteVentas[], ajustePorPedidoId: new Map<string, number>() };
+
+      const ventasPedidos = pedidos.reduce((sum, p) => {
+        const id = String(p.id);
+        const ajuste = cambios.ajustePorPedidoId.get(id) || 0;
+        return sum + (parseFloat(String(p.total ?? 0)) - ajuste);
+      }, 0);
+      const ventasCambios = cambios.filas.reduce((sum, f) => sum + f.total, 0);
+      const ventasTotales = Math.round((ventasPedidos + ventasCambios) * 100) / 100;
 
       return {
-        totalPedidos: pedidos.length,
+        totalPedidos: pedidos.length + cambios.filas.length,
         ventasTotales,
         totalAlumnos: totalAlumnos || 0,
         prendasStock: costosTienda.reduce((sum, c) => sum + Number(c.stock ?? 0), 0),
