@@ -80,7 +80,18 @@ function totalDetalles(detalles: Array<{ subtotal?: number; total?: number; prec
 type DetalleCarrito = Omit<DetallePedido, 'id' | 'pedido_id'> & {
   es_descuento_conjunto?: boolean;
   total?: number;
+  cantidad_pendiente?: number;
 };
+
+/** Estado del folio según sus partidas (no del carrito completo en ventas mixtas wu/wt). */
+function estadoDesdeDetallesCarrito(detalles: DetalleCarrito[]): Pedido['estado'] {
+  const hayPendientes = detalles.some((d) => {
+    if (esLineaDescuentoConjunto(d)) return false;
+    const pendiente = d.cantidad_pendiente ?? d.pendiente ?? 0;
+    return pendiente > 0;
+  });
+  return hayPendientes ? 'PENDIENTE' : 'COMPLETADO';
+}
 
 async function insertarDescuentosConjuntoEnPedido(
   pedidoId: string,
@@ -334,7 +345,7 @@ export function usePedidos(sucursal_id?: string) {
       if (prendas.length > 0) {
         const totalPrendas = totalDetalles(prendas);
         const creado = await crearPedidoAtomico(
-          { ...pedido, total: totalPrendas },
+          { ...pedido, total: totalPrendas, estado: estadoDesdeDetallesCarrito(prendas) },
           prendas as Omit<DetallePedido, 'id' | 'pedido_id'>[],
           sid,
           'prendas'
@@ -346,7 +357,7 @@ export function usePedidos(sucursal_id?: string) {
       if (tenis.length > 0) {
         const totalTenis = totalDetalles(tenis);
         const creado = await crearPedidoAtomico(
-          { ...pedido, total: totalTenis },
+          { ...pedido, total: totalTenis, estado: estadoDesdeDetallesCarrito(tenis) },
           tenis as Omit<DetallePedido, 'id' | 'pedido_id'>[],
           sid,
           'tenis'
@@ -357,7 +368,7 @@ export function usePedidos(sucursal_id?: string) {
       if (remate_tenis.length > 0) {
         const totalRemate = totalDetalles(remate_tenis);
         const creado = await crearPedidoAtomico(
-          { ...pedido, total: totalRemate },
+          { ...pedido, total: totalRemate, estado: estadoDesdeDetallesCarrito(remate_tenis) },
           remate_tenis as Omit<DetallePedido, 'id' | 'pedido_id'>[],
           sid,
           'remate_tenis'
