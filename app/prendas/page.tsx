@@ -181,18 +181,59 @@ export default function PrendasPage() {
               stock_minimo: Number.isFinite(minNum) ? minNum.toLocaleString('en-US') : '',
             });
 
-            const { data: filasUb, error: errUb } = await insforgeDb()
-              .from('costo_ubicaciones')
-              .select('id, ubicacion_almacenamiento_id, cantidad')
-              .eq('costo_id', costoExistente.id);
+            let filasUb: Array<{
+              id: string;
+              ubicacion_almacenamiento_id: string;
+              cantidad: number | null;
+            }> | null = null;
+            let errUb: { message: string } | null = null;
+
+            const cargarFilasUb = async () => {
+              const r = await insforgeDb()
+                .from('costo_ubicaciones')
+                .select('id, ubicacion_almacenamiento_id, cantidad')
+                .eq('costo_id', costoExistente.id);
+              errUb = r.error;
+              filasUb = (r.data ?? null) as typeof filasUb;
+            };
+
+            await cargarFilasUb();
 
             if (errUb) {
               console.error('costo_ubicaciones:', errUb);
             }
 
-            if (!errUb && filasUb && filasUb.length > 0) {
+            const sumUbInicial = (filasUb ?? []).reduce(
+              (s, f) => s + Math.max(0, Number(f.cantidad ?? 0)),
+              0
+            );
+            if (
+              !errUb &&
+              usarUbicacionesStock &&
+              totalNum > 0 &&
+              sumUbInicial !== totalNum &&
+              (filasUb?.length ?? 0) > 0
+            ) {
+              try {
+                const rec = await fetch('/api/costos/reconciliar-ubicaciones', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ costo_id: String(costoExistente.id) }),
+                });
+                const recJson = await rec.json().catch(() => null);
+                if (recJson?.success && recJson?.adjusted) {
+                  await cargarFilasUb();
+                }
+              } catch {
+                // Mostrar totales aunque falle la reconciliación automática.
+              }
+            }
+
+            const partidasConStock = (filasUb ?? []).filter((f) => Number(f.cantidad ?? 0) > 0);
+
+            if (!errUb && partidasConStock.length > 0) {
               setPartidasUbicacion(
-                filasUb.map((f) => {
+                partidasConStock.map((f) => {
                   const c = Number(f.cantidad ?? 0);
                   return {
                     tempId: f.id,
@@ -1628,10 +1669,12 @@ export default function PrendasPage() {
                   <div
                     style={{
                       padding: '0.5rem 0.75rem',
-                      background: '#f0fdfa',
+                      background:
+                        sumPartidasDistribuidas() !== stockTotalModalNum() ? '#fef3c7' : '#f0fdfa',
                       borderRadius: '8px',
                       fontSize: '0.9rem',
-                      color: '#0f766e',
+                      color:
+                        sumPartidasDistribuidas() !== stockTotalModalNum() ? '#92400e' : '#0f766e',
                       marginBottom: '0.75rem',
                     }}
                   >
@@ -1640,6 +1683,15 @@ export default function PrendasPage() {
                     {' · '}
                     Distribuido:{' '}
                     <strong>{sumPartidasDistribuidas().toLocaleString('en-US')}</strong>
+                    {sumPartidasDistribuidas() !== stockTotalModalNum() && (
+                      <>
+                        {' '}
+                        ·{' '}
+                        <span style={{ fontWeight: 600 }}>
+                          Hay unidades sin ubicación asignada; usa «Ajustar» para repartirlas.
+                        </span>
+                      </>
+                    )}
                   </div>
                 )}
                 {partidasUbicacion.length > 0 ? (
