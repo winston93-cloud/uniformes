@@ -181,11 +181,12 @@ export default function PrendasPage() {
               stock_minimo: Number.isFinite(minNum) ? minNum.toLocaleString('en-US') : '',
             });
 
-            let filasUb: Array<{
+            type FilaCostoUbicacion = {
               id: string;
               ubicacion_almacenamiento_id: string;
               cantidad: number | null;
-            }> | null = null;
+            };
+            let filasUb: FilaCostoUbicacion[] | null = null;
             let errUb: { message: string } | null = null;
 
             const cargarFilasUb = async () => {
@@ -194,7 +195,7 @@ export default function PrendasPage() {
                 .select('id, ubicacion_almacenamiento_id, cantidad')
                 .eq('costo_id', costoExistente.id);
               errUb = r.error;
-              filasUb = (r.data ?? null) as typeof filasUb;
+              filasUb = (r.data as FilaCostoUbicacion[] | null) ?? null;
             };
 
             await cargarFilasUb();
