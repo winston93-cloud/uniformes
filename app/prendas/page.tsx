@@ -181,67 +181,71 @@ export default function PrendasPage() {
               stock_minimo: Number.isFinite(minNum) ? minNum.toLocaleString('en-US') : '',
             });
 
-            type FilaCostoUbicacion = {
-              id: string;
-              ubicacion_almacenamiento_id: string;
-              cantidad: number | null;
-            };
-            let filasUb: FilaCostoUbicacion[] | null = null;
-            let errUb: { message: string } | null = null;
-
-            const cargarFilasUb = async () => {
+            const costoIdStock = String(costoExistente.id);
+            const cargarFilasUb = async (): Promise<{
+              filas: Array<{
+                id: string;
+                ubicacion_almacenamiento_id: string;
+                cantidad: number;
+              }>;
+              error: { message: string } | null;
+            }> => {
               const r = await insforgeDb()
                 .from('costo_ubicaciones')
                 .select('id, ubicacion_almacenamiento_id, cantidad')
-                .eq('costo_id', costoExistente.id);
-              errUb = r.error;
-              filasUb = (r.data as FilaCostoUbicacion[] | null) ?? null;
+                .eq('costo_id', costoIdStock);
+              const raw = Array.isArray(r.data) ? r.data : [];
+              const filas = raw.map((row) => {
+                const f = row as Record<string, unknown>;
+                return {
+                  id: String(f.id ?? ''),
+                  ubicacion_almacenamiento_id: String(f.ubicacion_almacenamiento_id ?? ''),
+                  cantidad: Math.max(0, Number(f.cantidad ?? 0) || 0),
+                };
+              });
+              return { filas, error: r.error };
             };
 
-            await cargarFilasUb();
+            let { filas: filasUb, error: errUb } = await cargarFilasUb();
 
             if (errUb) {
               console.error('costo_ubicaciones:', errUb);
             }
 
-            const sumUbInicial = (filasUb ?? []).reduce(
-              (s, f) => s + Math.max(0, Number(f.cantidad ?? 0)),
-              0
-            );
+            const sumUbInicial = filasUb.reduce((s, f) => s + f.cantidad, 0);
             if (
               !errUb &&
               usarUbicacionesStock &&
               totalNum > 0 &&
               sumUbInicial !== totalNum &&
-              (filasUb?.length ?? 0) > 0
+              filasUb.length > 0
             ) {
               try {
                 const rec = await fetch('/api/costos/reconciliar-ubicaciones', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ costo_id: String(costoExistente.id) }),
+                  body: JSON.stringify({ costo_id: costoIdStock }),
                 });
                 const recJson = await rec.json().catch(() => null);
                 if (recJson?.success && recJson?.adjusted) {
-                  await cargarFilasUb();
+                  const recarga = await cargarFilasUb();
+                  filasUb = recarga.filas;
+                  errUb = recarga.error;
                 }
               } catch {
                 // Mostrar totales aunque falle la reconciliación automática.
               }
             }
 
-            const partidasConStock = (filasUb ?? []).filter((f) => Number(f.cantidad ?? 0) > 0);
+            const partidasConStock = filasUb.filter((f) => f.cantidad > 0);
 
             if (!errUb && partidasConStock.length > 0) {
               setPartidasUbicacion(
-                partidasConStock.map((f) => {
-                  const c = Number(f.cantidad ?? 0);
-                  return {
-                    tempId: f.id,
-                    ubicacion_id: f.ubicacion_almacenamiento_id,
-                    cantidad: Number.isFinite(c) ? c.toLocaleString('en-US') : '0',
-                  };
-                })
+                partidasConStock.map((f) => ({
+                  tempId: f.id,
+                  ubicacion_id: f.ubicacion_almacenamiento_id,
+                  cantidad: f.cantidad.toLocaleString('en-US'),
+                }))
               );
             } else if (
               costoExistente.ubicacion_almacenamiento_id &&
