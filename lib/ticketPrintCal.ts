@@ -1,4 +1,4 @@
-import { esCuentaWinston, type SesionLineaVenta } from '@/lib/winstonLineaVenta';
+import { esCuentaWinston, type LineaVentaWinston, type SesionLineaVenta } from '@/lib/winstonLineaVenta';
 
 export type TicketPrintCal = {
   leftMm: number;
@@ -25,6 +25,23 @@ const WINSTON_DEFAULT: TicketPrintCal = {
   scale: 0.98,
   paddingTopMm: 2.5,
 };
+
+/** Winston tenis/remate: bajar texto 2 mm respecto a prendas en el ticket. */
+export const WINSTON_TENIS_RECIBO_PADDING_EXTRA_MM = 2;
+
+export function paddingTopReciboMm(
+  cal: TicketPrintCal,
+  opts?: { sesion?: SesionLineaVenta | null; lineaVenta?: LineaVentaWinston | null }
+): number {
+  const base = cal.paddingTopMm;
+  if (
+    esCuentaWinston(opts?.sesion) &&
+    (opts?.lineaVenta === 'tenis' || opts?.lineaVenta === 'remate_tenis')
+  ) {
+    return base + WINSTON_TENIS_RECIBO_PADDING_EXTRA_MM;
+  }
+  return base;
+}
 
 export function defaultTicketPrintCal(sesion?: SesionLineaVenta | null): TicketPrintCal {
   return esCuentaWinston(sesion) ? { ...WINSTON_DEFAULT } : { ...MATRIZ_DEFAULT };

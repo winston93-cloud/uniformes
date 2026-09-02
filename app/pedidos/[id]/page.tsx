@@ -11,9 +11,11 @@ import ReciboPedidoTicket, { etiquetaLineaRecibo, type PedidoRecibo } from '@/co
 import {
   defaultTicketPrintCal,
   loadTicketPrintCal,
+  paddingTopReciboMm,
   saveTicketPrintCal,
   type TicketPrintCal,
 } from '@/lib/ticketPrintCal';
+import { leerLineaVentaPedido } from '@/lib/winstonLineaVenta';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
@@ -218,7 +220,7 @@ function PedidoDetalleContent({ params }: { params: Promise<{ id: string }> }) {
     window.print();
   };
 
-  const estiloTicketImpresion = {
+  const estiloTicketBase = {
     width: '88%',
     maxWidth: '88%',
     height: '93mm',
@@ -226,8 +228,15 @@ function PedidoDetalleContent({ params }: { params: Promise<{ id: string }> }) {
     boxShadow: 'none',
     margin: 0,
     overflow: 'hidden' as const,
-    paddingTop: `${printCal.paddingTopMm}mm`,
   };
+
+  const estiloTicketPedido = (pedido: PedidoRecibo) => ({
+    ...estiloTicketBase,
+    paddingTop: `${paddingTopReciboMm(printCal, {
+      sesion,
+      lineaVenta: leerLineaVentaPedido(pedido as unknown as Record<string, unknown>),
+    })}mm`,
+  });
 
   if (loading) {
     return (
@@ -510,7 +519,11 @@ function PedidoDetalleContent({ params }: { params: Promise<{ id: string }> }) {
                     {etiqueta ? ` — ${etiqueta}` : ''} ({pedido.folio})
                   </div>
                 )}
-                <ReciboPedidoTicket pedido={pedido} id={`recibo-impresion-screen-${index}`} />
+                <ReciboPedidoTicket
+                  pedido={pedido}
+                  id={`recibo-impresion-screen-${index}`}
+                  extraStyle={estiloTicketPedido(pedido)}
+                />
               </div>
             );
           })}
@@ -525,7 +538,7 @@ function PedidoDetalleContent({ params }: { params: Promise<{ id: string }> }) {
                 <ReciboPedidoTicket
                   pedido={pedido}
                   className="recibo-ticket-print"
-                  extraStyle={estiloTicketImpresion}
+                  extraStyle={estiloTicketPedido(pedido)}
                 />
               </div>
             ))}
