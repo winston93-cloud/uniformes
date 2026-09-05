@@ -91,8 +91,9 @@ export default function PrendasPage() {
   const [tallasAsociadas, setTallasAsociadas] = useState<string[]>([]);
   const [filtroTipo, setFiltroTipo] = useState<'todos' | 'letras' | 'numeros'>('todos');
   const [filtroNumeros, setFiltroNumeros] = useState<'todos' | 'pares' | 'nones' | 'combinados'>('todos');
-  /** Filtro del catálogo: todas | sin empresa | id de empresa */
-  const [filtroEmpresa, setFiltroEmpresa] = useState<'todas' | 'sin' | string>('todas');
+  /** Pestañas del catálogo: vista general o solo por empresa */
+  const [pestanaCatalogo, setPestanaCatalogo] = useState<'catalogo' | 'por_empresa'>('catalogo');
+  const [empresaSeleccionada, setEmpresaSeleccionada] = useState<string>('');
   
   // Estados para modal de insumos
   const [modalInsumosAbierto, setModalInsumosAbierto] = useState(false);
@@ -800,18 +801,25 @@ export default function PrendasPage() {
   };
 
 
-  // Filtrar prendas según la búsqueda y empresa
+  // Filtrar prendas según búsqueda y pestaña
+  const empresasActivas = empresas.filter((e) => e.activo);
+  const empresaFiltroId =
+    pestanaCatalogo === 'por_empresa'
+      ? empresaSeleccionada || empresasActivas[0]?.id || ''
+      : '';
+
   const prendasFiltradas = prendas.filter((prenda) => {
     const q = busqueda.toLowerCase();
     const coincideBusqueda =
       prenda.nombre.toLowerCase().includes(q) ||
       (prenda.codigo && prenda.codigo.toLowerCase().includes(q)) ||
-      (prenda.categoria?.nombre && prenda.categoria.nombre.toLowerCase().includes(q)) ||
-      (prenda.empresa?.nombre && prenda.empresa.nombre.toLowerCase().includes(q));
+      (prenda.categoria?.nombre && prenda.categoria.nombre.toLowerCase().includes(q));
     if (!coincideBusqueda) return false;
-    if (filtroEmpresa === 'todas') return true;
-    if (filtroEmpresa === 'sin') return !prenda.empresa_id;
-    return String(prenda.empresa_id || '') === filtroEmpresa;
+    if (pestanaCatalogo === 'por_empresa') {
+      if (!empresaFiltroId) return false;
+      return String(prenda.empresa_id || '') === empresaFiltroId;
+    }
+    return true;
   });
 
   if (loading) {
@@ -833,6 +841,60 @@ export default function PrendasPage() {
           <h1 style={{ fontSize: '2.5rem', fontWeight: '700', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.2)', marginBottom: '1rem', textAlign: 'center' }}>
             👕 Gestión de Prendas
           </h1>
+          <div
+            role="tablist"
+            aria-label="Vista del catálogo"
+            style={{
+              display: 'flex',
+              justifyContent: 'center',
+              gap: '0.5rem',
+              flexWrap: 'wrap',
+            }}
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected={pestanaCatalogo === 'catalogo'}
+              onClick={() => setPestanaCatalogo('catalogo')}
+              style={{
+                padding: '0.65rem 1.35rem',
+                borderRadius: '10px 10px 0 0',
+                border: 'none',
+                cursor: 'pointer',
+                fontWeight: 700,
+                fontSize: '1rem',
+                background: pestanaCatalogo === 'catalogo' ? '#fff' : 'rgba(255,255,255,0.25)',
+                color: pestanaCatalogo === 'catalogo' ? '#0f172a' : '#fff',
+                boxShadow: pestanaCatalogo === 'catalogo' ? '0 -2px 10px rgba(0,0,0,0.12)' : 'none',
+              }}
+            >
+              Catálogo
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={pestanaCatalogo === 'por_empresa'}
+              onClick={() => {
+                setPestanaCatalogo('por_empresa');
+                if (!empresaSeleccionada && empresasActivas[0]?.id) {
+                  setEmpresaSeleccionada(empresasActivas[0].id);
+                }
+              }}
+              style={{
+                padding: '0.65rem 1.35rem',
+                borderRadius: '10px 10px 0 0',
+                border: 'none',
+                cursor: 'pointer',
+                fontWeight: 700,
+                fontSize: '1rem',
+                background: pestanaCatalogo === 'por_empresa' ? '#fff' : 'rgba(255,255,255,0.25)',
+                color: pestanaCatalogo === 'por_empresa' ? '#0f172a' : '#fff',
+                boxShadow: pestanaCatalogo === 'por_empresa' ? '0 -2px 10px rgba(0,0,0,0.12)' : 'none',
+              }}
+            >
+              Por empresa
+            </button>
+          </div>
         </div>
 
         {/* Input de búsqueda */}
@@ -1300,70 +1362,43 @@ export default function PrendasPage() {
         )}
 
         <div className="table-container">
-          <div
-            style={{
-              marginBottom: '0.75rem',
-              padding: '0 1rem',
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: '0.5rem',
-              alignItems: 'center',
-            }}
-          >
-            <span style={{ fontWeight: 700, color: '#334155', marginRight: '0.25rem' }}>
-              Por empresa:
-            </span>
-            <button
-              type="button"
-              className="btn"
-              onClick={() => setFiltroEmpresa('todas')}
+          {pestanaCatalogo === 'por_empresa' ? (
+            <div
               style={{
-                padding: '0.35rem 0.75rem',
-                borderRadius: '999px',
-                border: filtroEmpresa === 'todas' ? '2px solid #1d4ed8' : '1px solid #cbd5e1',
-                background: filtroEmpresa === 'todas' ? '#dbeafe' : '#fff',
-                fontWeight: 600,
-                cursor: 'pointer',
+                marginBottom: '1rem',
+                padding: '0.75rem 1rem',
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '0.75rem',
+                alignItems: 'center',
+                borderBottom: '1px solid #e2e8f0',
               }}
             >
-              Todas
-            </button>
-            <button
-              type="button"
-              className="btn"
-              onClick={() => setFiltroEmpresa('sin')}
-              style={{
-                padding: '0.35rem 0.75rem',
-                borderRadius: '999px',
-                border: filtroEmpresa === 'sin' ? '2px solid #1d4ed8' : '1px solid #cbd5e1',
-                background: filtroEmpresa === 'sin' ? '#dbeafe' : '#fff',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              Sin empresa
-            </button>
-            {empresas
-              .filter((e) => e.activo)
-              .map((emp) => (
-                <button
-                  key={emp.id}
-                  type="button"
-                  className="btn"
-                  onClick={() => setFiltroEmpresa(emp.id)}
-                  style={{
-                    padding: '0.35rem 0.75rem',
-                    borderRadius: '999px',
-                    border: filtroEmpresa === emp.id ? '2px solid #0f766e' : '1px solid #cbd5e1',
-                    background: filtroEmpresa === emp.id ? '#ccfbf1' : '#fff',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
-                >
-                  {emp.nombre}
-                </button>
-              ))}
-          </div>
+              <label htmlFor="select-empresa-catalogo" style={{ fontWeight: 700, color: '#334155' }}>
+                Empresa:
+              </label>
+              <select
+                id="select-empresa-catalogo"
+                className="form-select"
+                value={empresaFiltroId}
+                onChange={(e) => setEmpresaSeleccionada(e.target.value)}
+                style={{ maxWidth: '280px', minWidth: '180px' }}
+              >
+                {empresasActivas.length === 0 ? (
+                  <option value="">No hay empresas activas</option>
+                ) : (
+                  empresasActivas.map((emp) => (
+                    <option key={emp.id} value={emp.id}>
+                      {emp.nombre}
+                    </option>
+                  ))
+                )}
+              </select>
+              <span style={{ color: '#64748b', fontSize: '0.9rem' }}>
+                Solo se muestran prendas marcadas para esta empresa.
+              </span>
+            </div>
+          ) : null}
           <div style={{ marginBottom: '1rem', textAlign: 'right', padding: '0 1rem', display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
             {puedeEditarCatalogo && (
               <>
@@ -1413,7 +1448,6 @@ export default function PrendasPage() {
                 <th>Código</th>
                 <th>Nombre</th>
                 <th>Categoría</th>
-                <th>Empresa</th>
                 <th>Descripción</th>
                 <th>Estado</th>
                 <th>Acciones</th>
@@ -1422,8 +1456,10 @@ export default function PrendasPage() {
             <tbody>
               {prendasFiltradas.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
-                    {busqueda || filtroEmpresa !== 'todas'
+                  <td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                    {pestanaCatalogo === 'por_empresa' && !empresaFiltroId
+                      ? 'Crea una empresa y asígnala a las prendas para usar esta pestaña.'
+                      : busqueda || pestanaCatalogo === 'por_empresa'
                       ? 'No se encontraron prendas con ese criterio.'
                         : puedeEditarCatalogo
                           ? 'No hay prendas registradas. Crea tu primera prenda.'
@@ -1449,15 +1485,6 @@ export default function PrendasPage() {
                     <td data-label="Código" style={{ fontFamily: 'monospace', fontWeight: '600' }}>{prenda.codigo || '-'}</td>
                     <td data-label="Nombre" style={{ fontWeight: '600' }}>{prenda.nombre}</td>
                     <td data-label="Categoría"><span className="badge badge-info">{prenda.categoria?.nombre || '-'}</span></td>
-                    <td data-label="Empresa">
-                      {prenda.empresa?.nombre ? (
-                        <span className="badge" style={{ background: '#ccfbf1', color: '#0f766e', border: '1px solid #99f6e4' }}>
-                          {prenda.empresa.nombre}
-                        </span>
-                      ) : (
-                        <span style={{ color: '#94a3b8' }}>—</span>
-                      )}
-                    </td>
                     <td data-label="Descripción">{prenda.descripcion || '-'}</td>
                     <td data-label="Estado">
                       <span className={`badge ${prenda.activo ? 'badge-success' : 'badge-danger'}`}>
