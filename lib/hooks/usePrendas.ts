@@ -6,7 +6,7 @@ import { filtrarFilasPorSucursalSiHayColumna } from '@/lib/sucursalCliente';
 import { filtrarCostosInventarioTienda, normalizarPrendaIdKey, type OpcionesInventarioTienda } from '@/lib/inventarioSucursal';
 import { normalizarCamposPrendaApi } from '@/lib/insforgeNormalize';
 import { insforgeDb } from '@/lib/insforgeBrowser';
-import type { CategoriaPrenda, Prenda } from '../types';
+import type { CategoriaPrenda, EmpresaPrenda, Prenda } from '../types';
 
 /** InsForge / SDK pueden devolver camelCase o UUID con distinta capitalización → normalizar antes de hacer Map.get */
 function normalizeUuidKey(id: string): string {
@@ -109,6 +109,44 @@ function rowACategoriaPrenda(c: Record<string, unknown>): CategoriaPrenda {
   } as CategoriaPrenda;
 }
 
+function readEmpresaIdFk(row: Record<string, unknown>): string | null {
+  const direct =
+    row.empresa_id ??
+    row.empresaId ??
+    row.EmpresaId ??
+    row.company_id ??
+    row.companyId;
+  if (direct != null && direct !== '') return String(direct).trim();
+  return null;
+}
+
+function rowAEmpresaPrenda(c: Record<string, unknown>): EmpresaPrenda {
+  const idVal = c.id ?? c.Id ?? c.ID;
+  return {
+    ...(c as object),
+    id: idVal != null ? String(idVal).trim() : '',
+    nombre: String(c.nombre ?? c.Nombre ?? ''),
+    activo: Boolean(c.activo ?? c.Activo ?? true),
+  } as EmpresaPrenda;
+}
+
+function readEmpresaNested(row: Record<string, unknown>): EmpresaPrenda | undefined {
+  const candidates = [row.empresas, row.empresa, row.Empresa, row.Empresas];
+  for (const c of candidates) {
+    if (c == null) continue;
+    const obj = Array.isArray(c) ? c[0] : c;
+    if (obj && typeof obj === 'object') {
+      const o = obj as Record<string, unknown>;
+      const nombre = o.nombre ?? o.Nombre;
+      const id = o.id ?? o.Id ?? o.ID;
+      if ((nombre != null && String(nombre).trim() !== '') || id != null) {
+        return rowAEmpresaPrenda(o);
+      }
+    }
+  }
+  return undefined;
+}
+
 /** InsForge: sin embed; categorías en paralelo. Si existe solo `categoria` VARCHAR, enlazamos por nombre. */
 export function usePrendas(opts?: OpcionesInventarioTienda) {
   const [prendas, setPrendas] = useState<Prenda[]>([]);
@@ -124,15 +162,18 @@ export function usePrendas(opts?: OpcionesInventarioTienda) {
   const fetchPrendas = async () => {
     try {
       setLoading(true);
-      const [preResFirst, catRes] = await Promise.all([
-        insforgeDb().from('prendas').select('*, categorias_prendas(*)').order('nombre', { ascending: true }),
+      const [preResFirst, catRes, empRes] = await Promise.all([
+        insforgeDb().from('prendas').select('*, categorias_prendas(*), empresas(*)').order('nombre', { ascending: true }),
         insforgeDb().from('categorias_prendas').select('*'),
+        insforgeDb().from('empresas').select('*'),
       ]);
       const preRes = preResFirst.error
         ? await insforgeDb().from('prendas').select('*').order('nombre', { ascending: true })
         : preResFirst;
       if (preRes.error) throw preRes.error;
       if (catRes.error) throw catRes.error;
+      // empresas puede no existir en entornos viejos: no tumbar el catálogo
+      const empresasRows = empRes.error ? [] : empRes.data || [];
 
       const prendasRows = preRes.data || [];
       const categoriasRows = catRes.data || [];
@@ -145,6 +186,12 @@ export function usePrendas(opts?: OpcionesInventarioTienda) {
         if (cat.id) catById.set(normalizeUuidKey(cat.id), cat);
         const nn = cat.nombre.trim().toLowerCase();
         if (nn) catByNombreNorm.set(nn, cat);
+      }
+
+      const empById = new Map<string, EmpresaPrenda>();
+      for (const e of empresasRows) {
+        const emp = rowAEmpresaPrenda(e as Record<string, unknown>);
+        if (emp.id) empById.set(normalizeUuidKey(emp.id), emp);
       }
 
       /** FKs en prendas que no aparecieron en el listado global (RLS, paginación del API, etc.) */
@@ -193,12 +240,23 @@ export function usePrendas(opts?: OpcionesInventarioTienda) {
           fk ??
           (cat?.id && String(cat.id).trim() !== '' ? cat.id : null) ??
           (r.categoria_id != null ? String(r.categoria_id).trim() : null);
+        const empFk = readEmpresaIdFk(raw);
+        let emp: EmpresaPrenda | undefined = empFk
+          ? empById.get(normalizeUuidKey(empFk))
+          : undefined;
+        if (!emp) emp = readEmpresaNested(raw);
+        const resolvedEmpresaId =
+          empFk ??
+          (emp?.id && String(emp.id).trim() !== '' ? emp.id : null) ??
+          (r.empresa_id != null ? String(r.empresa_id).trim() : null);
         const activoRaw = raw.activo ?? raw.Activo;
         return {
           ...r,
           activo: activoRaw === undefined || activoRaw === null ? true : Boolean(activoRaw),
           categoria_id: resolvedCategoriaId,
           categoria: cat,
+          empresa_id: resolvedEmpresaId,
+          empresa: emp,
         };
       });
 

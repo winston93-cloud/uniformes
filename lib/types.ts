@@ -17,16 +17,27 @@ export interface CategoriaPrenda {
   updated_at?: string;
 }
 
+/** Empresa / cliente externo opcional asociada a un modelo del catálogo. */
+export interface EmpresaPrenda {
+  id: string;
+  nombre: string;
+  activo: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface Prenda {
   id: string;
   nombre: string;
   codigo: string | null;
   descripcion: string | null;
   categoria_id: string | null;
+  empresa_id: string | null;
   activo: boolean;
   created_at?: string;
   updated_at?: string;
   categoria?: CategoriaPrenda;
+  empresa?: EmpresaPrenda;
 }
 
 /** Reparto de inventario por ubicación para un costo (prenda + talla + sucursal) */

@@ -5,6 +5,7 @@ import LayoutWrapper from '@/components/LayoutWrapper';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePrendas } from '@/lib/hooks/usePrendas';
 import { useCategorias } from '@/lib/hooks/useCategorias';
+import { useEmpresas } from '@/lib/hooks/useEmpresas';
 import { useTallas } from '@/lib/hooks/useTallas';
 import { useCostos } from '@/lib/hooks/useCostos';
 import { fetchConteoInsumosPorPrenda } from '@/lib/hooks/usePrendaTallaInsumos';
@@ -73,6 +74,7 @@ export default function PrendasPage() {
     refetch: refetchPrendas,
   } = usePrendas(inventarioOpts);
   const { categorias, loading: loadingCategorias, refetch: refetchCategorias } = useCategorias();
+  const { empresas, loading: loadingEmpresas, refetch: refetchEmpresas } = useEmpresas();
   const { tallas } = useTallas();
   const { createMultipleCostos, deleteCosto } = useCostos(
     sesion?.sucursal_id,
@@ -89,6 +91,8 @@ export default function PrendasPage() {
   const [tallasAsociadas, setTallasAsociadas] = useState<string[]>([]);
   const [filtroTipo, setFiltroTipo] = useState<'todos' | 'letras' | 'numeros'>('todos');
   const [filtroNumeros, setFiltroNumeros] = useState<'todos' | 'pares' | 'nones' | 'combinados'>('todos');
+  /** Filtro del catálogo: todas | sin empresa | id de empresa */
+  const [filtroEmpresa, setFiltroEmpresa] = useState<'todas' | 'sin' | string>('todas');
   
   // Estados para modal de insumos
   const [modalInsumosAbierto, setModalInsumosAbierto] = useState(false);
@@ -290,6 +294,16 @@ export default function PrendasPage() {
     codigo: '',
     descripcion: '',
     categoria_id: '',
+    empresa_id: '',
+    activo: true,
+  });
+
+  const formDataVacio = () => ({
+    nombre: '',
+    codigo: '',
+    descripcion: '',
+    categoria_id: '',
+    empresa_id: '',
     activo: true,
   });
 
@@ -402,7 +416,7 @@ export default function PrendasPage() {
 
   const cerrarFormularioTrasExito = () => {
     setTimeout(() => {
-      setFormData({ nombre: '', codigo: '', descripcion: '', categoria_id: '', activo: true });
+      setFormData(formDataVacio());
       setTallasSeleccionadas([]);
       setTallasAsociadas([]);
       setMostrarFormulario(false);
@@ -479,6 +493,7 @@ export default function PrendasPage() {
       codigo: formData.codigo?.trim() || null,
       descripcion: formData.descripcion?.trim() || null,
       categoria_id: formData.categoria_id || null,
+      empresa_id: formData.empresa_id || null,
       activo: formData.activo,
     };
 
@@ -728,6 +743,7 @@ export default function PrendasPage() {
       codigo: prenda.codigo || '',
       descripcion: prenda.descripcion || '',
       categoria_id: prenda.categoria_id || '',
+      empresa_id: prenda.empresa_id || '',
       activo: prenda.activo,
     });
     
@@ -784,12 +800,19 @@ export default function PrendasPage() {
   };
 
 
-  // Filtrar prendas según la búsqueda
-  const prendasFiltradas = prendas.filter(prenda =>
-    prenda.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-    (prenda.codigo && prenda.codigo.toLowerCase().includes(busqueda.toLowerCase())) ||
-    (prenda.categoria?.nombre && prenda.categoria.nombre.toLowerCase().includes(busqueda.toLowerCase()))
-  );
+  // Filtrar prendas según la búsqueda y empresa
+  const prendasFiltradas = prendas.filter((prenda) => {
+    const q = busqueda.toLowerCase();
+    const coincideBusqueda =
+      prenda.nombre.toLowerCase().includes(q) ||
+      (prenda.codigo && prenda.codigo.toLowerCase().includes(q)) ||
+      (prenda.categoria?.nombre && prenda.categoria.nombre.toLowerCase().includes(q)) ||
+      (prenda.empresa?.nombre && prenda.empresa.nombre.toLowerCase().includes(q));
+    if (!coincideBusqueda) return false;
+    if (filtroEmpresa === 'todas') return true;
+    if (filtroEmpresa === 'sin') return !prenda.empresa_id;
+    return String(prenda.empresa_id || '') === filtroEmpresa;
+  });
 
   if (loading) {
     return (
@@ -865,7 +888,7 @@ export default function PrendasPage() {
             onClick={() => {
               setMostrarFormulario(false);
               setPrendaEditando(null);
-              setFormData({ nombre: '', codigo: '', descripcion: '', categoria_id: '', activo: true });
+              setFormData(formDataVacio());
               setTallasSeleccionadas([]);
               setTallasAsociadas([]);
               setMensajeError('');
@@ -946,6 +969,30 @@ export default function PrendasPage() {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Empresa (opcional)</label>
+                <select
+                  className="form-select"
+                  value={formData.empresa_id}
+                  onChange={(e) => setFormData({ ...formData, empresa_id: e.target.value })}
+                  disabled={loadingEmpresas}
+                >
+                  <option value="">Sin empresa</option>
+                  {empresas.map((emp) => (
+                    <option key={emp.id} value={emp.id}>
+                      {emp.nombre} {!emp.activo ? '(Inactiva)' : ''}
+                    </option>
+                  ))}
+                </select>
+                <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
+                  Marca a qué empresa corresponde este modelo. Luego puedes filtrar en «Por empresa».
+                  {' '}
+                  <a href="/empresas" style={{ color: '#2563eb' }}>
+                    Gestionar empresas
+                  </a>
+                </small>
               </div>
 
               <div className="form-group">
@@ -1234,7 +1281,7 @@ export default function PrendasPage() {
                   onClick={() => {
                     setMostrarFormulario(false);
                     setPrendaEditando(null);
-                    setFormData({ nombre: '', codigo: '', descripcion: '', categoria_id: '', activo: true });
+                    setFormData(formDataVacio());
                     setTallasSeleccionadas([]);
                     setTallasAsociadas([]);
                     setMensajeError('');
@@ -1253,6 +1300,70 @@ export default function PrendasPage() {
         )}
 
         <div className="table-container">
+          <div
+            style={{
+              marginBottom: '0.75rem',
+              padding: '0 1rem',
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '0.5rem',
+              alignItems: 'center',
+            }}
+          >
+            <span style={{ fontWeight: 700, color: '#334155', marginRight: '0.25rem' }}>
+              Por empresa:
+            </span>
+            <button
+              type="button"
+              className="btn"
+              onClick={() => setFiltroEmpresa('todas')}
+              style={{
+                padding: '0.35rem 0.75rem',
+                borderRadius: '999px',
+                border: filtroEmpresa === 'todas' ? '2px solid #1d4ed8' : '1px solid #cbd5e1',
+                background: filtroEmpresa === 'todas' ? '#dbeafe' : '#fff',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Todas
+            </button>
+            <button
+              type="button"
+              className="btn"
+              onClick={() => setFiltroEmpresa('sin')}
+              style={{
+                padding: '0.35rem 0.75rem',
+                borderRadius: '999px',
+                border: filtroEmpresa === 'sin' ? '2px solid #1d4ed8' : '1px solid #cbd5e1',
+                background: filtroEmpresa === 'sin' ? '#dbeafe' : '#fff',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Sin empresa
+            </button>
+            {empresas
+              .filter((e) => e.activo)
+              .map((emp) => (
+                <button
+                  key={emp.id}
+                  type="button"
+                  className="btn"
+                  onClick={() => setFiltroEmpresa(emp.id)}
+                  style={{
+                    padding: '0.35rem 0.75rem',
+                    borderRadius: '999px',
+                    border: filtroEmpresa === emp.id ? '2px solid #0f766e' : '1px solid #cbd5e1',
+                    background: filtroEmpresa === emp.id ? '#ccfbf1' : '#fff',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {emp.nombre}
+                </button>
+              ))}
+          </div>
           <div style={{ marginBottom: '1rem', textAlign: 'right', padding: '0 1rem', display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
             {puedeEditarCatalogo && (
               <>
@@ -1270,9 +1381,19 @@ export default function PrendasPage() {
               >
                 🏷️ Gestionar Categorías
               </button>
+              <button
+                className="btn btn-secondary"
+                onClick={() => {
+                  void refetchEmpresas();
+                  window.location.href = '/empresas';
+                }}
+                style={{ backgroundColor: '#475569', borderColor: '#475569', minWidth: '200px', color: '#fff' }}
+              >
+                🏢 Gestionar Empresas
+              </button>
               <button className="btn btn-primary" onClick={() => {
                 setPrendaEditando(null);
-                setFormData({ nombre: '', codigo: '', descripcion: '', categoria_id: '', activo: true });
+                setFormData(formDataVacio());
                 setTallasSeleccionadas([]);
                 setTallasAsociadas([]);
                 setBotonEstado('normal');
@@ -1292,6 +1413,7 @@ export default function PrendasPage() {
                 <th>Código</th>
                 <th>Nombre</th>
                 <th>Categoría</th>
+                <th>Empresa</th>
                 <th>Descripción</th>
                 <th>Estado</th>
                 <th>Acciones</th>
@@ -1300,8 +1422,8 @@ export default function PrendasPage() {
             <tbody>
               {prendasFiltradas.length === 0 ? (
                 <tr>
-                  <td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
-                    {busqueda
+                  <td colSpan={8} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                    {busqueda || filtroEmpresa !== 'todas'
                       ? 'No se encontraron prendas con ese criterio.'
                         : puedeEditarCatalogo
                           ? 'No hay prendas registradas. Crea tu primera prenda.'
@@ -1327,6 +1449,15 @@ export default function PrendasPage() {
                     <td data-label="Código" style={{ fontFamily: 'monospace', fontWeight: '600' }}>{prenda.codigo || '-'}</td>
                     <td data-label="Nombre" style={{ fontWeight: '600' }}>{prenda.nombre}</td>
                     <td data-label="Categoría"><span className="badge badge-info">{prenda.categoria?.nombre || '-'}</span></td>
+                    <td data-label="Empresa">
+                      {prenda.empresa?.nombre ? (
+                        <span className="badge" style={{ background: '#ccfbf1', color: '#0f766e', border: '1px solid #99f6e4' }}>
+                          {prenda.empresa.nombre}
+                        </span>
+                      ) : (
+                        <span style={{ color: '#94a3b8' }}>—</span>
+                      )}
+                    </td>
                     <td data-label="Descripción">{prenda.descripcion || '-'}</td>
                     <td data-label="Estado">
                       <span className={`badge ${prenda.activo ? 'badge-success' : 'badge-danger'}`}>
@@ -2121,7 +2252,7 @@ export default function PrendasPage() {
                 setMensajeError('');
                 setMostrarFormulario(false);
                 setPrendaEditando(null);
-                setFormData({ nombre: '', codigo: '', descripcion: '', categoria_id: '', activo: true });
+                setFormData(formDataVacio());
                 setTallasSeleccionadas([]);
                 setTallasAsociadas([]);
                 setBotonEstado('normal');

@@ -13,7 +13,13 @@ export type ModuloNavegacion = {
 export const MODULOS_MENU_LATERAL: ModuloNavegacion[] = [
   { href: '/pedidos', label: 'Pedidos', icon: '🛒', adminOnly: true },
   { href: '/tallas', label: 'Tallas', icon: '📏', adminOnly: true },
-  { href: '/prendas', label: 'Prendas', icon: '👕', adminOnly: true },
+  {
+    href: '/prendas',
+    label: 'Prendas',
+    icon: '👕',
+    adminOnly: true,
+    rutasActivas: ['/categorias-prendas', '/empresas'],
+  },
   { href: '/costos', label: 'Costos', icon: '💰', adminOnly: true },
   {
     href: '/modulo-insumos',

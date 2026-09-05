@@ -10,9 +10,17 @@ export function normalizarCamposPrendaApi(row: Record<string, unknown>): Record<
     row.category_id ??
     row.categoryId;
 
+  const empresaId =
+    row.empresa_id ??
+    row.empresaId ??
+    row.EmpresaId ??
+    row.company_id ??
+    row.companyId;
+
   return {
     ...row,
     categoria_id: categoriaId ?? row.categoria_id,
+    empresa_id: empresaId ?? row.empresa_id ?? null,
     id: row.id ?? row.Id ?? row.ID,
   };
 }

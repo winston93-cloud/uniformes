@@ -9,6 +9,7 @@ export const TABLAS_MIGRACION_ORDER = [
   'roles_uniformes',
   'tallas',
   'categorias_prendas',
+  'empresas',
   'presentaciones',
   'ubicaciones_almacenamiento',
   'sucursales',
