@@ -16,7 +16,6 @@ import {
   fetchCostosPrendaSucursal,
   extraerTallasActivasDeCostos,
   costoPrendaTallaDesdeFilas,
-  prendaTieneCostosEnOtraSucursal,
   normalizarCamposCostoApi,
 } from '@/lib/costoQueries';
 import { insforgeDb } from '@/lib/insforgeBrowser';
@@ -573,23 +572,21 @@ export default function PrendasPage() {
     }
 
     if (prendaEditando) {
-      const sucursalSesion = sucursalIdParaCostosSesion(sesion);
-      const compartidaEnOtraTienda =
-        Boolean(sucursalSesion) &&
-        (await prendaTieneCostosEnOtraSucursal(insforgeDb(), prendaEditando.id, sucursalSesion!));
-
-      if (!compartidaEnOtraTienda) {
-        const { error } = await updatePrenda(prendaEditando.id, prendaData);
-        if (error) {
-          if (error.includes('duplicate') || error.includes('unique')) {
-            setMensajeError(`❌ Ya existe una prenda con ese nombre o código`);
-          } else {
-            setMensajeError(`❌ Error al actualizar: ${error}`);
-          }
-          setModalErrorAbierto(true);
-          return;
+      // Catálogo global (nombre, categoría, empresa…): siempre actualizar.
+      // Antes se omitía el update si la prenda tenía costos en otra tienda,
+      // y por eso no se guardaba la empresa.
+      const { error } = await updatePrenda(prendaEditando.id, prendaData);
+      if (error) {
+        if (error.includes('duplicate') || error.includes('unique')) {
+          setMensajeError(`❌ Ya existe una prenda con ese nombre o código`);
+        } else {
+          setMensajeError(`❌ Error al actualizar: ${error}`);
         }
+        setModalErrorAbierto(true);
+        return;
       }
+
+      const sucursalSesion = sucursalIdParaCostosSesion(sesion);
       
       // Gestionar tallas: eliminar las que se quitaron y agregar las nuevas
       const tallasAEliminar = tallasAsociadas.filter(t => !tallasSeleccionadas.includes(t));
@@ -601,7 +598,7 @@ export default function PrendasPage() {
           insforgeDb(),
           prendaEditando.id,
           tallasAEliminar,
-          sucursalIdParaCostosSesion(sesion)
+          sucursalSesion
         );
 
         for (const costoId of costosAEliminar) {
