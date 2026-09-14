@@ -221,8 +221,7 @@ export default function PrendasPage() {
               !errUb &&
               usarUbicacionesStock &&
               totalNum > 0 &&
-              sumUbInicial !== totalNum &&
-              filasUb.length > 0
+              sumUbInicial !== totalNum
             ) {
               try {
                 const rec = await fetch('/api/costos/reconciliar-ubicaciones', {
@@ -1624,7 +1623,9 @@ export default function PrendasPage() {
 
                   if (total > 0) {
                     if (partidasUbicacion.length === 0) {
-                      setMensajeError('❌ Con stock mayor a 0, agrega stock con «Actualizar stock» y asigna ubicación.');
+                      setMensajeError(
+                        '❌ Con stock mayor a 0 debe haber ubicación. Cierra y vuelve a abrir el modal (se asigna solo) o usa «Ajustar» para sumar en una ubicación.'
+                      );
                       setModalErrorAbierto(true);
                       return;
                     }
@@ -1882,7 +1883,7 @@ export default function PrendasPage() {
                 ) : (
                   <p style={{ color: '#94a3b8', fontSize: '0.9rem', fontStyle: 'italic' }}>
                     {stockTotalModalNum() > 0
-                      ? 'Sin ubicaciones asignadas. Usa «Actualizar stock» para repartir.'
+                      ? 'Sin ubicaciones asignadas. Usa «Ajustar» arriba para repartir, o cierra y reabre el modal para autoasignar a Taller.'
                       : 'Con stock 0 no hay ubicaciones asignadas.'}
                   </p>
                 )}
