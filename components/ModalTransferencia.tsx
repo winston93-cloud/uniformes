@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { insforgeDb } from '@/lib/insforgeBrowser';
@@ -17,6 +17,14 @@ interface ModalTransferenciaProps {
 
 type SucursalOption = { id: string; nombre: string; es_matriz?: boolean };
 
+function nuevoClientToken(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+  });
+}
+
 function destinoAutomatico(origenId: string, sucursales: SucursalOption[]): string {
   if (!origenId || sucursales.length < 2) return '';
   const otra = sucursales.find((s) => s.id !== origenId);
@@ -28,6 +36,10 @@ export default function ModalTransferencia({ onClose, transferenciaEditar }: Mod
   const esEdicion = Boolean(transferenciaEditar?.id);
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(false);
+  /** El estado `loading` tarda un render; este ref bloquea el segundo clic al instante. */
+  const enviandoRef = useRef(false);
+  /** Mismo token en reintentos: el servidor devuelve la transferencia ya creada sin descontar otra vez. */
+  const clientTokenRef = useRef<string>(nuevoClientToken());
   const [cargandoDetalle, setCargandoDetalle] = useState(esEdicion);
   const [error, setError] = useState<string | null>(null);
 
@@ -117,6 +129,8 @@ export default function ModalTransferencia({ onClose, transferenciaEditar }: Mod
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (enviandoRef.current) return;
+    enviandoRef.current = true;
     setLoading(true);
     setError(null);
 
@@ -162,6 +176,7 @@ export default function ModalTransferencia({ onClose, transferenciaEditar }: Mod
                   sucursal_destino_id: sucursalDestinoId,
                   observaciones,
                   detalles: payloadDetalles,
+                  client_token: clientTokenRef.current,
                 }
           ),
         }
@@ -179,6 +194,7 @@ export default function ModalTransferencia({ onClose, transferenciaEditar }: Mod
       console.error(esEdicion ? 'Error modificando transferencia:' : 'Error creando transferencia:', err);
       setError(err instanceof Error ? err.message : 'Error desconocido');
     } finally {
+      enviandoRef.current = false;
       setLoading(false);
     }
   };

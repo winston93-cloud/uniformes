@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { exigirSesion } from '@/lib/auth-api';
 import { getInsforge } from '@/lib/insforge';
-import { abonarStockDestinoTransferencia, descontarStockOrigenTransferencia } from '@/lib/transferenciasStock';
+import { rpcTransferencia } from '@/lib/transferenciasStock';
 
 type LineaTransferencia = {
   prenda_id: string;
@@ -9,6 +9,8 @@ type LineaTransferencia = {
   cantidad: number;
   costo_id: string;
 };
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function POST(req: Request) {
   const sesion = await exigirSesion();
@@ -22,11 +24,13 @@ export async function POST(req: Request) {
       sucursal_destino_id?: string;
       observaciones?: string;
       detalles?: LineaTransferencia[];
+      client_token?: string;
     };
 
     const sucursalOrigenId = String(body.sucursal_origen_id ?? sesion.sucursal_id).trim();
     const sucursalDestinoId = String(body.sucursal_destino_id ?? '').trim();
     const detalles = Array.isArray(body.detalles) ? body.detalles : [];
+    const clientToken = String(body.client_token ?? '').trim();
 
     if (!sucursalOrigenId) {
       return NextResponse.json({ ok: false, message: 'Selecciona sucursal origen.' }, { status: 400 });
@@ -59,105 +63,34 @@ export async function POST(req: Request) {
 
     const db = getInsforge().database;
 
-    const { data: origen, error: errOrigen } = await db
+    const { data: sucursales, error: errSuc } = await db
       .from('sucursales')
       .select('id, activo')
-      .eq('id', sucursalOrigenId)
-      .maybeSingle();
-    if (errOrigen || !origen?.id || origen.activo === false) {
+      .in('id', [sucursalOrigenId, sucursalDestinoId]);
+    if (errSuc) throw new Error(errSuc.message);
+    const activa = (id: string) =>
+      (sucursales ?? []).some((s: { id: string; activo?: boolean }) => s.id === id && s.activo !== false);
+    if (!activa(sucursalOrigenId)) {
       return NextResponse.json({ ok: false, message: 'Sucursal origen no válida.' }, { status: 400 });
     }
-
-    const { data: destino, error: errDestino } = await db
-      .from('sucursales')
-      .select('id, activo')
-      .eq('id', sucursalDestinoId)
-      .maybeSingle();
-    if (errDestino || !destino?.id || destino.activo === false) {
+    if (!activa(sucursalDestinoId)) {
       return NextResponse.json({ ok: false, message: 'Sucursal destino no válida.' }, { status: 400 });
     }
 
-    const descontados: LineaTransferencia[] = [];
-    let transferenciaIdCreada: string | null = null;
-
-    try {
-      for (const d of detalles) {
-        const cantidad = Math.trunc(Number(d.cantidad));
-        await descontarStockOrigenTransferencia(db, d.costo_id, cantidad, sucursalOrigenId);
-        descontados.push({ ...d, cantidad });
-      }
-
-      const { data: transferencia, error: errTrans } = await db
-        .from('transferencias')
-        .insert([
-          {
-            sucursal_origen_id: sucursalOrigenId,
-            sucursal_destino_id: sucursalDestinoId,
-            usuario_id: null,
-            estado: 'EN_TRANSITO',
-            observaciones: body.observaciones?.trim() || null,
-            folio: '',
-          },
-        ])
-        .select('*')
-        .single();
-
-      if (errTrans || !transferencia?.id) {
-        throw new Error(errTrans?.message ?? 'No se pudo crear la transferencia.');
-      }
-
-      const transferenciaId = String(transferencia.id);
-      transferenciaIdCreada = transferenciaId;
-
-      const baseFilas = detalles.map((d) => ({
-        transferencia_id: transferenciaId,
+    const transferencia = await rpcTransferencia(db, 'transferencia_crear', {
+      p_sucursal_origen_id: sucursalOrigenId,
+      p_sucursal_destino_id: sucursalDestinoId,
+      p_observaciones: body.observaciones?.trim() || null,
+      p_detalles: detalles.map((d) => ({
         prenda_id: d.prenda_id,
         talla_id: d.talla_id,
         cantidad: Math.trunc(Number(d.cantidad)),
         costo_id: d.costo_id,
-      }));
+      })),
+      p_client_token: UUID_RE.test(clientToken) ? clientToken : null,
+    });
 
-      let { error: errDet } = await db
-        .from('detalle_transferencias')
-        .insert(baseFilas.map((f) => ({ ...f, estado: 'EN_TRANSITO' })));
-
-      // Compat: si la columna estado aún no existe, insertar sin ella
-      if (errDet && String(errDet.message || '').toLowerCase().includes('estado')) {
-        const fb = await db.from('detalle_transferencias').insert(baseFilas);
-        errDet = fb.error;
-      }
-
-      if (errDet) throw new Error(errDet.message || 'No se pudo guardar el detalle de la transferencia.');
-
-      return NextResponse.json({ ok: true, transferencia });
-    } catch (e) {
-      // Si ya se creó la cabecera pero falló el detalle, eliminarla (evita "Sin partidas")
-      if (transferenciaIdCreada) {
-        try {
-          await db.from('detalle_transferencias').delete().eq('transferencia_id', transferenciaIdCreada);
-          await db.from('transferencias').delete().eq('id', transferenciaIdCreada);
-        } catch (delErr) {
-          console.error('No se pudo limpiar transferencia huérfana', transferenciaIdCreada, delErr);
-        }
-      }
-
-      for (const d of descontados.reverse()) {
-        try {
-          const { data: costoOrigen } = await db.from('costos').select('*').eq('id', d.costo_id).single();
-          if (costoOrigen) {
-            await abonarStockDestinoTransferencia(
-              db,
-              costoOrigen as Record<string, unknown>,
-              sucursalOrigenId,
-              d.cantidad
-            );
-          }
-        } catch (rollbackErr) {
-          console.error('Rollback transferencia falló para costo', d.costo_id, rollbackErr);
-        }
-      }
-      throw e;
-    }
+    return NextResponse.json({ ok: true, transferencia });
   } catch (e) {
     console.error('POST /api/transferencias/crear', e);
     const message = e instanceof Error ? e.message : 'Error al crear transferencia.';
