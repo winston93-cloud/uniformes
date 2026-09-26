@@ -320,6 +320,10 @@ export default function ReciboPedidoTicket({ pedido, id, className, extraStyle }
 
       <div style={{ borderTop: '1px solid #000', paddingTop: '0.2rem', textAlign: 'center', fontSize: '0.5rem' }}>
         <p style={{ margin: '0.1rem 0' }}>¡GRACIAS POR SU COMPRA!</p>
+        <p style={{ margin: '0.15rem 0 0 0', fontWeight: '700' }}>
+          Cambios únicamente de talla, dentro de los 3 días posteriores a la compra.
+        </p>
+        <p style={{ margin: '0.05rem 0 0 0', fontWeight: '700' }}>No hay cambios por prendas distintas.</p>
       </div>
     </div>
   );
