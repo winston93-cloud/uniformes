@@ -31,6 +31,15 @@ export const OPCIONES_CUENTA_REPORTE: { value: CuentaReporte; label: string }[] 
   { value: 'uniformes', label: 'Uniformes' },
 ];
 
+/** Filtro del listado de pedidos en la cuenta Uniformes (Winston solo trae prendas). */
+export type FiltroCuentaPedidos = 'todos' | CuentaReporte;
+
+export const OPCIONES_FILTRO_CUENTA_PEDIDOS: { value: FiltroCuentaPedidos; label: string }[] = [
+  { value: 'todos', label: 'Todos' },
+  { value: 'uniformes', label: 'Uniformes' },
+  { value: 'winston', label: 'Winston' },
+];
+
 export function cuentaReporteDesdeSesion(sesion?: SesionLineaVenta | null): CuentaReporte {
   return esCuentaWinston(sesion) ? 'winston' : 'uniformes';
 }

@@ -15,7 +15,7 @@ import {
   saveTicketPrintCal,
   type TicketPrintCal,
 } from '@/lib/ticketPrintCal';
-import { leerLineaVentaPedido } from '@/lib/winstonLineaVenta';
+import { leerLineaVentaPedido, WINSTON_SUCURSAL_CODIGO } from '@/lib/winstonLineaVenta';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
@@ -25,7 +25,7 @@ async function fetchPedidoCompleto(
 ): Promise<PedidoRecibo | null> {
   const { data: pedidoData, error: pedidoError } = await insforgeDb()
     .from('pedidos')
-    .select(`*, sucursales(nombre, direccion, telefono)`)
+    .select(`*, sucursales(nombre, direccion, telefono, codigo)`)
     .eq('id', id)
     .single();
 
@@ -35,7 +35,14 @@ async function fetchPedidoCompleto(
   }
 
   const pedidoSucursalId = String(pedidoData.sucursal_id ?? pedidoData.sucursalId ?? '').trim();
-  if (sesionSucursalId && pedidoSucursalId && pedidoSucursalId !== sesionSucursalId) {
+  const esWinstonPrendasDesdeUniformes =
+    pedidoData.sucursales?.codigo === WINSTON_SUCURSAL_CODIGO && leerLineaVentaPedido(pedidoData) === 'prendas';
+  if (
+    sesionSucursalId &&
+    pedidoSucursalId &&
+    pedidoSucursalId !== sesionSucursalId &&
+    !esWinstonPrendasDesdeUniformes
+  ) {
     return null;
   }
 

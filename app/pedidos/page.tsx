@@ -30,8 +30,11 @@ import type { Prenda } from '@/lib/types';
 import { aplicarDescuentosConjuntoALineas, esLineaDescuentoConjunto } from '@/lib/conjuntosPrecios';
 import {
   esCuentaWinston,
+  OPCIONES_FILTRO_CUENTA_PEDIDOS,
   OPCIONES_FILTRO_LINEA,
   pedidoCoincideFiltroLinea,
+  type CuentaReporte,
+  type FiltroCuentaPedidos,
   type FiltroLineaVenta,
 } from '@/lib/winstonLineaVenta';
 import { opcionesInventarioDesdeSesion } from '@/lib/inventarioSucursal';
@@ -52,6 +55,7 @@ interface Pedido {
   modalidad_pago?: 'TOTAL';
   efectivo_recibido?: number | string;
   cliente?: string; // Para compatibilidad con código existente
+  cuenta?: CuentaReporte;
 }
 
 interface DetallePedido {
@@ -141,12 +145,13 @@ function PedidosPageContent() {
   const { searchExternos } = useExternos();
   const { prendas, loading: prendasLoading, error: prendasError, refetch: refetchPrendas } = usePrendas(inventarioOptsPedidos);
   const { tallas } = useTallas();
+  const esWinston = esCuentaWinston(sesion);
   const { pedidos: pedidosDB, loading: loadingPedidos, crearPedidosDesdeCarrito, actualizarEstadoPedido, completarDetallesPendientes, eliminarPedidoDefinitivo } =
-    usePedidos(sesion?.sucursal_id);
+    usePedidos(sesion?.sucursal_id, { incluirWinstonPrendas: Boolean(sesion?.sucursal_id) && !esWinston });
   const { conjuntos } = useConjuntos();
 
-  const esWinston = esCuentaWinston(sesion);
   const [filtroLineaVenta, setFiltroLineaVenta] = useState<FiltroLineaVenta>('todos');
+  const [filtroCuenta, setFiltroCuenta] = useState<FiltroCuentaPedidos>('todos');
 
   // Estados para filtro de mes/año
   const fechaActual = new Date();
@@ -162,7 +167,7 @@ function PedidosPageContent() {
   const pedidosLinea = pedidosDB.filter((pedido) =>
     esWinston
       ? pedidoCoincideFiltroLinea(pedido as unknown as Record<string, unknown>, filtroLineaVenta)
-      : true
+      : filtroCuenta === 'todos' || (pedido.cuenta ?? 'uniformes') === filtroCuenta
   );
 
   const terminoBusqueda = normalizarTextoBusqueda(busquedaPedido);
@@ -2302,6 +2307,30 @@ function PedidosPageContent() {
             </div>
           )}
 
+          {!esWinston && (
+            <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
+              <label style={{ fontSize: '0.95rem', fontWeight: '600', color: 'white' }}>Cuenta:</label>
+              <select
+                value={filtroCuenta}
+                onChange={(e) => setFiltroCuenta(e.target.value as FiltroCuentaPedidos)}
+                className="form-select"
+                title="Winston solo muestra pedidos de prendas (wu…); los tenis se quedan en Winston."
+                style={{
+                  width: '140px',
+                  fontWeight: '600',
+                  border: '2px solid white',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
+                }}
+              >
+                {OPCIONES_FILTRO_CUENTA_PEDIDOS.map((op) => (
+                  <option key={op.value} value={op.value}>
+                    {op.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
             <label style={{ fontSize: '0.95rem', fontWeight: '600', color: 'white' }}>Mes:</label>
             <select
@@ -2513,6 +2542,24 @@ function PedidosPageContent() {
                 <tr key={pedido.id}>
                   <td data-label="Folio" style={{ fontFamily: 'monospace', fontWeight: 600 }}>
                     {pedido.folio || `— ${String(pedido.id).slice(0, 8)}…`}
+                    {pedido.cuenta === 'winston' && (
+                      <span
+                        title="Pedido de prendas de Winston: las acciones mueven el stock de Uniformes"
+                        style={{
+                          marginLeft: '0.4rem',
+                          padding: '0.1rem 0.4rem',
+                          borderRadius: '6px',
+                          background: '#ede9fe',
+                          color: '#6d28d9',
+                          fontFamily: 'inherit',
+                          fontSize: '0.7rem',
+                          fontWeight: 700,
+                          verticalAlign: 'middle',
+                        }}
+                      >
+                        WINSTON
+                      </span>
+                    )}
                   </td>
                   <td data-label="Fecha">{pedido.fecha}</td>
                   <td data-label="Cliente" style={{ fontWeight: '600' }}>{pedido.cliente_nombre || pedido.cliente || 'N/A'}</td>

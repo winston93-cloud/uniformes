@@ -7,6 +7,8 @@ import { REFETCH_PEDIDOS_EVENT } from '@/lib/refetchPedidosEvent';
 import {
   dividirDetallesPorLinea,
   esCuentaWinston,
+  WINSTON_SUCURSAL_CODIGO,
+  type CuentaReporte,
   type LineaVentaWinston,
   type SesionLineaVenta,
 } from '@/lib/winstonLineaVenta';
@@ -29,7 +31,15 @@ interface Pedido {
   efectivo_recibido: number | string;
   created_at?: string;
   updated_at?: string;
+  sucursal_id?: string | null;
+  /** Cuenta dueña del pedido; en Uniformes pueden venir pedidos de prendas de Winston. */
+  cuenta?: CuentaReporte;
 }
+
+export type OpcionesUsePedidos = {
+  /** Cuenta Uniformes: incluir pedidos de prendas (wu…) de Winston; tenis nunca. */
+  incluirWinstonPrendas?: boolean;
+};
 
 interface DetallePedido {
   id?: string;
@@ -144,9 +154,10 @@ function separarDescuentos(detalles: DetalleCarrito[]) {
   return { productos, descuentos };
 }
 
-export function usePedidos(sucursal_id?: string) {
+export function usePedidos(sucursal_id?: string, opciones?: OpcionesUsePedidos) {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [loading, setLoading] = useState(true);
+  const incluirWinstonPrendas = opciones?.incluirWinstonPrendas === true;
 
   const fetchPedidos = useCallback(async () => {
     try {
@@ -179,6 +190,26 @@ export function usePedidos(sucursal_id?: string) {
 
       if (error) throw error;
 
+      let winstonId: string | null = null;
+      if (incluirWinstonPrendas) {
+        const { data: suc, error: errSuc } = await insforgeDb()
+          .from('sucursales')
+          .select('id')
+          .eq('codigo', WINSTON_SUCURSAL_CODIGO)
+          .maybeSingle();
+        if (errSuc) throw errSuc;
+        winstonId = suc?.id ? String(suc.id) : null;
+        if (winstonId && winstonId !== sid) {
+          const w = await insforgeDb()
+            .from('pedidos')
+            .select('*')
+            .eq('sucursal_id', winstonId)
+            .eq('linea_venta', 'prendas');
+          if (w.error) throw w.error;
+          data = [...(data || []), ...(w.data || [])];
+        }
+      }
+
       const ts = (row: unknown) => {
         const p = row as Record<string, unknown>;
         const raw = p.created_at ?? p.createdAt;
@@ -192,10 +223,13 @@ export function usePedidos(sucursal_id?: string) {
           p.created_at && !Number.isNaN(Date.parse(String(p.created_at)))
             ? new Date(String(p.created_at)).toLocaleDateString('es-MX')
             : '';
+        const cuenta: CuentaReporte =
+          winstonId && String(p.sucursal_id ?? '') === winstonId ? 'winston' : 'uniformes';
         return {
           ...p,
           cliente_tipo: p.tipo_cliente,
           fecha: fechaStr,
+          ...(incluirWinstonPrendas ? { cuenta } : {}),
         } as unknown as Pedido;
       });
 
@@ -205,7 +239,7 @@ export function usePedidos(sucursal_id?: string) {
     } finally {
       setLoading(false);
     }
-  }, [sucursal_id]);
+  }, [sucursal_id, incluirWinstonPrendas]);
 
   const reconciliarUbicacionesVenta = async (
     detallesJsonb: Array<Record<string, unknown>>,
@@ -411,6 +445,7 @@ export function usePedidos(sucursal_id?: string) {
         const { data, error } = await insforgeDb().rpc('completar_pedido_atomico', {
           p_pedido_id: id,
           p_usuario_id: usuarioIdParaRpc(usuario_id),
+          p_sucursal_stock_id: sucursal_id || null,
         });
         if (error) throw error;
         if (data && data.success === false) {
@@ -464,6 +499,7 @@ export function usePedidos(sucursal_id?: string) {
           p_pedido_id: pedidoId,
           p_items: payload,
           p_usuario_id: usuarioIdParaRpc(usuario_id),
+          p_sucursal_stock_id: sucursal_id || null,
         }
       );
       if (error) throw error;
@@ -496,6 +532,7 @@ export function usePedidos(sucursal_id?: string) {
         p_usuario_id: null,
         p_items: null,
         p_motivo: motivo || 'ELIMINACION DEFINITIVA',
+        p_sucursal_stock_id: sucursal_id || null,
       });
       if (error) throw error;
       if (data && data.success === false) {
