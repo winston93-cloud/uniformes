@@ -1494,7 +1494,12 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       },
     });
 
-    const margenInferior = 12;
+    // El pie impreso en ambos JPG (pin + dirección/teléfono) empieza en ~284 mm:
+    // ningún renglón generado puede bajar de aquí.
+    const yLimiteContenido = 279;
+    // En la hoja de cierre los rótulos Subtotal/IVA/Total del JPG empiezan en ~273 mm.
+    const yLimiteContenidoCierre = 268;
+    const yInicioHojaNueva = tableTopY + 6;
     const yTrasTabla = ((doc as any).lastAutoTable?.finalY as number | undefined) ?? tableTopY + 10;
     const paginaFinalTabla = doc.getNumberOfPages();
 
@@ -1504,12 +1509,12 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       altoNecesario: number,
       fondoNuevaPagina: 'partidas' | 'cierre' = 'partidas'
     ) => {
-      if (y + altoNecesario <= pageH - margenInferior) return { y, paginaCierre: false };
+      if (y + altoNecesario <= yLimiteContenido) return { y, paginaCierre: false };
       doc.addPage();
       pintarFondo(fondoNuevaPagina);
       pintarHeader();
       doc.setTextColor(15, 23, 42);
-      return { y: tableTopY + 6, paginaCierre: fondoNuevaPagina === 'cierre' };
+      return { y: yInicioHojaNueva, paginaCierre: fondoNuevaPagina === 'cierre' };
     };
 
     // Totales siempre debajo de la última fila de partidas (sin tope fijo que los empuje hacia arriba).
@@ -1519,45 +1524,61 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
     const paginaCierreTotales =
       espacioTotales.paginaCierre || doc.getNumberOfPages() > paginaFinalTabla;
 
-    const lineasObs = data.observaciones
-      ? doc.splitTextToSize(data.observaciones, 180)
-      : [];
-    const altoCondiciones = 16 + 7 + 13 + 7 + 13 + 7 + (data.observaciones ? 13 + lineasObs.length * 5 : 0);
+    const bloquesCondiciones = [
+      { titulo: 'Condiciones de Pago:', texto: data.condicionesPago || '—' },
+      { titulo: 'Tiempo de Entrega:', texto: data.tiempoEntrega || '—' },
+      { titulo: 'Fecha de Entrega:', texto: data.fechaEntregaTexto || '—' },
+      ...(data.observaciones ? [{ titulo: 'Observaciones:', texto: data.observaciones }] : []),
+    ];
 
-    const dibujarCondiciones = (yCond: number, compacto = false) => {
+    /** Devuelve la Y del último renglón; con `soloMedir` no pinta nada. */
+    const dibujarCondiciones = (yCond: number, compacto = false, soloMedir = false): number => {
       const pasoTitulo = compacto ? 4.5 : 7;
-      const pasoBloque = compacto ? 11 : 13;
-      const tamTitulo = compacto ? 9 : 10;
+      const interlineado = compacto ? 4 : 5;
+      const separacion = compacto ? 2 : 4;
       const ancho = compacto ? 175 : 180;
+      doc.setFontSize(compacto ? 9 : 10);
+
       let y = yCond;
-
-      doc.setFontSize(tamTitulo);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Condiciones de Pago:', 14, y);
-      doc.setFont('helvetica', 'normal');
-      const lineasPago = doc.splitTextToSize(data.condicionesPago || '—', ancho);
-      doc.text(lineasPago, 14, y + pasoTitulo);
-      y += pasoTitulo + lineasPago.length * (compacto ? 4 : 5) + (compacto ? 2 : 4);
-
-      doc.setFont('helvetica', 'bold');
-      doc.text('Tiempo de Entrega:', 14, y);
-      doc.setFont('helvetica', 'normal');
-      const lineasEntrega = doc.splitTextToSize(data.tiempoEntrega || '—', ancho);
-      doc.text(lineasEntrega, 14, y + pasoTitulo);
-      y += pasoTitulo + lineasEntrega.length * (compacto ? 4 : 5) + (compacto ? 2 : 4);
-
-      doc.setFont('helvetica', 'bold');
-      doc.text('Fecha de Entrega:', 14, y);
-      doc.setFont('helvetica', 'normal');
-      doc.text(data.fechaEntregaTexto || '—', 14, y + pasoTitulo);
-      y += pasoBloque;
-
-      if (data.observaciones) {
-        doc.setFont('helvetica', 'bold');
-        doc.text('Observaciones:', 14, y);
+      let yUltimoRenglon = yCond;
+      for (const bloque of bloquesCondiciones) {
         doc.setFont('helvetica', 'normal');
-        doc.text(lineasObs, 14, y + pasoTitulo);
+        const lineas: string[] = doc.splitTextToSize(bloque.texto, ancho);
+        if (!soloMedir) {
+          doc.setFont('helvetica', 'bold');
+          doc.text(bloque.titulo, 14, y);
+          doc.setFont('helvetica', 'normal');
+          lineas.forEach((linea, i) => doc.text(linea, 14, y + pasoTitulo + i * interlineado));
+        }
+        yUltimoRenglon = y + pasoTitulo + (lineas.length - 1) * interlineado;
+        y = yUltimoRenglon + interlineado + separacion;
       }
+      return yUltimoRenglon;
+    };
+
+    /** Pinta las condiciones sin pisar el pie del JPG: normal, compacto o en hoja nueva. */
+    const dibujarCondicionesSinEmpalme = (yCond: number, yLimite: number) => {
+      if (dibujarCondiciones(yCond, false, true) <= yLimite) {
+        dibujarCondiciones(yCond, false);
+        return;
+      }
+      if (dibujarCondiciones(yCond, true, true) <= yLimite) {
+        dibujarCondiciones(yCond, true);
+        return;
+      }
+      const enHojaCierre = yLimite === yLimiteContenidoCierre;
+      if (enHojaCierre) {
+        // Las condiciones van en una hoja previa para dejar los totales del JPG al final.
+        doc.insertPage(doc.getCurrentPageInfo().pageNumber);
+      } else {
+        doc.addPage();
+      }
+      pintarFondo('partidas');
+      pintarHeader();
+      doc.setTextColor(15, 23, 42);
+      const compacto = dibujarCondiciones(yInicioHojaNueva, false, true) > yLimiteContenido;
+      dibujarCondiciones(yInicioHojaNueva, compacto);
+      if (enHojaCierre) doc.setPage(doc.getNumberOfPages());
     };
 
     const dibujarImportesTotalesCierre = () => {
@@ -1612,7 +1633,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
 
     if (paginaCierreTotales) {
       // Hoja de cierre: condiciones arriba (zona libre), importes al pie junto a rótulos del JPG.
-      dibujarCondiciones(espacioTotales.y);
+      dibujarCondicionesSinEmpalme(espacioTotales.y, yLimiteContenidoCierre);
       dibujarImportesTotalesCierre();
     } else {
       let yTot = espacioTotales.y;
@@ -1647,9 +1668,7 @@ export default function ModalCotizacion({ onClose }: ModalCotizacionProps) {
       );
 
       // Condiciones en la misma hoja que totales/partidas (sin hoja extra vacía)
-      const yCond = yTot + 10;
-      const espacioRestante = pageH - margenInferior - yCond;
-      dibujarCondiciones(yCond, espacioRestante < altoCondiciones);
+      dibujarCondicionesSinEmpalme(yTot + 10, yLimiteContenido);
     }
 
     return doc;
