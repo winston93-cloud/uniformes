@@ -1,18 +1,14 @@
-import { insforgeBrowser } from '@/lib/insforgeBrowser';
+import { MAX_BYTES_CONSTANCIA_PDF, rutaConstanciaPdfEnBucket } from '@/lib/storageConstanciaFiscalRutas';
 
-export const BUCKET_CONSTANCIAS_FISCALES = 'datos-fiscales-clientes';
+export { BUCKET_CONSTANCIAS_FISCALES, MAX_BYTES_CONSTANCIA_PDF, rutaConstanciaPdfEnBucket } from '@/lib/storageConstanciaFiscalRutas';
 
-const NOMBRE_ARCHIVO = 'constancia-situacion-fiscal.pdf';
-
-/** Tamaño máximo 5 MB (alineado con bucket). */
-export const MAX_BYTES_CONSTANCIA_PDF = 5 * 1024 * 1024;
-
-export function rutaConstanciaPdfEnBucket(registroDatosFiscalesId: string): string {
-  return `${registroDatosFiscalesId}/${NOMBRE_ARCHIVO}`;
-}
-
-function bucket() {
-  return insforgeBrowser.storage.from(BUCKET_CONSTANCIAS_FISCALES);
+async function errorDe(res: Response, porDefecto: string): Promise<string> {
+  try {
+    const json = (await res.json()) as { error?: string };
+    return json.error || porDefecto;
+  } catch {
+    return porDefecto;
+  }
 }
 
 export async function subirConstanciaPdf(registroId: string, file: File): Promise<{ error: string | null }> {
@@ -22,24 +18,25 @@ export async function subirConstanciaPdf(registroId: string, file: File): Promis
   if (file.size > MAX_BYTES_CONSTANCIA_PDF) {
     return { error: 'El PDF no puede superar 5 MB.' };
   }
-  const path = rutaConstanciaPdfEnBucket(registroId);
-  const { error } = await bucket().upload(path, file);
-  if (error) return { error: error.message };
+  const form = new FormData();
+  form.append('registroId', registroId);
+  form.append('file', file);
+  const res = await fetch('/api/constancia-fiscal', { method: 'POST', body: form });
+  if (!res.ok) return { error: await errorDe(res, 'No se pudo subir el PDF.') };
   return { error: null };
 }
 
 export async function eliminarConstanciaPdfEnStorage(pathRelativo: string): Promise<{ error: string | null }> {
-  const { error } = await bucket().remove(pathRelativo);
-  if (error) return { error: error.message };
+  const res = await fetch(`/api/constancia-fiscal?path=${encodeURIComponent(pathRelativo)}`, { method: 'DELETE' });
+  if (!res.ok) return { error: await errorDe(res, 'No se pudo eliminar el PDF.') };
   return { error: null };
 }
 
-/** Descarga vía SDK InsForge; devuelve object URL para abrir/descargar en el navegador. */
+/** Descarga por el servidor; devuelve object URL para abrir/descargar en el navegador. */
 export async function urlDescargaConstanciaPdf(
   pathRelativo: string
 ): Promise<{ url: string | null; error: string | null }> {
-  const { data, error } = await bucket().download(pathRelativo);
-  if (error) return { url: null, error: error.message };
-  if (!data) return { url: null, error: 'No se pudo descargar el PDF.' };
-  return { url: URL.createObjectURL(data), error: null };
+  const res = await fetch(`/api/constancia-fiscal?path=${encodeURIComponent(pathRelativo)}`, { cache: 'no-store' });
+  if (!res.ok) return { url: null, error: await errorDe(res, 'No se pudo descargar el PDF.') };
+  return { url: URL.createObjectURL(await res.blob()), error: null };
 }
