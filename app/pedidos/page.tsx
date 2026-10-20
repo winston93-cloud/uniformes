@@ -20,6 +20,7 @@ import {
   type PosicionDropdown,
 } from '@/lib/cotizacionUi';
 import { useCostos } from '@/lib/hooks/useCostos';
+import { registrarEventoCliente } from '@/lib/eventosCliente';
 import { useAlumnos } from '@/lib/hooks/useAlumnos';
 import { useExternos } from '@/lib/hooks/useExternos';
 import { usePrendas } from '@/lib/hooks/usePrendas';
@@ -635,6 +636,14 @@ function PedidosPageContent() {
       if (opts?.avanzar !== false && !tallaTecleandoRef.current) {
         enfocarCantidadTrasTalla();
       }
+    } else if (tallaId) {
+      const mensaje = 'No se encontró el precio de esta talla. Recarga la página (F5) e intenta de nuevo.';
+      registrarEventoCliente(
+        'silencioso',
+        mensaje,
+        `${detalleActualRef.current.prenda_nombre} talla ${talla?.nombre ?? tallaId} · ${costos.length} costos cargados`
+      );
+      alert(mensaje);
     }
   };
 

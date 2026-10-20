@@ -5,6 +5,7 @@ import BackgroundGradient from "@/components/BackgroundGradient";
 import MobileScrollFix from "@/components/MobileScrollFix";
 import { AuthProvider } from "@/contexts/AuthContext";
 import VercelAnalytics from "@/components/VercelAnalytics";
+import VigilantePantalla from "@/components/VigilantePantalla";
 
 export const metadata: Metadata = {
   title: "Sistema de Gestión de Uniformes",
@@ -20,6 +21,7 @@ export default function RootLayout({
     <html lang="es" style={{ height: '100%', overflow: 'auto', WebkitOverflowScrolling: 'touch' }}>
       <body style={{ height: '100%', overflow: 'auto', WebkitOverflowScrolling: 'touch', position: 'relative' }}>
         <AuthProvider>
+          <VigilantePantalla />
           <MobileScrollFix />
           <BackgroundGradient />
           <ThemeToggler />
