@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { getSupabaseErrorMessage } from '../supabase';
 import { insforgeDb } from '@/lib/insforgeBrowser';
+import { selectTodo } from '@/lib/selectTodo';
 import { fetchCostosRowsByPrenda, normalizarCamposCostoApi } from '@/lib/costoQueries';
 import { filtrarCostosInventarioTienda, type OpcionesInventarioTienda } from '@/lib/inventarioSucursal';
 import type { Costo } from '../types';
@@ -99,8 +100,14 @@ export function useCostos(
   const fetchCostos = async () => {
     try {
       setLoading(true);
-      let query = insforgeDb().from('costos').select(COSTOS_EMBED).order('created_at', { ascending: false });
-      let { data, error } = await query;
+      const { data, error } = await selectTodo((desde, hasta) =>
+        insforgeDb()
+          .from('costos')
+          .select(COSTOS_EMBED)
+          .order('created_at', { ascending: false })
+          .order('id')
+          .range(desde, hasta)
+      );
 
       if (!error && data?.length) {
         let rows = (data || []).map((r) => r as Record<string, unknown>);
@@ -116,9 +123,18 @@ export function useCostos(
         return;
       }
 
-      let fallback = await insforgeDb().from('costos').select('*').order('created_at', { ascending: false });
+      let fallback = await selectTodo((desde, hasta) =>
+        insforgeDb()
+          .from('costos')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .order('id')
+          .range(desde, hasta)
+      );
       if (fallback.error) {
-        fallback = await insforgeDb().from('costos').select('*');
+        fallback = await selectTodo((desde, hasta) =>
+          insforgeDb().from('costos').select('*').order('id').range(desde, hasta)
+        );
       }
       if (fallback.error) throw fallback.error;
       let plain = (fallback.data || []) as Record<string, unknown>[];

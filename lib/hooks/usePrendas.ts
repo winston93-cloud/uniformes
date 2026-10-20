@@ -6,6 +6,7 @@ import { filtrarFilasPorSucursalSiHayColumna } from '@/lib/sucursalCliente';
 import { filtrarCostosInventarioTienda, normalizarPrendaIdKey, type OpcionesInventarioTienda } from '@/lib/inventarioSucursal';
 import { normalizarCamposPrendaApi } from '@/lib/insforgeNormalize';
 import { insforgeDb } from '@/lib/insforgeBrowser';
+import { selectTodo } from '@/lib/selectTodo';
 import type { CategoriaPrenda, EmpresaPrenda, Prenda } from '../types';
 
 /** InsForge / SDK pueden devolver camelCase o UUID con distinta capitalización → normalizar antes de hacer Map.get */
@@ -262,16 +263,17 @@ export function usePrendas(opts?: OpcionesInventarioTienda) {
 
       let resultado = mapped;
       if (inventarioSoloSucursal && sucursalId?.trim()) {
-        const cols = 'prenda_id, stock, sucursal_id, activo, talla_id';
+        const cols = 'id, prenda_id, stock, sucursal_id, activo, talla_id';
         let costosRaw: Record<string, unknown>[] = [];
-        const filtrado = await insforgeDb()
-          .from('costos')
-          .select(cols)
-          .eq('sucursal_id', sucursalId);
+        const filtrado = await selectTodo((desde, hasta) =>
+          insforgeDb().from('costos').select(cols).eq('sucursal_id', sucursalId).order('id').range(desde, hasta)
+        );
         if (!filtrado.error) {
           costosRaw = (filtrado.data || []) as Record<string, unknown>[];
         } else {
-          const todos = await insforgeDb().from('costos').select(cols);
+          const todos = await selectTodo((desde, hasta) =>
+            insforgeDb().from('costos').select(cols).order('id').range(desde, hasta)
+          );
           if (todos.error) throw todos.error;
           costosRaw = (todos.data || []) as Record<string, unknown>[];
         }

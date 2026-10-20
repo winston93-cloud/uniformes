@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { insforgeDb } from '@/lib/insforgeBrowser';
+import { selectTodo } from '@/lib/selectTodo';
 import { normalizarCamposCostoApi } from '@/lib/costoQueries';
 import { compararTallas } from '@/lib/ordenTallas';
 
@@ -165,7 +166,9 @@ export default function SelectorPrendasTransferencia({
     }
     setCargando(true);
     try {
-      const { data: costosRaw, error } = await insforgeDb().from('costos').select('*');
+      const { data: costosRaw, error } = await selectTodo((desde, hasta) =>
+        insforgeDb().from('costos').select('*').order('id').range(desde, hasta)
+      );
       if (error) throw error;
 
       const reservado = inicialesRef.current;

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { insforgeDb } from '@/lib/insforgeBrowser';
+import { selectTodo } from '@/lib/selectTodo';
 import { compararTallas } from '../ordenTallas';
 import { filtrarCostosInventarioTienda } from '@/lib/inventarioSucursal';
 import { normalizarCamposCostoApi } from '@/lib/costoQueries';
@@ -860,14 +861,15 @@ export function useReportes(
       const tienePeriodo = Boolean(fechaInicio?.trim() && fechaFin?.trim());
       const rango = tienePeriodo ? rangoLocalAIso(fechaInicio!.trim(), fechaFin!.trim()) : null;
 
-      let pedidosQuery = insforgeDb()
-        .from('pedidos')
-        .select('id, folio, linea_venta, total, estado, created_at, updated_at')
-        .in('estado', ['PENDIENTE', 'COMPLETADO']);
-      if (sid) pedidosQuery = pedidosQuery.eq('sucursal_id', sid);
-      if (rango) {
-        pedidosQuery = pedidosQuery.gte('created_at', rango.startIso).lte('created_at', rango.endIso);
-      }
+      const pedidosQuery = selectTodo((desde, hasta) => {
+        let q = insforgeDb()
+          .from('pedidos')
+          .select('id, folio, linea_venta, total, estado, created_at, updated_at')
+          .in('estado', ['PENDIENTE', 'COMPLETADO']);
+        if (sid) q = q.eq('sucursal_id', sid);
+        if (rango) q = q.gte('created_at', rango.startIso).lte('created_at', rango.endIso);
+        return q.order('id').range(desde, hasta);
+      });
 
       const [
         { data: pedidosRaw, error: errPedidos },
@@ -879,11 +881,11 @@ export function useReportes(
           .then((r) => r.json())
           .then((j) => ({ count: j?.success ? Number(j.count) || 0 : 0 }))
           .catch(() => ({ count: 0 })),
-        (() => {
-          let q = insforgeDb().from('costos').select('stock, sucursal_id').eq('activo', true);
+        selectTodo((desde, hasta) => {
+          let q = insforgeDb().from('costos').select('id, stock, sucursal_id').eq('activo', true);
           if (sid) q = q.eq('sucursal_id', sid);
-          return q;
-        })(),
+          return q.order('id').range(desde, hasta);
+        }),
       ]);
 
       if (errPedidos) throw errPedidos;

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getSupabaseErrorMessage } from '@/lib/supabase';
 import { insforgeDb } from '@/lib/insforgeBrowser';
+import { selectTodo } from '@/lib/selectTodo';
 import { filtrarCostosInventarioTienda } from '@/lib/inventarioSucursal';
 
 function readFk(row: Record<string, unknown>, snake: string, camel: string): string | null {
@@ -44,7 +45,9 @@ export function useAlertasStockPrendas(
       setError(null);
 
       // Nunca .eq('sucursal_id') en URL: en InsForge a veces no existe la columna (400).
-      const { data: costosRaw, error: costosError } = await insforgeDb().from('costos').select('*');
+      const { data: costosRaw, error: costosError } = await selectTodo((desde, hasta) =>
+        insforgeDb().from('costos').select('*').order('id').range(desde, hasta)
+      );
 
       if (costosError) throw costosError;
 
