@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { insforgeDb } from '@/lib/insforgeBrowser';
+import { selectTodo } from '@/lib/selectTodo';
 
 export interface InsumoFaltante {
   insumo_id: string;
@@ -29,65 +30,50 @@ export function useInsumosFaltantes() {
       setCargando(true);
       setError(null);
 
-      // 1. Obtener todos los pedidos en estado "PEDIDO" (no entregados)
-      const { data: pedidosPendientes, error: errorPedidos } = await insforgeDb()
-        .from('pedidos')
-        .select('id')
-        .eq('estado', 'PENDIENTE');
+      // 1. Obtener todos los pedidos en estado "PENDIENTE" (no entregados)
+      const { data: pedidosPendientes, error: errorPedidos } = await selectTodo((desde, hasta) =>
+        insforgeDb().from('pedidos').select('id').eq('estado', 'PENDIENTE').order('id').range(desde, hasta)
+      );
 
       if (errorPedidos) throw errorPedidos;
-      if (!pedidosPendientes || pedidosPendientes.length === 0) {
+      if (pedidosPendientes.length === 0) {
         setInsumosFaltantes([]);
         setCargando(false);
         return;
       }
 
-      const pedidosIds = pedidosPendientes.map((p) => p.id);
+      const pedidosIds = pedidosPendientes.map((p) => p.id as string);
 
-      // 2. Obtener todos los detalles de esos pedidos (qué prendas-tallas se vendieron)
-      const { data: detallesPedidos, error: errorDetalles } = await insforgeDb()
-        .from('detalle_pedidos')
-        .select(`
-          cantidad,
-          costo_id,
-          costos (
-            prenda_id,
-            talla_id,
-            prendas (
-              id,
-              nombre
-            ),
-            tallas (
-              id,
-              nombre
-            )
-          )
-        `)
-        .in('pedido_id', pedidosIds);
+      // 2. Detalles de esos pedidos (qué prendas-tallas se vendieron), en lotes para no exceder el largo de la URL
+      const detallesPedidos: { cantidad: number; prenda_id: string | null; talla_id: string | null; costos: unknown }[] = [];
+      for (let i = 0; i < pedidosIds.length; i += 100) {
+        const lote = pedidosIds.slice(i, i + 100);
+        const { data, error: errorDetalles } = await selectTodo((desde, hasta) =>
+          insforgeDb()
+            .from('detalle_pedidos')
+            .select('id, cantidad, prenda_id, talla_id, costos ( prenda_id, talla_id )')
+            .in('pedido_id', lote)
+            .order('id')
+            .range(desde, hasta)
+        );
+        if (errorDetalles) throw errorDetalles;
+        detallesPedidos.push(...(data as typeof detallesPedidos));
+      }
 
-      if (errorDetalles) throw errorDetalles;
-      if (!detallesPedidos || detallesPedidos.length === 0) {
+      if (detallesPedidos.length === 0) {
         setInsumosFaltantes([]);
         setCargando(false);
         return;
       }
 
-      // 3. Por cada prenda-talla vendida, obtener sus insumos y calcular cantidad total necesaria
-      const insumosMap = new Map<string, InsumoFaltante>();
-
-      for (const detalle of detallesPedidos) {
-        // TypeScript trata las relaciones como arrays, accedemos al primer elemento
-        const costo = Array.isArray(detalle.costos) ? detalle.costos[0] : detalle.costos;
-        if (!costo) continue;
-
-        const prenda_id = costo.prenda_id;
-        const talla_id = costo.talla_id;
-        const cantidad_prendas = detalle.cantidad;
-
-        // Obtener los insumos para esta combinación prenda-talla
-        const { data: insumosPrenda, error: errorInsumos } = await insforgeDb()
+      // 3. Recetas de insumos por prenda-talla, todas en una sola lectura
+      const { data: recetas, error: errorInsumos } = await selectTodo((desde, hasta) =>
+        insforgeDb()
           .from('prenda_talla_insumos')
           .select(`
+            id,
+            prenda_id,
+            talla_id,
             cantidad,
             insumo_id,
             insumos (
@@ -101,10 +87,35 @@ export function useInsumosFaltantes() {
               )
             )
           `)
-          .eq('prenda_id', prenda_id)
-          .eq('talla_id', talla_id);
+          .order('id')
+          .range(desde, hasta)
+      );
 
-        if (errorInsumos) throw errorInsumos;
+      if (errorInsumos) throw errorInsumos;
+
+      const recetasPorPrendaTalla = new Map<string, typeof recetas>();
+      for (const r of recetas) {
+        const clave = `${r.prenda_id}|${r.talla_id}`;
+        const lista = recetasPorPrendaTalla.get(clave);
+        if (lista) lista.push(r);
+        else recetasPorPrendaTalla.set(clave, [r]);
+      }
+
+      // 4. Por cada prenda-talla vendida, acumular la cantidad total necesaria de cada insumo
+      const insumosMap = new Map<string, InsumoFaltante>();
+
+      for (const detalle of detallesPedidos) {
+        // TypeScript trata las relaciones como arrays, accedemos al primer elemento
+        const costo = (Array.isArray(detalle.costos) ? detalle.costos[0] : detalle.costos) as
+          | { prenda_id: string | null; talla_id: string | null }
+          | null;
+
+        const prenda_id = costo?.prenda_id ?? detalle.prenda_id;
+        const talla_id = costo?.talla_id ?? detalle.talla_id;
+        if (!prenda_id || !talla_id) continue;
+        const cantidad_prendas = detalle.cantidad;
+
+        const insumosPrenda = recetasPorPrendaTalla.get(`${prenda_id}|${talla_id}`);
         if (!insumosPrenda) continue;
 
         // Acumular cantidades por insumo
@@ -139,18 +150,22 @@ export function useInsumosFaltantes() {
         }
       }
 
-      // Obtener cantidades compradas de cada insumo
-      const insumosConCompras = await Promise.all(
-        Array.from(insumosMap.values()).map(async (insumo) => {
-          const { data: compras } = await insforgeDb()
-            .from('compras_insumos')
-            .select('cantidad_comprada')
-            .eq('insumo_id', insumo.insumo_id);
+      // Cantidades compradas de cada insumo, en una sola lectura
+      const { data: compras, error: errorCompras } = await selectTodo((desde, hasta) =>
+        insforgeDb().from('compras_insumos').select('id, insumo_id, cantidad_comprada').order('id').range(desde, hasta)
+      );
+      if (errorCompras) throw errorCompras;
 
-          const cantidad_comprada = (compras || []).reduce(
-            (sum, compra) => sum + (compra.cantidad_comprada || 0),
-            0
-          );
+      const compradoPorInsumo = new Map<string, number>();
+      for (const compra of compras) {
+        compradoPorInsumo.set(
+          compra.insumo_id,
+          (compradoPorInsumo.get(compra.insumo_id) ?? 0) + (compra.cantidad_comprada || 0)
+        );
+      }
+
+      const insumosConCompras = Array.from(insumosMap.values()).map((insumo) => {
+          const cantidad_comprada = compradoPorInsumo.get(insumo.insumo_id) ?? 0;
 
           const cantidad_faltante = Math.max(0, insumo.cantidad_necesaria - cantidad_comprada);
           const porcentaje_completado = insumo.cantidad_necesaria > 0
@@ -163,8 +178,7 @@ export function useInsumosFaltantes() {
             cantidad_faltante,
             porcentaje_completado,
           };
-        })
-      );
+        });
 
       // Ordenar por cantidad faltante descendente (los más urgentes primero)
       const resultado = insumosConCompras.sort(
