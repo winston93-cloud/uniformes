@@ -44,10 +44,11 @@ export function useInsumosFaltantes() {
 
       const pedidosIds = pedidosPendientes.map((p) => p.id as string);
 
-      // 2. Detalles de esos pedidos (qué prendas-tallas se vendieron), en lotes para no exceder el largo de la URL
+      // 2. Detalles de esos pedidos (qué prendas-tallas se vendieron). El gateway de InsForge responde 502 sin CORS
+      // (el navegador lo ve como "Failed to fetch") cuando la URL pasa de ~3 KB: unos 80 UUID en el filtro in().
       const detallesPedidos: { cantidad: number; prenda_id: string | null; talla_id: string | null; costos: unknown }[] = [];
-      for (let i = 0; i < pedidosIds.length; i += 100) {
-        const lote = pedidosIds.slice(i, i + 100);
+      for (let i = 0; i < pedidosIds.length; i += 40) {
+        const lote = pedidosIds.slice(i, i + 40);
         const { data, error: errorDetalles } = await selectTodo((desde, hasta) =>
           insforgeDb()
             .from('detalle_pedidos')
