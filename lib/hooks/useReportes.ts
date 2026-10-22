@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { insforgeDb } from '@/lib/insforgeBrowser';
 import { selectTodo } from '@/lib/selectTodo';
+import { inPorLotes } from '@/lib/inPorLotes';
 import { compararTallas } from '../ordenTallas';
 import { filtrarCostosInventarioTienda } from '@/lib/inventarioSucursal';
 import { normalizarCamposCostoApi } from '@/lib/costoQueries';
@@ -190,7 +191,7 @@ export function useReportes(
     const ids = [...new Set(pedidoIds.map((id) => id.trim()).filter(Boolean))];
     if (ids.length === 0) return mapa;
 
-    const chunkSize = 80;
+    const chunkSize = 40;
     for (let i = 0; i < ids.length; i += chunkSize) {
       const chunk = ids.slice(i, i + chunkSize);
       let q = insforgeDb()
@@ -282,11 +283,10 @@ export function useReportes(
       { cliente_nombre: string; folio: string; linea_venta?: string | null }
     >();
     if (pedidoIds.length > 0) {
-      const { data: pedidosMeta } = await insforgeDb()
-        .from('pedidos')
-        .select('id, cliente_nombre, folio, linea_venta')
-        .in('id', pedidoIds);
-      for (const p of pedidosMeta || []) {
+      const { data: pedidosMeta } = await inPorLotes(pedidoIds, (lote) =>
+        insforgeDb().from('pedidos').select('id, cliente_nombre, folio, linea_venta').in('id', lote)
+      );
+      for (const p of pedidosMeta) {
         const row = p as Record<string, unknown>;
         pedidoMeta.set(String(row.id), {
           cliente_nombre: String(row.cliente_nombre ?? 'Sin cliente'),
@@ -428,16 +428,20 @@ export function useReportes(
   const prendasMasVendidas = async (fechaInicio?: string, fechaFin?: string): Promise<PrendaVendida[]> => {
     try {
       setLoading(true);
-      let query = insforgeDb()
-        .from('detalle_pedidos')
-        .select(`
+      const top20 = (lote?: string[]) => {
+        const q = insforgeDb()
+          .from('detalle_pedidos')
+          .select(`
           cantidad,
           subtotal,
           prenda:prendas(nombre),
           talla:tallas(nombre)
         `)
-        .order('cantidad', { ascending: false })
-        .limit(20);
+          .order('cantidad', { ascending: false })
+          .limit(20);
+        return lote ? q.in('pedido_id', lote) : q;
+      };
+      let pedidoIdsFiltro: string[] | null = null;
 
       if (fechaInicio && fechaFin) {
         const { startIso, endIso } = rangoLocalAIso(fechaInicio, fechaFin);
@@ -455,7 +459,7 @@ export function useReportes(
             String((p as { id: string }).id)
           );
           if (pedidoIds.length === 0) return [];
-          query = query.in('pedido_id', pedidoIds);
+          pedidoIdsFiltro = pedidoIds;
         } else {
           return [];
         }
@@ -470,13 +474,19 @@ export function useReportes(
             String((p as { id: string }).id)
           );
           if (pedidoIds.length === 0) return [];
-          query = query.in('pedido_id', pedidoIds);
+          pedidoIdsFiltro = pedidoIds;
         } else {
           return [];
         }
       }
 
-      const { data, error } = await query;
+      // Por lotes cada uno trae su top 20; el top 20 global está dentro de su unión.
+      const { data, error } = pedidoIdsFiltro
+        ? await inPorLotes(pedidoIdsFiltro, (lote) => top20(lote)).then((r) => ({
+            data: [...r.data].sort((a: any, b: any) => b.cantidad - a.cantidad).slice(0, 20),
+            error: r.error,
+          }))
+        : await top20();
 
       if (error) throw error;
 
@@ -597,9 +607,11 @@ export function useReportes(
 
       const ids = Array.from(prendaIds);
       // Incluir sucursal_id: sin ella el filtro de tienda no aplica y el PDF mezcla matriz + Winston.
-      let costosQuery = insforgeDb()
-        .from('costos')
-        .select(`
+      const { data: costosRaw, error } = await inPorLotes(ids, (lote) =>
+        selectTodo((desde, hasta) => {
+          let costosQuery = insforgeDb()
+            .from('costos')
+            .select(`
           id,
           sucursal_id,
           stock,
@@ -608,11 +620,12 @@ export function useReportes(
           prenda:prendas(nombre, categoria_id, categorias_prendas(id, nombre)),
           talla:tallas(nombre, orden)
         `)
-        .eq('activo', true)
-        .in('prenda_id', ids);
-      if (sid) costosQuery = costosQuery.eq('sucursal_id', sid);
-
-      const { data: costosRaw, error } = await costosQuery;
+            .eq('activo', true)
+            .in('prenda_id', lote);
+          if (sid) costosQuery = costosQuery.eq('sucursal_id', sid);
+          return costosQuery.order('id').range(desde, hasta);
+        })
+      );
 
       if (error) throw error;
 
@@ -975,9 +988,10 @@ export function useReportes(
       const pedidoIds = pedidosEnPeriodo.map((p: any) => p.id);
 
       // Obtener detalles de pedidos
-      const { data: detalles, error: detallesError } = await insforgeDb()
-        .from('detalle_pedidos')
-        .select(`
+      const { data: detalles, error: detallesError } = await inPorLotes(pedidoIds, (lote) =>
+        insforgeDb()
+          .from('detalle_pedidos')
+          .select(`
           cantidad,
           precio_unitario,
           subtotal,
@@ -986,16 +1000,19 @@ export function useReportes(
           prenda:prendas(nombre),
           talla:tallas(nombre)
         `)
-        .in('pedido_id', pedidoIds);
+          .in('pedido_id', lote)
+      );
 
       if (detallesError) throw detallesError;
 
       // Obtener precios de compra de costos
-      let costosQuery = insforgeDb()
-        .from('costos')
-        .select('prenda_id, talla_id, precio_compra, precio_venta, sucursal_id');
-      if (sid) costosQuery = costosQuery.eq('sucursal_id', sid);
-      const { data: costos, error: costosError } = await costosQuery;
+      const { data: costos, error: costosError } = await selectTodo((desde, hasta) => {
+        let costosQuery = insforgeDb()
+          .from('costos')
+          .select('id, prenda_id, talla_id, precio_compra, precio_venta, sucursal_id');
+        if (sid) costosQuery = costosQuery.eq('sucursal_id', sid);
+        return costosQuery.order('id').range(desde, hasta);
+      });
 
       if (costosError) throw costosError;
 
@@ -1120,7 +1137,7 @@ export function useReportes(
       };
 
       const detalles: DetalleRow[] = [];
-      const chunkSize = 80;
+      const chunkSize = 40;
       for (let i = 0; i < pedidoIds.length; i += chunkSize) {
         const chunk = pedidoIds.slice(i, i + chunkSize);
         const { data, error } = await insforgeDb()
