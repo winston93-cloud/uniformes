@@ -859,6 +859,13 @@ function PedidosPageContent() {
 
       if (error) throw error;
 
+      // Completar/entregar descuenta de costo_ubicaciones si la talla tiene alguna: la entrada debe sumar ahí también.
+      const { error: errorUbicacion } = await insforgeDb().rpc('sumar_costo_ubicaciones_desde_menor', {
+        p_costo_id: costo.id,
+        p_cantidad: nuevaCantidad,
+      });
+      if (errorUbicacion) console.warn('Stock sin sumar a ubicación:', errorUbicacion);
+
       // Recargar TODOS los costos para actualizar la información
       await refetchCostos();
 
